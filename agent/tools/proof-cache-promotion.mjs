@@ -2,13 +2,22 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { computeClosure, validateProofCachePolicy } from './causal-proof-cache.mjs';
 
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
 const DIGEST_PATTERN = /^[a-f0-9]{64}$/;
+const SOURCE_PROVENANCE = Object.freeze({
+  workflowName: 'PR Candidate Verification',
+  workflowPath: '.github/workflows/pr-candidate.yml',
+  event: 'pull_request',
+  producerJobName: 'Candidate Build and Full Verification',
+  realProofStepName: 'Run authoritative full repository verification or reuse validated closed proof',
+  recordStepName: 'Record EV-18 real-proof cache entry',
+  cacheSaveStepName: 'Save EV-18 validated proof cache',
+});
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -52,6 +61,10 @@ function appendOutput(path, values) {
   execFileSync('bash', ['-lc', `cat >> "$1" <<'EOF'\n${lines}\nEOF`, 'bash', path], { stdio: 'ignore' });
 }
 
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 export function validateProofCachePromotionPolicy(policy, { proofPolicy, ev17CorpusBlobSha, ev21CorpusBlobSha, ev21Corpus }) {
   assert(policy && typeof policy === 'object' && !Array.isArray(policy), 'EV-18 policy must be an object');
   assert(policy.schemaVersion === 1, 'EV-18 policy schemaVersion must be 1');
@@ -73,6 +86,7 @@ export function validateProofCachePromotionPolicy(policy, { proofPolicy, ev17Cor
   assert(policy.cache?.provider === 'github-actions-cache', 'EV-18 cache provider drifted');
   assert(policy.cache?.exactKeyOnly === true, 'EV-18 cache must use exact keys only');
   assert(typeof policy.cache?.keyPrefix === 'string' && policy.cache.keyPrefix.length > 0, 'EV-18 cache key prefix is required');
+  assert(sameJson(policy.cache?.provenance, SOURCE_PROVENANCE), 'EV-18 cache provenance contract drifted');
   assert(policy.calibration?.errorBudget?.falsePositives === 0 && policy.calibration?.errorBudget?.falseNegatives === 0, 'EV-18 error budget must remain zero');
   assert(policy.rollback?.environmentVariable === 'IRONSHADE_PROOF_CACHE_REUSE' && policy.rollback?.disabledValue === '0', 'EV-18 rollback switch drifted');
   return policy;
@@ -168,9 +182,18 @@ function validateRequest(request) {
   return request;
 }
 
-export async function recordCacheEntry({ request, cacheDir, distDir = 'dist', workflowRunId, repository = process.env.GITHUB_REPOSITORY ?? 'unknown/unknown', workflow = process.env.GITHUB_WORKFLOW ?? 'PR Candidate Verification' }) {
+export async function recordCacheEntry({
+  request,
+  cacheDir,
+  distDir = 'dist',
+  workflowRunId,
+  workflowRunAttempt = process.env.GITHUB_RUN_ATTEMPT ?? '1',
+  repository = process.env.GITHUB_REPOSITORY ?? 'unknown/unknown',
+  workflow = process.env.GITHUB_WORKFLOW ?? SOURCE_PROVENANCE.workflowName,
+}) {
   validateRequest(request);
   assert(/^\d+$/.test(String(workflowRunId ?? '')), 'workflowRunId must be numeric');
+  assert(/^\d+$/.test(String(workflowRunAttempt ?? '')), 'workflowRunAttempt must be numeric');
   assert(await lstat(distDir).then(stat => stat.isDirectory() && !stat.isSymbolicLink()).catch(() => false), 'distDir must be a real directory');
   await rm(cacheDir, { recursive: true, force: true });
   await mkdir(cacheDir, { recursive: true });
@@ -191,6 +214,7 @@ export async function recordCacheEntry({ request, cacheDir, distDir = 'dist', wo
     distDigest,
     sourceCandidateSha: request.candidateSha,
     sourceWorkflowRunId: String(workflowRunId),
+    sourceWorkflowRunAttempt: String(workflowRunAttempt),
     sourceRepository: repository,
     sourceWorkflow: workflow,
     sourceProofProfile: 'scripts/run-full-repository-build-proof-closed.sh',
@@ -201,7 +225,63 @@ export async function recordCacheEntry({ request, cacheDir, distDir = 'dist', wo
   return receipt;
 }
 
-export async function validateCacheEntry({ request, cacheDir }) {
+function jsonResponse(body, status = 200) {
+  return { ok: status >= 200 && status < 300, status, async json() { return body; } };
+}
+
+async function githubJson(path, { env, fetchImpl }) {
+  const base = env.GITHUB_API_URL ?? 'https://api.github.com';
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'ironshade-ev18-proof-cache',
+  };
+  const token = env.GITHUB_TOKEN ?? env.GH_TOKEN;
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetchImpl(`${base}${path}`, { headers, redirect: 'follow' });
+  if (!response?.ok) throw new Error(`GitHub API ${path} returned ${response?.status ?? 'unknown'}`);
+  return response.json();
+}
+
+export async function authenticateSourceProvenance({ receipt, env = process.env, fetchImpl = globalThis.fetch }) {
+  const reasons = [];
+  const exact = (condition, reason) => { if (!condition) reasons.push(reason); };
+  const repository = env.GITHUB_REPOSITORY ?? receipt?.sourceRepository;
+  exact(typeof fetchImpl === 'function', 'source-api-unavailable');
+  exact(typeof receipt?.sourceRepository === 'string' && receipt.sourceRepository.includes('/'), 'source-repository');
+  exact(repository === receipt?.sourceRepository, 'source-repository-mismatch');
+  exact(receipt?.sourceWorkflow === SOURCE_PROVENANCE.workflowName, 'source-workflow');
+  exact(SHA_PATTERN.test(receipt?.sourceCandidateSha ?? ''), 'source-candidate-sha');
+  exact(/^\d+$/.test(receipt?.sourceWorkflowRunId ?? ''), 'source-workflow-run-id');
+  exact(/^\d+$/.test(receipt?.sourceWorkflowRunAttempt ?? ''), 'source-workflow-run-attempt');
+  if (reasons.length > 0) return { valid: false, reasons };
+
+  const encodedRepository = receipt.sourceRepository.split('/').map(encodeURIComponent).join('/');
+  const runId = receipt.sourceWorkflowRunId;
+  const attempt = receipt.sourceWorkflowRunAttempt;
+  try {
+    const run = await githubJson(`/repos/${encodedRepository}/actions/runs/${runId}/attempts/${attempt}`, { env, fetchImpl });
+    exact(run?.head_sha === receipt.sourceCandidateSha, 'source-run-candidate-mismatch');
+    exact(run?.name === SOURCE_PROVENANCE.workflowName, 'source-run-workflow-name');
+    exact(run?.path === SOURCE_PROVENANCE.workflowPath, 'source-run-workflow-path');
+    exact(run?.event === SOURCE_PROVENANCE.event, 'source-run-event');
+    exact(run?.repository?.full_name === receipt.sourceRepository, 'source-run-repository');
+
+    const jobs = await githubJson(`/repos/${encodedRepository}/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100`, { env, fetchImpl });
+    const producer = Array.isArray(jobs?.jobs) ? jobs.jobs.find(job => job?.name === SOURCE_PROVENANCE.producerJobName) : null;
+    exact(producer?.status === 'completed' && producer?.conclusion === 'success', 'source-producer-job');
+    const steps = Array.isArray(producer?.steps) ? producer.steps : [];
+    const stepPassed = name => steps.some(step => step?.name === name && step?.status === 'completed' && step?.conclusion === 'success');
+    exact(stepPassed(SOURCE_PROVENANCE.realProofStepName), 'source-real-proof-step');
+    exact(stepPassed(SOURCE_PROVENANCE.recordStepName), 'source-record-step');
+    exact(stepPassed(SOURCE_PROVENANCE.cacheSaveStepName), 'source-cache-save-step');
+  } catch {
+    reasons.push('source-provenance-api');
+  }
+  return { valid: reasons.length === 0, reasons };
+}
+
+export async function validateCacheEntry({ request, cacheDir, env = process.env, fetchImpl = globalThis.fetch, provenanceVerifier = authenticateSourceProvenance }) {
   validateRequest(request);
   const reasons = [];
   let receipt = null;
@@ -222,7 +302,9 @@ export async function validateCacheEntry({ request, cacheDir }) {
   exact(receipt?.policyDigest === request.policyDigest, 'policy-digest');
   exact(SHA_PATTERN.test(receipt?.sourceCandidateSha ?? ''), 'source-candidate-sha');
   exact(/^\d+$/.test(receipt?.sourceWorkflowRunId ?? ''), 'source-workflow-run-id');
-  exact(typeof receipt?.sourceRepository === 'string' && receipt.sourceRepository.includes('/'), 'source-repository');
+  exact(/^\d+$/.test(receipt?.sourceWorkflowRunAttempt ?? ''), 'source-workflow-run-attempt');
+  exact(receipt?.sourceRepository === (env.GITHUB_REPOSITORY ?? receipt?.sourceRepository), 'source-repository');
+  exact(receipt?.sourceWorkflow === SOURCE_PROVENANCE.workflowName, 'source-workflow');
   exact(receipt?.sourceProofProfile === 'scripts/run-full-repository-build-proof-closed.sh', 'source-proof-profile');
   exact(receipt?.createdBy === 'real-proof-rerun', 'source-provenance');
   exact(receipt?.candidatePassGranted === false, 'candidate-pass-granted');
@@ -235,10 +317,14 @@ export async function validateCacheEntry({ request, cacheDir }) {
       reasons.push('missing-or-invalid-dist');
     }
   }
-  return { valid: reasons.length === 0, reasons, receipt };
+  if (reasons.length === 0) {
+    const provenance = await provenanceVerifier({ receipt, env, fetchImpl });
+    if (!provenance?.valid) reasons.push(...(provenance?.reasons ?? ['source-provenance-invalid']));
+  }
+  return { valid: reasons.length === 0, reasons: [...new Set(reasons)], receipt };
 }
 
-export async function decideReuse({ request, cacheHit, cacheDir, env = process.env, policy = null }) {
+export async function decideReuse({ request, cacheHit, cacheDir, env = process.env, policy = null, fetchImpl = globalThis.fetch, provenanceVerifier = authenticateSourceProvenance }) {
   const resolvedPolicy = policy ?? (await loadPromotionContract()).policy;
   if (!isPromotionEnabled(resolvedPolicy, env)) {
     return { reuse: false, proofMode: 'legacy', reason: 'rollback-disabled', cacheValid: false, cacheReasons: [] };
@@ -247,7 +333,7 @@ export async function decideReuse({ request, cacheHit, cacheDir, env = process.e
   if (!cacheHit) {
     return { reuse: false, proofMode: 'closed', reason: 'cache-miss', cacheValid: false, cacheReasons: [] };
   }
-  const validation = await validateCacheEntry({ request, cacheDir });
+  const validation = await validateCacheEntry({ request, cacheDir, env, fetchImpl, provenanceVerifier });
   if (!validation.valid) {
     return { reuse: false, proofMode: 'closed', reason: 'cache-rejected', cacheValid: false, cacheReasons: validation.reasons };
   }
@@ -259,12 +345,13 @@ export async function decideReuse({ request, cacheHit, cacheDir, env = process.e
     cacheReasons: [],
     sourceCandidateSha: validation.receipt.sourceCandidateSha,
     sourceWorkflowRunId: validation.receipt.sourceWorkflowRunId,
+    sourceWorkflowRunAttempt: validation.receipt.sourceWorkflowRunAttempt,
     distDigest: validation.receipt.distDigest,
   };
 }
 
-export async function materializeCacheEntry({ request, cacheDir, distDir = 'dist' }) {
-  const validation = await validateCacheEntry({ request, cacheDir });
+export async function materializeCacheEntry({ request, cacheDir, distDir = 'dist', env = process.env, fetchImpl = globalThis.fetch, provenanceVerifier = authenticateSourceProvenance }) {
+  const validation = await validateCacheEntry({ request, cacheDir, env, fetchImpl, provenanceVerifier });
   assert(validation.valid, `refusing invalid EV-18 cache entry: ${validation.reasons.join(',')}`);
   await rm(distDir, { recursive: true, force: true });
   await cp(join(cacheDir, 'dist'), distDir, { recursive: true, force: false, errorOnExist: true, preserveTimestamps: false });
@@ -309,6 +396,33 @@ async function fixtureRequest(policy) {
   };
 }
 
+function mockGithubFetchFor(receipt, { producerConclusion = 'success', saveConclusion = 'success' } = {}) {
+  const runPath = `/actions/runs/${receipt.sourceWorkflowRunId}/attempts/${receipt.sourceWorkflowRunAttempt}`;
+  const run = {
+    head_sha: receipt.sourceCandidateSha,
+    name: SOURCE_PROVENANCE.workflowName,
+    path: SOURCE_PROVENANCE.workflowPath,
+    event: SOURCE_PROVENANCE.event,
+    repository: { full_name: receipt.sourceRepository },
+  };
+  const producer = {
+    name: SOURCE_PROVENANCE.producerJobName,
+    status: 'completed',
+    conclusion: producerConclusion,
+    steps: [
+      { name: SOURCE_PROVENANCE.realProofStepName, status: 'completed', conclusion: 'success' },
+      { name: SOURCE_PROVENANCE.recordStepName, status: 'completed', conclusion: 'success' },
+      { name: SOURCE_PROVENANCE.cacheSaveStepName, status: 'completed', conclusion: saveConclusion },
+    ],
+  };
+  return async url => {
+    const path = new URL(url).pathname;
+    if (path.endsWith(`${runPath}/jobs`)) return jsonResponse({ jobs: [producer] });
+    if (path.endsWith(runPath)) return jsonResponse(run);
+    return jsonResponse({ message: 'not found' }, 404);
+  };
+}
+
 export async function calibratePromotionDecision({ policy }) {
   const root = await mkdtemp(join(tmpdir(), 'ironshade-ev18-'));
   const cacheDir = join(root, 'cache');
@@ -316,22 +430,33 @@ export async function calibratePromotionDecision({ policy }) {
   await mkdir(distDir, { recursive: true });
   await writeFile(join(distDir, 'index.html'), '<!doctype html><title>ev18</title>\n', 'utf8');
   const request = await fixtureRequest(policy);
-  await recordCacheEntry({ request, cacheDir, distDir, workflowRunId: '12345', repository: 'papa4568/ironshade-vector', workflow: 'fixture' });
+  await recordCacheEntry({
+    request,
+    cacheDir,
+    distDir,
+    workflowRunId: '12345',
+    workflowRunAttempt: '1',
+    repository: 'papa4568/ironshade-vector',
+    workflow: SOURCE_PROVENANCE.workflowName,
+  });
+  const baselineReceipt = await loadJson(join(cacheDir, 'receipt.json'));
+  const baseEnv = { GITHUB_REPOSITORY: baselineReceipt.sourceRepository, GITHUB_API_URL: 'https://api.github.test' };
+  const baselineFetch = mockGithubFetchFor(baselineReceipt);
 
   const trials = [];
   let falsePositives = 0;
   let falseNegatives = 0;
-  const evaluate = async (id, expectedReuse, mutate, { cacheHit = true, env = {} } = {}) => {
+  const evaluate = async (id, expectedReuse, mutate, { cacheHit = true, env = baseEnv, fetchImpl = baselineFetch } = {}) => {
     const receiptPath = join(cacheDir, 'receipt.json');
     const originalReceipt = await readFile(receiptPath, 'utf8');
     const originalDist = await readFile(join(cacheDir, 'dist/index.html'), 'utf8');
     try {
       if (mutate) await mutate({ receiptPath, cacheDir });
-      const decision = await decideReuse({ request, cacheHit, cacheDir, env, policy });
+      const decision = await decideReuse({ request, cacheHit, cacheDir, env, policy, fetchImpl });
       const pass = decision.reuse === expectedReuse;
       if (!pass && expectedReuse) falseNegatives += 1;
       if (!pass && !expectedReuse) falsePositives += 1;
-      trials.push({ id, expectedReuse, observedReuse: decision.reuse, proofMode: decision.proofMode, reason: decision.reason, pass });
+      trials.push({ id, expectedReuse, observedReuse: decision.reuse, proofMode: decision.proofMode, reason: decision.reason, cacheReasons: decision.cacheReasons, pass });
     } finally {
       await writeFile(receiptPath, originalReceipt, 'utf8');
       await writeFile(join(cacheDir, 'dist/index.html'), originalDist, 'utf8');
@@ -355,10 +480,27 @@ export async function calibratePromotionDecision({ policy }) {
     receipt.sourceCandidateSha = 'not-a-sha';
     await writeJson(receiptPath, receipt);
   });
+  await evaluate('fabricated-source-candidate', false, async ({ receiptPath }) => {
+    const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
+    receipt.sourceCandidateSha = '2'.repeat(40);
+    await writeJson(receiptPath, receipt);
+  });
+  await evaluate('missing-source-workflow', false, async ({ receiptPath }) => {
+    const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
+    delete receipt.sourceWorkflow;
+    await writeJson(receiptPath, receipt);
+  });
+  await evaluate('fabricated-source-run', false, async ({ receiptPath }) => {
+    const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
+    receipt.sourceWorkflowRunId = '99999';
+    await writeJson(receiptPath, receipt);
+  });
+  await evaluate('failed-source-producer-job', false, null, { fetchImpl: mockGithubFetchFor(baselineReceipt, { producerConclusion: 'failure' }) });
+  await evaluate('missing-source-cache-save', false, null, { fetchImpl: mockGithubFetchFor(baselineReceipt, { saveConclusion: 'skipped' }) });
   await evaluate('dist-digest-mismatch', false, async ({ cacheDir: path }) => {
     await writeFile(join(path, 'dist/index.html'), 'tampered\n', 'utf8');
   });
-  const rollbackEnv = { [policy.rollback.environmentVariable]: policy.rollback.disabledValue };
+  const rollbackEnv = { ...baseEnv, [policy.rollback.environmentVariable]: policy.rollback.disabledValue };
   await evaluate('rollback-forces-legacy-proof', false, null, { env: rollbackEnv });
   const rollback = trials.find(entry => entry.id === 'rollback-forces-legacy-proof');
   await rm(root, { recursive: true, force: true });
@@ -403,7 +545,8 @@ export async function generatePromotionEvidence({ candidateSha, cwd = process.cw
       provider: contract.policy.cache.provider,
       exactKeyOnly: contract.policy.cache.exactKeyOnly,
       keyPrefix: contract.policy.cache.keyPrefix,
-      provenanceFields: ['sourceCandidateSha', 'sourceWorkflowRunId', 'sourceRepository', 'sourceWorkflow', 'sourceProofProfile', 'closureDigest', 'repositoryDigest', 'executionContextDigest', 'policyDigest', 'distDigest'],
+      provenance: contract.policy.cache.provenance,
+      provenanceFields: ['sourceCandidateSha', 'sourceWorkflowRunId', 'sourceWorkflowRunAttempt', 'sourceRepository', 'sourceWorkflow', 'sourceProofProfile', 'closureDigest', 'repositoryDigest', 'executionContextDigest', 'policyDigest', 'distDigest'],
     },
     acceptedForReuse: true,
     blocking: true,
@@ -439,25 +582,33 @@ async function main(argv) {
     const decision = await decideReuse({ request, cacheHit: parseBoolean(options['cache-hit']), cacheDir: resolve(options['cache-dir']) });
     if (options.output) await writeJson(resolve(options.output), decision);
     appendOutput(options['github-output'], { reuse: decision.reuse, 'proof-mode': decision.proofMode, reason: decision.reason });
-    console.log(`EV18_PROOF_CACHE_DECISION reuse=${decision.reuse} proofMode=${decision.proofMode} reason=${decision.reason}${decision.sourceCandidateSha ? ` sourceCandidate=${decision.sourceCandidateSha} sourceRun=${decision.sourceWorkflowRunId}` : ''}`);
+    console.log(`EV18_PROOF_CACHE_DECISION reuse=${decision.reuse} proofMode=${decision.proofMode} reason=${decision.reason}${decision.sourceCandidateSha ? ` sourceCandidate=${decision.sourceCandidateSha} sourceRun=${decision.sourceWorkflowRunId} sourceAttempt=${decision.sourceWorkflowRunAttempt}` : ''}`);
     return;
   }
   if (command === 'record') {
     const request = await loadJson(resolve(options.request));
-    const receipt = await recordCacheEntry({ request, cacheDir: resolve(options['cache-dir']), distDir: resolve(options.dist ?? 'dist'), workflowRunId: options['run-id'] ?? process.env.GITHUB_RUN_ID, repository: process.env.GITHUB_REPOSITORY, workflow: process.env.GITHUB_WORKFLOW });
-    console.log(`EV18_PROOF_CACHE_RECORD sourceCandidate=${receipt.sourceCandidateSha} sourceRun=${receipt.sourceWorkflowRunId} distDigest=${receipt.distDigest}`);
+    const receipt = await recordCacheEntry({
+      request,
+      cacheDir: resolve(options['cache-dir']),
+      distDir: resolve(options.dist ?? 'dist'),
+      workflowRunId: options['run-id'] ?? process.env.GITHUB_RUN_ID,
+      workflowRunAttempt: options['run-attempt'] ?? process.env.GITHUB_RUN_ATTEMPT ?? '1',
+      repository: process.env.GITHUB_REPOSITORY,
+      workflow: process.env.GITHUB_WORKFLOW,
+    });
+    console.log(`EV18_PROOF_CACHE_RECORD sourceCandidate=${receipt.sourceCandidateSha} sourceRun=${receipt.sourceWorkflowRunId} sourceAttempt=${receipt.sourceWorkflowRunAttempt} closure=${receipt.closureDigest} distDigest=${receipt.distDigest}`);
     return;
   }
   if (command === 'materialize') {
     const request = await loadJson(resolve(options.request));
     const receipt = await materializeCacheEntry({ request, cacheDir: resolve(options['cache-dir']), distDir: resolve(options.dist ?? 'dist') });
-    console.log(`EV18_PROOF_CACHE_REUSE_PASS sourceCandidate=${receipt.sourceCandidateSha} sourceRun=${receipt.sourceWorkflowRunId} closure=${receipt.closureDigest} distDigest=${receipt.distDigest}`);
+    console.log(`EV18_PROOF_CACHE_REUSE_PASS sourceCandidate=${receipt.sourceCandidateSha} sourceRun=${receipt.sourceWorkflowRunId} sourceAttempt=${receipt.sourceWorkflowRunAttempt} closure=${receipt.closureDigest} distDigest=${receipt.distDigest}`);
     return;
   }
   if (command === 'evidence') {
     const report = await generatePromotionEvidence({ candidateSha: options['candidate-sha'] });
     if (options.output) await writeJson(resolve(options.output), report);
-    console.log(`EV18_PROMOTION_EVIDENCE_PASS candidate=${report.candidateSha} proof=${report.proofId} fp=${report.calibration.measuredErrors.falsePositives} fn=${report.calibration.measuredErrors.falseNegatives} rollback=${report.rollback.forcesPrePromotionLegacyProof}`);
+    console.log(`EV18_PROMOTION_EVIDENCE_PASS candidate=${report.candidateSha} proof=${report.proofId} fp=${report.calibration.measuredErrors.falsePositives} fn=${report.calibration.measuredErrors.falseNegatives} rollback=${report.rollback.forcesPrePromotionLegacyProof} provenance=github-actions-run`);
     return;
   }
   throw new Error('usage: proof-cache-promotion.mjs <request|decide|record|materialize|evidence> [options]');
