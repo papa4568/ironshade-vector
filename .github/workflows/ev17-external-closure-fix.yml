@@ -26,7 +26,6 @@ jobs:
         run: |
           python3 agent/ev17-fix-external-closure.py
           node agent/tests/proof-cache-calibration-evidence.mjs
-          node agent/tools/proof-cache-calibration-evidence.mjs --candidate-sha "$(git rev-parse HEAD)" --no-proofs --output /tmp/ev17-no-proofs.json
           node agent/tests/causal-proof-cache.mjs
           git diff --check
       - name: Commit permanent correction only
