@@ -2,7 +2,7 @@
 
 This roadmap tracks speculative repository-level engineering intended to make Ironshade Vector's AI development environment improve its own verification quality over time.
 
-These ideas deliberately combine known software-engineering primitives in unusual ways. Treat them as experiments until repository evidence proves they are reliable. EV-1 through EV-7 completed their prototype/shadow phases and are archived in `docs/experimental-verification-archive.md`; the active queue below is the explicit graduation path from experimental mechanisms to normal repository infrastructure.
+These ideas deliberately combine known software-engineering primitives in unusual ways. Treat them as experiments until repository evidence proves they are reliable. EV-1 through EV-7 completed their prototype/shadow phases and are archived in `docs/experimental-verification-archive.md`; completed graduation/calibration items EV-8 through EV-17 and EV-19 are archived there as well. The active queue below contains only remaining experimental work.
 
 ## Execution contract
 
