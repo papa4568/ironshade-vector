@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 
 import {
+  materializeExperimentalTasks,
+  selectExperimentalReviewTask,
+} from '../tools/experimental-review-task.mjs';
+import {
   classifyPressurePrediction,
   summarizePressureClassifications,
   validateRoadmapShadowValidationCorpus,
@@ -88,4 +92,35 @@ assert.throws(
   /P28-G1 must remain explicitly unsupported/,
 );
 
-console.log(`EV19_ROADMAP_SHADOW_VALIDATION_TEST_PASS useful=${measured.usefulPredictionCount} fp=${measured.falsePositives} fn=${measured.falseNegatives} blocking=false`);
+const blockedBaseRoadmap = [
+  '# Experimental verification roadmap',
+  '',
+  '## Active experimental queue',
+  '',
+  '- [ ] **EV-18 — Reuse proof class**',
+  '  - **Blocked by EV-17 calibration evidence:** causal inputs remain unbound.',
+  '  - Preserve rollback.',
+  '',
+  '- [ ] **EV-19 — Validate roadmap pressure**',
+  '  - Measure prediction accuracy.',
+  '',
+  '- [ ] **EV-20 — Graduate signal**',
+  '  - Review validated signals only.',
+].join('\n');
+const blockedTasks = materializeExperimentalTasks(blockedBaseRoadmap);
+assert.equal(blockedTasks[0].id, 'EV-18');
+assert.equal(blockedTasks[0].status, 'blocked');
+assert.equal(blockedTasks[1].id, 'EV-19');
+assert.equal(blockedTasks[1].status, 'ready');
+const blockedHeadRoadmap = blockedBaseRoadmap.replace(
+  '- [ ] **EV-19 — Validate roadmap pressure**\n  - Measure prediction accuracy.\n\n',
+  '',
+);
+const blockedCloseout = selectExperimentalReviewTask(blockedHeadRoadmap, { baseMarkdown: blockedBaseRoadmap });
+assert.equal(blockedCloseout.task.id, 'EV-19');
+assert.equal(blockedCloseout.mode, 'experimental-closeout');
+const nextActionable = selectExperimentalReviewTask(blockedHeadRoadmap);
+assert.equal(nextActionable.task.id, 'EV-20');
+assert.equal(nextActionable.mode, 'experimental');
+
+console.log(`EV19_ROADMAP_SHADOW_VALIDATION_TEST_PASS useful=${measured.usefulPredictionCount} fp=${measured.falsePositives} fn=${measured.falseNegatives} blockedCloseout=${blockedCloseout.task.id} next=${nextActionable.task.id} blocking=false`);
