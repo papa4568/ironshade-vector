@@ -345,6 +345,7 @@ export function calibratePrCandidateHeadObserver({ workflowText, candidateSha } 
   ];
 
   const fullVerificationHeadBinding = `      - name: Run authoritative full repository verification or reuse validated closed proof\n        id: full-verification\n        env:\n          CANDIDATE_SHA: ${PR_HEAD}`;
+  const proofCacheRequestBinding = '          node agent/tools/proof-cache-promotion.mjs request \\\n            --candidate-sha "$CANDIDATE_SHA" \\';
   const dishonest = [
     {
       id: 'producer-synthetic-event-sha',
@@ -378,7 +379,12 @@ export function calibratePrCandidateHeadObserver({ workflowText, candidateSha } 
     },
     {
       id: 'cache-request-synthetic-candidate',
-      workflowText: replaceOnce(workflowText, '            --candidate-sha "$CANDIDATE_SHA" \\', `            --candidate-sha "${SYNTHETIC_EVENT_SHA}" \\`, 'cache request candidate binding'),
+      workflowText: replaceOnce(
+        workflowText,
+        proofCacheRequestBinding,
+        proofCacheRequestBinding.replace('--candidate-sha "$CANDIDATE_SHA"', `--candidate-sha "${SYNTHETIC_EVENT_SHA}"`),
+        'cache request candidate binding',
+      ),
       expected: ['candidate-build-source-bound-snapshot'],
     },
     {
