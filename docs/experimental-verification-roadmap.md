@@ -29,7 +29,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 ## Active experimental queue
 
 - [ ] **EV-18 — Reuse One Validated Proof Class**
-  - **EV-21 prerequisite satisfied:** archived EV-21 calibration independently established `full-repository-build-closed` as the one reuse-eligible proof class by closure-binding the five required immutable/artifact identities and eliminating network/registry causality from the reused build segment. Promotion remains disabled until EV-18 itself passes review.
+  - **EV-21 prerequisite satisfied:** archived EV-21 calibration independently established `full-repository-build-closed` as the one reuse-eligible proof class by closure-binding the five required immutable/artifact identities and eliminating network/registry causality from the reused build segment. Promotion remains disabled until EV-18 itself passes review; keep EV-18 active through its implementation merge so the exact candidate is reviewed as EV-18, then archive/remove it only in a follow-up closeout on trusted `main`.
   - Enable reuse for one proof class justified by EV-17 plus EV-21 closure calibration, requiring exact input/context digests, immutable candidate identity, auditable cache provenance, and fail-closed fallback to the real proof for any unknown or inconsistent dependency.
   - Prove cache disablement forces the original proof to rerun and preserves prior acceptance semantics.
   - Done when `AGENTS.md` and proof-cache contracts document the promoted class and rollback, and the exact candidate is archived with required proofs and independent review; further proof classes require separate roadmap items.
