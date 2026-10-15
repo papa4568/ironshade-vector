@@ -682,3 +682,41 @@ This archive transition follows the repository's established independent-review 
 ### Promotion status
 
 Promoted only `ui-and-design-system -> risk: high / verify-full` as a map-policy widening justified by EV-15. All other EV-15-unmeasured normal-risk classes remain unresolved in the map and conservatively fail safe to `verify-full` while EV-16 enforcement is enabled; existing high-risk and unknown classes remain fail-safe. EV-6 proof-cache reuse remains experimental/advisory. The next experimental task is EV-17 — Calibrate EV-6 Proof-Cache Closure.
+
+## EV-17 — Calibrate EV-6 Proof-Cache Closure
+
+Completed 2026-10-14 as an advisory calibration of the EV-6 causal proof-cache mechanism. The original EV-6 prototype record above remains unchanged advisory history; proof reuse remains disabled.
+
+### Implemented
+
+- Added `agent/proof-cache-calibration-corpus.json`, `agent/tools/proof-cache-calibration-evidence.mjs`, `agent/tests/proof-cache-calibration-evidence.mjs`, and `.github/workflows/ev17-proof-cache-calibration.yml` as the exact-SHA calibration contract for the current `full-repository-build` proof class.
+- Added `scripts/run-full-repository-build-proof.sh` and made both the authoritative PR producer and EV-17 calibration execute that one Dockerized production proof profile. Its static container settings (`--network none`, `HOME=/tmp`, `npm_config_ignore_scripts=true`, user mapping, locked npm version, and `VITE_API_BASE_URL` pass-through) are therefore versioned in a path included by the EV-6 repository closure rather than duplicated in workflow-only text.
+- The shared proof profile explicitly pulls `node:22.23.2-bookworm`, resolves the pulled immutable repo digest for that execution, records the Docker engine version, installs from the exact candidate archive, and runs the real `npm run build` inside the same isolated container profile used by final-candidate verification.
+- Calibration reruns the real Dockerized proof on the exact candidate baseline plus an excluded-input same-closure control spanning every EV-6 repository exclusion category, a benign included-input invalidation, and a representative included TypeScript defect. Every trial still reruns the real proof; no result may grant candidate acceptance or cached-proof reuse.
+- Retained EV-6 history is validated against immutable Git SHAs, same-closure disagreement is measured, declared runner/image/toolchain/environment dimensions are checked for closure invalidation, and disposable probe commits are restored to the exact candidate state.
+
+### Measured behavior and correction
+
+An early implementation attempt failed closed because the baseline build left tracked generated state before the first disposable probe. The evidence runner was corrected to restore the complete tracked checkout to the exact candidate after the baseline and after every probe; the criterion was not weakened.
+
+Implementation candidate `616dd3103cfa1b01060cd85721c1321a22cf5b14` measured four trials with zero false hits, one conservative false miss, and zero same-closure disagreements, then received a trusted EV-17 pass after its Android prerequisites became green. That evidence was useful for repository-input behavior, but it was not sufficient to promote reuse because the calibration command still ran directly on the host.
+
+Closeout candidate `c3878808994081f2322c4ff19a9e574b81f7e92c` reproduced the four-trial metrics, full verification/build, APK, API 35 smoke, API 36 large-screen smoke, and Android aggregate. Trusted independent review run `38675014331` correctly failed it with a major finding: the authoritative full-repository-build proof is Dockerized, while the calibration and EV-6 causal closure did not cover that actual execution context, including the pulled base-image identity and container runtime inputs. That failure is retained as evidence and was fixed rather than rerun away.
+
+The corrected EV-17 contract now measures the exact shared Dockerized proof envelope. The static execution settings are repository-closed through `scripts/run-full-repository-build-proof.sh`, but the current EV-6 execution-context digest still does not bind four causal inputs: the immutable pulled Docker base-image identity, Docker engine version, external network availability during Docker/npm setup, and npm-registry response/artifact identity. The final `npm run build` executes with `--network none`, but the preceding Docker pull, Docker build/npm CLI install, and `npm ci` can still change the proof outcome independently of the current EV-6 digest. EV-17 therefore fails closed with `eligibleProofClasses=[]` and keeps `full-repository-build` unresolved even when the observed reruns show zero unsafe hits/disagreements. This is the intended no-promotion result, not a calibration failure.
+
+### False-positive / false-negative semantics
+
+The error budget remains zero false hits and zero same-closure disagreements. A benign included-source change intentionally produces a cache miss followed by a successful real Dockerized build; this is recorded as one conservative false miss rather than an unsafe hit. The representative TypeScript defect produces a miss and a failing real Dockerized build, proving fail-closed invalidation. The same-closure excluded-input control must predict a hit but still rerun and succeed. Any disagreement, representative defect escape, missing runtime input, or closure gap blocks eligibility.
+
+### Isolation and rollback
+
+EV-17 changes verification/governance only. Disposable probe commits are reset back to the exact candidate after every trial, tracked state must be clean, retained observations are recomputed against immutable Git SHAs, and the proof continues to rerun for every candidate. No cache result is accepted and no product/runtime behavior changes.
+
+Rollback is deterministic: remove the EV-17 calibration workflow/corpus/tool/test and restore `.github/workflows/pr-candidate.yml`'s equivalent inline Docker proof commands (or keep the shared script as a behavior-preserving refactor). EV-6 then returns to its pre-EV-17 advisory shadow state with the authoritative full repository build still executing exactly once. No browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, or trusted-review obligation is waived.
+
+This archive transition follows the repository's independent-review self-reference rule. It records immutable predecessor evidence and the trusted-review defect that changed the conclusion. The resulting corrected closeout SHA must pass fresh exact-head technical gates and a fresh trusted EV-17 independent review; no predecessor verdict is inherited.
+
+### Promotion status
+
+Calibration complete; **no cached proof class was promoted or found eligible for EV-18**. EV-6 remains shadow-only. EV-18 stays uncompleted and blocked until Docker base-image identity, Docker engine version, external setup-network availability, and npm-registry response/artifact identity are causally bound or eliminated from the proof and independently recalibrated. Under the roadmap's top-to-bottom-unless-blocked rule, the next actionable experimental item is EV-19 — Validate EV-7 Roadmap Shadow Predictions.

@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [candidate, browser, android] = await Promise.all([
+const [candidate, browser, android, fullBuildProof] = await Promise.all([
   readFile('.github/workflows/pr-candidate.yml', 'utf8'),
   readFile('.github/workflows/browser-e2e.yml', 'utf8'),
   readFile('.github/workflows/pr-android-apk.yml', 'utf8'),
+  readFile('scripts/run-full-repository-build-proof.sh', 'utf8'),
 ]);
 
 function countExactLine(text, line) {
@@ -20,11 +21,23 @@ assert.match(candidate, /pull_request:/);
 assert.match(candidate, /group: pr-candidate-build-\$\{\{ github\.event\.pull_request\.number \}\}/, 'Only stale candidate-build producers should be cancelled by PR; downstream reusable jobs must not hold the next producer behind them');
 assert.doesNotMatch(candidate, /group: pr-candidate-\$\{\{ github\.event\.pull_request\.number \}\}/, 'Do not put whole-run PR concurrency around reusable downstream workflows');
 assert.equal(
-  countMatchingTrimmedLines(candidate, /^npm run build(?:\s+2>&1\s+\|\s+tee\s+\.agent-impact-calibration\/full-verification\.log)?$/),
+  countExactLine(candidate, 'run: bash scripts/run-full-repository-build-proof.sh'),
   1,
-  'PR candidate workflow must have exactly one full build producer',
+  'PR candidate workflow must delegate to exactly one authoritative full build producer',
 );
-assert.match(candidate, /Run full repository verification and production build once[\s\S]*set -o pipefail[\s\S]*npm run build 2>&1 \| tee \.agent-impact-calibration\/full-verification\.log/, 'The one authoritative full build may be observed through tee only when pipefail preserves its failure status');
+assert.equal(
+  countMatchingTrimmedLines(candidate, /^npm run build(?:\s+2>&1\s+\|\s+tee\s+.*)?$/),
+  0,
+  'PR candidate workflow must not contain a second inline full build when the shared proof script is authoritative',
+);
+assert.equal(
+  countMatchingTrimmedLines(fullBuildProof, /^npm run build 2>&1 \| tee "\$log_path"$/),
+  1,
+  'Shared full-build proof must contain exactly one real production build',
+);
+assert.match(candidate, /Run full repository verification and production build once[\s\S]*run: bash scripts\/run-full-repository-build-proof\.sh/, 'The candidate producer must execute the shared full-build proof script');
+assert.match(fullBuildProof, /set -o pipefail[\s\S]*npm run build 2>&1 \| tee "\$log_path"[\s\S]*status=\$\{PIPESTATUS\[0\]\}/, 'The one authoritative full build may be observed through tee only when pipefail preserves its failure status');
+assert.match(fullBuildProof, /docker pull "\$base_image"[\s\S]*base_image_ref=.*RepoDigests[\s\S]*--network none[\s\S]*--env npm_config_ignore_scripts=true[\s\S]*--env VITE_API_BASE_URL/, 'The shared producer must retain the reviewed Docker execution envelope');
 assert.match(candidate, /Capture EV-5 impact-map calibration shadow evidence[\s\S]*if: always\(\)[\s\S]*impact-map-calibration\.mjs observe/, 'EV-5 must observe both successful and failed full-build outcomes without adding a second build');
 assert.match(candidate, /Predict EV-6 causal proof reuse in shadow mode[\s\S]*continue-on-error: true[\s\S]*causal-proof-cache\.mjs predict[\s\S]*--proof full-repository-build/, 'EV-6 must predict reuse before the authoritative proof while remaining shadow-only');
 assert.match(candidate, /Compare EV-6 reuse prediction with the real rerun[\s\S]*if: always\(\)[\s\S]*causal-proof-cache\.mjs observe[\s\S]*FULL_VERIFICATION_OUTCOME/, 'EV-6 must compare its prediction with the proof that actually reran');
@@ -58,4 +71,4 @@ assert.match(android, /npx cap sync android/);
 assert.match(android, /Download PR APK/);
 assert.match(android, /sha256sum -c Ironshade-Vector-Android-Smoke\.sha256/);
 
-console.log('CI_PROOF_REUSE_TEST_PASS prFullBuilds=1 fullBuildLogging=pipefail ev6Prediction=shadow-before-proof ev6Comparison=real-rerun browser=reuses-candidate android=reuses-candidate apk=reused-by-emulators reusableGuard=input producerConcurrency=job androidConcurrency=pr');
+console.log('CI_PROOF_REUSE_TEST_PASS prFullBuilds=1 producer=shared-docker-proof fullBuildLogging=pipefail ev6Prediction=shadow-before-proof ev6Comparison=real-rerun browser=reuses-candidate android=reuses-candidate apk=reused-by-emulators reusableGuard=input producerConcurrency=job androidConcurrency=pr');
