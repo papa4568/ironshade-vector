@@ -36,6 +36,7 @@
           "ImageVersion",
           "VITE_API_BASE_URL",
           "IRONSHADE_PROOF_BASE_IMAGE_REF",
+          "IRONSHADE_PROOF_PREPARED_IMAGE_ID",
           "IRONSHADE_PROOF_NPM_CLI_TREE_SHA256",
           "IRONSHADE_PROOF_DOCKER_ENGINE_VERSION",
           "IRONSHADE_PROOF_DEPENDENCY_TREE_SHA256"
@@ -45,6 +46,10 @@
         {
           "id": "docker-base-image-identity",
           "environmentVariable": "IRONSHADE_PROOF_BASE_IMAGE_REF"
+        },
+        {
+          "id": "prepared-toolchain-image-identity",
+          "environmentVariable": "IRONSHADE_PROOF_PREPARED_IMAGE_ID"
         },
         {
           "id": "npm-cli-artifact-identity",
@@ -66,7 +71,7 @@
         },
         {
           "id": "npm-registry-response-identity",
-          "reason": "Registry responses are consumed only during mandatory preflight. The deterministic installed npm CLI tree digest and installed project dependency-tree digest are closure-bound before the networkless build can execute."
+          "reason": "Registry responses are consumed only during mandatory preflight. The prepared toolchain image ID, deterministic installed npm CLI tree digest, and installed project dependency-tree digest are closure-bound before the networkless build can execute."
         }
       ],
       "preflightCommand": "bash scripts/prepare-full-repository-build-proof-closed.sh",
