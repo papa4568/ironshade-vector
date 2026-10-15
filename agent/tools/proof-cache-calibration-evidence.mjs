@@ -102,7 +102,9 @@ export function validateProofCacheCalibrationCorpus(corpus, policy) {
       const targets = new Set();
       for (const mutation of probe.mutations) {
         assertString(mutation.targetPath, `${probe.id}.mutations.targetPath`);
-        assertString(mutation.mutationSuffix, `${probe.id}.mutations.mutationSuffix`);
+        const hasSuffix = typeof mutation.mutationSuffix === 'string' && mutation.mutationSuffix.length > 0;
+        const hasCreate = typeof mutation.createContent === 'string' && mutation.createContent.length > 0;
+        assert(hasSuffix !== hasCreate, `${probe.id}.${mutation.targetPath} must define exactly one of mutationSuffix or createContent`);
         assert(!targets.has(mutation.targetPath), `${probe.id} repeats target ${mutation.targetPath}`);
         targets.add(mutation.targetPath);
       }
@@ -256,9 +258,23 @@ async function runProbe({ probe, policy, proofEntry, baselineClosure, baselineHi
   try {
     for (const mutation of probe.mutations) {
       const path = resolve(mutation.targetPath);
-      const content = await readFile(path, 'utf8');
-      originals.push({ targetPath: mutation.targetPath, path, content, digest: sha256(content) });
-      await writeFile(path, `${content}${mutation.mutationSuffix}`, 'utf8');
+      if (typeof mutation.createContent === 'string') {
+        let existed = true;
+        try {
+          await readFile(path, 'utf8');
+        } catch (error) {
+          if (error?.code === 'ENOENT') existed = false;
+          else throw error;
+        }
+        assert(!existed, `${probe.id} create-only target already exists: ${mutation.targetPath}`);
+        originals.push({ targetPath: mutation.targetPath, path, existed: false });
+        await mkdir(dirname(path), { recursive: true });
+        await writeFile(path, mutation.createContent, 'utf8');
+      } else {
+        const content = await readFile(path, 'utf8');
+        originals.push({ targetPath: mutation.targetPath, path, existed: true, digest: sha256(content) });
+        await writeFile(path, `${content}${mutation.mutationSuffix}`, 'utf8');
+      }
     }
     git(['add', '--', ...probe.mutations.map(entry => entry.targetPath)]);
     git(['-c', 'user.name=EV-17 Calibration', '-c', 'user.email=ev17@example.invalid', 'commit', '-m', `EV-17 disposable probe ${probe.id}`]);
@@ -311,8 +327,19 @@ async function runProbe({ probe, policy, proofEntry, baselineClosure, baselineHi
     git(['reset', '--hard', candidateSha]);
   }
   for (const original of originals) {
-    const restored = await readFile(original.path, 'utf8');
-    assert(sha256(restored) === original.digest, `${probe.id} did not restore ${original.targetPath}`);
+    if (original.existed) {
+      const restored = await readFile(original.path, 'utf8');
+      assert(sha256(restored) === original.digest, `${probe.id} did not restore ${original.targetPath}`);
+    } else {
+      let absent = false;
+      try {
+        await readFile(original.path, 'utf8');
+      } catch (error) {
+        if (error?.code === 'ENOENT') absent = true;
+        else throw error;
+      }
+      assert(absent, `${probe.id} did not remove created target ${original.targetPath}`);
+    }
   }
   const cleanAfter = git(['status', '--porcelain', '--untracked-files=no']);
   assert(cleanAfter === '', `${probe.id} did not restore exact candidate tracked state`);

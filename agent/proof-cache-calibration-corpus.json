@@ -61,8 +61,8 @@
               "mutationSuffix": "\n<!-- EV-17 disposable excluded agent control -->\n"
             },
             {
-              "targetPath": "android/gradle.properties",
-              "mutationSuffix": "\n# EV-17 disposable excluded android control\n"
+              "targetPath": "android/.ev17-excluded-control",
+              "createContent": "EV-17 disposable excluded android control\n"
             },
             {
               "targetPath": "docs/experimental-verification-roadmap.md",
