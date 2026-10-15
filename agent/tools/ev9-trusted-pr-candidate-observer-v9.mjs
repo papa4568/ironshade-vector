@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const LEGACY_ANCHOR_SHA = 'ad4ec884ba2aa262b06f91a03411a972550cbb87';
@@ -51,18 +51,35 @@ function ok(value, message) {
   if (!value) throw new Error(message);
 }
 
+function baseGitEnv(extra = {}) {
+  return {
+    PATH: '/usr/bin:/bin',
+    HOME: '/tmp',
+    ...extra,
+  };
+}
+
 function git(args, { allowFailure = false } = {}) {
   if (allowFailure) {
     return spawnSync('/usr/bin/git', args, {
       encoding: 'utf8',
-      env: { PATH: '/usr/bin:/bin', HOME: '/tmp' },
+      env: baseGitEnv(),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
   }
   return execFileSync('/usr/bin/git', args, {
     encoding: 'utf8',
-    env: { PATH: '/usr/bin:/bin', HOME: '/tmp' },
+    env: baseGitEnv(),
     stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
+function gitWithEnv(args, extraEnv, { input = undefined } = {}) {
+  return execFileSync('/usr/bin/git', args, {
+    encoding: 'utf8',
+    env: baseGitEnv(extraEnv),
+    input,
+    stdio: ['pipe', 'pipe', 'pipe'],
   }).trim();
 }
 
@@ -81,7 +98,7 @@ function gitPathRefs(revision, paths) {
 function changedPaths(baseSha, candidateSha) {
   const output = execFileSync('/usr/bin/git', ['diff', '--name-only', '-z', baseSha, candidateSha, '--'], {
     encoding: 'buffer',
-    env: { PATH: '/usr/bin:/bin', HOME: '/tmp' },
+    env: baseGitEnv(),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   return output.toString('utf8').split('\0').filter(Boolean).sort((a, b) => a.localeCompare(b));
@@ -101,7 +118,7 @@ function allowedAgentMutation(path) {
 function gitAgentRefs(revision, { transition = false } = {}) {
   const tree = execFileSync('/usr/bin/git', ['ls-tree', '-r', '-z', revision, '--', 'agent'], {
     encoding: 'buffer',
-    env: { PATH: '/usr/bin:/bin', HOME: '/tmp' },
+    env: baseGitEnv(),
     stdio: ['ignore', 'pipe', 'pipe'],
   }).toString('utf8');
   const refs = {};
@@ -208,51 +225,118 @@ function runV8(command) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-function pureTransitionCalibration() {
-  const approved = [...EV18_TRANSITION_PATHS];
-  const baseline = {
-    changed: approved,
-    pinned: approved.map(() => true),
-    browserSame: true,
-    androidSame: true,
-    depsSame: true,
-    agentsSame: true,
+let syntheticCommitCounter = 0;
+
+function existingMode(revision, path) {
+  const result = git(['ls-tree', revision, '--', path], { allowFailure: true });
+  if (result.status !== 0 || !result.stdout.trim()) return '100644';
+  const match = result.stdout.trim().match(/^(\d+)\s/);
+  ok(match, `unable to resolve git mode for ${path}`);
+  return match[1];
+}
+
+function createSyntheticCandidate({ id, path, content }) {
+  syntheticCommitCounter += 1;
+  const indexPath = `/tmp/ironshade-ev22-index-${process.pid}-${syntheticCommitCounter}`;
+  const env = {
+    GIT_INDEX_FILE: indexPath,
+    GIT_AUTHOR_NAME: 'EV-22 Calibration',
+    GIT_AUTHOR_EMAIL: 'ev22@example.invalid',
+    GIT_COMMITTER_NAME: 'EV-22 Calibration',
+    GIT_COMMITTER_EMAIL: 'ev22@example.invalid',
+    GIT_AUTHOR_DATE: '2000-01-01T00:00:00Z',
+    GIT_COMMITTER_DATE: '2000-01-01T00:00:00Z',
   };
-  const passes = snapshot => sameJson(snapshot.changed, approved)
-    && snapshot.pinned.every(Boolean)
-    && snapshot.browserSame
-    && snapshot.androidSame
-    && snapshot.depsSame
-    && snapshot.agentsSame;
-  assert.equal(passes(baseline), true, 'EV-18 transition baseline must pass');
-  const attacks = [
-    { id: 'unexpected-path', mutate: value => value.changed.push('src/unreviewed.ts') },
-    { id: 'pinned-object-drift', mutate: value => { value.pinned[0] = false; } },
-    { id: 'browser-drift', mutate: value => { value.browserSame = false; } },
-    { id: 'android-drift', mutate: value => { value.androidSame = false; } },
-    { id: 'dependency-drift', mutate: value => { value.depsSame = false; } },
-    { id: 'agent-drift', mutate: value => { value.agentsSame = false; } },
-  ];
-  for (const attack of attacks) {
-    const sample = structuredClone(baseline);
-    attack.mutate(sample);
-    assert.equal(passes(sample), false, `trusted v9 calibration must reject ${attack.id}`);
+  try {
+    gitWithEnv(['read-tree', EV18_REFERENCE_SHA], env);
+    const blob = gitWithEnv(['hash-object', '-w', '--stdin'], env, { input: content });
+    gitWithEnv(['update-index', '--add', '--cacheinfo', existingMode(EV18_REFERENCE_SHA, path), blob, path], env);
+    const tree = gitWithEnv(['write-tree'], env);
+    return gitWithEnv(['commit-tree', tree, '-p', EV18_REFERENCE_SHA, '-m', `EV-22 production calibration ${id}`], env);
+  } finally {
+    rmSync(indexPath, { force: true });
   }
-  return attacks.length;
+}
+
+function evaluateTransition(candidateSha) {
+  const result = transitionChecks({ trustedBaseSha: LEGACY_ANCHOR_SHA, candidateSha });
+  const failedCheckIds = result.checks.filter(entry => !entry.pass).map(entry => entry.id);
+  return { pass: failedCheckIds.length === 0, failedCheckIds };
+}
+
+function productionTransitionCalibration() {
+  ok(referenceAvailable(), `production calibration requires reviewed EV-18 reference ${EV18_REFERENCE_SHA}`);
+  const baseline = evaluateTransition(EV18_REFERENCE_SHA);
+  let falsePositives = baseline.pass ? 0 : 1;
+  let falseNegatives = 0;
+  assert.equal(baseline.pass, true, `production transition baseline failed: ${baseline.failedCheckIds.join(',')}`);
+
+  const attacks = [
+    {
+      id: 'unexpected-path',
+      path: 'src/__ev22_unreviewed_transition__.ts',
+      content: 'export const ev22UnexpectedTransition = true;\n',
+      expectedFailedCheckId: 'ev18-transition-path-set-exact',
+    },
+    {
+      id: 'pinned-object-drift',
+      path: 'AGENTS.md',
+      content: `${gitText(EV18_REFERENCE_SHA, 'AGENTS.md')}\n<!-- EV-22 pinned-object attack -->\n`,
+      expectedFailedCheckId: 'ev18-transition-pinned-objects',
+    },
+    {
+      id: 'browser-drift',
+      path: BROWSER_WORKFLOW_PATH,
+      content: `${gitText(EV18_REFERENCE_SHA, BROWSER_WORKFLOW_PATH)}\n# EV-22 browser drift attack\n`,
+      expectedFailedCheckId: 'ev18-browser-workflow-unchanged',
+    },
+    {
+      id: 'android-drift',
+      path: ANDROID_WORKFLOW_PATH,
+      content: `${gitText(EV18_REFERENCE_SHA, ANDROID_WORKFLOW_PATH)}\n# EV-22 Android drift attack\n`,
+      expectedFailedCheckId: 'ev18-android-workflow-unchanged',
+    },
+    {
+      id: 'dependency-drift',
+      path: 'package.json',
+      content: `${gitText(EV18_REFERENCE_SHA, 'package.json')}\n`,
+      expectedFailedCheckId: 'ev18-source-bound-dependencies-unchanged',
+    },
+    {
+      id: 'protected-agent-drift',
+      path: 'agent/architecture-invariants.json',
+      content: `${gitText(EV18_REFERENCE_SHA, 'agent/architecture-invariants.json')}\n`,
+      expectedFailedCheckId: 'ev18-nontransition-agent-boundary-unchanged',
+    },
+  ];
+
+  const rows = [];
+  for (const attack of attacks) {
+    const candidateSha = createSyntheticCandidate(attack);
+    const result = evaluateTransition(candidateSha);
+    const detected = !result.pass && result.failedCheckIds.includes(attack.expectedFailedCheckId);
+    if (!detected) falseNegatives += 1;
+    assert.equal(detected, true, `production transition verifier did not reject ${attack.id} through ${attack.expectedFailedCheckId}; failed=${result.failedCheckIds.join(',')}`);
+    rows.push({ id: attack.id, candidateSha, expectedFailedCheckId: attack.expectedFailedCheckId, failedCheckIds: result.failedCheckIds });
+  }
+
+  assert.equal(falsePositives, 0, 'EV-22 production calibration false-positive budget exceeded');
+  assert.equal(falseNegatives, 0, 'EV-22 production calibration false-negative budget exceeded');
+  return { baseline, rows, falsePositives, falseNegatives };
 }
 
 function selfTest() {
   assert.deepEqual([...new Set(EV18_TRANSITION_PATHS)], EV18_TRANSITION_PATHS, 'EV-18 transition path set must be sorted and unique');
-  const attackCount = pureTransitionCalibration();
+  const calibration = productionTransitionCalibration();
   const liveWorkflow = gitText('HEAD', PR_CANDIDATE_PATH);
   if (!liveWorkflow.includes(EV18_MARKER)) {
     runV8('self-test');
-    console.log(`EV9_TRUSTED_V9_SELF_TEST_PASS mode=legacy-v8 transitionAttacks=${attackCount}`);
+    console.log(`EV9_TRUSTED_V9_SELF_TEST_PASS mode=legacy-v8 productionTransition=true transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives}`);
     return;
   }
   ok(referenceAvailable(), `EV-18 reference commit ${EV18_REFERENCE_SHA} must remain reachable after promotion`);
   assert.equal(gitBlob('HEAD', PR_CANDIDATE_PATH), gitBlob(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH), 'steady EV-18 workflow must remain pinned to the reviewed reference object');
-  console.log(`EV9_TRUSTED_V9_SELF_TEST_PASS mode=ev18-steady transitionAttacks=${attackCount} reference=${EV18_REFERENCE_SHA}`);
+  console.log(`EV9_TRUSTED_V9_SELF_TEST_PASS mode=ev18-steady productionTransition=true transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} reference=${EV18_REFERENCE_SHA}`);
 }
 
 function verify() {
