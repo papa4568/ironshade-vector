@@ -33,13 +33,9 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
   - Prove cache disablement forces the original proof to rerun and preserves prior acceptance semantics.
   - Done when `AGENTS.md` and proof-cache contracts document the promoted class and rollback, and the exact candidate is archived with required proofs and independent review; further proof classes require separate roadmap items.
 
-- [ ] **EV-19 — Validate EV-7 Roadmap Shadow Predictions**
-  - Compare prior shadow-friction predictions with actual implementation outcomes from later roadmap work and quantify useful predictions, false alarms, and missed integration pressure.
-  - Keep all roadmap-pressure scoring advisory in this item and confirm disposable probes remain outside product/runtime state.
-  - Done when the evidence identifies any signal with repeatable predictive value and records unsupported signals that must remain advisory.
-
 - [ ] **EV-20 — Graduate One Roadmap-Pressure Signal**
   - Using only EV-19 evidence, either convert one validated signal into a deterministic architecture invariant, proof obligation, or roadmap rule, or explicitly record that no signal is ready for enforcement.
+  - EV-19 found repeatable predictive value only in `shared-readiness-boundary` and `renderer-boundary-independence` across all ten measured P28-PLOAD2 implementation revisions. It also measured a false negative for surface-count pressure and has no later implementation outcome for P28-G1; those unsupported signals must remain advisory.
   - Do not make a heuristic score authoritative; verify disabling the simulator restores the previous planning/verification path.
   - Done when the permanent rule or no-promotion decision is documented and, if enforcement changes, the exact candidate is archived with required proofs and independent review.
 
