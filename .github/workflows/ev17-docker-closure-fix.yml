@@ -1,0 +1,40 @@
+name: EV-17 Docker Closure Correction
+
+on:
+  push:
+    branches:
+      - agent/ev17-proof-cache-calibration
+    paths:
+      - '.github/workflows/ev17-docker-closure-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  author:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: agent/ev17-proof-cache-calibration
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+      - name: Apply reviewed EV-17 Docker closure correction
+        run: |
+          python3 agent/ev17-author-docker-closure-fix.py
+          bash -n scripts/run-full-repository-build-proof.sh
+          node agent/tests/causal-proof-cache.mjs
+          node agent/tests/proof-cache-calibration-evidence.mjs
+          git diff --check
+      - name: Commit corrected EV-17 contract
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/ev17-docker-closure-fix.yml agent/ev17-author-docker-closure-fix.py
+          git add .github/workflows/pr-candidate.yml .github/workflows/ev17-proof-cache-calibration.yml AGENTS.md agent/proof-cache-calibration-corpus.json agent/tests/proof-cache-calibration-evidence.mjs agent/tools/proof-cache-calibration-evidence.mjs docs/experimental-verification-roadmap.md docs/experimental-verification-archive.md scripts/run-full-repository-build-proof.sh
+          git diff --cached --check
+          git commit -m 'Fail closed on EV-17 Docker proof closure'
+          git push origin HEAD:agent/ev17-proof-cache-calibration
