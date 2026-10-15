@@ -31,7 +31,13 @@ assert.doesNotMatch(candidate, /restore-keys:/, 'EV-18 may not use prefix/partia
 assert.match(candidate, /Prepare EV-18 closed proof inputs[\s\S]*prepare-full-repository-build-proof-closed\.sh/, 'EV-18 must complete causal preflight before reuse decision');
 assert.match(candidate, /Compute EV-18 exact closure cache key[\s\S]*proof-cache-promotion\.mjs request/, 'EV-18 must derive the exact key from the closed proof closure');
 assert.match(candidate, /Validate EV-18 cache candidate[\s\S]*proof-cache-promotion\.mjs decide/, 'EV-18 must validate cache provenance before reuse');
-assert.match(candidate, /Run authoritative full repository verification or reuse validated closed proof[\s\S]*proof-cache-promotion\.mjs materialize[\s\S]*run-full-repository-build-proof-closed\.sh[\s\S]*run-full-repository-build-proof\.sh/, 'The authoritative producer must reuse only a validated hit, fall back to the closed proof, and retain the legacy rollback path');
+const producerStart = candidate.indexOf('Run authoritative full repository verification or reuse validated closed proof');
+assert(producerStart >= 0, 'The authoritative EV-18 producer step is missing');
+const producerEnd = candidate.indexOf('\n      - name: ', producerStart + 1);
+const producerBlock = candidate.slice(producerStart, producerEnd === -1 ? candidate.length : producerEnd);
+assert.match(producerBlock, /proof-cache-promotion\.mjs materialize/, 'A validated hit must materialize the cached verified dist');
+assert.match(producerBlock, /bash scripts\/run-full-repository-build-proof-closed\.sh/, 'A cache miss or rejected entry must rerun the closed proof');
+assert.match(producerBlock, /bash scripts\/run-full-repository-build-proof\.sh/, 'Rollback must run the pre-EV-18 legacy proof');
 assert.match(candidate, /Record EV-18 real-proof cache entry[\s\S]*proof-cache-promotion\.mjs record/, 'Only a real successful closed proof may create cache provenance');
 assert.match(candidate, /Save EV-18 validated proof cache[\s\S]*actions\/cache\/save@v5/, 'A real successful closed proof must be eligible for exact-key persistence');
 assert.match(candidate, /Upload EV-18 proof-cache decision evidence[\s\S]*proof-cache-ev18-\$\{\{ github\.event\.pull_request\.number \}\}-\$\{\{ github\.event\.pull_request\.head\.sha \}\}/, 'EV-18 must publish exact-candidate reuse/fallback evidence');
