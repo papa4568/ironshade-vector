@@ -30,6 +30,8 @@ jobs:
     timeout-minutes: 8
     outputs:
       governance-review-required: ${{ steps.governance-review-scope.outputs.required }}
+      governance-review-task: ${{ steps.governance-review-scope.outputs.task }}
+      promotion-authorization-required: ${{ steps.governance-review-scope.outputs.promotion-authorization-required }}
     steps:
       - name: Check out exact candidate revision
         uses: actions/checkout@v7
@@ -37,6 +39,10 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
 
       - name: Scope exact-SHA promotion governance review
         if: github.event_name == 'pull_request'
@@ -46,20 +52,30 @@ jobs:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          changed="$(git diff --name-only "$BASE_SHA...$CANDIDATE_SHA" -- \
+          promotion_changed="$(git diff --name-only "$BASE_SHA...$CANDIDATE_SHA" -- \
             agent/antibody-promotion-policy.json \
             agent/antibody-decisions/)"
-          if [ -n "$changed" ]; then
+          mechanism_changed="$(git diff --name-only "$BASE_SHA...$CANDIDATE_SHA" -- \
+            .github/workflows/ev14-antibody-promotion.yml)"
+
+          if [ -n "$promotion_changed" ]; then
             echo 'required=true' >> "$GITHUB_OUTPUT"
-            echo 'EV14_GOVERNANCE_REVIEW_SCOPE required=true'
+            echo 'task=EV-14' >> "$GITHUB_OUTPUT"
+            echo 'promotion-authorization-required=true' >> "$GITHUB_OUTPUT"
+            echo 'EV14_GOVERNANCE_REVIEW_SCOPE required=true task=EV-14 mode=promotion'
+          elif [ -n "$mechanism_changed" ]; then
+            selection="$(node agent/tools/select-review-task.mjs --base "$BASE_SHA" --head "$CANDIDATE_SHA" --json)"
+            task="$(printf '%s' "$selection" | node -e "let input='';process.stdin.on('data',chunk=>input+=chunk);process.stdin.on('end',()=>{const value=JSON.parse(input);if(!value.taskId)process.exit(2);process.stdout.write(value.taskId);});")"
+            echo 'required=true' >> "$GITHUB_OUTPUT"
+            echo "task=$task" >> "$GITHUB_OUTPUT"
+            echo 'promotion-authorization-required=false' >> "$GITHUB_OUTPUT"
+            echo "EV14_GOVERNANCE_REVIEW_SCOPE required=true task=$task mode=mechanism"
           else
             echo 'required=false' >> "$GITHUB_OUTPUT"
+            echo 'task=' >> "$GITHUB_OUTPUT"
+            echo 'promotion-authorization-required=false' >> "$GITHUB_OUTPUT"
             echo 'EV14_GOVERNANCE_REVIEW_SCOPE required=false'
           fi
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22.23.2'
 
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
@@ -119,12 +135,15 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVIEW_TASK_ID: ${{ needs.promotion-gate.outputs.governance-review-task }}
         run: |
           node --input-type=module <<'NODE'
           const repository = process.env.GITHUB_REPOSITORY;
           const token = process.env.GITHUB_TOKEN;
           const candidateSha = process.env.CANDIDATE_SHA;
           const prNumber = Number(process.env.PR_NUMBER);
+          const reviewTaskId = process.env.REVIEW_TASK_ID;
+          if (!reviewTaskId) throw new Error('EV14_TRUSTED_REVIEW_DISPATCH_FAIL review task was not resolved');
           const headers = {
             Accept: 'application/vnd.github+json',
             Authorization: `Bearer ${token}`,
@@ -171,11 +190,11 @@ jobs:
               inputs: {
                 pr_number: String(prNumber),
                 candidate_sha: candidateSha,
-                task_id: 'EV-14',
+                task_id: reviewTaskId,
               },
             }),
           });
-          console.log(`EV14_TRUSTED_REVIEW_DISPATCHED candidate=${candidateSha} pr=${prNumber}`);
+          console.log(`EV14_TRUSTED_REVIEW_DISPATCHED candidate=${candidateSha} pr=${prNumber} task=${reviewTaskId}`);
           NODE
 
   authorize-after-trusted-review:
@@ -200,17 +219,22 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Wait for exact trusted-main review result and finalized source run
+      - name: Wait for exact trusted-main review pass and finalized source run
+        id: trusted-review
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVIEW_TASK_ID: ${{ needs.promotion-gate.outputs.governance-review-task }}
         run: |
           node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
           const repository = process.env.GITHUB_REPOSITORY;
           const token = process.env.GITHUB_TOKEN;
           const candidateSha = process.env.CANDIDATE_SHA;
           const prNumber = Number(process.env.PR_NUMBER);
+          const reviewTaskId = process.env.REVIEW_TASK_ID;
+          if (!reviewTaskId) throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL review task was not resolved');
           const headers = {
             Accept: 'application/vnd.github+json',
             Authorization: `Bearer ${token}`,
@@ -225,8 +249,9 @@ jobs:
           };
           const marker = '<!-- ironshade-independent-review:trusted-main-actions:v1 -->';
           const candidateNeedle = `\"candidateSha\": \"${candidateSha}\"`;
-          const taskNeedle = '\"taskId\": \"EV-14\"';
+          const taskNeedle = `\"taskId\": \"${reviewTaskId}\"`;
           let sourceRunId = null;
+          let trustedWorkflowSha = null;
           let sourceRunFinalized = false;
           for (let attempt = 0; attempt < 125; attempt += 1) {
             const comments = await api(`issues/${prNumber}/comments?per_page=100`);
@@ -235,11 +260,17 @@ jobs:
               && comment.body.includes(candidateNeedle)
               && comment.body.includes(taskNeedle));
             if (exactComment) {
+              const verdictMatch = exactComment.body.match(/\"verdict\"\s*:\s*\"(pass|fail)\"/);
+              if (!verdictMatch) throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL exact trusted-main review did not publish a verdict');
+              if (verdictMatch[1] !== 'pass') throw new Error(`EV14_TRUSTED_REVIEW_WAIT_FAIL exact trusted-main review verdict=${verdictMatch[1]}`);
               const sourceRunMatch = exactComment.body.match(/\"sourceRunId\"\s*:\s*(\d+)/);
-              if (!sourceRunMatch) throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL exact trusted-main review did not name its source workflow run');
+              const workflowShaMatch = exactComment.body.match(/\"trustedWorkflowSha\"\s*:\s*\"([a-f0-9]{40})\"/);
+              if (!sourceRunMatch || !workflowShaMatch) throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL exact trusted-main review did not name source run and trusted workflow SHA');
               sourceRunId = Number(sourceRunMatch[1]);
+              trustedWorkflowSha = workflowShaMatch[1];
               const sourceRun = await api(`actions/runs/${sourceRunId}`);
               if (sourceRun?.status === 'completed') {
+                if (sourceRun.conclusion !== 'success') throw new Error(`EV14_TRUSTED_REVIEW_WAIT_FAIL trusted review source run conclusion=${sourceRun.conclusion}`);
                 sourceRunFinalized = true;
                 break;
               }
@@ -247,10 +278,12 @@ jobs:
             await sleep(10000);
           }
           if (!sourceRunFinalized) throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL exact-candidate trusted-main review source run did not finalize');
-          console.log(`EV14_TRUSTED_REVIEW_SOURCE_FINALIZED candidate=${candidateSha} pr=${prNumber} sourceRun=${sourceRunId}`);
+          appendFileSync(process.env.GITHUB_OUTPUT, `source-run-id=${sourceRunId}\ntrusted-workflow-sha=${trustedWorkflowSha}\n`);
+          console.log(`EV14_TRUSTED_REVIEW_SOURCE_FINALIZED candidate=${candidateSha} pr=${prNumber} task=${reviewTaskId} sourceRun=${sourceRunId}`);
           NODE
 
       - name: Reconstruct exact review packet and require trusted EV-14 governance authorization
+        if: needs.promotion-gate.outputs.promotion-authorization-required == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
@@ -278,6 +311,41 @@ jobs:
             --pr-number "$PR_NUMBER" \
             --review-packet "$AUTH_DIR/review-packet.json" \
             --output "$AUTH_DIR/authorization.json"
+
+      - name: Record trusted EV-14 review-mechanism authorization
+        if: needs.promotion-gate.outputs.promotion-authorization-required != 'true'
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEW_TASK_ID: ${{ needs.promotion-gate.outputs.governance-review-task }}
+          SOURCE_RUN_ID: ${{ steps.trusted-review.outputs.source-run-id }}
+          TRUSTED_WORKFLOW_SHA: ${{ steps.trusted-review.outputs.trusted-workflow-sha }}
+        run: |
+          set -euo pipefail
+          AUTH_DIR="$RUNNER_TEMP/ev14-antibody-authorization"
+          rm -rf "$AUTH_DIR"
+          mkdir -p "$AUTH_DIR"
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const authorization = {
+            schema: 'ironshade-ev14-governance-mechanism-authorization:v1',
+            candidateSha: process.env.CANDIDATE_SHA,
+            reviewTaskId: process.env.REVIEW_TASK_ID,
+            sourceRunId: Number(process.env.SOURCE_RUN_ID),
+            trustedWorkflowSha: process.env.TRUSTED_WORKFLOW_SHA,
+            promotionAuthorizationRequired: false,
+            trustedReviewPass: true,
+            candidatePassGranted: false,
+          };
+          if (!/^[a-f0-9]{40}$/.test(authorization.candidateSha)
+            || !authorization.reviewTaskId
+            || !Number.isInteger(authorization.sourceRunId)
+            || authorization.sourceRunId <= 0
+            || !/^[a-f0-9]{40}$/.test(authorization.trustedWorkflowSha)) {
+            throw new Error('EV14_GOVERNANCE_MECHANISM_AUTH_FAIL invalid exact-review binding');
+          }
+          writeFileSync(`${process.env.RUNNER_TEMP}/ev14-antibody-authorization/authorization.json`, `${JSON.stringify(authorization, null, 2)}\n`);
+          console.log(`EV14_GOVERNANCE_MECHANISM_AUTH_PASS candidate=${authorization.candidateSha} task=${authorization.reviewTaskId} sourceRun=${authorization.sourceRunId}`);
+          NODE
 
       - name: Upload trusted EV-14 governance authorization
         uses: actions/upload-artifact@v7
