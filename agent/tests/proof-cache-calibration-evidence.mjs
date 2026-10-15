@@ -19,7 +19,8 @@ assert.equal(policy.mode, 'shadow');
 assert.equal(corpus.proofClasses.length, 1);
 const proofEntry = corpus.proofClasses[0];
 assert.equal(proofEntry.proofId, 'full-repository-build');
-assert.equal(proofEntry.knownClosureGaps.some(gap => gap.id === 'mutable-runner-image-alias' && gap.blocksEligibility), true);
+assert.equal(proofEntry.expectedCommand, 'npm run build');
+assert.deepEqual(proofEntry.knownClosureGaps, []);
 
 const safeTrials = [
   { kind: 'baseline', closureRelation: 'same', prediction: 'baseline', outcome: 'success', classification: 'baseline' },
@@ -28,37 +29,67 @@ const safeTrials = [
   { kind: 'invalidation-defect', closureRelation: 'different', prediction: 'miss', outcome: 'failure', classification: 'correct-invalidation' },
 ];
 
-const closedRuntime = { requiredInputsClosed: true, missingInputs: [] };
-const blockedByDeclaredGap = evaluateProofClassEligibility({ corpus, proofEntry, trialRows: safeTrials, runtimeAudit: closedRuntime });
-assert.equal(blockedByDeclaredGap.falseHits, 0);
-assert.equal(blockedByDeclaredGap.falseMisses, 1);
-assert.equal(blockedByDeclaredGap.sameClosureRunCount, 2);
-assert.equal(blockedByDeclaredGap.sameClosureDisagreements, 0);
-assert.equal(blockedByDeclaredGap.eligible, false, 'a known immutable-environment closure gap must fail closed despite observed agreement');
-assert.match(blockedByDeclaredGap.reasons.join('\n'), /ubuntu-latest/);
-
-const noGapProof = { ...proofEntry, knownClosureGaps: [] };
-const eligibleWhenClosed = evaluateProofClassEligibility({ corpus, proofEntry: noGapProof, trialRows: safeTrials, runtimeAudit: closedRuntime });
-assert.equal(eligibleWhenClosed.eligible, true, 'the decision boundary should permit a proof only when observed safety and required closure are both complete');
+const closedRuntime = { requiredInputsClosed: true, missingInputs: [], invalidationControlsPass: true };
+const eligible = evaluateProofClassEligibility({
+  corpus,
+  proofEntry,
+  trialRows: safeTrials,
+  runtimeAudit: closedRuntime,
+  historicalDisagreementCount: 0,
+});
+assert.equal(eligible.eligible, true, 'zero false-hit/disagreement evidence with closed runtime inputs should permit EV-18 eligibility');
+assert.equal(eligible.falseHits, 0);
+assert.equal(eligible.falseMisses, 1, 'benign included-input invalidation is a measured conservative false miss, not an unsafe hit');
+assert.equal(eligible.sameClosureRunCount, 2);
+assert.equal(eligible.sameClosureDisagreements, 0);
+assert.equal(eligible.historicalSameClosureDisagreements, 0);
+assert.equal(eligible.detectedInvalidationDefectCount, 1);
 
 const falseHitTrials = safeTrials.map(entry => ({ ...entry }));
 falseHitTrials[1] = { ...falseHitTrials[1], outcome: 'failure', classification: 'false-hit' };
-const falseHitResult = evaluateProofClassEligibility({ corpus, proofEntry: noGapProof, trialRows: falseHitTrials, runtimeAudit: closedRuntime });
+const falseHitResult = evaluateProofClassEligibility({
+  corpus,
+  proofEntry,
+  trialRows: falseHitTrials,
+  runtimeAudit: closedRuntime,
+  historicalDisagreementCount: 0,
+});
 assert.equal(falseHitResult.eligible, false);
 assert.equal(falseHitResult.falseHits, 1);
 assert.equal(falseHitResult.sameClosureDisagreements, 1);
 
 const missingRuntime = evaluateProofClassEligibility({
   corpus,
-  proofEntry: noGapProof,
+  proofEntry,
   trialRows: safeTrials,
-  runtimeAudit: { requiredInputsClosed: false, missingInputs: ['runner-image-identity'] },
+  runtimeAudit: { requiredInputsClosed: false, missingInputs: ['runner-image-version'], invalidationControlsPass: true },
+  historicalDisagreementCount: 0,
 });
 assert.equal(missingRuntime.eligible, false);
-assert.match(missingRuntime.reasons.join('\n'), /runner-image-identity/);
+assert.match(missingRuntime.reasons.join('\n'), /runner-image-version/);
+
+const runtimeInvalidationFailure = evaluateProofClassEligibility({
+  corpus,
+  proofEntry,
+  trialRows: safeTrials,
+  runtimeAudit: { requiredInputsClosed: true, missingInputs: [], invalidationControlsPass: false },
+  historicalDisagreementCount: 0,
+});
+assert.equal(runtimeInvalidationFailure.eligible, false);
+assert.match(runtimeInvalidationFailure.reasons.join('\n'), /runtime inputs do not invalidate/);
+
+const historicalDisagreement = evaluateProofClassEligibility({
+  corpus,
+  proofEntry,
+  trialRows: safeTrials,
+  runtimeAudit: closedRuntime,
+  historicalDisagreementCount: 1,
+});
+assert.equal(historicalDisagreement.eligible, false);
+assert.match(historicalDisagreement.reasons.join('\n'), /retained history/);
 
 const mutatedCorpus = structuredClone(corpus);
 mutatedCorpus.mode = 'enforced';
 assert.throws(() => validateProofCacheCalibrationCorpus(mutatedCorpus, policy), /must remain advisory/);
 
-console.log('EV17_PROOF_CACHE_CALIBRATION_TEST_PASS advisory=pass decisionBoundary=pass falseHit=pass falseMissMeasured=pass runtimeGap=pass reuse=disabled');
+console.log('EV17_PROOF_CACHE_CALIBRATION_TEST_PASS advisory=pass eligibility=pass falseHit=pass falseMissMeasured=pass runtimeClosure=pass historyDisagreement=pass reuse=disabled');
