@@ -34,6 +34,7 @@ assert.deepEqual(closed.runtimeClosure.environmentVariables, [
   'ImageVersion',
   'VITE_API_BASE_URL',
   'IRONSHADE_PROOF_BASE_IMAGE_REF',
+  'IRONSHADE_PROOF_PREPARED_IMAGE_ID',
   'IRONSHADE_PROOF_NPM_CLI_TREE_SHA256',
   'IRONSHADE_PROOF_DOCKER_ENGINE_VERSION',
   'IRONSHADE_PROOF_DEPENDENCY_TREE_SHA256',
@@ -43,6 +44,7 @@ const proofEntry = corpus.proofClasses[0];
 assert.equal(proofEntry.proofId, 'full-repository-build-closed');
 assert.deepEqual(proofEntry.requiredBoundInputs.map(entry => entry.id), [
   'docker-base-image-identity',
+  'prepared-toolchain-image-identity',
   'npm-cli-artifact-identity',
   'docker-engine-version',
   'installed-dependency-tree-identity',
@@ -57,6 +59,7 @@ assert.match(preflight, /docker build --pull=false/);
 assert.match(preflight, /npm install --global npm@10\.9\.8/);
 assert.match(preflight, /npm ci --ignore-scripts --no-audit --no-fund/);
 assert.match(preflight, /IRONSHADE_PROOF_BASE_IMAGE_REF/);
+assert.match(preflight, /IRONSHADE_PROOF_PREPARED_IMAGE_ID/);
 assert.match(preflight, /IRONSHADE_PROOF_NPM_CLI_TREE_SHA256/);
 assert.match(preflight, /IRONSHADE_PROOF_DOCKER_ENGINE_VERSION/);
 assert.match(preflight, /IRONSHADE_PROOF_DEPENDENCY_TREE_SHA256/);
@@ -69,6 +72,7 @@ assert.doesNotMatch(closedBuild, /docker pull /);
 assert.doesNotMatch(closedBuild, /docker build /);
 assert.doesNotMatch(closedBuild, /npm ci /);
 assert.doesNotMatch(closedBuild, /npm install /);
+assert.match(closedBuild, /prepared image identity changed after preflight/);
 assert.match(closedBuild, /npm CLI identity changed after preflight/);
 assert.match(closedBuild, /dependency tree identity changed after preflight/);
 
@@ -118,11 +122,11 @@ assert.equal(falseHit.sameClosureDisagreements, 1);
 const missingIdentity = evaluateClosureCalibration({
   corpus,
   trialRows: safeTrials,
-  closureAudit: { ...closedAudit, requiredBoundInputsClosed: false, missingBoundInputs: ['docker-engine-version'] },
+  closureAudit: { ...closedAudit, requiredBoundInputsClosed: false, missingBoundInputs: ['prepared-toolchain-image-identity'] },
   historicalDisagreementCount: 0,
 });
 assert.equal(missingIdentity.eligible, false);
-assert.match(missingIdentity.reasons.join('\n'), /docker-engine-version/);
+assert.match(missingIdentity.reasons.join('\n'), /prepared-toolchain-image-identity/);
 
 const identityControlFailure = evaluateClosureCalibration({
   corpus,
@@ -179,4 +183,4 @@ const enforcedCorpus = structuredClone(corpus);
 enforcedCorpus.mode = 'enforced';
 assert.throws(() => validateProofCacheClosureCalibrationCorpus(enforcedCorpus, policy), /must remain advisory/);
 
-console.log('EV21_PROOF_CACHE_CLOSURE_CALIBRATION_TEST_PASS shadow=pass legacyPreserved=pass boundInputs=4 eliminatedInputs=2 networklessBuild=pass falseHit=blocked falseMiss=measured defectInvalidation=pass promotion=disabled');
+console.log('EV21_PROOF_CACHE_CLOSURE_CALIBRATION_TEST_PASS shadow=pass legacyPreserved=pass boundInputs=5 eliminatedInputs=2 networklessBuild=pass falseHit=blocked falseMiss=measured defectInvalidation=pass promotion=disabled');
