@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "mode": "advisory",
+  "taskId": "EV-17",
+  "promotionTarget": "EV-18",
+  "errorBudget": {
+    "falseHits": 0,
+    "sameClosureDisagreements": 0
+  },
+  "minimumSameClosureRuns": 2,
+  "proofClasses": [
+    {
+      "proofId": "full-repository-build",
+      "expectedCommand": "npm run verify:full",
+      "expectedRepositoryClosure": {
+        "strategy": "all-tracked-except",
+        "excludedPrefixes": [
+          "docs/",
+          "agent/fixtures/acceptance-attacks/"
+        ],
+        "excludedFiles": [
+          "agent/proof-cache-history.json"
+        ]
+      },
+      "expectedRuntimeClosure": {
+        "runnerLabel": "ubuntu-latest",
+        "captureNode": true,
+        "captureNpm": true,
+        "capturePlatform": true,
+        "environmentVariables": [
+          "NODE_ENV"
+        ]
+      },
+      "requiredEnvironmentInputs": [
+        "runner-image-identity",
+        "node-version",
+        "npm-version",
+        "platform",
+        "architecture",
+        "NODE_ENV"
+      ],
+      "knownClosureGaps": [
+        {
+          "id": "mutable-runner-image-alias",
+          "input": "runner-image-identity",
+          "reason": "The EV-6 closure stores only the mutable ubuntu-latest label. It does not bind the immutable GitHub-hosted runner image/version, so two executions on different runner images can share one closure digest.",
+          "blocksEligibility": true
+        }
+      ],
+      "probes": [
+        {
+          "id": "same-closure-docs-control",
+          "kind": "same-closure-control",
+          "targetPath": "docs/experimental-verification-roadmap.md",
+          "mutationSuffix": "\n<!-- EV-17 disposable same-closure control -->\n",
+          "expectedClosureRelation": "same",
+          "expectedOutcome": "success",
+          "expectedPrediction": "hit"
+        },
+        {
+          "id": "included-benign-source-control",
+          "kind": "invalidation-control",
+          "targetPath": "src/main.tsx",
+          "mutationSuffix": "\n// EV-17 disposable benign proof-cache invalidation control\n",
+          "expectedClosureRelation": "different",
+          "expectedOutcome": "success",
+          "expectedPrediction": "miss",
+          "expectedClassification": "false-miss"
+        },
+        {
+          "id": "included-source-defect",
+          "kind": "invalidation-defect",
+          "targetPath": "src/main.tsx",
+          "mutationSuffix": "\nconst __ev17ProofCacheTypeFailure: string = 17;\n",
+          "expectedClosureRelation": "different",
+          "expectedOutcome": "failure",
+          "expectedPrediction": "miss",
+          "expectedClassification": "correct-invalidation",
+          "expectedFailurePattern": "Type 'number' is not assignable to type 'string'"
+        }
+      ]
+    }
+  ]
+}
