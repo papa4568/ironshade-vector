@@ -91,23 +91,31 @@ jobs:
           import { readFileSync } from 'node:fs';
           const report = JSON.parse(readFileSync('.agent-roadmap-shadow-validation-ev19/validation.json', 'utf8'));
           const fail = message => { throw new Error(`EV19_EXACT_EVIDENCE_FAIL ${message}`); };
+          if (report.schema !== 'ironshade-roadmap-shadow-validation-report:v2' || report.schemaVersion !== 2) fail('report schema drifted');
           if (report.taskId !== 'EV-19' || report.candidateSha !== process.env.CANDIDATE_SHA) fail('task/candidate binding mismatch');
           if (report.mode !== 'advisory' || report.acceptedForEnforcement !== false || report.candidatePassGranted !== false || report.blocking !== false) fail('EV-19 must remain advisory and grant no acceptance');
           if (report.prediction.candidateSha !== 'd1ddb444ba86c9b23b97b0e1987486b6ebc6cca0' || report.prediction.configBlobSha !== '522efd6e86b0dfde647b3fbfc981c995c216e165') fail('EV-7 prediction provenance drifted');
           if (report.prediction.frictionScore !== 1 || report.prediction.rewritePressure !== 'low') fail('EV-7 frozen prediction metrics drifted');
           if (report.actualOutcome.pullRequest !== 366 || report.actualOutcome.baseSha !== '9cf041f1c26ee7050f7e5cc4cad3f320b8feefb8' || report.actualOutcome.headSha !== '8215139c7146c25940f873dc038a85677952f201') fail('P28-PLOAD2 outcome binding drifted');
           if (report.actualOutcome.revisionCount !== 10 || report.actualOutcome.productionSurfaceCount !== 4 || report.actualOutcome.testSurfaceCount !== 3) fail('P28-PLOAD2 measured implementation surface changed');
-          if (report.metrics.evaluatedSignalCount !== 3 || report.metrics.usefulPredictionCount !== 2 || report.metrics.falsePositives !== 0 || report.metrics.falseNegatives !== 1) fail('EV-19 measured prediction matrix drifted');
+          if (report.actualOutcome.behaviorTestBlobSha !== '05124268a0f25afbb0ef8ecfebc66edc2104ec5d' || report.actualOutcome.behaviorImplementationBlobSha !== '58063db28669f538dadf391085633e2153cce5ff') fail('P28-PLOAD2 executable ground-truth blobs drifted');
+          if (report.metrics.evaluatedSignalCount !== 2 || report.metrics.usefulPredictionCount !== 1 || report.metrics.falsePositives !== 0 || report.metrics.falseNegatives !== 1) fail('EV-19 measured prediction matrix drifted');
           if (report.metrics.falsePositiveRate !== 0 || report.metrics.falseNegativeRate !== 1) fail('EV-19 error-rate accounting drifted');
-          const expectedSupported = ['shared-readiness-boundary','renderer-boundary-independence'];
+          const expectedSupported = ['shared-readiness-decision-reuse'];
           if (JSON.stringify(report.supportedSignals) !== JSON.stringify(expectedSupported)) fail('EV-20 review-only signal set drifted');
-          if (!report.signals.filter(signal => expectedSupported.includes(signal.id)).every(signal => signal.revisionObservations?.observedRevisionCount === 10 && signal.revisionObservations?.matchingPredictionCount === 10 && signal.revisionObservations?.repeatable === true)) fail('repeatable signal evidence incomplete');
+          const readiness = report.signals.find(signal => signal.id === 'shared-readiness-decision-reuse');
+          if (!readiness || readiness.classification !== 'true-negative' || readiness.actualPressure !== false || readiness.supportedForEV20Review !== true) fail('shared-readiness decision outcome is not validated');
+          const evidence = readiness.outcomeEvidence;
+          if (!evidence || evidence.baselineRunCount !== 3 || evidence.baselinePassCount !== 3 || evidence.repeatable !== true) fail('P28-PLOAD2 executable repeatability evidence incomplete');
+          if (evidence.benignMutationAccepted !== true || evidence.dishonestMutationRejected !== true || evidence.falsePositives !== 0 || evidence.falseNegatives !== 0 || evidence.sandboxRemoteDetached !== true) fail('P28-PLOAD2 executable mutation calibration failed');
           const surface = report.signals.find(signal => signal.id === 'surface-count-pressure');
           if (!surface || surface.classification !== 'false-negative' || surface.actualPressure !== true) fail('missed surface pressure is no longer visible');
+          const unsupported = report.unsupportedSignals.map(signal => signal.id);
+          if (JSON.stringify(unsupported) !== JSON.stringify(['public-readiness-observer-surface','renderer-boundary-independence'])) fail('unsupported EV-7 signal boundary drifted');
           if (report.unsupportedScenarios.length !== 1 || report.unsupportedScenarios[0].taskId !== 'P28-G1') fail('unsupported P28-G1 scope must remain explicit');
-          if (report.conclusion.repeatablePredictiveValueFound !== true || report.conclusion.lowFrictionScoreValidated !== false || report.conclusion.surfacePressurePredictionValidated !== false || report.conclusion.enforcementEligible !== false) fail('EV-19 conclusion boundary drifted');
-          if (report.isolation.temporaryProbesPersisted !== false || report.isolation.productRuntimeMutated !== false || report.isolation.simulatorScoringChanged !== false || report.isolation.exactHeadRestored !== true || report.isolation.trackedStateRestored !== true) fail('EV-19 isolation/rollback contract failed');
-          console.log(`EV19_EXACT_EVIDENCE_PASS candidate=${report.candidateSha} actual=${report.actualOutcome.headSha} revisions=${report.actualOutcome.revisionCount} useful=${report.metrics.usefulPredictionCount} fp=${report.metrics.falsePositives} fn=${report.metrics.falseNegatives} supported=${report.supportedSignals.join(',')} enforcement=false`);
+          if (report.conclusion.repeatablePredictiveValueFound !== true || report.conclusion.lowFrictionScoreValidated !== false || report.conclusion.surfacePressurePredictionValidated !== false || report.conclusion.exactPublicObserverSurfaceValidated !== false || report.conclusion.rendererBoundaryPredictionValidated !== false || report.conclusion.enforcementEligible !== false) fail('EV-19 conclusion boundary drifted');
+          if (report.isolation.temporaryProbesPersisted !== false || report.isolation.productRuntimeMutated !== false || report.isolation.simulatorScoringChanged !== false || report.isolation.disposableBehaviorCloneRemoteDetached !== true || report.isolation.exactHeadRestored !== true || report.isolation.trackedStateRestored !== true) fail('EV-19 isolation/rollback contract failed');
+          console.log(`EV19_EXACT_EVIDENCE_PASS candidate=${report.candidateSha} actual=${report.actualOutcome.headSha} revisions=${report.actualOutcome.revisionCount} useful=${report.metrics.usefulPredictionCount} fp=${report.metrics.falsePositives} fn=${report.metrics.falseNegatives} supported=${report.supportedSignals.join(',')} unsupported=${unsupported.join(',')} behavior=3/3+benign-pass+dishonest-caught enforcement=false`);
           NODE
 
       - name: Upload exact-SHA EV-19 validation evidence
