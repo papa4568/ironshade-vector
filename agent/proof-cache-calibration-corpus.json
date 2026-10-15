@@ -44,9 +44,24 @@
         "npm-version",
         "platform",
         "architecture",
-        "VITE_API_BASE_URL"
+        "VITE_API_BASE_URL",
+        "docker-base-image-identity",
+        "docker-engine-version"
       ],
-      "knownClosureGaps": [],
+      "knownClosureGaps": [
+        {
+          "id": "docker-base-image-identity-not-bound",
+          "input": "docker-base-image-identity",
+          "reason": "The authoritative proof now shares one repository-closed Docker execution script with EV-17, but EV-6 does not bind the immutable pulled node:22.23.2-bookworm image identity into its execution-context digest.",
+          "blocksEligibility": true
+        },
+        {
+          "id": "docker-engine-version-not-bound",
+          "input": "docker-engine-version",
+          "reason": "The authoritative proof executes through Docker, but EV-6 does not bind the Docker engine version into its execution-context digest.",
+          "blocksEligibility": true
+        }
+      ],
       "probes": [
         {
           "id": "same-closure-excluded-set-control",
@@ -114,7 +129,9 @@
           "expectedClassification": "correct-invalidation",
           "expectedFailurePattern": "Type 'number' is not assignable to type 'string'"
         }
-      ]
+      ],
+      "calibrationCommand": "bash scripts/run-full-repository-build-proof.sh",
+      "executionProfilePath": "scripts/run-full-repository-build-proof.sh"
     }
   ]
 }

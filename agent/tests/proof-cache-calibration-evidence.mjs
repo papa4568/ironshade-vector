@@ -20,7 +20,13 @@ assert.equal(corpus.proofClasses.length, 1);
 const proofEntry = corpus.proofClasses[0];
 assert.equal(proofEntry.proofId, 'full-repository-build');
 assert.equal(proofEntry.expectedCommand, 'npm run build');
-assert.deepEqual(proofEntry.knownClosureGaps, []);
+assert.equal(proofEntry.calibrationCommand, 'bash scripts/run-full-repository-build-proof.sh');
+assert.equal(proofEntry.executionProfilePath, 'scripts/run-full-repository-build-proof.sh');
+assert.deepEqual(proofEntry.knownClosureGaps.map(entry => entry.id), [
+  'docker-base-image-identity-not-bound',
+  'docker-engine-version-not-bound',
+]);
+assert.equal(proofEntry.knownClosureGaps.every(entry => entry.blocksEligibility === true), true);
 
 const safeTrials = [
   { kind: 'baseline', closureRelation: 'same', prediction: 'baseline', outcome: 'success', classification: 'baseline' },
@@ -29,27 +35,42 @@ const safeTrials = [
   { kind: 'invalidation-defect', closureRelation: 'different', prediction: 'miss', outcome: 'failure', classification: 'correct-invalidation' },
 ];
 
-const closedRuntime = { requiredInputsClosed: true, missingInputs: [], invalidationControlsPass: true };
-const eligible = evaluateProofClassEligibility({
+const closedRuntime = {
+  requiredInputsClosed: true,
+  missingInputs: [],
+  executionProfileInRepositoryClosure: true,
+  invalidationControlsPass: true,
+};
+const blockedByDockerClosure = evaluateProofClassEligibility({
   corpus,
   proofEntry,
   trialRows: safeTrials,
   runtimeAudit: closedRuntime,
   historicalDisagreementCount: 0,
 });
-assert.equal(eligible.eligible, true, 'zero false-hit/disagreement evidence with closed runtime inputs should permit EV-18 eligibility');
-assert.equal(eligible.falseHits, 0);
-assert.equal(eligible.falseMisses, 1, 'benign included-input invalidation is a measured conservative false miss, not an unsafe hit');
-assert.equal(eligible.sameClosureRunCount, 2);
-assert.equal(eligible.sameClosureDisagreements, 0);
-assert.equal(eligible.historicalSameClosureDisagreements, 0);
-assert.equal(eligible.detectedInvalidationDefectCount, 1);
+assert.equal(blockedByDockerClosure.eligible, false, 'known Docker closure gaps must block EV-18 eligibility');
+assert.equal(blockedByDockerClosure.falseHits, 0);
+assert.equal(blockedByDockerClosure.falseMisses, 1);
+assert.equal(blockedByDockerClosure.sameClosureRunCount, 2);
+assert.equal(blockedByDockerClosure.sameClosureDisagreements, 0);
+assert.match(blockedByDockerClosure.reasons.join('\n'), /immutable pulled node:22\.23\.2-bookworm image identity/);
+assert.match(blockedByDockerClosure.reasons.join('\n'), /Docker engine version/);
+
+const noGapProof = { ...proofEntry, knownClosureGaps: [] };
+const eligibleWhenClosureIsActuallyComplete = evaluateProofClassEligibility({
+  corpus,
+  proofEntry: noGapProof,
+  trialRows: safeTrials,
+  runtimeAudit: closedRuntime,
+  historicalDisagreementCount: 0,
+});
+assert.equal(eligibleWhenClosureIsActuallyComplete.eligible, true, 'decision boundary should permit a class only after all runtime inputs are closed');
 
 const falseHitTrials = safeTrials.map(entry => ({ ...entry }));
 falseHitTrials[1] = { ...falseHitTrials[1], outcome: 'failure', classification: 'false-hit' };
 const falseHitResult = evaluateProofClassEligibility({
   corpus,
-  proofEntry,
+  proofEntry: noGapProof,
   trialRows: falseHitTrials,
   runtimeAudit: closedRuntime,
   historicalDisagreementCount: 0,
@@ -60,19 +81,35 @@ assert.equal(falseHitResult.sameClosureDisagreements, 1);
 
 const missingRuntime = evaluateProofClassEligibility({
   corpus,
-  proofEntry,
+  proofEntry: noGapProof,
   trialRows: safeTrials,
-  runtimeAudit: { requiredInputsClosed: false, missingInputs: ['runner-image-version'], invalidationControlsPass: true },
+  runtimeAudit: {
+    requiredInputsClosed: false,
+    missingInputs: ['docker-base-image-identity', 'docker-engine-version'],
+    executionProfileInRepositoryClosure: true,
+    invalidationControlsPass: true,
+  },
   historicalDisagreementCount: 0,
 });
 assert.equal(missingRuntime.eligible, false);
-assert.match(missingRuntime.reasons.join('\n'), /runner-image-version/);
+assert.match(missingRuntime.reasons.join('\n'), /docker-base-image-identity/);
+assert.match(missingRuntime.reasons.join('\n'), /docker-engine-version/);
+
+const profileOutsideClosure = evaluateProofClassEligibility({
+  corpus,
+  proofEntry: noGapProof,
+  trialRows: safeTrials,
+  runtimeAudit: { ...closedRuntime, executionProfileInRepositoryClosure: false },
+  historicalDisagreementCount: 0,
+});
+assert.equal(profileOutsideClosure.eligible, false);
+assert.match(profileOutsideClosure.reasons.join('\n'), /execution profile is outside/);
 
 const runtimeInvalidationFailure = evaluateProofClassEligibility({
   corpus,
-  proofEntry,
+  proofEntry: noGapProof,
   trialRows: safeTrials,
-  runtimeAudit: { requiredInputsClosed: true, missingInputs: [], invalidationControlsPass: false },
+  runtimeAudit: { ...closedRuntime, invalidationControlsPass: false },
   historicalDisagreementCount: 0,
 });
 assert.equal(runtimeInvalidationFailure.eligible, false);
@@ -80,7 +117,7 @@ assert.match(runtimeInvalidationFailure.reasons.join('\n'), /runtime inputs do n
 
 const historicalDisagreement = evaluateProofClassEligibility({
   corpus,
-  proofEntry,
+  proofEntry: noGapProof,
   trialRows: safeTrials,
   runtimeAudit: closedRuntime,
   historicalDisagreementCount: 1,
@@ -92,4 +129,4 @@ const mutatedCorpus = structuredClone(corpus);
 mutatedCorpus.mode = 'enforced';
 assert.throws(() => validateProofCacheCalibrationCorpus(mutatedCorpus, policy), /must remain advisory/);
 
-console.log('EV17_PROOF_CACHE_CALIBRATION_TEST_PASS advisory=pass eligibility=pass falseHit=pass falseMissMeasured=pass runtimeClosure=pass historyDisagreement=pass reuse=disabled');
+console.log('EV17_PROOF_CACHE_CALIBRATION_TEST_PASS advisory=pass dockerProfile=pass noEligibility=pass falseHit=pass falseMissMeasured=pass runtimeGap=pass reuse=disabled');

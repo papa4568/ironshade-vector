@@ -12,6 +12,8 @@ on:
       - 'agent/tools/proof-cache-calibration-evidence.mjs'
       - 'agent/tests/causal-proof-cache.mjs'
       - 'agent/tests/proof-cache-calibration-evidence.mjs'
+      - 'scripts/run-full-repository-build-proof.sh'
+      - '.github/workflows/pr-candidate.yml'
       - '.github/workflows/ev17-proof-cache-calibration.yml'
       - 'docs/experimental-verification-roadmap.md'
       - 'docs/experimental-verification-archive.md'
@@ -27,6 +29,8 @@ on:
       - 'agent/tools/proof-cache-calibration-evidence.mjs'
       - 'agent/tests/causal-proof-cache.mjs'
       - 'agent/tests/proof-cache-calibration-evidence.mjs'
+      - 'scripts/run-full-repository-build-proof.sh'
+      - '.github/workflows/pr-candidate.yml'
       - '.github/workflows/ev17-proof-cache-calibration.yml'
       - 'docs/experimental-verification-roadmap.md'
       - 'docs/experimental-verification-archive.md'
@@ -69,6 +73,7 @@ jobs:
       - name: Generate exact-SHA EV-17 calibration evidence
         env:
           CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
@@ -87,13 +92,14 @@ jobs:
           if (report.mode !== 'advisory' || report.acceptedForReuse !== false || report.acceptedForEnforcement !== false || report.candidatePassGranted !== false) fail('EV-17 must remain advisory and grant no acceptance');
           if (report.metrics.proofClassCount !== 1 || report.metrics.executedTrialCount !== 4) fail('unexpected proof/trial scope');
           if (report.metrics.falseHits !== 0 || report.metrics.falseMisses !== 1 || report.metrics.sameClosureDisagreements !== 0 || report.metrics.retainedHistoricalSameClosureDisagreements !== 0) fail('measured false-hit/false-miss/disagreement metrics drifted');
-          if (JSON.stringify(report.eligibleProofClasses) !== JSON.stringify(['full-repository-build']) || report.unresolvedProofClasses.length !== 0) fail('EV-18 eligibility scope drifted');
+          if (report.eligibleProofClasses.length !== 0 || report.unresolvedProofClasses.length !== 1 || report.unresolvedProofClasses[0].proofId !== 'full-repository-build') fail('EV-18 must fail closed while Docker runtime identity is outside the closure');
           const proof = report.proofReports[0];
           if (proof.metrics.sameClosureRunCount !== 2 || proof.metrics.detectedInvalidationDefectCount !== 1 || proof.metrics.historicalSameClosureDisagreements !== 0) fail('same-closure, historical, or defect-invalidation evidence incomplete');
-          if (proof.runtimeClosureAudit.requiredInputsClosed !== true || proof.runtimeClosureAudit.missingInputs.length !== 0 || proof.runtimeClosureAudit.runnerImageIdentityBound !== true || proof.runtimeClosureAudit.invalidationControlsPass !== true) fail('runtime closure audit failed');
+          if (proof.runtimeClosureAudit.requiredInputsClosed !== false || JSON.stringify(proof.runtimeClosureAudit.missingInputs) !== JSON.stringify(['docker-base-image-identity','docker-engine-version']) || proof.runtimeClosureAudit.runnerImageIdentityBound !== true || proof.runtimeClosureAudit.executionProfileInRepositoryClosure !== true || proof.runtimeClosureAudit.invalidationControlsPass !== true) fail('runtime closure audit failed closed incorrectly');
           const expectedDimensions = ['runnerLabel','node','npm','platform','arch','env:ImageOS','env:ImageVersion','env:VITE_API_BASE_URL'];
           if (JSON.stringify(proof.runtimeClosureAudit.invalidationControls.map(entry => entry.dimension)) !== JSON.stringify(expectedDimensions) || !proof.runtimeClosureAudit.invalidationControls.every(entry => entry.invalidatesClosure === true)) fail('runtime invalidation controls drifted');
-          if (proof.knownClosureGaps.length !== 0) fail('eligible proof class retains an unresolved closure gap');
+          if (JSON.stringify(proof.knownClosureGaps.map(entry => entry.id)) !== JSON.stringify(['docker-base-image-identity-not-bound','docker-engine-version-not-bound']) || !proof.knownClosureGaps.every(entry => entry.blocksEligibility === true)) fail('Docker closure gaps drifted');
+          if (proof.calibrationCommand !== 'bash scripts/run-full-repository-build-proof.sh' || proof.executionProfilePath !== 'scripts/run-full-repository-build-proof.sh') fail('calibration is not executing the authoritative production proof profile');
           const sameClosure = proof.trials.find(entry => entry.kind === 'same-closure-control');
           if (!sameClosure || sameClosure.targetPaths.length !== 7 || sameClosure.prediction !== 'hit' || sameClosure.outcome !== 'success' || sameClosure.proofActuallyRerun !== true) fail('excluded-input same-closure control incomplete');
           if (report.rollback.proofReuseEnabled !== false || report.rollback.proofPolicyChanged !== false || report.rollback.sourceMutationsRestored !== true || report.rollback.exactHeadRestored !== true || report.rollback.trackedStateClean !== true) fail('rollback/exact-head contract failed');

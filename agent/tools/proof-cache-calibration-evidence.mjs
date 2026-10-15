@@ -8,6 +8,7 @@ import {
   buildObservationReport,
   buildPrediction,
   computeClosure,
+  isRepositoryPathInClosure,
   validateHistoryAgainstGit,
   validateProofCacheHistory,
   validateProofCachePolicy,
@@ -81,6 +82,9 @@ export function validateProofCacheCalibrationCorpus(corpus, policy) {
     const proof = policy.proofClasses.find(value => value.id === entry.proofId);
     assert(proof, `unknown EV-6 proof class ${entry.proofId}`);
     assert(entry.expectedCommand === proof.command, `${entry.proofId} expectedCommand drifted`);
+    assertString(entry.calibrationCommand, `${entry.proofId}.calibrationCommand`);
+    assertString(entry.executionProfilePath, `${entry.proofId}.executionProfilePath`);
+    assert(entry.calibrationCommand.includes(entry.executionProfilePath), `${entry.proofId}.calibrationCommand must execute the declared profile`);
     sameJson(entry.expectedRepositoryClosure, proof.repositoryClosure, `${entry.proofId}.expectedRepositoryClosure`);
     sameJson(entry.expectedRuntimeClosure, proof.runtimeClosure, `${entry.proofId}.expectedRuntimeClosure`);
     assert(Array.isArray(entry.requiredEnvironmentInputs) && entry.requiredEnvironmentInputs.length > 0, `${entry.proofId}.requiredEnvironmentInputs must be non-empty`);
@@ -171,6 +175,9 @@ function runtimeVariant(context, dimension) {
 
 function runtimeClosureAudit({ proofEntry, policy, candidateSha, baselineClosure }) {
   const context = baselineClosure.executionContext;
+  const proof = policy.proofClasses.find(entry => entry.id === proofEntry.proofId);
+  assert(proof, `unknown proof class ${proofEntry.proofId}`);
+  const executionProfileInRepositoryClosure = isRepositoryPathInClosure(proofEntry.executionProfilePath, proof);
   const captured = {
     'runner-image-os': context.env?.ImageOS?.present === true,
     'runner-image-version': context.env?.ImageVersion?.present === true,
@@ -179,6 +186,8 @@ function runtimeClosureAudit({ proofEntry, policy, candidateSha, baselineClosure
     platform: typeof context.platform === 'string' && context.platform.length > 0,
     architecture: typeof context.arch === 'string' && context.arch.length > 0,
     VITE_API_BASE_URL: Object.hasOwn(context.env ?? {}, 'VITE_API_BASE_URL'),
+    'docker-base-image-identity': false,
+    'docker-engine-version': false,
   };
   const missingInputs = proofEntry.requiredEnvironmentInputs.filter(input => captured[input] !== true);
   const dimensions = ['runnerLabel', 'node', 'npm', 'platform', 'arch', ...proofEntry.expectedRuntimeClosure.environmentVariables.map(name => `env:${name}`)];
@@ -203,6 +212,8 @@ function runtimeClosureAudit({ proofEntry, policy, candidateSha, baselineClosure
     requiredInputsClosed: missingInputs.length === 0,
     runnerLabel: context.runnerLabel,
     runnerImageIdentityBound: captured['runner-image-os'] && captured['runner-image-version'],
+    executionProfilePath: proofEntry.executionProfilePath,
+    executionProfileInRepositoryClosure,
     invalidationControls,
     invalidationControlsPass,
   };
@@ -225,6 +236,7 @@ export function evaluateProofClassEligibility({ corpus, proofEntry, trialRows, r
     && invalidationDefects.length > 0
     && detectedInvalidationDefects === invalidationDefects.length
     && runtimeAudit.requiredInputsClosed
+    && runtimeAudit.executionProfileInRepositoryClosure !== false
     && runtimeAudit.invalidationControlsPass !== false
     && blockingGaps.length === 0;
   const reasons = [];
@@ -234,6 +246,7 @@ export function evaluateProofClassEligibility({ corpus, proofEntry, trialRows, r
   if (sameClosureRows.length < corpus.minimumSameClosureRuns) reasons.push(`same-closure runs ${sameClosureRows.length} are below minimum ${corpus.minimumSameClosureRuns}`);
   if (detectedInvalidationDefects !== invalidationDefects.length) reasons.push('representative defect invalidation did not fail closed');
   if (!runtimeAudit.requiredInputsClosed) reasons.push(`runtime closure missing required inputs: ${runtimeAudit.missingInputs.join(', ')}`);
+  if (runtimeAudit.executionProfileInRepositoryClosure === false) reasons.push('authoritative proof execution profile is outside the repository closure');
   if (runtimeAudit.invalidationControlsPass === false) reasons.push('one or more declared runtime inputs do not invalidate the closure digest');
   for (const gap of blockingGaps) reasons.push(gap.reason);
   return {
@@ -300,7 +313,7 @@ async function runProbe({ probe, policy, proofEntry, baselineClosure, baselineHi
     });
     const predictionClass = prediction.reuseWouldBeSafe ? 'hit' : 'miss';
     assert(predictionClass === probe.expectedPrediction, `${probe.id} prediction expected ${probe.expectedPrediction}, got ${predictionClass}`);
-    const execution = run(proofEntry.expectedCommand, { expectedOutcome: probe.expectedOutcome });
+    const execution = run(proofEntry.calibrationCommand, { env: { CANDIDATE_SHA: syntheticSha }, expectedOutcome: probe.expectedOutcome });
     if (probe.expectedFailurePattern) assert(execution.output.includes(probe.expectedFailurePattern), `${probe.id} failed without expected criterion: ${probe.expectedFailurePattern}`);
     const observation = buildObservationReport({ prediction, outcome: execution.outcome, workflowRunId });
     let classification = 'agreement';
@@ -373,7 +386,7 @@ export async function runProofCacheCalibrationEvidence({ candidateSha, workflowR
     const trialRows = [];
 
     if (executeProofs) {
-      const baselineExecution = run(proofEntry.expectedCommand, { expectedOutcome: 'success' });
+      const baselineExecution = run(proofEntry.calibrationCommand, { env: { CANDIDATE_SHA: candidateSha }, expectedOutcome: 'success' });
       const baselineGeneratedTrackedState = git(['status', '--porcelain', '--untracked-files=no']);
       git(['reset', '--hard', candidateSha]);
       assert(git(['rev-parse', 'HEAD']) === candidateSha, `${proofEntry.proofId} baseline rollback did not restore exact candidate HEAD`);
@@ -429,6 +442,8 @@ export async function runProofCacheCalibrationEvidence({ candidateSha, workflowR
     proofReports.push({
       proofId: proofEntry.proofId,
       command: proofEntry.expectedCommand,
+      calibrationCommand: proofEntry.calibrationCommand,
+      executionProfilePath: proofEntry.executionProfilePath,
       repositoryClosure: proofEntry.expectedRepositoryClosure,
       runtimeClosure: proofEntry.expectedRuntimeClosure,
       exactCandidateClosure: baselineClosure,
@@ -486,7 +501,10 @@ export async function runProofCacheCalibrationEvidence({ candidateSha, workflowR
   assert(report.metrics.retainedHistoricalSameClosureDisagreements === 0, 'EV-17 retained history contains a same-closure disagreement');
   assert(report.rollback.proofReuseEnabled === false && report.rollback.proofPolicyChanged === false, 'EV-17 must not change reuse enforcement');
   assert(report.rollback.sourceMutationsRestored && report.rollback.exactHeadRestored && report.rollback.trackedStateClean, 'EV-17 did not restore exact candidate state');
-  if (executeProofs) assert(report.eligibleProofClasses.length === corpus.proofClasses.length, 'EV-17 measured proof class did not satisfy the calibrated EV-18 eligibility boundary');
+  if (executeProofs) {
+    assert(report.eligibleProofClasses.length + report.unresolvedProofClasses.length === corpus.proofClasses.length, 'EV-17 eligibility accounting is incomplete');
+    for (const unresolved of report.unresolvedProofClasses) assert(unresolved.reasons.length > 0, `${unresolved.proofId} is unresolved without a fail-closed reason`);
+  }
   return report;
 }
 
