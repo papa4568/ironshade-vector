@@ -18,6 +18,9 @@ assert.equal(contract.policy.sourceEvidence.ev21.artifactId, '11994293248');
 assert.equal(contract.policy.sourceEvidence.ev21.falseHits, 0);
 assert.equal(contract.policy.sourceEvidence.ev21.sameClosureDisagreements, 0);
 assert.deepEqual(contract.policy.sourceEvidence.ev21.eligibleProofClasses, ['full-repository-build-closed']);
+assert.equal(contract.policy.cache.provenance.workflowName, 'PR Candidate Verification');
+assert.equal(contract.policy.cache.provenance.workflowPath, '.github/workflows/pr-candidate.yml');
+assert.equal(contract.policy.cache.provenance.producerJobName, 'Candidate Build and Full Verification');
 
 const calibration = await calibratePromotionDecision({ policy: contract.policy });
 assert.equal(calibration.falsePositives, 0);
@@ -25,7 +28,18 @@ assert.equal(calibration.falseNegatives, 0);
 assert.equal(calibration.rollbackPass, true);
 assert.equal(calibration.pass, true);
 assert.equal(calibration.trials.find(entry => entry.id === 'valid-exact-closure-success-entry')?.observedReuse, true);
-for (const id of ['cache-miss', 'closure-mismatch', 'failed-proof-receipt', 'invalid-source-candidate', 'dist-digest-mismatch']) {
+for (const id of [
+  'cache-miss',
+  'closure-mismatch',
+  'failed-proof-receipt',
+  'invalid-source-candidate',
+  'fabricated-source-candidate',
+  'missing-source-workflow',
+  'fabricated-source-run',
+  'failed-source-producer-job',
+  'missing-source-cache-save',
+  'dist-digest-mismatch',
+]) {
   const trial = calibration.trials.find(entry => entry.id === id);
   assert.equal(trial?.observedReuse, false, `${id} must fail closed to a real proof`);
   assert.equal(trial?.pass, true, `${id} calibration failed`);
@@ -47,8 +61,10 @@ assert.equal(evidence.calibration.measuredErrors.falsePositives, 0);
 assert.equal(evidence.calibration.measuredErrors.falseNegatives, 0);
 assert.equal(evidence.rollback.forcesPrePromotionLegacyProof, true);
 assert.equal(evidence.cache.exactKeyOnly, true);
+assert.equal(evidence.cache.provenance.workflowName, 'PR Candidate Verification');
+assert(evidence.cache.provenanceFields.includes('sourceWorkflowRunAttempt'));
 assert.equal(evidence.acceptedForReuse, true);
 assert.equal(evidence.blocking, true);
 assert.equal(evidence.candidatePassGranted, false);
 
-console.log(`EV18_PROOF_CACHE_PROMOTION_TEST_PASS candidate=${head} proof=full-repository-build-closed falsePositives=0 falseNegatives=0 rollback=legacy exactKey=true`);
+console.log(`EV18_PROOF_CACHE_PROMOTION_TEST_PASS candidate=${head} proof=full-repository-build-closed falsePositives=0 falseNegatives=0 rollback=legacy exactKey=true provenance=github-actions-run`);
