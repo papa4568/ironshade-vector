@@ -17,19 +17,18 @@ assert.equal(classifyPressurePrediction(false, false), 'true-negative');
 
 const measured = summarizePressureClassifications([
   'true-negative',
-  'true-negative',
   'false-negative',
 ]);
 assert.deepEqual(measured, {
   truePositives: 0,
-  trueNegatives: 2,
+  trueNegatives: 1,
   falsePositives: 0,
   falseNegatives: 1,
-  evaluatedSignalCount: 3,
-  usefulPredictionCount: 2,
+  evaluatedSignalCount: 2,
+  usefulPredictionCount: 1,
   falseAlarmCount: 0,
   missedIntegrationPressureCount: 1,
-  accuracy: 0.666667,
+  accuracy: 0.5,
   falsePositiveRate: 0,
   falseNegativeRate: 1,
 });
@@ -54,14 +53,36 @@ const synthetic = {
     pullRequest: 366,
     baseSha: '3'.repeat(40),
     headSha: '4'.repeat(40),
-    requiredChangedPaths: ['tests/task.ts'],
+    requiredChangedPaths: ['tests/p28-pload2-map-load-readiness.ts'],
     productionPrefix: 'src/',
     testPrefix: 'tests/',
+    behaviorTestPath: 'tests/p28-pload2-map-load-readiness.ts',
+    behaviorImplementationPath: 'src/game/babylonRefineryMissionReadiness.ts',
+    behaviorPassMarker: 'P28_PLOAD2_MAP_LOAD_READINESS_PASS',
+    behaviorRunCount: 3,
   },
   signals: [
-    { id: 'shared-readiness-boundary' },
-    { id: 'renderer-boundary-independence' },
-    { id: 'surface-count-pressure' },
+    {
+      id: 'shared-readiness-decision-reuse',
+      kind: 'behavior-regression',
+      predictedPressure: false,
+    },
+    {
+      id: 'surface-count-pressure',
+      kind: 'surface-count',
+      predictedPressure: false,
+      preferredSurfaceCount: 2,
+    },
+  ],
+  unsupportedSignals: [
+    {
+      id: 'public-readiness-observer-surface',
+      reason: 'later implementation did not consume the exact EV-7 public observer surface',
+    },
+    {
+      id: 'renderer-boundary-independence',
+      reason: 'absence of a dependency is not outcome evidence when the later implementation did not exercise that surface',
+    },
   ],
   unsupportedScenarios: [
     { taskId: 'P28-G1', reason: 'not implemented' },
@@ -90,6 +111,23 @@ assert.throws(
     unsupportedScenarios: [],
   }),
   /P28-G1 must remain explicitly unsupported/,
+);
+assert.throws(
+  () => validateRoadmapShadowValidationCorpus({
+    ...synthetic,
+    unsupportedSignals: synthetic.unsupportedSignals.filter(signal => signal.id !== 'public-readiness-observer-surface'),
+  }),
+  /public readiness observer surface must remain unsupported/,
+);
+assert.throws(
+  () => validateRoadmapShadowValidationCorpus({
+    ...synthetic,
+    signals: [
+      ...synthetic.signals,
+      { id: 'static-token-presence', kind: 'required-contract', predictedPressure: false },
+    ],
+  }),
+  /exactly two outcome-backed/,
 );
 
 const blockedBaseRoadmap = [
@@ -123,4 +161,4 @@ const nextActionable = selectExperimentalReviewTask(blockedHeadRoadmap);
 assert.equal(nextActionable.task.id, 'EV-20');
 assert.equal(nextActionable.mode, 'experimental');
 
-console.log(`EV19_ROADMAP_SHADOW_VALIDATION_TEST_PASS useful=${measured.usefulPredictionCount} fp=${measured.falsePositives} fn=${measured.falseNegatives} blockedCloseout=${blockedCloseout.task.id} next=${nextActionable.task.id} blocking=false`);
+console.log(`EV19_ROADMAP_SHADOW_VALIDATION_TEST_PASS useful=${measured.usefulPredictionCount} fp=${measured.falsePositives} fn=${measured.falseNegatives} unsupported=2 blockedCloseout=${blockedCloseout.task.id} next=${nextActionable.task.id} blocking=false`);
