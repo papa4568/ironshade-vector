@@ -250,6 +250,10 @@ function createSyntheticCandidate({ id, path, content }) {
   try {
     gitWithEnv(['read-tree', EV18_REFERENCE_SHA], env);
     const blob = gitWithEnv(['hash-object', '-w', '--stdin'], env, { input: content });
+    const referenceBlob = git(['rev-parse', `${EV18_REFERENCE_SHA}:${path}`], { allowFailure: true });
+    if (referenceBlob.status === 0) {
+      ok(blob !== referenceBlob.stdout.trim(), `${id} calibration mutation must change the target Git object`);
+    }
     gitWithEnv(['update-index', '--add', '--cacheinfo', existingMode(EV18_REFERENCE_SHA, path), blob, path], env);
     const tree = gitWithEnv(['write-tree'], env);
     return gitWithEnv(['commit-tree', tree, '-p', EV18_REFERENCE_SHA, '-m', `EV-22 production calibration ${id}`], env);
@@ -299,13 +303,13 @@ function productionTransitionCalibration() {
     {
       id: 'dependency-drift',
       path: 'package.json',
-      content: `${gitText(EV18_REFERENCE_SHA, 'package.json')}\n`,
+      content: `${gitText(EV18_REFERENCE_SHA, 'package.json')}\n \n`,
       expectedFailedCheckId: 'ev18-source-bound-dependencies-unchanged',
     },
     {
       id: 'protected-agent-drift',
       path: 'agent/architecture-invariants.json',
-      content: `${gitText(EV18_REFERENCE_SHA, 'agent/architecture-invariants.json')}\n`,
+      content: `${gitText(EV18_REFERENCE_SHA, 'agent/architecture-invariants.json')}\n \n`,
       expectedFailedCheckId: 'ev18-nontransition-agent-boundary-unchanged',
     },
   ];
