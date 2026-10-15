@@ -8,6 +8,7 @@ import {
   summarizeSurfacePrediction,
   validateRoadmapShadowValidationCorpus,
 } from '../tools/roadmap-shadow-validation.mjs';
+import { summarizeIndependentRevisionHits } from '../tools/roadmap-shadow-validation-independent.mjs';
 
 const surfaceSummary = summarizeSurfacePrediction(
   ['src/game/combatGraphicsBackendCore.ts', 'src/game/missionVisualReadinessGate.ts'],
@@ -34,6 +35,49 @@ assert.deepEqual(surfaceSummary, {
   precision: 0.5,
   recall: 0.25,
 });
+
+const independentRevisionSummary = summarizeIndependentRevisionHits(
+  ['src/game/combatGraphicsBackendCore.ts', 'src/game/missionVisualReadinessGate.ts'],
+  [
+    {
+      revision: 'a'.repeat(40),
+      predictedSurfaceHits: ['src/game/combatGraphicsBackendCore.ts'],
+    },
+    {
+      revision: 'b'.repeat(40),
+      predictedSurfaceHits: [],
+    },
+    {
+      revision: 'c'.repeat(40),
+      predictedSurfaceHits: [],
+    },
+  ],
+);
+assert.deepEqual(independentRevisionSummary, [
+  {
+    path: 'src/game/combatGraphicsBackendCore.ts',
+    independentHitCount: 1,
+    hitRevisions: ['a'.repeat(40)],
+    repeatable: false,
+  },
+  {
+    path: 'src/game/missionVisualReadinessGate.ts',
+    independentHitCount: 0,
+    hitRevisions: [],
+    repeatable: false,
+  },
+]);
+assert.equal(
+  summarizeIndependentRevisionHits(
+    ['src/game/combatGraphicsBackendCore.ts'],
+    [
+      { revision: 'a'.repeat(40), predictedSurfaceHits: ['src/game/combatGraphicsBackendCore.ts'] },
+      { revision: 'b'.repeat(40), predictedSurfaceHits: ['src/game/combatGraphicsBackendCore.ts'] },
+    ],
+  )[0].repeatable,
+  true,
+  'EV-19 repeatability requires at least two independent non-cumulative hits',
+);
 
 const synthetic = {
   schemaVersion: 1,
@@ -164,4 +208,4 @@ const nextActionable = selectExperimentalReviewTask(blockedHeadRoadmap);
 assert.equal(nextActionable.task.id, 'EV-20');
 assert.equal(nextActionable.mode, 'experimental');
 
-console.log(`EV19_ROADMAP_SHADOW_VALIDATION_TEST_PASS useful=${surfaceSummary.usefulPredictionCount} fp=${surfaceSummary.falseAlarmCount} fn=${surfaceSummary.missedIntegrationPressureCount} precision=${surfaceSummary.precision} recall=${surfaceSummary.recall} blockedCloseout=${blockedCloseout.task.id} next=${nextActionable.task.id} blocking=false`);
+console.log(`EV19_ROADMAP_SHADOW_VALIDATION_TEST_PASS useful=${surfaceSummary.usefulPredictionCount} fp=${surfaceSummary.falseAlarmCount} fn=${surfaceSummary.missedIntegrationPressureCount} precision=${surfaceSummary.precision} recall=${surfaceSummary.recall} independentMax=${Math.max(...independentRevisionSummary.map(entry => entry.independentHitCount))} repeatable=false blockedCloseout=${blockedCloseout.task.id} next=${nextActionable.task.id} blocking=false`);

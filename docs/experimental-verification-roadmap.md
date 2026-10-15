@@ -28,6 +28,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 ## Active experimental queue
 
 - [ ] **EV-19 — Validate EV-7 Roadmap Shadow Predictions**
+  - **Blocked by measured EV-19 evidence:** the frozen P28-PLOAD2 forecast has one useful expected-surface hit, one false alarm, and three missed production surfaces, but the only predicted-surface hit occurs in one non-cumulative implementation delta. Cumulative base-to-revision snapshots are not independent prediction trials and must not be counted as repeatability evidence. No second P28-PLOAD2 implementation outcome or later P28-G1 outcome currently exists, so repeatable predictive value is not established.
   - Compare prior shadow-friction predictions with actual implementation outcomes from later roadmap work and quantify useful predictions, false alarms, and missed integration pressure.
   - Keep all roadmap-pressure scoring advisory in this item and confirm disposable probes remain outside product/runtime state.
   - Done when the evidence identifies any signal with repeatable predictive value and records unsupported signals that must remain advisory.
@@ -39,6 +40,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
   - Done when `AGENTS.md` and proof-cache contracts document the promoted class and rollback, and the exact candidate is archived with required proofs and independent review; further proof classes require separate roadmap items.
 
 - [ ] **EV-20 — Graduate One Roadmap-Pressure Signal**
+  - **Blocked by EV-19:** no Roadmap Shadow signal has repeatable predictive value yet, so there is no validated signal for EV-20 to graduate or reject as an enforcement candidate.
   - Using only EV-19 evidence, either convert one validated signal into a deterministic architecture invariant, proof obligation, or roadmap rule, or explicitly record that no signal is ready for enforcement.
   - Do not make a heuristic score authoritative; verify disabling the simulator restores the previous planning/verification path.
   - Done when the permanent rule or no-promotion decision is documented and, if enforcement changes, the exact candidate is archived with required proofs and independent review.
