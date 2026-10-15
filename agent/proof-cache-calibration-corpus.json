@@ -49,10 +49,38 @@
       "knownClosureGaps": [],
       "probes": [
         {
-          "id": "same-closure-docs-control",
+          "id": "same-closure-excluded-set-control",
           "kind": "same-closure-control",
-          "targetPath": "docs/experimental-verification-roadmap.md",
-          "mutationSuffix": "\n<!-- EV-17 disposable same-closure control -->\n",
+          "mutations": [
+            {
+              "targetPath": ".github/workflows/agent-orchestration.yml",
+              "mutationSuffix": "\n# EV-17 disposable excluded .github control\n"
+            },
+            {
+              "targetPath": "agent/INDEPENDENT_VERIFIER.md",
+              "mutationSuffix": "\n<!-- EV-17 disposable excluded agent control -->\n"
+            },
+            {
+              "targetPath": "android/gradle.properties",
+              "mutationSuffix": "\n# EV-17 disposable excluded android control\n"
+            },
+            {
+              "targetPath": "docs/experimental-verification-roadmap.md",
+              "mutationSuffix": "\n<!-- EV-17 disposable excluded docs control -->\n"
+            },
+            {
+              "targetPath": "scripts/android-large-screen-smoke.sh",
+              "mutationSuffix": "\n# EV-17 disposable excluded file control\n"
+            },
+            {
+              "targetPath": "scripts/run-behavioral-genome-shadow.mjs",
+              "mutationSuffix": "\n// EV-17 disposable excluded file control\n"
+            },
+            {
+              "targetPath": "tests/behavioral-genome-route.ts",
+              "mutationSuffix": "\n// EV-17 disposable excluded file control\n"
+            }
+          ],
           "expectedClosureRelation": "same",
           "expectedOutcome": "success",
           "expectedPrediction": "hit"
@@ -60,8 +88,12 @@
         {
           "id": "included-benign-source-control",
           "kind": "invalidation-control",
-          "targetPath": "src/main.tsx",
-          "mutationSuffix": "\n// EV-17 disposable benign proof-cache invalidation control\n",
+          "mutations": [
+            {
+              "targetPath": "src/main.tsx",
+              "mutationSuffix": "\n// EV-17 disposable benign proof-cache invalidation control\n"
+            }
+          ],
           "expectedClosureRelation": "different",
           "expectedOutcome": "success",
           "expectedPrediction": "miss",
@@ -70,8 +102,12 @@
         {
           "id": "included-source-defect",
           "kind": "invalidation-defect",
-          "targetPath": "src/main.tsx",
-          "mutationSuffix": "\nconst __ev17ProofCacheTypeFailure: string = 17;\n",
+          "mutations": [
+            {
+              "targetPath": "src/main.tsx",
+              "mutationSuffix": "\nconst __ev17ProofCacheTypeFailure: string = 17;\n"
+            }
+          ],
           "expectedClosureRelation": "different",
           "expectedOutcome": "failure",
           "expectedPrediction": "miss",
