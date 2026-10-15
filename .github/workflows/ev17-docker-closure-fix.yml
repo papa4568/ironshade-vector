@@ -30,20 +30,26 @@ jobs:
           node agent/tests/causal-proof-cache.mjs
           node agent/tests/proof-cache-calibration-evidence.mjs
           git diff --check
-      - name: Export exact tested patch
+      - name: Export full tested corrected files
         run: |
-          git rm .github/workflows/ev17-docker-closure-fix.yml agent/ev17-author-docker-closure-fix.py
-          git add .github/workflows/pr-candidate.yml .github/workflows/ev17-proof-cache-calibration.yml AGENTS.md agent/proof-cache-calibration-corpus.json agent/tests/proof-cache-calibration-evidence.mjs agent/tools/proof-cache-calibration-evidence.mjs docs/experimental-verification-roadmap.md docs/experimental-verification-archive.md scripts/run-full-repository-build-proof.sh
-          git diff --cached --check
-          mkdir -p .ev17-patch
-          git diff --cached --binary HEAD > .ev17-patch/ev17-docker-closure-fix.patch
-          test -s .ev17-patch/ev17-docker-closure-fix.patch
-          git diff --cached --name-status > .ev17-patch/name-status.txt
-      - name: Upload tested patch
+          mkdir -p .ev17-bundle/.github/workflows .ev17-bundle/agent/tests .ev17-bundle/agent/tools .ev17-bundle/docs .ev17-bundle/scripts
+          cp .github/workflows/ev17-proof-cache-calibration.yml .ev17-bundle/.github/workflows/
+          cp .github/workflows/pr-candidate.yml .ev17-bundle/.github/workflows/
+          cp AGENTS.md .ev17-bundle/
+          cp agent/proof-cache-calibration-corpus.json .ev17-bundle/agent/
+          cp agent/tests/proof-cache-calibration-evidence.mjs .ev17-bundle/agent/tests/
+          cp agent/tools/proof-cache-calibration-evidence.mjs .ev17-bundle/agent/tools/
+          cp docs/experimental-verification-roadmap.md .ev17-bundle/docs/
+          cp docs/experimental-verification-archive.md .ev17-bundle/docs/
+          cp scripts/run-full-repository-build-proof.sh .ev17-bundle/scripts/
+          printf '%s\n' '.github/workflows/ev17-docker-closure-fix.yml' 'agent/ev17-author-docker-closure-fix.py' > .ev17-bundle/delete-paths.txt
+          find .ev17-bundle -type f -print | sort > .ev17-bundle/files.txt
+          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -cf - .ev17-bundle | sha256sum > .ev17-bundle/bundle.sha256
+      - name: Upload tested corrected files
         uses: actions/upload-artifact@v7
         with:
-          name: ev17-docker-closure-fix-${{ github.sha }}
-          path: .ev17-patch/
+          name: ev17-docker-closure-files-${{ github.sha }}
+          path: .ev17-bundle/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
