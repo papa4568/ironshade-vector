@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "mode": "advisory",
+  "taskId": "EV-21",
+  "promotionTarget": "EV-18",
+  "errorBudget": {
+    "falseHits": 0,
+    "sameClosureDisagreements": 0
+  },
+  "minimumSameClosureRuns": 2,
+  "proofClasses": [
+    {
+      "proofId": "full-repository-build-closed",
+      "expectedCommand": "npm run build",
+      "expectedRepositoryClosure": {
+        "strategy": "all-tracked-except",
+        "excludedPrefixes": [
+          ".github/",
+          "agent/",
+          "android/",
+          "docs/"
+        ],
+        "excludedFiles": [
+          "scripts/android-large-screen-smoke.sh",
+          "scripts/run-behavioral-genome-shadow.mjs",
+          "tests/behavioral-genome-route.ts"
+        ]
+      },
+      "expectedRuntimeClosure": {
+        "runnerLabel": "ubuntu-24.04",
+        "captureNode": true,
+        "captureNpm": true,
+        "capturePlatform": true,
+        "environmentVariables": [
+          "ImageOS",
+          "ImageVersion",
+          "VITE_API_BASE_URL",
+          "IRONSHADE_PROOF_BASE_IMAGE_REF",
+          "IRONSHADE_PROOF_PREPARED_IMAGE_ID",
+          "IRONSHADE_PROOF_NPM_CLI_TREE_SHA256",
+          "IRONSHADE_PROOF_DOCKER_ENGINE_VERSION",
+          "IRONSHADE_PROOF_DEPENDENCY_TREE_SHA256"
+        ]
+      },
+      "requiredBoundInputs": [
+        {
+          "id": "docker-base-image-identity",
+          "environmentVariable": "IRONSHADE_PROOF_BASE_IMAGE_REF"
+        },
+        {
+          "id": "prepared-toolchain-image-identity",
+          "environmentVariable": "IRONSHADE_PROOF_PREPARED_IMAGE_ID"
+        },
+        {
+          "id": "npm-cli-artifact-identity",
+          "environmentVariable": "IRONSHADE_PROOF_NPM_CLI_TREE_SHA256"
+        },
+        {
+          "id": "docker-engine-version",
+          "environmentVariable": "IRONSHADE_PROOF_DOCKER_ENGINE_VERSION"
+        },
+        {
+          "id": "installed-dependency-tree-identity",
+          "environmentVariable": "IRONSHADE_PROOF_DEPENDENCY_TREE_SHA256"
+        }
+      ],
+      "eliminatedInputs": [
+        {
+          "id": "external-network-availability",
+          "reason": "Network-dependent image/toolchain/dependency acquisition completes in the mandatory preflight before the proof closure is computed; the calibrated build runner uses Docker --network none."
+        },
+        {
+          "id": "npm-registry-response-identity",
+          "reason": "Registry responses are consumed only during mandatory preflight. The prepared toolchain image ID, deterministic installed npm CLI tree digest, and installed project dependency-tree digest are closure-bound before the networkless build can execute."
+        }
+      ],
+      "preflightCommand": "bash scripts/prepare-full-repository-build-proof-closed.sh",
+      "preflightProfilePath": "scripts/prepare-full-repository-build-proof-closed.sh",
+      "calibrationCommand": "bash scripts/run-full-repository-build-proof-closed.sh",
+      "executionProfilePath": "scripts/run-full-repository-build-proof-closed.sh",
+      "probes": [
+        {
+          "id": "same-closure-excluded-set-control",
+          "kind": "same-closure-control",
+          "mutations": [
+            {
+              "targetPath": ".github/workflows/agent-orchestration.yml",
+              "mutationSuffix": "\n# EV-21 disposable excluded .github control\n"
+            },
+            {
+              "targetPath": "agent/INDEPENDENT_VERIFIER.md",
+              "mutationSuffix": "\n<!-- EV-21 disposable excluded agent control -->\n"
+            },
+            {
+              "targetPath": "android/.ev21-excluded-control",
+              "createContent": "EV-21 disposable excluded android control\n"
+            },
+            {
+              "targetPath": "docs/experimental-verification-roadmap.md",
+              "mutationSuffix": "\n<!-- EV-21 disposable excluded docs control -->\n"
+            },
+            {
+              "targetPath": "scripts/android-large-screen-smoke.sh",
+              "mutationSuffix": "\n# EV-21 disposable excluded file control\n"
+            },
+            {
+              "targetPath": "scripts/run-behavioral-genome-shadow.mjs",
+              "mutationSuffix": "\n// EV-21 disposable excluded file control\n"
+            },
+            {
+              "targetPath": "tests/behavioral-genome-route.ts",
+              "mutationSuffix": "\n// EV-21 disposable excluded file control\n"
+            }
+          ],
+          "expectedClosureRelation": "same",
+          "expectedOutcome": "success",
+          "expectedPrediction": "hit"
+        },
+        {
+          "id": "included-benign-source-control",
+          "kind": "invalidation-control",
+          "mutations": [
+            {
+              "targetPath": "src/main.tsx",
+              "mutationSuffix": "\n// EV-21 disposable benign closed-proof invalidation control\n"
+            }
+          ],
+          "expectedClosureRelation": "different",
+          "expectedOutcome": "success",
+          "expectedPrediction": "miss",
+          "expectedClassification": "false-miss"
+        },
+        {
+          "id": "included-source-defect",
+          "kind": "invalidation-defect",
+          "mutations": [
+            {
+              "targetPath": "src/main.tsx",
+              "mutationSuffix": "\nconst __ev21ProofCacheTypeFailure: string = 21;\n"
+            }
+          ],
+          "expectedClosureRelation": "different",
+          "expectedOutcome": "failure",
+          "expectedPrediction": "miss",
+          "expectedClassification": "correct-invalidation",
+          "expectedFailurePattern": "Type 'number' is not assignable to type 'string'"
+        }
+      ]
+    }
+  ]
+}

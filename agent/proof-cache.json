@@ -32,6 +32,41 @@
           "VITE_API_BASE_URL"
         ]
       }
+    },
+    {
+      "id": "full-repository-build-closed",
+      "command": "npm run build",
+      "expensive": true,
+      "repositoryClosure": {
+        "strategy": "all-tracked-except",
+        "excludedPrefixes": [
+          ".github/",
+          "agent/",
+          "android/",
+          "docs/"
+        ],
+        "excludedFiles": [
+          "scripts/android-large-screen-smoke.sh",
+          "scripts/run-behavioral-genome-shadow.mjs",
+          "tests/behavioral-genome-route.ts"
+        ]
+      },
+      "runtimeClosure": {
+        "runnerLabel": "ubuntu-24.04",
+        "captureNode": true,
+        "captureNpm": true,
+        "capturePlatform": true,
+        "environmentVariables": [
+          "ImageOS",
+          "ImageVersion",
+          "VITE_API_BASE_URL",
+          "IRONSHADE_PROOF_BASE_IMAGE_REF",
+          "IRONSHADE_PROOF_PREPARED_IMAGE_ID",
+          "IRONSHADE_PROOF_NPM_CLI_TREE_SHA256",
+          "IRONSHADE_PROOF_DOCKER_ENGINE_VERSION",
+          "IRONSHADE_PROOF_DEPENDENCY_TREE_SHA256"
+        ]
+      }
     }
   ]
 }
