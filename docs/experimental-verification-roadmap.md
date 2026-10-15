@@ -28,8 +28,14 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
+- [ ] **EV-22 — Bootstrap Trusted Observer for EV-18 Producer**
+  - Split from EV-18 after the existing trusted EV-9 observer correctly rejected the changed authoritative PR producer: candidate-controlled code may not redefine the trust root that validates its own proof-reuse path.
+  - Advance the trusted-main observer from v8 to v9 without enabling proof reuse. Legacy PR Candidate producers must continue through the existing v8 checks; the EV-18 transition may be admitted only when its reviewed producer object, exact implementation path set, browser/Android consumers, source-bound dependencies, and protected non-transition agent objects satisfy the pinned transition contract.
+  - Calibrate the new transition boundary with a behavior-preserving baseline plus unexpected-path, pinned-object-drift, browser/Android-drift, dependency-drift, and protected-agent-drift attacks at zero false-positive/false-negative budget.
+  - Done when the exact bootstrap candidate passes trusted-observer self-test, existing candidate/Android/APK gates, and independent review while the legacy producer remains authoritative; keep EV-22 active through implementation merge, then archive/remove it in a follow-up closeout before resuming EV-18.
+
 - [ ] **EV-18 — Reuse One Validated Proof Class**
-  - **EV-21 prerequisite satisfied:** archived EV-21 calibration independently established `full-repository-build-closed` as the one reuse-eligible proof class by closure-binding the five required immutable/artifact identities and eliminating network/registry causality from the reused build segment. Promotion remains disabled until EV-18 itself passes review.
+  - **EV-21 prerequisite satisfied; EV-22 trust prerequisite now active:** archived EV-21 calibration independently established `full-repository-build-closed` as the one reuse-eligible proof class by closure-binding the five required immutable/artifact identities and eliminating network/registry causality from the reused build segment. Promotion remains disabled until the trusted observer can independently authenticate the changed producer and EV-18 itself passes review.
   - Enable reuse for one proof class justified by EV-17 plus EV-21 closure calibration, requiring exact input/context digests, immutable candidate identity, auditable cache provenance, and fail-closed fallback to the real proof for any unknown or inconsistent dependency.
   - Prove cache disablement forces the original proof to rerun and preserves prior acceptance semantics.
   - Done when `AGENTS.md` and proof-cache contracts document the promoted class and rollback, and the exact candidate is archived with required proofs and independent review; further proof classes require separate roadmap items.
@@ -46,7 +52,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Intended dependency order
 
-EV-8 through EV-20 should normally execute in order. EV-8 and EV-9 establish stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/21/18, and EV-19/20 deliberately separate calibration from governance or enforcement so each ownership cycle has one primary verification closure. EV-21 is intentionally numbered after the original queue because it was split out only after EV-17's measured blocker was known; its executable position before EV-18 was authoritative until its reviewed calibration completed.
+EV-8 through EV-20 should normally execute in order. EV-8 and EV-9 establish stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/21/22/18, and EV-19/20 deliberately separate calibration, trust bootstrapping, governance, and enforcement so each ownership cycle has one primary verification closure. EV-21 and EV-22 are intentionally numbered after the original queue because they were split only after EV-17 and EV-18 respectively exposed concrete prerequisites; their executable positions before EV-18 are authoritative until their reviewed prerequisite work completes.
 
 EV-1 through EV-7 remain verified prototype history in `docs/experimental-verification-archive.md`. Completing a promotion item does not rewrite that history; the promotion itself receives a new archived record.
 
