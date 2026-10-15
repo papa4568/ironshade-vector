@@ -1,0 +1,82 @@
+name: EV-19 Closeout Archive Append
+
+on:
+  push:
+    branches:
+      - agent/ev19-roadmap-shadow-validation
+    paths:
+      - '.github/workflows/ev19-closeout-append.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append-and-remove-helper:
+    runs-on: ubuntu-24.04
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Check out branch head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Append EV-19 archive record only from pinned EV-17 history
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=docs/experimental-verification-archive.md
+          helper=.github/workflows/ev19-closeout-append.yml
+          expected_blob=b5eb53889edd95443eec0d21c63b2988403125aa
+          actual_blob="$(git hash-object "$archive")"
+          test "$actual_blob" = "$expected_blob"
+          if grep -Fq '## EV-19 — Validate EV-7 Roadmap Shadow Predictions' "$archive"; then
+            echo 'EV-19 archive record already exists; refusing duplicate append' >&2
+            exit 1
+          fi
+          cat >> "$archive" <<'EOF'
+
+## EV-19 — Validate EV-7 Roadmap Shadow Predictions
+
+Completed 2026-10-15 as an advisory calibration of the EV-7 Roadmap Shadow Simulator. The original EV-7 prototype record above remains unchanged advisory history; no Roadmap Shadow score or signal became a blocking candidate gate in EV-19.
+
+### Implemented
+
+- Added `agent/roadmap-shadow-validation-corpus.json`, `agent/tools/roadmap-shadow-validation.mjs`, `agent/tests/roadmap-shadow-validation.mjs`, and `.github/workflows/ev19-roadmap-shadow-validation.yml` as the exact-SHA calibration contract for the frozen EV-7 P28-PLOAD2 prediction.
+- Authenticated the EV-7 scenario from closeout candidate `d1ddb444ba86c9b23b97b0e1987486b6ebc6cca0` and immutable `agent/roadmap-shadow-simulator.json` blob `522efd6e86b0dfde647b3fbfc981c995c216e165`, recomputing its clean friction score `1`, rewrite pressure `low`, two preferred production surfaces, extension points, and renderer-dependency boundary from Git rather than accepting copied metrics.
+- Bound the later real implementation outcome to P28-PLOAD2 PR #366, exact base `9cf041f1c26ee7050f7e5cc4cad3f320b8feefb8`, and exact implementation-attempt head `8215139c7146c25940f873dc038a85677952f201`. The analyzer derives the changed files and ten implementation revisions directly from Git and requires the task-identity test path before crediting the outcome.
+- Measured three pressure signals with an explicit confusion matrix. The shared mission-readiness boundary and renderer-boundary independence were useful true-negative predictions; the low surface-count pressure prediction was a false negative because the implementation attempt spans four production surfaces rather than EV-7's preferred two. No false-positive signal was observed.
+- Repeated the two supported semantic-boundary observations across all ten P28-PLOAD2 implementation revisions. Both matched the EV-7 prediction in `10/10` revisions; only those two repeatable signals are eligible for EV-20 review.
+- Kept P28-G1 explicitly unsupported because no later implementation outcome exists yet. EV-19 records no accuracy claim for that scenario instead of manufacturing a synthetic result.
+- Preserved the EV-7 simulator, scoring, disposable-probe model, and product/runtime state unchanged. The EV-19 report is advisory with `acceptedForEnforcement=false`, `candidatePassGranted=false`, and `blocking=false`; `--enforce` is rejected.
+
+### Measured evidence
+
+Implementation candidate `ac70d8190c0d34b96a05e0d5c76455d53a90059a` passed EV-19 Roadmap Shadow Validation run `38742760552` and Agent Orchestration run `38742760364` before this archive transition.
+
+Exact-SHA EV-19 artifact `11977150119` (`roadmap-shadow-validation-ev19-387-ac70d8190c0d34b96a05e0d5c76455d53a90059a`) has GitHub Actions digest `sha256:5e2f99d9844bd3fd3fbe7785edca7b60c2b988980a5259643b9144121f0771ef`. The report digest is `9c21ed4533c33185fd79a6188b5800f1a0c58e350d965e4e65f8960b96bfcae3`.
+
+The measured implementation outcome contains ten revisions, four production surfaces, and three test surfaces. Across the three calibrated pressure signals the report records `usefulPredictionCount=2`, `falsePositives=0`, `falseNegatives=1`, false-positive rate `0`, and false-negative rate `1.0` for the measured actual-positive class. `shared-readiness-boundary` and `renderer-boundary-independence` each remained prediction-consistent in all ten revisions. `surface-count-pressure` is intentionally retained as a visible false negative rather than being reclassified after seeing the implementation.
+
+This evidence does not validate the overall low-friction score as an enforcement primitive. It validates only repeatable predictive value in the two measured semantic boundaries. P28-G1 and every unmeasured Roadmap Shadow signal remain outside the claim.
+
+This archive transition follows the repository's independent-review self-reference rule. It records the immutable pre-archive implementation candidate and measured exact-SHA calibration evidence. The resulting closeout SHA cannot literally contain its own Git SHA because that SHA depends on these archive contents, so it must pass fresh exact-head technical gates and a fresh trusted EV-19 independent review before merge; no predecessor verdict or candidate proof is inherited from `ac70d8190c0d34b96a05e0d5c76455d53a90059a`.
+
+### Isolation and rollback
+
+EV-19 changes verification/governance only. It reads immutable Git history and repository files, writes only ephemeral calibration evidence, never alters the measured P28-PLOAD2 branch, and snapshots exact HEAD plus tracked status before/after report generation. The two EV-7 semantic observations are repeated against historical revisions without checking them out or mutating source state. EV-7's disposable probe regression is rerun alongside EV-19 to preserve the original outside-repository/no-persistence contract.
+
+Rollback is deterministic: remove `.github/workflows/ev19-roadmap-shadow-validation.yml`, `agent/roadmap-shadow-validation-corpus.json`, `agent/tools/roadmap-shadow-validation.mjs`, `agent/tests/roadmap-shadow-validation.mjs`, and the EV-19 policy entries from `AGENTS.md`. The original EV-7 simulator and its advisory PR-candidate capture continue unchanged; no product/runtime code, simulator score, build/browser/Android/APK proof, exact-SHA evidence, architecture invariant, or independent-review obligation changes.
+
+### Promotion status
+
+Calibration complete; **no Roadmap Shadow enforcement was promoted in EV-19**. Only `shared-readiness-boundary` and `renderer-boundary-independence` have repeatable measured predictive value eligible for EV-20 review. The surface-count-pressure prediction is a measured false negative, P28-G1 has no later implementation outcome, and both remain advisory. EV-18 remains blocked by EV-17's four unbound proof-cache causal inputs, so under the top-to-bottom-unless-blocked rule the next actionable experimental item is EV-20 — Graduate One Roadmap-Pressure Signal.
+EOF
+          git rm "$helper"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$archive"
+          git diff --cached --check
+          git commit -m 'EV-19 archive roadmap-shadow calibration'
+          git push origin HEAD:agent/ev19-roadmap-shadow-validation
