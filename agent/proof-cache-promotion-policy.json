@@ -33,7 +33,16 @@
     "exactKeyOnly": true,
     "path": ".agent-proof-cache-ev18/cache",
     "receiptPath": ".agent-proof-cache-ev18/cache/receipt.json",
-    "distPath": ".agent-proof-cache-ev18/cache/dist"
+    "distPath": ".agent-proof-cache-ev18/cache/dist",
+    "provenance": {
+      "workflowName": "PR Candidate Verification",
+      "workflowPath": ".github/workflows/pr-candidate.yml",
+      "event": "pull_request",
+      "producerJobName": "Candidate Build and Full Verification",
+      "realProofStepName": "Run authoritative full repository verification or reuse validated closed proof",
+      "recordStepName": "Record EV-18 real-proof cache entry",
+      "cacheSaveStepName": "Save EV-18 validated proof cache"
+    }
   },
   "calibration": {
     "errorBudget": {
@@ -48,6 +57,11 @@
       "closure-mismatch",
       "failed-proof-receipt",
       "invalid-source-candidate",
+      "fabricated-source-candidate",
+      "missing-source-workflow",
+      "fabricated-source-run",
+      "failed-source-producer-job",
+      "missing-source-cache-save",
       "dist-digest-mismatch"
     ]
   },
