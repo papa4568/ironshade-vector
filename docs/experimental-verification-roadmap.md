@@ -28,14 +28,8 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-21 — Close EV-18 Proof-Cache Causal Inputs**
-  - Split from EV-18 after EV-17 proved that the existing full-repository-build proof is not reuse-eligible. Keep this item calibration-only: add a separate shadow proof profile whose expensive build runs only after a mandatory setup/preflight has resolved the immutable Docker base-image identity, prepared toolchain image identity, Docker engine version, and installed dependency-tree identity.
-  - Eliminate external network availability and npm-registry response identity from the reused build segment by keeping image/toolchain/dependency acquisition in the mandatory preflight before any cache decision; bind the resulting immutable/artifact identities into the execution-context digest, and run the calibrated build itself with networking disabled.
-  - Re-run the EV-17-style exact-candidate baseline, same-closure excluded-input control, benign included-input invalidation, and representative failing invalidation. Measure false hits, false misses, same-closure disagreement, identity-dimension invalidation, source restoration, and retained-history safety with zero false-hit/same-closure-disagreement budget.
-  - Do not switch the authoritative PR producer or enable reuse in this item. Done when the separately reviewed exact-SHA evidence identifies one proof class as eligible for EV-18, proves the four EV-17 closure gaps are bound or eliminated, and documents deterministic rollback while existing authoritative acceptance semantics remain unchanged.
-
 - [ ] **EV-18 — Reuse One Validated Proof Class**
-  - **Blocked by EV-17 calibration evidence until EV-21 closes the four causal inputs:** the existing full-repository-build proof depends on pulled Docker base-image identity, Docker engine version, external network availability during proof setup, and npm-registry response/artifact identity outside the EV-6 closure. Do not enable reuse until EV-21 is independently reviewed and records one eligible proof class.
+  - **EV-21 prerequisite satisfied:** archived EV-21 calibration independently established `full-repository-build-closed` as the one reuse-eligible proof class by closure-binding the five required immutable/artifact identities and eliminating network/registry causality from the reused build segment. Promotion remains disabled until EV-18 itself passes review.
   - Enable reuse for one proof class justified by EV-17 plus EV-21 closure calibration, requiring exact input/context digests, immutable candidate identity, auditable cache provenance, and fail-closed fallback to the real proof for any unknown or inconsistent dependency.
   - Prove cache disablement forces the original proof to rerun and preserves prior acceptance semantics.
   - Done when `AGENTS.md` and proof-cache contracts document the promoted class and rollback, and the exact candidate is archived with required proofs and independent review; further proof classes require separate roadmap items.
@@ -52,7 +46,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Intended dependency order
 
-EV-8 through EV-20 should normally execute in order. EV-8 and EV-9 establish stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/21/18, and EV-19/20 deliberately separate calibration from governance or enforcement so each ownership cycle has one primary verification closure. EV-21 is intentionally numbered after the original queue because it was split out only after EV-17's measured blocker was known; its executable position before EV-18 is authoritative.
+EV-8 through EV-20 should normally execute in order. EV-8 and EV-9 establish stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/21/18, and EV-19/20 deliberately separate calibration from governance or enforcement so each ownership cycle has one primary verification closure. EV-21 is intentionally numbered after the original queue because it was split out only after EV-17's measured blocker was known; its executable position before EV-18 was authoritative until its reviewed calibration completed.
 
 EV-1 through EV-7 remain verified prototype history in `docs/experimental-verification-archive.md`. Completing a promotion item does not rewrite that history; the promotion itself receives a new archived record.
 
