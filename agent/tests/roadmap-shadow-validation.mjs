@@ -115,7 +115,9 @@ assert.throws(
 assert.throws(
   () => validateRoadmapShadowValidationCorpus({
     ...synthetic,
-    unsupportedSignals: synthetic.unsupportedSignals.filter(signal => signal.id !== 'public-readiness-observer-surface'),
+    unsupportedSignals: synthetic.unsupportedSignals.map(signal => signal.id === 'public-readiness-observer-surface'
+      ? { ...signal, id: 'static-observer-token-presence' }
+      : signal),
   }),
   /public readiness observer surface must remain unsupported/,
 );
