@@ -56,7 +56,16 @@ jobs:
             agent/antibody-promotion-policy.json \
             agent/antibody-decisions/)"
           mechanism_changed="$(git diff --name-only "$BASE_SHA...$CANDIDATE_SHA" -- \
-            .github/workflows/ev14-antibody-promotion.yml)"
+            .github/workflows/ev14-antibody-promotion.yml \
+            agent/tools/antibody-promotion.mjs \
+            agent/tools/antibody-governance.mjs \
+            agent/tools/repository-immune-system.mjs \
+            agent/tools/review-comment-gate.mjs \
+            agent/tools/independent-review.mjs \
+            agent/tools/candidate-evidence.mjs \
+            agent/tools/select-review-task.mjs \
+            agent/tests/antibody-promotion.mjs \
+            agent/tests/candidate-artifact.mjs)"
 
           if [ -n "$promotion_changed" ]; then
             echo 'required=true' >> "$GITHUB_OUTPUT"
@@ -219,84 +228,19 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Wait for exact trusted-main review pass and finalized source run
-        id: trusted-review
+      - name: Reconstruct exact governance review packet
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REVIEW_TASK_ID: ${{ needs.promotion-gate.outputs.governance-review-task }}
-        run: |
-          node --input-type=module <<'NODE'
-          import { appendFileSync } from 'node:fs';
-          const repository = process.env.GITHUB_REPOSITORY;
-          const token = process.env.GITHUB_TOKEN;
-          const candidateSha = process.env.CANDIDATE_SHA;
-          const prNumber = Number(process.env.PR_NUMBER);
-          const reviewTaskId = process.env.REVIEW_TASK_ID;
-          if (!reviewTaskId) throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL review task was not resolved');
-          const headers = {
-            Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${token}`,
-            'X-GitHub-Api-Version': '2022-11-28',
-          };
-          const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-          const api = async path => {
-            const response = await fetch(`https://api.github.com/repos/${repository}/${path}`, { headers });
-            const text = await response.text();
-            if (!response.ok) throw new Error(`GitHub review synchronization request ${path} failed ${response.status}: ${text}`);
-            return text ? JSON.parse(text) : null;
-          };
-          const marker = '<!-- ironshade-independent-review:trusted-main-actions:v1 -->';
-          const candidateNeedle = `\"candidateSha\": \"${candidateSha}\"`;
-          const taskNeedle = `\"taskId\": \"${reviewTaskId}\"`;
-          let sourceRunId = null;
-          let trustedWorkflowSha = null;
-          let sourceRunFinalized = false;
-          for (let attempt = 0; attempt < 125; attempt += 1) {
-            const comments = await api(`issues/${prNumber}/comments?per_page=100`);
-            const exactComment = comments.find(comment => typeof comment?.body === 'string'
-              && comment.body.includes(marker)
-              && comment.body.includes(candidateNeedle)
-              && comment.body.includes(taskNeedle));
-            if (exactComment) {
-              const verdictMatch = exactComment.body.match(/\"verdict\"\s*:\s*\"(pass|fail)\"/);
-              if (!verdictMatch) throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL exact trusted-main review did not publish a verdict');
-              if (verdictMatch[1] !== 'pass') throw new Error(`EV14_TRUSTED_REVIEW_WAIT_FAIL exact trusted-main review verdict=${verdictMatch[1]}`);
-              const sourceRunMatch = exactComment.body.match(/\"sourceRunId\"\s*:\s*(\d+)/);
-              const workflowShaMatch = exactComment.body.match(/\"trustedWorkflowSha\"\s*:\s*\"([a-f0-9]{40})\"/);
-              if (!sourceRunMatch || !workflowShaMatch) throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL exact trusted-main review did not name source run and trusted workflow SHA');
-              sourceRunId = Number(sourceRunMatch[1]);
-              trustedWorkflowSha = workflowShaMatch[1];
-              const sourceRun = await api(`actions/runs/${sourceRunId}`);
-              if (sourceRun?.status === 'completed') {
-                if (sourceRun.conclusion !== 'success') throw new Error(`EV14_TRUSTED_REVIEW_WAIT_FAIL trusted review source run conclusion=${sourceRun.conclusion}`);
-                sourceRunFinalized = true;
-                break;
-              }
-            }
-            await sleep(10000);
-          }
-          if (!sourceRunFinalized) throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL exact-candidate trusted-main review source run did not finalize');
-          appendFileSync(process.env.GITHUB_OUTPUT, `source-run-id=${sourceRunId}\ntrusted-workflow-sha=${trustedWorkflowSha}\n`);
-          console.log(`EV14_TRUSTED_REVIEW_SOURCE_FINALIZED candidate=${candidateSha} pr=${prNumber} task=${reviewTaskId} sourceRun=${sourceRunId}`);
-          NODE
-
-      - name: Reconstruct exact review packet and require trusted EV-14 governance authorization
-        if: needs.promotion-gate.outputs.promotion-authorization-required == 'true'
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVIEW_TASK_ID: ${{ needs.promotion-gate.outputs.governance-review-task }}
         run: |
           set -euo pipefail
           AUTH_DIR="$RUNNER_TEMP/ev14-antibody-authorization"
           rm -rf "$AUTH_DIR"
           mkdir -p "$AUTH_DIR"
           node agent/tools/candidate-evidence.mjs manifest \
-            --task EV-14 \
+            --task "$REVIEW_TASK_ID" \
             --base "$BASE_SHA" \
             --head "$CANDIDATE_SHA" \
             --branch "$HEAD_BRANCH" \
@@ -305,6 +249,75 @@ jobs:
             --manifest "$AUTH_DIR/candidate-manifest.json" \
             --output "$AUTH_DIR/review-packet.json" \
             --verify-git
+
+      - name: Wait for authenticated exact trusted-main review pass
+        id: trusted-review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEW_TASK_ID: ${{ needs.promotion-gate.outputs.governance-review-task }}
+        run: |
+          set -euo pipefail
+          AUTH_DIR="$RUNNER_TEMP/ev14-antibody-authorization"
+          for attempt in $(seq 1 125); do
+            gh api --paginate --slurp \
+              -H 'Accept: application/vnd.github+json' \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
+              | jq 'add // []' > "$AUTH_DIR/pr-comments.json"
+
+            set +e
+            gate_output="$(node agent/tools/review-comment-gate.mjs gate \
+              --packet "$AUTH_DIR/review-packet.json" \
+              --comments "$AUTH_DIR/pr-comments.json" \
+              --output "$AUTH_DIR/review-result.json" \
+              --pr-author "$PR_AUTHOR" 2>&1)"
+            gate_status=$?
+            set -e
+
+            if [ "$gate_status" -eq 0 ]; then
+              printf '%s\n' "$gate_output"
+              node agent/tools/independent-review.mjs validate-result \
+                --packet "$AUTH_DIR/review-packet.json" \
+                --result "$AUTH_DIR/review-result.json"
+              node --input-type=module <<'NODE'
+              import { appendFileSync, readFileSync } from 'node:fs';
+              const result = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/ev14-antibody-authorization/review-result.json`, 'utf8'));
+              if (result.verdict !== 'pass'
+                || !Number.isInteger(result.sourceRunId)
+                || result.sourceRunId <= 0
+                || !/^[a-f0-9]{40}$/.test(result.trustedWorkflowSha ?? '')) {
+                throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL authenticated result binding is invalid');
+              }
+              appendFileSync(process.env.GITHUB_OUTPUT, `source-run-id=${result.sourceRunId}\ntrusted-workflow-sha=${result.trustedWorkflowSha}\n`);
+              console.log(`EV14_TRUSTED_REVIEW_AUTHENTICATED candidate=${result.candidateSha} task=${result.taskId} sourceRun=${result.sourceRunId}`);
+              NODE
+              exit 0
+            fi
+
+            if grep -Fq "latest independent review verdict for candidate $CANDIDATE_SHA is fail" <<< "$gate_output"; then
+              printf '%s\n' "$gate_output" >&2
+              exit 1
+            fi
+            if [ "$attempt" -eq 125 ]; then
+              printf '%s\n' "$gate_output" >&2
+              echo 'EV14_TRUSTED_REVIEW_WAIT_FAIL authenticated exact-candidate trusted-main review did not become available' >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Require trusted EV-14 promotion governance authorization
+        if: needs.promotion-gate.outputs.promotion-authorization-required == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          AUTH_DIR="$RUNNER_TEMP/ev14-antibody-authorization"
           node agent/tools/antibody-promotion.mjs authorize \
             --candidate-sha "$CANDIDATE_SHA" \
             --repository "$GITHUB_REPOSITORY" \
@@ -322,36 +335,40 @@ jobs:
         run: |
           set -euo pipefail
           AUTH_DIR="$RUNNER_TEMP/ev14-antibody-authorization"
-          rm -rf "$AUTH_DIR"
-          mkdir -p "$AUTH_DIR"
           node --input-type=module <<'NODE'
-          import { writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const reviewResultPath = `${process.env.RUNNER_TEMP}/ev14-antibody-authorization/review-result.json`;
+          const reviewResult = readFileSync(reviewResultPath);
           const authorization = {
             schema: 'ironshade-ev14-governance-mechanism-authorization:v1',
             candidateSha: process.env.CANDIDATE_SHA,
             reviewTaskId: process.env.REVIEW_TASK_ID,
             sourceRunId: Number(process.env.SOURCE_RUN_ID),
             trustedWorkflowSha: process.env.TRUSTED_WORKFLOW_SHA,
+            reviewResultSha256: createHash('sha256').update(reviewResult).digest('hex'),
             promotionAuthorizationRequired: false,
             trustedReviewPass: true,
+            trustedReviewProvenanceVerified: true,
             candidatePassGranted: false,
           };
           if (!/^[a-f0-9]{40}$/.test(authorization.candidateSha)
             || !authorization.reviewTaskId
             || !Number.isInteger(authorization.sourceRunId)
             || authorization.sourceRunId <= 0
-            || !/^[a-f0-9]{40}$/.test(authorization.trustedWorkflowSha)) {
-            throw new Error('EV14_GOVERNANCE_MECHANISM_AUTH_FAIL invalid exact-review binding');
+            || !/^[a-f0-9]{40}$/.test(authorization.trustedWorkflowSha)
+            || !/^[a-f0-9]{64}$/.test(authorization.reviewResultSha256)) {
+            throw new Error('EV14_GOVERNANCE_MECHANISM_AUTH_FAIL invalid authenticated review binding');
           }
           writeFileSync(`${process.env.RUNNER_TEMP}/ev14-antibody-authorization/authorization.json`, `${JSON.stringify(authorization, null, 2)}\n`);
-          console.log(`EV14_GOVERNANCE_MECHANISM_AUTH_PASS candidate=${authorization.candidateSha} task=${authorization.reviewTaskId} sourceRun=${authorization.sourceRunId}`);
+          console.log(`EV14_GOVERNANCE_MECHANISM_AUTH_PASS candidate=${authorization.candidateSha} task=${authorization.reviewTaskId} sourceRun=${authorization.sourceRunId} provenance=verified`);
           NODE
 
       - name: Upload trusted EV-14 governance authorization
         uses: actions/upload-artifact@v7
         with:
           name: antibody-promotion-authorization-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-          path: ${{ runner.temp }}/ev14-antibody-authorization/authorization.json
+          path: ${{ runner.temp }}/ev14-antibody-authorization/
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 30
