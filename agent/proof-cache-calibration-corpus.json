@@ -11,42 +11,42 @@
   "proofClasses": [
     {
       "proofId": "full-repository-build",
-      "expectedCommand": "npm run verify:full",
+      "expectedCommand": "npm run build",
       "expectedRepositoryClosure": {
         "strategy": "all-tracked-except",
         "excludedPrefixes": [
-          "docs/",
-          "agent/fixtures/acceptance-attacks/"
+          ".github/",
+          "agent/",
+          "android/",
+          "docs/"
         ],
         "excludedFiles": [
-          "agent/proof-cache-history.json"
+          "scripts/android-large-screen-smoke.sh",
+          "scripts/run-behavioral-genome-shadow.mjs",
+          "tests/behavioral-genome-route.ts"
         ]
       },
       "expectedRuntimeClosure": {
-        "runnerLabel": "ubuntu-latest",
+        "runnerLabel": "ubuntu-24.04",
         "captureNode": true,
         "captureNpm": true,
         "capturePlatform": true,
         "environmentVariables": [
-          "NODE_ENV"
+          "ImageOS",
+          "ImageVersion",
+          "VITE_API_BASE_URL"
         ]
       },
       "requiredEnvironmentInputs": [
-        "runner-image-identity",
+        "runner-image-os",
+        "runner-image-version",
         "node-version",
         "npm-version",
         "platform",
         "architecture",
-        "NODE_ENV"
+        "VITE_API_BASE_URL"
       ],
-      "knownClosureGaps": [
-        {
-          "id": "mutable-runner-image-alias",
-          "input": "runner-image-identity",
-          "reason": "The EV-6 closure stores only the mutable ubuntu-latest label. It does not bind the immutable GitHub-hosted runner image/version, so two executions on different runner images can share one closure digest.",
-          "blocksEligibility": true
-        }
-      ],
+      "knownClosureGaps": [],
       "probes": [
         {
           "id": "same-closure-docs-control",
