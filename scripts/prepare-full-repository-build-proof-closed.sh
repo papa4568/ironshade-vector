@@ -38,14 +38,32 @@ if [[ -z "$docker_engine_version" ]]; then
   exit 2
 fi
 
-docker build --pull=false --tag "$prepared_image" - <<DOCKERFILE >/dev/null
+existing_base_ref="$(docker image inspect --format '{{index .Config.Labels "org.ironshade.proof-base"}}' "$prepared_image" 2>/dev/null || true)"
+if [[ "$existing_base_ref" != "$base_image_ref" ]]; then
+  docker build --pull=false --tag "$prepared_image" - <<DOCKERFILE >/dev/null
 FROM ${base_image_ref}
+LABEL org.ironshade.proof-base="${base_image_ref}"
 RUN npm install --global npm@10.9.8 \
     && test "\$(npm --version)" = '10.9.8'
 DOCKERFILE
+fi
 prepared_image_id="$(docker image inspect --format '{{.Id}}' "$prepared_image")"
 if [[ ! "$prepared_image_id" =~ ^sha256:[a-f0-9]{64}$ ]]; then
   echo "FULL_REPOSITORY_BUILD_CLOSURE_PREP_FAIL invalid prepared image identity: $prepared_image_id" >&2
+  exit 2
+fi
+
+npm_cli_tree_sha256="$(
+  docker run --rm "$prepared_image" sh -lc '
+    set -eu
+    root="$(npm root -g)"
+    tar --sort=name --mtime="@0" --owner=0 --group=0 --numeric-owner -C "$root" -cf - npm \
+      | sha256sum \
+      | cut -d" " -f1
+  '
+)"
+if [[ ! "$npm_cli_tree_sha256" =~ ^[a-f0-9]{64}$ ]]; then
+  echo "FULL_REPOSITORY_BUILD_CLOSURE_PREP_FAIL invalid npm CLI tree digest" >&2
   exit 2
 fi
 
@@ -75,6 +93,7 @@ fi
 cat > "$prepared_dir/closure.env" <<EOF
 IRONSHADE_PROOF_BASE_IMAGE_REF=$base_image_ref
 IRONSHADE_PROOF_PREPARED_IMAGE_ID=$prepared_image_id
+IRONSHADE_PROOF_NPM_CLI_TREE_SHA256=$npm_cli_tree_sha256
 IRONSHADE_PROOF_DOCKER_ENGINE_VERSION=$docker_engine_version
 IRONSHADE_PROOF_DEPENDENCY_TREE_SHA256=$dependency_tree_sha256
 IRONSHADE_PROOF_PREPARED_DIR=$prepared_dir
@@ -89,10 +108,11 @@ cat > "$prepared_dir/manifest.json" <<EOF
   "baseImageRef": "$base_image_ref",
   "preparedImage": "$prepared_image",
   "preparedImageId": "$prepared_image_id",
+  "npmCliTreeSha256": "$npm_cli_tree_sha256",
   "dockerEngineVersion": "$docker_engine_version",
   "dependencyTreeSha256": "$dependency_tree_sha256",
   "networkPhase": "completed-before-cache-decision",
-  "registryResultBoundBy": ["preparedImageId", "dependencyTreeSha256"],
+  "registryResultBoundBy": ["npmCliTreeSha256", "dependencyTreeSha256"],
   "buildNetwork": "none"
 }
 EOF
@@ -101,4 +121,4 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   cat "$prepared_dir/closure.env" >> "$GITHUB_ENV"
 fi
 
-echo "FULL_REPOSITORY_BUILD_CLOSURE_PREP_PASS candidate=$candidate_sha baseImageRef=$base_image_ref preparedImageId=$prepared_image_id dockerEngine=$docker_engine_version dependencyTree=$dependency_tree_sha256 networkPhase=completed-before-cache-decision"
+echo "FULL_REPOSITORY_BUILD_CLOSURE_PREP_PASS candidate=$candidate_sha baseImageRef=$base_image_ref npmCliTree=$npm_cli_tree_sha256 preparedImageId=$prepared_image_id dockerEngine=$docker_engine_version dependencyTree=$dependency_tree_sha256 networkPhase=completed-before-cache-decision"
