@@ -22,47 +22,39 @@
     "baseSha": "9cf041f1c26ee7050f7e5cc4cad3f320b8feefb8",
     "headSha": "8215139c7146c25940f873dc038a85677952f201",
     "requiredChangedPaths": [
+      "src/game/babylonRefineryMissionReadiness.ts",
       "tests/p28-pload2-map-load-readiness.ts"
     ],
     "productionPrefix": "src/",
-    "testPrefix": "tests/"
+    "testPrefix": "tests/",
+    "behaviorTestPath": "tests/p28-pload2-map-load-readiness.ts",
+    "behaviorImplementationPath": "src/game/babylonRefineryMissionReadiness.ts",
+    "behaviorPassMarker": "P28_PLOAD2_MAP_LOAD_READINESS_PASS",
+    "behaviorRunCount": 3
   },
   "signals": [
     {
-      "id": "shared-readiness-boundary",
-      "description": "EV-7 predicted that load/readiness work could observe mission readiness through a shared graphics-backend boundary without implementation-specific reach-through.",
+      "id": "shared-readiness-decision-reuse",
+      "description": "A narrower semantic signal derived from EV-7's MissionVisualReadiness extension-point prediction: P28-PLOAD2 can reuse the existing mission visual-readiness decision for telemetry completion instead of inventing a competing playable-readiness condition. This does not claim that the later implementation consumed EV-7's exact public observer surface.",
       "predictedPressure": false,
-      "kind": "required-contract",
-      "paths": [
-        "src/game/combatGraphicsBackendCore.ts"
-      ],
-      "containsAll": [
-        "export type MissionVisualReadiness = {",
-        "missionVisualReadiness?(): MissionVisualReadiness;"
-      ],
-      "repeatAcrossActualRevisions": true
-    },
-    {
-      "id": "renderer-boundary-independence",
-      "description": "EV-7 predicted that the shared graphics boundary would not need a direct dependency back on the concrete Babylon renderer.",
-      "predictedPressure": false,
-      "kind": "forbidden-contract",
-      "paths": [
-        "src/game/combatGraphicsBackend.ts",
-        "src/game/combatGraphicsBackendCore.ts"
-      ],
-      "containsAny": [
-        "from './babylonCombatRenderer'"
-      ],
-      "repeatAcrossActualRevisions": true
+      "kind": "behavior-regression"
     },
     {
       "id": "surface-count-pressure",
       "description": "EV-7 predicted low rewrite pressure within a preferred two production surfaces.",
       "predictedPressure": false,
       "kind": "surface-count",
-      "preferredSurfaceCount": 2,
-      "repeatAcrossActualRevisions": false
+      "preferredSurfaceCount": 2
+    }
+  ],
+  "unsupportedSignals": [
+    {
+      "id": "public-readiness-observer-surface",
+      "reason": "The later P28-PLOAD2 implementation did not consume the exact EV-7 probe surface CombatGraphicsBackend.missionVisualReadiness(); it integrated telemetry inside the Babylon readiness wrapper instead. Static survival of the public API therefore is not predictive-outcome evidence."
+    },
+    {
+      "id": "renderer-boundary-independence",
+      "reason": "The later P28-PLOAD2 implementation changed the concrete Babylon renderer for preload/placement timing. The absence of a new direct renderer import in the shared facade is architecture cleanliness, but it does not show that the actual implementation exercised EV-7's forbidden-dependency prediction, so the signal remains advisory."
     }
   ],
   "unsupportedScenarios": [
