@@ -282,18 +282,18 @@ jobs:
               node agent/tools/independent-review.mjs validate-result \
                 --packet "$AUTH_DIR/review-packet.json" \
                 --result "$AUTH_DIR/review-result.json"
-              node --input-type=module <<'NODE'
-              import { appendFileSync, readFileSync } from 'node:fs';
-              const result = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/ev14-antibody-authorization/review-result.json`, 'utf8'));
-              if (result.verdict !== 'pass'
-                || !Number.isInteger(result.sourceRunId)
-                || result.sourceRunId <= 0
-                || !/^[a-f0-9]{40}$/.test(result.trustedWorkflowSha ?? '')) {
-                throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL authenticated result binding is invalid');
-              }
-              appendFileSync(process.env.GITHUB_OUTPUT, `source-run-id=${result.sourceRunId}\ntrusted-workflow-sha=${result.trustedWorkflowSha}\n`);
-              console.log(`EV14_TRUSTED_REVIEW_AUTHENTICATED candidate=${result.candidateSha} task=${result.taskId} sourceRun=${result.sourceRunId}`);
-              NODE
+              node --input-type=module -e '
+                import { appendFileSync, readFileSync } from "node:fs";
+                const result = JSON.parse(readFileSync(process.env.RUNNER_TEMP + "/ev14-antibody-authorization/review-result.json", "utf8"));
+                if (result.verdict !== "pass"
+                  || !Number.isInteger(result.sourceRunId)
+                  || result.sourceRunId <= 0
+                  || !/^[a-f0-9]{40}$/.test(result.trustedWorkflowSha ?? "")) {
+                  throw new Error("EV14_TRUSTED_REVIEW_WAIT_FAIL authenticated result binding is invalid");
+                }
+                appendFileSync(process.env.GITHUB_OUTPUT, `source-run-id=${result.sourceRunId}\ntrusted-workflow-sha=${result.trustedWorkflowSha}\n`);
+                console.log(`EV14_TRUSTED_REVIEW_AUTHENTICATED candidate=${result.candidateSha} task=${result.taskId} sourceRun=${result.sourceRunId}`);
+              '
               exit 0
             fi
 
