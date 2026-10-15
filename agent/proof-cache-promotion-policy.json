@@ -29,7 +29,7 @@
   },
   "cache": {
     "provider": "github-actions-cache",
-    "keyPrefix": "ironshade-proof-full-repository-build-closed-v1",
+    "keyPrefix": "ironshade-proof-full-repository-build-closed-v2",
     "exactKeyOnly": true,
     "path": ".agent-proof-cache-ev18/cache",
     "receiptPath": ".agent-proof-cache-ev18/cache/receipt.json",
