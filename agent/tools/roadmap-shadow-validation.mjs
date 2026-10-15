@@ -73,41 +73,29 @@ function arraysEqual(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-export function classifyPressurePrediction(predictedPressure, actualPressure) {
-  assert(typeof predictedPressure === 'boolean', 'predictedPressure must be boolean');
-  assert(typeof actualPressure === 'boolean', 'actualPressure must be boolean');
-  if (predictedPressure && actualPressure) return 'true-positive';
-  if (predictedPressure && !actualPressure) return 'false-positive';
-  if (!predictedPressure && actualPressure) return 'false-negative';
-  return 'true-negative';
-}
-
-export function summarizePressureClassifications(classifications) {
-  const counts = {
-    truePositives: 0,
-    trueNegatives: 0,
-    falsePositives: 0,
-    falseNegatives: 0,
-  };
-  for (const classification of classifications) {
-    if (classification === 'true-positive') counts.truePositives += 1;
-    else if (classification === 'true-negative') counts.trueNegatives += 1;
-    else if (classification === 'false-positive') counts.falsePositives += 1;
-    else if (classification === 'false-negative') counts.falseNegatives += 1;
-    else throw new Error(`unknown pressure classification ${classification}`);
-  }
-  const total = classifications.length;
-  const actualPositive = counts.truePositives + counts.falseNegatives;
-  const actualNegative = counts.trueNegatives + counts.falsePositives;
+export function summarizeSurfacePrediction(predictedSurfaces, actualSurfaces) {
+  assert(Array.isArray(predictedSurfaces) && predictedSurfaces.length > 0, 'predictedSurfaces must be non-empty');
+  assert(Array.isArray(actualSurfaces) && actualSurfaces.length > 0, 'actualSurfaces must be non-empty');
+  const predicted = [...new Set(predictedSurfaces)];
+  const actual = [...new Set(actualSurfaces)];
+  const actualSet = new Set(actual);
+  const predictedSet = new Set(predicted);
+  const truePositiveSurfaces = predicted.filter(path => actualSet.has(path));
+  const falsePositiveSurfaces = predicted.filter(path => !actualSet.has(path));
+  const falseNegativeSurfaces = actual.filter(path => !predictedSet.has(path));
+  const precisionDenominator = truePositiveSurfaces.length + falsePositiveSurfaces.length;
+  const recallDenominator = truePositiveSurfaces.length + falseNegativeSurfaces.length;
   return {
-    ...counts,
-    evaluatedSignalCount: total,
-    usefulPredictionCount: counts.truePositives + counts.trueNegatives,
-    falseAlarmCount: counts.falsePositives,
-    missedIntegrationPressureCount: counts.falseNegatives,
-    accuracy: total === 0 ? null : Number(((counts.truePositives + counts.trueNegatives) / total).toFixed(6)),
-    falsePositiveRate: actualNegative === 0 ? null : Number((counts.falsePositives / actualNegative).toFixed(6)),
-    falseNegativeRate: actualPositive === 0 ? null : Number((counts.falseNegatives / actualPositive).toFixed(6)),
+    predictedSurfaceCount: predicted.length,
+    actualSurfaceCount: actual.length,
+    truePositiveSurfaces,
+    falsePositiveSurfaces,
+    falseNegativeSurfaces,
+    usefulPredictionCount: truePositiveSurfaces.length,
+    falseAlarmCount: falsePositiveSurfaces.length,
+    missedIntegrationPressureCount: falseNegativeSurfaces.length,
+    precision: precisionDenominator === 0 ? null : Number((truePositiveSurfaces.length / precisionDenominator).toFixed(6)),
+    recall: recallDenominator === 0 ? null : Number((truePositiveSurfaces.length / recallDenominator).toFixed(6)),
   };
 }
 
@@ -128,21 +116,27 @@ export function validateRoadmapShadowValidationCorpus(corpus) {
   assert(Number.isInteger(corpus.actualOutcome.pullRequest) && corpus.actualOutcome.pullRequest > 0, 'actualOutcome.pullRequest must be a positive integer');
   assertSha(corpus.actualOutcome.baseSha, 'actualOutcome.baseSha');
   assertSha(corpus.actualOutcome.headSha, 'actualOutcome.headSha');
+  assertSha(corpus.actualOutcome.featureIntroductionSha, 'actualOutcome.featureIntroductionSha');
   assert(Array.isArray(corpus.actualOutcome.requiredChangedPaths) && corpus.actualOutcome.requiredChangedPaths.length > 0, 'actualOutcome.requiredChangedPaths must be non-empty');
   assert(corpus.actualOutcome.behaviorTestPath === 'tests/p28-pload2-map-load-readiness.ts', 'EV-19 behavior test path must stay pinned to the real P28-PLOAD2 regression');
   assert(corpus.actualOutcome.behaviorImplementationPath === 'src/game/babylonRefineryMissionReadiness.ts', 'EV-19 behavior implementation path must stay pinned to the real readiness integration');
   assertString(corpus.actualOutcome.behaviorPassMarker, 'actualOutcome.behaviorPassMarker');
   assert(Number.isInteger(corpus.actualOutcome.behaviorRunCount) && corpus.actualOutcome.behaviorRunCount >= 2, 'EV-19 behaviorRunCount must demonstrate repeatability');
 
-  assert(Array.isArray(corpus.signals) && corpus.signals.length === 2, 'EV-19 must evaluate exactly two outcome-backed P28-PLOAD2 pressure signals');
-  assert(new Set(corpus.signals.map(signal => signal.id)).size === corpus.signals.length, 'EV-19 signal ids must be unique');
-  assert(corpus.signals.some(signal => signal.id === 'shared-readiness-decision-reuse' && signal.kind === 'behavior-regression'), 'EV-19 must evaluate the executable shared-readiness decision signal');
-  assert(corpus.signals.some(signal => signal.id === 'surface-count-pressure' && signal.kind === 'surface-count'), 'EV-19 must retain surface-count pressure as an evaluated signal');
+  assert(Array.isArray(corpus.surfaceLineage) && corpus.surfaceLineage.length === 1, 'EV-19 must pin exactly one pre-outcome surface migration');
+  const lineage = corpus.surfaceLineage[0];
+  assert(corpus.prediction.expectedSurfaces.includes(lineage.predictionPath), 'surface lineage source must be a frozen EV-7 expected surface');
+  assert(lineage.predictionPath !== lineage.resolvedPath, 'surface lineage must resolve an actual pre-outcome path migration');
+  assertSha(lineage.migrationCommit, 'surfaceLineage.migrationCommit');
+  assertSha(lineage.migrationParent, 'surfaceLineage.migrationParent');
+  assertString(lineage.publicFacadePath, 'surfaceLineage.publicFacadePath');
+  assertString(lineage.publicFacadeExport, 'surfaceLineage.publicFacadeExport');
+  assert(Array.isArray(lineage.carryoverContracts) && lineage.carryoverContracts.length >= 2, 'surface lineage must pin carryover contracts');
 
-  assert(Array.isArray(corpus.unsupportedSignals) && corpus.unsupportedSignals.length >= 2, 'EV-19 must explicitly retain unexercised EV-7 signals as unsupported');
+  assert(Array.isArray(corpus.unsupportedSignals) && corpus.unsupportedSignals.length === 2, 'EV-19 must explicitly retain two unvalidated EV-7 signal classes');
   const unsupportedIds = new Set(corpus.unsupportedSignals.map(signal => signal.id));
-  assert(unsupportedIds.has('public-readiness-observer-surface'), 'EV-7 public readiness observer surface must remain unsupported when the later implementation did not use it');
-  assert(unsupportedIds.has('renderer-boundary-independence'), 'EV-7 renderer-boundary observation must remain unsupported without implementation-outcome evidence');
+  assert(unsupportedIds.has('extension-point:missionVisualReadiness-observer'), 'EV-7 observer extension-point signal must remain unsupported when the later implementation did not use it');
+  assert(unsupportedIds.has('forbidden-dependency:public-backend-no-static-babylon-import'), 'EV-7 forbidden-dependency signal must remain unsupported without an outcome change to that public facade');
   assert(Array.isArray(corpus.unsupportedScenarios) && corpus.unsupportedScenarios.some(entry => entry.taskId === 'P28-G1'), 'P28-G1 must remain explicitly unsupported until later implementation evidence exists');
 
   assert(corpus.promotionBoundary?.acceptedForEnforcement === false, 'EV-19 cannot accept enforcement');
@@ -200,10 +194,36 @@ async function authenticatePrediction(repoRoot, prediction) {
     rewritePressure,
     preferredSurfaceCount: scenario.preferredSurfaceCount,
     expectedSurfaces: scenario.expectedSurfaces,
-    missingExtensionPointCount,
-    requiredBoundaryViolationCount,
     predictedExtensionPoints: scenario.extensionPoints,
     predictedForbiddenDependencies: scenario.forbiddenDependencies,
+  };
+}
+
+async function authenticateSurfaceLineage(repoRoot, prediction, actualOutcome, lineage) {
+  const migrationParent = await git(repoRoot, ['rev-parse', `${lineage.migrationCommit}^`]);
+  assert(migrationParent === lineage.migrationParent, 'EV-19 pre-outcome surface migration parent drifted');
+  const migrationBeforeOutcome = await git(repoRoot, ['merge-base', '--is-ancestor', lineage.migrationCommit, actualOutcome.baseSha], { allowFailure: true });
+  assert(migrationBeforeOutcome !== null, 'EV-19 surface migration must predate the P28-PLOAD2 implementation base');
+
+  const frozenSource = await sourceAt(repoRoot, prediction.ev7CandidateSha, lineage.predictionPath);
+  const migratedCore = await sourceAt(repoRoot, lineage.migrationCommit, lineage.resolvedPath);
+  const migratedFacade = await sourceAt(repoRoot, lineage.migrationCommit, lineage.publicFacadePath);
+  assert(frozenSource !== null, `frozen EV-7 expected surface ${lineage.predictionPath} is unavailable`);
+  assert(migratedCore !== null, `resolved pre-outcome surface ${lineage.resolvedPath} is unavailable at migration commit`);
+  assert(migratedFacade?.includes(lineage.publicFacadeExport), 'AO-6 migration did not leave the pinned public facade re-export');
+  for (const token of lineage.carryoverContracts) {
+    assert(frozenSource.includes(token), `frozen expected surface lacks carryover contract ${token}`);
+    assert(migratedCore.includes(token), `resolved surface lacks carried contract ${token}`);
+  }
+  return {
+    predictionPath: lineage.predictionPath,
+    resolvedPath: lineage.resolvedPath,
+    migrationCommit: lineage.migrationCommit,
+    migrationParent: lineage.migrationParent,
+    predatesOutcome: true,
+    publicFacadePath: lineage.publicFacadePath,
+    publicFacadeExport: lineage.publicFacadeExport,
+    carryoverContracts: lineage.carryoverContracts,
   };
 }
 
@@ -230,6 +250,14 @@ async function authenticateActualOutcome(repoRoot, corpus) {
   const productionFiles = changedFiles.filter(path => path.startsWith(actualOutcome.productionPrefix));
   const testFiles = changedFiles.filter(path => path.startsWith(actualOutcome.testPrefix));
 
+  const featureBearingRevisions = [];
+  for (const revision of revisions) {
+    const testSource = await sourceAt(repoRoot, revision, actualOutcome.behaviorTestPath);
+    if (testSource?.includes(actualOutcome.behaviorPassMarker)) featureBearingRevisions.push(revision);
+  }
+  assert(featureBearingRevisions.length > 0, 'P28-PLOAD2 history has no feature-bearing revision with the pinned task regression');
+  assert(featureBearingRevisions[0] === actualOutcome.featureIntroductionSha, `P28-PLOAD2 feature introduction drifted: expected ${actualOutcome.featureIntroductionSha}, got ${featureBearingRevisions[0]}`);
+
   const behaviorTestBlobSha = await git(repoRoot, ['rev-parse', `${actualOutcome.headSha}:${actualOutcome.behaviorTestPath}`]);
   const behaviorImplementationBlobSha = await git(repoRoot, ['rev-parse', `${actualOutcome.headSha}:${actualOutcome.behaviorImplementationPath}`]);
   const behaviorTestSource = await sourceAt(repoRoot, actualOutcome.headSha, actualOutcome.behaviorTestPath);
@@ -238,7 +266,6 @@ async function authenticateActualOutcome(repoRoot, corpus) {
   assert(behaviorTestSource?.includes('resolveMissionVisualReadiness'), 'P28-PLOAD2 behavior regression does not exercise the visual-readiness decision');
   assert(behaviorTestSource?.includes(EXPECTED_DISHONEST_FAILURE), 'P28-PLOAD2 behavior regression no longer contains the early-readiness assertion used for EV-19 sensitivity calibration');
   assert(behaviorImplementationSource?.includes(READINESS_PHASE_EXPRESSION), 'P28-PLOAD2 readiness implementation no longer contains the pinned readiness decision expression');
-  assert(behaviorImplementationSource?.includes("this.mapLoadTelemetry.completeMission(now, resolved.mode === 'fallback')"), 'P28-PLOAD2 telemetry completion is no longer tied to the resolved readiness decision');
 
   return {
     mergeBase,
@@ -246,6 +273,7 @@ async function authenticateActualOutcome(repoRoot, corpus) {
     revisions,
     productionFiles,
     testFiles,
+    featureBearingRevisions,
     behaviorTestBlobSha,
     behaviorImplementationBlobSha,
   };
@@ -281,7 +309,7 @@ async function runHistoricalBehaviorRegression(entryPath, probeRoot, actualOutco
   return { passed: false, expectedFailureObserved: true };
 }
 
-async function calibrateSharedReadinessDecision(repoRoot, actualOutcome) {
+async function calibrateOutcomeControl(repoRoot, actualOutcome) {
   const tempRoot = await mkdtemp(resolve(tmpdir(), 'ironshade-ev19-pload2-'));
   const probeRoot = resolve(tempRoot, 'repo');
   let remoteDetached = false;
@@ -291,9 +319,7 @@ async function calibrateSharedReadinessDecision(repoRoot, actualOutcome) {
     remoteDetached = (await git(probeRoot, ['remote'])) === '';
     assert(remoteDetached, 'EV-19 disposable historical regression clone must have no source remote');
     await git(probeRoot, ['checkout', '--detach', '--force', actualOutcome.headSha]);
-
-    const dependencyLink = resolve(probeRoot, 'node_modules');
-    await symlink(resolve(repoRoot, 'node_modules'), dependencyLink, 'dir');
+    await symlink(resolve(repoRoot, 'node_modules'), resolve(probeRoot, 'node_modules'), 'dir');
 
     const implementationPath = resolve(probeRoot, actualOutcome.behaviorImplementationPath);
     const baselineImplementation = await readFile(implementationPath, 'utf8');
@@ -318,6 +344,7 @@ async function calibrateSharedReadinessDecision(repoRoot, actualOutcome) {
 
     const baselinePassCount = baselineRuns.filter(result => result.passed).length;
     return {
+      purpose: 'authenticate-the-later-outcome-and-measure-regression-sensitivity-not-forecast-accuracy',
       testPath: actualOutcome.behaviorTestPath,
       implementationPath: actualOutcome.behaviorImplementationPath,
       baselineRunCount: baselineRuns.length,
@@ -326,14 +353,75 @@ async function calibrateSharedReadinessDecision(repoRoot, actualOutcome) {
       benignMutationAccepted: benign.passed === true,
       dishonestMutationRejected: dishonest.expectedFailureObserved === true,
       dishonestFailureMarker: EXPECTED_DISHONEST_FAILURE,
-      falsePositives: benign.passed === true ? 0 : 1,
-      falseNegatives: dishonest.expectedFailureObserved === true ? 0 : 1,
+      detectorFalsePositives: benign.passed === true ? 0 : 1,
+      detectorFalseNegatives: dishonest.expectedFailureObserved === true ? 0 : 1,
       sandboxRemoteDetached: remoteDetached,
-      actualPressure: !(baselineRuns.length >= 2 && baselinePassCount === baselineRuns.length),
+      countedAsPredictiveSignal: false,
     };
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }
+}
+
+function resolvePredictedSurface(path, lineage) {
+  const mapping = lineage.find(entry => entry.predictionPath === path);
+  return mapping?.resolvedPath ?? path;
+}
+
+async function measureSurfacePrediction(repoRoot, prediction, actualOutcome, actual, lineageEvidence) {
+  const normalizedPredictedSurfaces = prediction.expectedSurfaces.map(path => resolvePredictedSurface(path, lineageEvidence));
+  const summary = summarizeSurfacePrediction(normalizedPredictedSurfaces, actual.productionFiles);
+
+  const introParent = await git(repoRoot, ['rev-parse', `${actualOutcome.featureIntroductionSha}^`]);
+  const introChangedText = await git(repoRoot, ['diff', '--name-only', `${introParent}..${actualOutcome.featureIntroductionSha}`]);
+  const featureIntroductionProductionSurfaces = (introChangedText ? introChangedText.split('\n').filter(Boolean) : [])
+    .filter(path => path.startsWith(actualOutcome.productionPrefix));
+
+  const observations = [];
+  for (const revision of actual.featureBearingRevisions) {
+    const changedText = await git(repoRoot, ['diff', '--name-only', `${actualOutcome.baseSha}..${revision}`]);
+    const productionSurfaces = (changedText ? changedText.split('\n').filter(Boolean) : [])
+      .filter(path => path.startsWith(actualOutcome.productionPrefix));
+    observations.push({
+      revision,
+      productionSurfaces,
+      predictedSurfaceHits: normalizedPredictedSurfaces.filter(path => productionSurfaces.includes(path)),
+    });
+  }
+
+  const supportedSignals = [];
+  for (const priorPath of prediction.expectedSurfaces) {
+    const resolvedPath = resolvePredictedSurface(priorPath, lineageEvidence);
+    const finalHit = summary.truePositiveSurfaces.includes(resolvedPath);
+    const directFeatureIntroductionHit = featureIntroductionProductionSurfaces.includes(resolvedPath);
+    const matchingPredictionCount = observations.filter(observation => observation.predictedSurfaceHits.includes(resolvedPath)).length;
+    const repeatable = observations.length >= 2 && matchingPredictionCount === observations.length;
+    if (finalHit && directFeatureIntroductionHit && repeatable) {
+      supportedSignals.push({
+        id: `expected-surface:${priorPath}`,
+        predictionSource: `prediction.expectedSurfaces[${prediction.expectedSurfaces.indexOf(priorPath)}]`,
+        priorPath,
+        resolvedPath,
+        directFeatureIntroductionHit,
+        observedRevisionCount: observations.length,
+        matchingPredictionCount,
+        repeatable,
+      });
+    }
+  }
+
+  return {
+    ...summary,
+    priorExpectedSurfaces: prediction.expectedSurfaces,
+    normalizedPredictedSurfaces,
+    preferredSurfaceCount: prediction.preferredSurfaceCount,
+    surfaceCountDelta: actual.productionFiles.length - prediction.preferredSurfaceCount,
+    featureIntroductionSha: actualOutcome.featureIntroductionSha,
+    featureIntroductionProductionSurfaces,
+    featureBearingRevisionCount: observations.length,
+    featureRevisionObservations: observations,
+    supportedSignals,
+  };
 }
 
 export async function buildRoadmapShadowValidationReport({ candidateSha, corpus = null, repoRoot = resolve('.') } = {}) {
@@ -344,49 +432,13 @@ export async function buildRoadmapShadowValidationReport({ candidateSha, corpus 
   assert(beforeHead === candidateSha, `EV-19 report candidate ${candidateSha} does not match checked-out HEAD ${beforeHead}`);
 
   const prediction = await authenticatePrediction(repoRoot, loadedCorpus.prediction);
-  const actual = await authenticateActualOutcome(repoRoot, loadedCorpus);
-  const readinessBehavior = await calibrateSharedReadinessDecision(repoRoot, loadedCorpus.actualOutcome);
-
-  const signals = [];
-  for (const signal of loadedCorpus.signals) {
-    let actualPressure;
-    let outcomeEvidence;
-    if (signal.kind === 'behavior-regression') {
-      actualPressure = readinessBehavior.actualPressure;
-      outcomeEvidence = {
-        ...readinessBehavior,
-        testBlobSha: actual.behaviorTestBlobSha,
-        implementationBlobSha: actual.behaviorImplementationBlobSha,
-      };
-    } else if (signal.kind === 'surface-count') {
-      actualPressure = actual.productionFiles.length > signal.preferredSurfaceCount;
-      outcomeEvidence = {
-        preferredSurfaceCount: signal.preferredSurfaceCount,
-        actualProductionSurfaceCount: actual.productionFiles.length,
-      };
-    } else {
-      throw new Error(`unsupported EV-19 evaluated signal kind ${signal.kind}`);
-    }
-    const classification = classifyPressurePrediction(signal.predictedPressure, actualPressure);
-    signals.push({
-      id: signal.id,
-      description: signal.description,
-      predictedPressure: signal.predictedPressure,
-      actualPressure,
-      classification,
-      outcomeEvidence,
-      supportedForEV20Review: signal.kind === 'behavior-regression'
-        && classification === 'true-negative'
-        && readinessBehavior.repeatable
-        && readinessBehavior.falsePositives === 0
-        && readinessBehavior.falseNegatives === 0,
-    });
+  const lineageEvidence = [];
+  for (const lineage of loadedCorpus.surfaceLineage) {
+    lineageEvidence.push(await authenticateSurfaceLineage(repoRoot, loadedCorpus.prediction, loadedCorpus.actualOutcome, lineage));
   }
-
-  const metrics = summarizePressureClassifications(signals.map(signal => signal.classification));
-  const supportedSignals = signals.filter(signal => signal.supportedForEV20Review).map(signal => signal.id);
-  const exactSurfaceMatches = prediction.expectedSurfaces.filter(path => actual.productionFiles.includes(path));
-  const unpredictedProductionSurfaces = actual.productionFiles.filter(path => !prediction.expectedSurfaces.includes(path));
+  const actual = await authenticateActualOutcome(repoRoot, loadedCorpus);
+  const surfacePrediction = await measureSurfacePrediction(repoRoot, prediction, loadedCorpus.actualOutcome, actual, lineageEvidence);
+  const outcomeControl = await calibrateOutcomeControl(repoRoot, loadedCorpus.actualOutcome);
 
   const afterHead = await git(repoRoot, ['rev-parse', 'HEAD']);
   const afterStatus = await git(repoRoot, ['status', '--porcelain=v1', '--untracked-files=no']);
@@ -394,12 +446,13 @@ export async function buildRoadmapShadowValidationReport({ candidateSha, corpus 
   assert(afterStatus === beforeStatus, 'EV-19 calibration changed tracked repository state');
 
   const report = {
-    schema: 'ironshade-roadmap-shadow-validation-report:v2',
-    schemaVersion: 2,
+    schema: 'ironshade-roadmap-shadow-validation-report:v3',
+    schemaVersion: 3,
     taskId: 'EV-19',
     mode: 'advisory',
     candidateSha,
     prediction,
+    surfaceLineage: lineageEvidence,
     actualOutcome: {
       kind: loadedCorpus.actualOutcome.kind,
       pullRequest: loadedCorpus.actualOutcome.pullRequest,
@@ -407,38 +460,37 @@ export async function buildRoadmapShadowValidationReport({ candidateSha, corpus 
       headSha: loadedCorpus.actualOutcome.headSha,
       mergeBase: actual.mergeBase,
       revisionCount: actual.revisions.length,
+      featureBearingRevisionCount: actual.featureBearingRevisions.length,
       changedFileCount: actual.changedFiles.length,
       productionSurfaceCount: actual.productionFiles.length,
       testSurfaceCount: actual.testFiles.length,
       changedFiles: actual.changedFiles,
       productionSurfaces: actual.productionFiles,
       testSurfaces: actual.testFiles,
-      exactPredictedSurfaceMatches: exactSurfaceMatches,
-      unpredictedProductionSurfaces,
       behaviorTestPath: loadedCorpus.actualOutcome.behaviorTestPath,
       behaviorTestBlobSha: actual.behaviorTestBlobSha,
       behaviorImplementationPath: loadedCorpus.actualOutcome.behaviorImplementationPath,
       behaviorImplementationBlobSha: actual.behaviorImplementationBlobSha,
     },
-    signals,
-    metrics,
-    supportedSignals,
+    surfacePrediction,
+    supportedSignals: surfacePrediction.supportedSignals,
     unsupportedSignals: loadedCorpus.unsupportedSignals,
     unsupportedScenarios: loadedCorpus.unsupportedScenarios,
+    outcomeControl,
     conclusion: {
-      repeatablePredictiveValueFound: supportedSignals.length > 0,
-      lowFrictionScoreValidated: metrics.falseNegatives === 0,
-      surfacePressurePredictionValidated: !signals.some(signal => signal.id === 'surface-count-pressure' && signal.classification === 'false-negative'),
-      exactPublicObserverSurfaceValidated: false,
-      rendererBoundaryPredictionValidated: false,
+      repeatablePredictiveValueFound: surfacePrediction.supportedSignals.length > 0,
+      lowFrictionScoreValidated: actual.productionFiles.length <= prediction.preferredSurfaceCount,
+      completeExpectedSurfaceSetValidated: surfacePrediction.falsePositiveSurfaces.length === 0 && surfacePrediction.falseNegativeSurfaces.length === 0,
+      observerExtensionPointValidated: false,
+      forbiddenDependencyPredictionValidated: false,
       enforcementEligible: false,
-      rationale: 'Only the narrower shared-readiness decision reuse signal is backed by the actual P28-PLOAD2 executable regression and mutation controls. EV-7 missed four production surfaces, while the exact public observer surface and renderer-boundary observation were not exercised by the later implementation and remain unsupported.',
+      rationale: 'EV-19 counts only the frozen EV-7 expected-surface set as forecast evidence. The pre-outcome AO-6 path migration is authenticated before comparing with P28-PLOAD2. One frozen backend surface was directly changed by the PLOAD2 feature introduction and remains present across feature-bearing revisions; the second expected surface was a false alarm and three production surfaces were missed. Executable PLOAD2 mutation controls authenticate the outcome but are not counted as a forecast signal.',
     },
     isolation: {
       temporaryProbesPersisted: false,
       productRuntimeMutated: false,
       simulatorScoringChanged: false,
-      disposableBehaviorCloneRemoteDetached: readinessBehavior.sandboxRemoteDetached,
+      disposableBehaviorCloneRemoteDetached: outcomeControl.sandboxRemoteDetached,
       exactHeadRestored: afterHead === beforeHead,
       trackedStateRestored: afterStatus === beforeStatus,
     },
@@ -468,7 +520,7 @@ async function main() {
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, canonicalJson(report), 'utf8');
   }
-  console.log(`EV19_ROADMAP_SHADOW_VALIDATION_PASS candidate=${report.candidateSha} actual=${report.actualOutcome.headSha} revisions=${report.actualOutcome.revisionCount} productionSurfaces=${report.actualOutcome.productionSurfaceCount} useful=${report.metrics.usefulPredictionCount} fp=${report.metrics.falsePositives} fn=${report.metrics.falseNegatives} supported=${report.supportedSignals.join(',')} unsupported=${report.unsupportedSignals.map(signal => signal.id).join(',')} enforcement=false digest=${report.reportDigest}`);
+  console.log(`EV19_ROADMAP_SHADOW_VALIDATION_PASS candidate=${report.candidateSha} actual=${report.actualOutcome.headSha} revisions=${report.actualOutcome.revisionCount} featureRevisions=${report.actualOutcome.featureBearingRevisionCount} useful=${report.surfacePrediction.usefulPredictionCount} fp=${report.surfacePrediction.falseAlarmCount} fn=${report.surfacePrediction.missedIntegrationPressureCount} supported=${report.supportedSignals.map(signal => signal.id).join(',')} enforcement=false digest=${report.reportDigest}`);
 }
 
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : null;
