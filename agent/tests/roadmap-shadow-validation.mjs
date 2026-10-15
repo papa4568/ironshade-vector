@@ -5,32 +5,34 @@ import {
   selectExperimentalReviewTask,
 } from '../tools/experimental-review-task.mjs';
 import {
-  classifyPressurePrediction,
-  summarizePressureClassifications,
+  summarizeSurfacePrediction,
   validateRoadmapShadowValidationCorpus,
 } from '../tools/roadmap-shadow-validation.mjs';
 
-assert.equal(classifyPressurePrediction(true, true), 'true-positive');
-assert.equal(classifyPressurePrediction(true, false), 'false-positive');
-assert.equal(classifyPressurePrediction(false, true), 'false-negative');
-assert.equal(classifyPressurePrediction(false, false), 'true-negative');
-
-const measured = summarizePressureClassifications([
-  'true-negative',
-  'false-negative',
-]);
-assert.deepEqual(measured, {
-  truePositives: 0,
-  trueNegatives: 1,
-  falsePositives: 0,
-  falseNegatives: 1,
-  evaluatedSignalCount: 2,
+const surfaceSummary = summarizeSurfacePrediction(
+  ['src/game/combatGraphicsBackendCore.ts', 'src/game/missionVisualReadinessGate.ts'],
+  [
+    'src/game/babylonCombatRenderer.ts',
+    'src/game/babylonRefineryMissionReadiness.ts',
+    'src/game/combatGraphicsBackendCore.ts',
+    'src/game/mapLoadReadinessTelemetry.ts',
+  ],
+);
+assert.deepEqual(surfaceSummary, {
+  predictedSurfaceCount: 2,
+  actualSurfaceCount: 4,
+  truePositiveSurfaces: ['src/game/combatGraphicsBackendCore.ts'],
+  falsePositiveSurfaces: ['src/game/missionVisualReadinessGate.ts'],
+  falseNegativeSurfaces: [
+    'src/game/babylonCombatRenderer.ts',
+    'src/game/babylonRefineryMissionReadiness.ts',
+    'src/game/mapLoadReadinessTelemetry.ts',
+  ],
   usefulPredictionCount: 1,
-  falseAlarmCount: 0,
-  missedIntegrationPressureCount: 1,
-  accuracy: 0.5,
-  falsePositiveRate: 0,
-  falseNegativeRate: 1,
+  falseAlarmCount: 1,
+  missedIntegrationPressureCount: 3,
+  precision: 0.5,
+  recall: 0.25,
 });
 
 const synthetic = {
@@ -46,13 +48,14 @@ const synthetic = {
     expectedFrictionScore: 1,
     expectedRewritePressure: 'low',
     preferredSurfaceCount: 2,
-    expectedSurfaces: ['src/a.ts', 'src/b.ts'],
+    expectedSurfaces: ['src/game/combatGraphicsBackend.ts', 'src/game/missionVisualReadinessGate.ts'],
   },
   actualOutcome: {
     kind: 'implementation-attempt',
     pullRequest: 366,
     baseSha: '3'.repeat(40),
     headSha: '4'.repeat(40),
+    featureIntroductionSha: '5'.repeat(40),
     requiredChangedPaths: ['tests/p28-pload2-map-load-readiness.ts'],
     productionPrefix: 'src/',
     testPrefix: 'tests/',
@@ -61,27 +64,28 @@ const synthetic = {
     behaviorPassMarker: 'P28_PLOAD2_MAP_LOAD_READINESS_PASS',
     behaviorRunCount: 3,
   },
-  signals: [
+  surfaceLineage: [
     {
-      id: 'shared-readiness-decision-reuse',
-      kind: 'behavior-regression',
-      predictedPressure: false,
-    },
-    {
-      id: 'surface-count-pressure',
-      kind: 'surface-count',
-      predictedPressure: false,
-      preferredSurfaceCount: 2,
+      predictionPath: 'src/game/combatGraphicsBackend.ts',
+      resolvedPath: 'src/game/combatGraphicsBackendCore.ts',
+      migrationCommit: '6'.repeat(40),
+      migrationParent: '7'.repeat(40),
+      publicFacadePath: 'src/game/combatGraphicsBackend.ts',
+      publicFacadeExport: "export * from './combatGraphicsBackendCore';",
+      carryoverContracts: [
+        'export type MissionVisualReadiness = {',
+        'missionVisualReadiness?(): MissionVisualReadiness;',
+      ],
     },
   ],
   unsupportedSignals: [
     {
-      id: 'public-readiness-observer-surface',
-      reason: 'later implementation did not consume the exact EV-7 public observer surface',
+      id: 'extension-point:missionVisualReadiness-observer',
+      reason: 'later implementation did not consume the exact prior observer extension point',
     },
     {
-      id: 'renderer-boundary-independence',
-      reason: 'absence of a dependency is not outcome evidence when the later implementation did not exercise that surface',
+      id: 'forbidden-dependency:public-backend-no-static-babylon-import',
+      reason: 'later implementation did not modify the public facade carrying this prior rule',
     },
   ],
   unsupportedScenarios: [
@@ -108,6 +112,13 @@ assert.throws(
 assert.throws(
   () => validateRoadmapShadowValidationCorpus({
     ...synthetic,
+    surfaceLineage: [{ ...synthetic.surfaceLineage[0], predictionPath: 'src/game/postHocSurface.ts' }],
+  }),
+  /source must be a frozen EV-7 expected surface/,
+);
+assert.throws(
+  () => validateRoadmapShadowValidationCorpus({
+    ...synthetic,
     unsupportedScenarios: [],
   }),
   /P28-G1 must remain explicitly unsupported/,
@@ -115,21 +126,11 @@ assert.throws(
 assert.throws(
   () => validateRoadmapShadowValidationCorpus({
     ...synthetic,
-    unsupportedSignals: synthetic.unsupportedSignals.map(signal => signal.id === 'public-readiness-observer-surface'
-      ? { ...signal, id: 'static-observer-token-presence' }
+    unsupportedSignals: synthetic.unsupportedSignals.map(signal => signal.id.startsWith('extension-point:')
+      ? { ...signal, id: 'post-hoc-behavior-signal' }
       : signal),
   }),
-  /public readiness observer surface must remain unsupported/,
-);
-assert.throws(
-  () => validateRoadmapShadowValidationCorpus({
-    ...synthetic,
-    signals: [
-      ...synthetic.signals,
-      { id: 'static-token-presence', kind: 'required-contract', predictedPressure: false },
-    ],
-  }),
-  /exactly two outcome-backed/,
+  /observer extension-point signal must remain unsupported/,
 );
 
 const blockedBaseRoadmap = [
@@ -163,4 +164,4 @@ const nextActionable = selectExperimentalReviewTask(blockedHeadRoadmap);
 assert.equal(nextActionable.task.id, 'EV-20');
 assert.equal(nextActionable.mode, 'experimental');
 
-console.log(`EV19_ROADMAP_SHADOW_VALIDATION_TEST_PASS useful=${measured.usefulPredictionCount} fp=${measured.falsePositives} fn=${measured.falseNegatives} unsupported=2 blockedCloseout=${blockedCloseout.task.id} next=${nextActionable.task.id} blocking=false`);
+console.log(`EV19_ROADMAP_SHADOW_VALIDATION_TEST_PASS useful=${surfaceSummary.usefulPredictionCount} fp=${surfaceSummary.falseAlarmCount} fn=${surfaceSummary.missedIntegrationPressureCount} precision=${surfaceSummary.precision} recall=${surfaceSummary.recall} blockedCloseout=${blockedCloseout.task.id} next=${nextActionable.task.id} blocking=false`);
