@@ -127,7 +127,7 @@ cat > "$prepared_dir/manifest.json" <<EOF
   "dockerEngineVersion": "$docker_engine_version",
   "dependencyTreeSha256": "$dependency_tree_sha256",
   "networkPhase": "completed-before-cache-decision",
-  "registryResultBoundBy": ["preparedImageId", "npmCliTreeSha256", "dependencyTreeSha256"],
+  "registryResultBoundBy": ["npmCliTreeSha256", "dependencyTreeSha256"],
   "buildNetwork": "none"
 }
 EOF
