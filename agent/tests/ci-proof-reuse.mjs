@@ -28,6 +28,11 @@ assert.match(candidate, /IRONSHADE_PROOF_CACHE_REUSE: \$\{\{ vars\.IRONSHADE_PRO
 assert.equal(countExactLine(candidate, 'uses: actions/cache/restore@v5'), 1, 'EV-18 must perform one exact cache restore');
 assert.equal(countExactLine(candidate, 'uses: actions/cache/save@v5'), 1, 'EV-18 must save one validated real-proof result');
 assert.doesNotMatch(candidate, /restore-keys:/, 'EV-18 may not use prefix/partial cache restoration');
+const restoreStart = candidate.indexOf('Restore EV-18 exact closure proof cache');
+assert(restoreStart >= 0, 'The EV-18 exact cache restore step is missing');
+const restoreEnd = candidate.indexOf('\n      - name: ', restoreStart + 1);
+const restoreBlock = candidate.slice(restoreStart, restoreEnd === -1 ? candidate.length : restoreEnd);
+assert.match(restoreBlock, /continue-on-error: true/, 'EV-18 cache restore service/API errors must continue into the fail-closed real-proof fallback');
 assert.match(candidate, /Prepare EV-18 closed proof inputs[\s\S]*prepare-full-repository-build-proof-closed\.sh/, 'EV-18 must complete causal preflight before reuse decision');
 assert.match(candidate, /Compute EV-18 exact closure cache key[\s\S]*proof-cache-promotion\.mjs request/, 'EV-18 must derive the exact key from the closed proof closure');
 assert.match(candidate, /Validate EV-18 cache candidate[\s\S]*proof-cache-promotion\.mjs decide/, 'EV-18 must validate cache provenance before reuse');
@@ -79,4 +84,4 @@ assert.match(android, /npx cap sync android/);
 assert.match(android, /Download PR APK/);
 assert.match(android, /sha256sum -c Ironshade-Vector-Android-Smoke\.sha256/);
 
-console.log('CI_PROOF_REUSE_TEST_PASS producer=ev18-closed-proof cache=exact-key fallback=closed rollback=legacy browser=reuses-candidate android=reuses-candidate apk=reused-by-emulators producerConcurrency=job androidConcurrency=pr');
+console.log('CI_PROOF_REUSE_TEST_PASS producer=ev18-closed-proof cache=exact-key fallback=closed rollback=legacy cacheRestoreError=fallback browser=reuses-candidate android=reuses-candidate apk=reused-by-emulators producerConcurrency=job androidConcurrency=pr');
