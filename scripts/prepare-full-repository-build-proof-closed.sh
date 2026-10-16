@@ -25,6 +25,7 @@ if [[ "$work_root" != /* ]]; then
 fi
 prepared_dir="$work_root/$candidate_sha"
 snapshot="$prepared_dir/snapshot"
+prepared_image_archive="$prepared_dir/prepared-image.tar"
 
 rm -rf "$prepared_dir"
 mkdir -p "$snapshot"
@@ -47,6 +48,7 @@ if [[ "$existing_base_ref" != "$base_image_ref" ]]; then
   docker build \
     --pull=false \
     --build-arg "SOURCE_DATE_EPOCH=$prepared_image_source_date_epoch" \
+    --output "type=docker,dest=$prepared_image_archive,rewrite-timestamp=true" \
     --tag "$prepared_image" \
     - <<DOCKERFILE >/dev/null
 FROM ${base_image_ref}
@@ -61,6 +63,8 @@ RUN npm install --global npm@10.9.8 \
       /usr/local/bin/npm \
       /usr/local/bin/npx
 DOCKERFILE
+  docker load --input "$prepared_image_archive" >/dev/null
+  rm -f "$prepared_image_archive"
 fi
 prepared_image_id="$(docker image inspect --format '{{.Id}}' "$prepared_image")"
 if [[ ! "$prepared_image_id" =~ ^sha256:[a-f0-9]{64}$ ]]; then
@@ -124,6 +128,7 @@ cat > "$prepared_dir/manifest.json" <<EOF
   "preparedImage": "$prepared_image",
   "preparedImageId": "$prepared_image_id",
   "preparedImageSourceDateEpoch": "$prepared_image_source_date_epoch",
+  "preparedImageExporter": "docker-rewrite-timestamp",
   "npmCliTreeSha256": "$npm_cli_tree_sha256",
   "dockerEngineVersion": "$docker_engine_version",
   "dependencyTreeSha256": "$dependency_tree_sha256",
@@ -137,4 +142,4 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   cat "$prepared_dir/closure.env" >> "$GITHUB_ENV"
 fi
 
-echo "FULL_REPOSITORY_BUILD_CLOSURE_PREP_PASS candidate=$candidate_sha baseImageRef=$base_image_ref npmCliTree=$npm_cli_tree_sha256 preparedImageId=$prepared_image_id dockerEngine=$docker_engine_version dependencyTree=$dependency_tree_sha256 networkPhase=completed-before-cache-decision sourceDateEpoch=$prepared_image_source_date_epoch"
+echo "FULL_REPOSITORY_BUILD_CLOSURE_PREP_PASS candidate=$candidate_sha baseImageRef=$base_image_ref npmCliTree=$npm_cli_tree_sha256 preparedImageId=$prepared_image_id dockerEngine=$docker_engine_version dependencyTree=$dependency_tree_sha256 networkPhase=completed-before-cache-decision sourceDateEpoch=$prepared_image_source_date_epoch exporter=docker-rewrite-timestamp"
