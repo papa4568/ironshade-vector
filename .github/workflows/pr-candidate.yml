@@ -147,6 +147,7 @@ jobs:
       - name: Restore EV-18 exact closure proof cache
         if: env.IRONSHADE_PROOF_CACHE_REUSE != '0'
         id: proof-cache-restore
+        continue-on-error: true
         uses: actions/cache/restore@v5
         with:
           path: .agent-proof-cache-ev18/cache
