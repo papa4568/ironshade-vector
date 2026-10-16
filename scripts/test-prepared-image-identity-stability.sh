@@ -8,11 +8,14 @@ if [[ ! "$candidate_sha" =~ ^[a-f0-9]{40}$ ]] || [[ "$(git rev-parse HEAD)" != "
 fi
 
 prepared_image='ironshade-proof-closed:node-22.23.2-npm-10.9.8'
+mutation_image='ironshade-proof-closed:ev28-usrlocal-mutation'
+prepared_npm_version='10.9.8'
 work_root="$(mktemp -d "${RUNNER_TEMP:-/tmp}/ev28-prepared-image.XXXXXX")"
 evidence_dir="${EV28_EVIDENCE_DIR:-.ev28-prepared-image-stability}"
 mkdir -p "$evidence_dir"
 
 cleanup() {
+  docker image rm --force "$mutation_image" >/dev/null 2>&1 || true
   docker image rm --force "$prepared_image" >/dev/null 2>&1 || true
   rm -rf "$work_root"
 }
@@ -43,6 +46,17 @@ value_of() {
   printf '%s' "${line#*=}"
 }
 
+npm_cli_tree_of() {
+  local image="$1"
+  docker run --rm "$image" sh -lc '
+    set -eu
+    root="$(npm root -g)"
+    tar --sort=name --mtime="@0" --owner=0 --group=0 --numeric-owner -C "$root" -cf - npm \
+      | sha256sum \
+      | cut -d" " -f1
+  '
+}
+
 fresh_preflight first
 fresh_preflight second
 
@@ -70,15 +84,57 @@ docker_engine="$(value_of "$work_root/first.env" IRONSHADE_PROOF_DOCKER_ENGINE_V
 dependency_tree="$(value_of "$work_root/first.env" IRONSHADE_PROOF_DEPENDENCY_TREE_SHA256)"
 
 for manifest in "$work_root/first-manifest.json" "$work_root/second-manifest.json"; do
-  grep -F '"preparedImageSourceDateEpoch": "0"' "$manifest" >/dev/null || {
-    echo "EV28_PREPARED_IMAGE_STABILITY_FAIL missing fixed source date epoch in $manifest" >&2
+  test "$(jq -r '.preparedImageIdentityMethod' "$manifest")" = 'canonical-usrlocal-v1' || {
+    echo "EV28_PREPARED_IMAGE_STABILITY_FAIL wrong prepared identity method in $manifest" >&2
     exit 1
   }
-  grep -F '"preparedImageExporter": "docker-rewrite-timestamp"' "$manifest" >/dev/null || {
-    echo "EV28_PREPARED_IMAGE_STABILITY_FAIL missing deterministic Docker exporter in $manifest" >&2
+  tree="$(jq -r '.preparedToolchainTreeSha256' "$manifest")"
+  [[ "$tree" =~ ^[a-f0-9]{64}$ ]] || {
+    echo "EV28_PREPARED_IMAGE_STABILITY_FAIL invalid prepared toolchain tree in $manifest" >&2
+    exit 1
+  }
+  runtime_id="$(jq -r '.runtimeDockerImageId' "$manifest")"
+  [[ "$runtime_id" =~ ^sha256:[a-f0-9]{64}$ ]] || {
+    echo "EV28_PREPARED_IMAGE_STABILITY_FAIL invalid runtime Docker image ID in $manifest" >&2
     exit 1
   }
 done
+
+first_toolchain_tree="$(jq -r '.preparedToolchainTreeSha256' "$work_root/first-manifest.json")"
+second_toolchain_tree="$(jq -r '.preparedToolchainTreeSha256' "$work_root/second-manifest.json")"
+if [[ "$first_toolchain_tree" != "$second_toolchain_tree" ]]; then
+  echo "EV28_PREPARED_IMAGE_STABILITY_FAIL prepared toolchain tree drift first=$first_toolchain_tree second=$second_toolchain_tree" >&2
+  exit 1
+fi
+first_runtime_docker_id="$(jq -r '.runtimeDockerImageId' "$work_root/first-manifest.json")"
+second_runtime_docker_id="$(jq -r '.runtimeDockerImageId' "$work_root/second-manifest.json")"
+runtime_docker_ids_equal=false
+if [[ "$first_runtime_docker_id" == "$second_runtime_docker_id" ]]; then
+  runtime_docker_ids_equal=true
+fi
+
+# Prove the canonical prepared identity remains sensitive to real toolchain drift
+# that the narrower npm CLI subtree digest would not detect.
+docker build --pull=false --tag "$mutation_image" - <<DOCKERFILE >/dev/null
+FROM ${prepared_image}
+RUN mkdir -p /usr/local/share \
+    && printf 'ev28-prepared-identity-mutation\n' > /usr/local/share/ev28-prepared-identity-mutation
+DOCKERFILE
+bash scripts/compute-prepared-toolchain-identity.sh \
+  "$mutation_image" \
+  "$base_image_ref" \
+  "$prepared_npm_version" \
+  > "$work_root/mutated.env"
+mutated_prepared_image_id="$(value_of "$work_root/mutated.env" IRONSHADE_PROOF_PREPARED_IMAGE_ID)"
+if [[ "$mutated_prepared_image_id" == "$prepared_image_id" ]]; then
+  echo "EV28_PREPARED_IMAGE_STABILITY_FAIL canonical prepared identity ignored /usr/local mutation" >&2
+  exit 1
+fi
+mutated_npm_cli_tree="$(npm_cli_tree_of "$mutation_image")"
+if [[ "$mutated_npm_cli_tree" != "$npm_cli_tree" ]]; then
+  echo "EV28_PREPARED_IMAGE_STABILITY_FAIL negative control unexpectedly changed npm CLI subtree" >&2
+  exit 1
+fi
 
 cat > "$evidence_dir/evidence.json" <<EOF
 {
@@ -86,16 +142,22 @@ cat > "$evidence_dir/evidence.json" <<EOF
   "candidateSha": "$candidate_sha",
   "freshBuilds": 2,
   "identitiesCompared": 5,
-  "sourceDateEpoch": "0",
-  "preparedImageExporter": "docker-rewrite-timestamp",
+  "preparedImageIdentityMethod": "canonical-usrlocal-v1",
   "baseImageRef": "$base_image_ref",
   "preparedImageId": "$prepared_image_id",
+  "preparedToolchainTreeSha256": "$first_toolchain_tree",
+  "firstRuntimeDockerImageId": "$first_runtime_docker_id",
+  "secondRuntimeDockerImageId": "$second_runtime_docker_id",
+  "runtimeDockerImageIdsEqual": $runtime_docker_ids_equal,
   "npmCliTreeSha256": "$npm_cli_tree",
   "dockerEngineVersion": "$docker_engine",
   "dependencyTreeSha256": "$dependency_tree",
+  "negativeUsrLocalMutation": "rejected",
+  "mutatedPreparedImageId": "$mutated_prepared_image_id",
+  "mutatedNpmCliTreeSha256": "$mutated_npm_cli_tree",
   "result": "stable"
 }
 EOF
 
 printf '%s\n' \
-  "EV28_PREPARED_IMAGE_STABILITY_PASS candidate=$candidate_sha freshBuilds=2 identities=5 preparedImageId=$prepared_image_id sourceDateEpoch=0 exporter=docker-rewrite-timestamp"
+  "EV28_PREPARED_IMAGE_STABILITY_PASS candidate=$candidate_sha freshBuilds=2 identities=5 identityMethod=canonical-usrlocal-v1 runtimeDockerIdsEqual=$runtime_docker_ids_equal negativeUsrLocalMutation=rejected preparedImageId=$prepared_image_id"
