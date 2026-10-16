@@ -842,3 +842,35 @@ This archive transition follows the repository's established split-EV self-refer
 ### Promotion status
 
 Trusted observer v10 is now permanent repository trust infrastructure for the provenance-hardened EV-18 producer transition; proof reuse remains disabled. EV-21, EV-22, and EV-23 prerequisites are satisfied, so EV-18 — Reuse One Validated Proof Class is the next actionable experimental item.
+
+## EV-24 — Rebind Trusted Observer to Restore-Error-Hardened EV-18 Producer
+
+Completed 2026-10-15 as the trust-boundary prerequisite required after EV-18 hardened cache restoration so cache service/API errors fall through to the real closed proof. EV-24 does not enable proof reuse.
+
+### Implemented
+
+- Added trusted EV-9 observer v11 and pinned the restore-error-hardened EV-18 implementation reference `0d996b64ac47306a244fcd67e938b937910f3d85`.
+- Authorized exactly the reviewed 11 EV-18 implementation/policy paths by full Git tree-entry identity while keeping the experimental roadmap trusted-base-owned and requiring browser/Android consumers, source-bound dependencies, the trusted observer workflow, and protected non-transition `agent/` objects to remain trusted-base identical.
+- Required the producer to retain both the real closed-proof path and explicit `actions/cache/restore` error fallback. Earlier EV-9 producer states continue through v10/v8, while governance-only closeout candidates use the stricter unchanged-producer compatibility path.
+- Calibrated the production transition against a behavior-preserving baseline plus unexpected-path, pinned-content, pinned-mode, roadmap, browser, Android, dependency, and protected-agent drift. The measured budget is zero false positives and zero false negatives.
+- Kept proof reuse disabled throughout EV-24. The closeout advances Agent Orchestration's trusted observer bootstrap to v11 before EV-18 resumes.
+
+### Exact implementation evidence
+
+Exact implementation candidate `f793d6cb7cd429830e679a411730b2175a68c926` passed Agent Orchestration run `38846374180` and PR Candidate Verification run `38846374307`. The exact-candidate producer, mechanical architecture invariants, promoted acceptance/evidence-independence gates, independent-review context, installable Android APK, API 35 product smoke, API 36 large-screen smoke, aggregate Android verification, and final candidate evidence all succeeded; browser E2E was correctly scope-skipped for verification/governance-only changes.
+
+Final exact-candidate evidence artifact `12025886554` (`agent-candidate-evidence-395-f793d6cb7cd429830e679a411730b2175a68c926`) has GitHub Actions digest `sha256:4f2447e56bcefa19438039245c35d5779b4c029d62a66a0b1c5b41f66409599a`. APK artifact `12023174247` has digest `sha256:e8ed11e96246ef0653985a647d9dcfd3c5bce5fed430434017218f707af43925`; API 35 artifact `12023687813` has digest `sha256:d56a12ae484a9cf510989f5efc77342f4ceb7a961930afd4c1bee3f01922fafc`; API 36 large-screen artifact `12023741881` has digest `sha256:e92d1af66c5a588caec269f6d4f21f6c6f6b9c509e56217e538597da09982aad`; and independent-review context artifact `12023601989` has digest `sha256:2dff110857e86f37e536bbc46385120e58d3f3aa21b1363ed6641b3365d52805`.
+
+The repository-native automated verifier was unavailable because its GitHub Copilot CLI request exhausted the configured monthly quota. The documented human fallback was therefore used from the separate `Papa3445` collaborator account. After an initial malformed-result comment failed closed at schema validation, corrected independent-review comment `6208220334` matched the exact EV-24 packet/result schema, the exact candidate SHA, and returned `verdict="pass"` with all acceptance checks satisfied, every required proof credible, and no findings. Re-running only the blocked final candidate job then generated the complete exact-SHA evidence above. PR #395 merged the reviewed implementation to trusted `main` as merge commit `f0fce33f72b85c4a9b27dde778686409f4efff08`.
+
+### Isolation and rollback
+
+EV-24 changes verification/governance only. The trusted `pull_request_target` observer executes from the exact trusted base checkout and treats the candidate and reviewed EV-18 reference only as Git data; candidate-controlled observer code never becomes its own trust root. Calibration creates temporary Git object/index state only and does not alter product/runtime behavior.
+
+Rollback is deterministic: before EV-18 merges, restore v10/v8 as the trusted observer entry point and remove v11, which intentionally leaves the restore-error-hardened EV-18 producer blocked. After EV-18 merges, reverting v11 must be paired with reverting the EV-18 producer transition because the earlier observer does not authorize that producer object set. Existing full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, and independent-review obligations remain unchanged.
+
+This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and exact-SHA proof set while removing only EV-24 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-24 independent review; no verdict or final candidate proof is inherited from `f793d6cb7cd429830e679a411730b2175a68c926`.
+
+### Promotion status
+
+Trusted observer v11 is now the permanent repository trust infrastructure for the restore-error-hardened EV-18 producer transition; proof reuse remains disabled. EV-21, EV-22, EV-23, and EV-24 prerequisites are satisfied, so EV-18 — Reuse One Validated Proof Class is the next actionable experimental item.
