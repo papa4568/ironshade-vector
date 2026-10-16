@@ -14,6 +14,7 @@ import {
   proposeAntibodies,
   sha256Value,
 } from './repository-immune-system.mjs';
+import { selectAuthoritativeReviewCommentWithProvenance } from './review-comment-gate.mjs';
 
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
 const DIGEST_PATTERN = /^[a-f0-9]{64}$/;
@@ -21,6 +22,8 @@ const POLICY_PATH = 'agent/antibody-promotion-policy.json';
 const GOVERNANCE_POLICY_PATH = 'agent/antibody-governance-policy.json';
 const EV12_CORPUS_PATH = 'agent/failure-recurrence-calibration-corpus.json';
 const FAILURE_MEMORY_PATH = 'agent/failure-memory.json';
+const ACTIONS_LOGIN = 'github-actions[bot]';
+const TRUSTED_MAIN_ASSOCIATION = 'TRUSTED_MAIN_ACTIONS';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -220,18 +223,70 @@ export async function runAntibodyPromotionGate(policy, governancePolicy, ev12Cor
   };
 }
 
+async function githubJson(repository, path, { fetchImpl = fetch } = {}) {
+  assertString(repository, 'repository');
+  const token = process.env.GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim();
+  const response = await fetchImpl(`https://api.github.com/repos/${repository}/${path.replace(/^\//, '')}`, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const body = await response.text();
+  assert(response.ok, `GitHub EV-14 promotion request ${path} failed ${response.status}: ${body}`);
+  return body ? JSON.parse(body) : null;
+}
+
+async function githubAllPages(repository, path, { fetchImpl = fetch } = {}) {
+  const all = [];
+  for (let page = 1; ; page += 1) {
+    const separator = path.includes('?') ? '&' : '?';
+    const payload = await githubJson(repository, `${path}${separator}per_page=100&page=${page}`, { fetchImpl });
+    assert(Array.isArray(payload), `GitHub paginated response for ${path} must be an array`);
+    all.push(...payload);
+    if (payload.length < 100) return all;
+    assert(page < 1000, `GitHub pagination for ${path} exceeded safety limit`);
+  }
+}
+
+export async function selectAntibodyPromotionMachineReview(reviewPacket, comments, {
+  prAuthor,
+  fetchImpl = fetch,
+  verifyMachineRun,
+} = {}) {
+  assertObject(reviewPacket, 'reviewPacket');
+  assert(Array.isArray(comments), 'EV-14 promotion comments must be an array');
+  assertString(prAuthor, 'EV-14 promotion pull request author');
+  const machineComments = comments.filter(comment => comment?.user?.login === ACTIONS_LOGIN);
+  const selected = await selectAuthoritativeReviewCommentWithProvenance(reviewPacket, machineComments, {
+    prAuthor,
+    fetchImpl,
+    ...(verifyMachineRun ? { verifyMachineRun } : {}),
+  });
+  assert(selected.reviewer === ACTIONS_LOGIN, 'EV-14 promotion review must be authored by github-actions[bot]');
+  assert(selected.authorAssociation === TRUSTED_MAIN_ASSOCIATION, 'EV-14 promotion review must have trusted-main machine provenance');
+  assert(Number.isInteger(selected.result?.sourceRunId) && selected.result.sourceRunId > 0, 'EV-14 promotion review must bind a positive trusted-main source run');
+  assert(SHA_PATTERN.test(selected.result?.trustedWorkflowSha ?? ''), 'EV-14 promotion review must bind the trusted workflow SHA');
+  return selected;
+}
+
 export async function authorizeAntibodyPromotion(policy, {
   candidateSha,
   repository,
   prNumber,
   reviewPacket,
+  fetchImpl = fetch,
+  verifyMachineRun,
+  authorizeGovernanceDecision = authorizeAntibodyGovernanceDecision,
 } = {}) {
   validateAntibodyPromotionPolicy(policy);
   assert(SHA_PATTERN.test(candidateSha ?? ''), 'candidateSha must be a full lowercase commit SHA');
   assertString(repository, 'repository');
   assert(Number.isInteger(prNumber) && prNumber > 0, 'prNumber must be a positive integer');
   assertObject(reviewPacket, 'reviewPacket');
-  const result = await authorizeAntibodyGovernanceDecision({
+  assert(typeof authorizeGovernanceDecision === 'function', 'authorizeGovernanceDecision must be a function');
+  const result = await authorizeGovernanceDecision({
     candidateSha,
     repository,
     prNumber,
@@ -242,6 +297,37 @@ export async function authorizeAntibodyPromotion(policy, {
   assert(result.promotionEligible === true, 'EV-14 trusted governance review did not authorize promotion');
   assert(result.truthId === policy.antibody.truthId, 'EV-14 governance authorization truthId mismatch');
   assert(result.antibodyId === policy.antibody.antibodyId, 'EV-14 governance authorization antibodyId mismatch');
+
+  const [pr, comments] = await Promise.all([
+    githubJson(repository, `pulls/${prNumber}`, { fetchImpl }),
+    githubAllPages(repository, `issues/${prNumber}/comments`, { fetchImpl }),
+  ]);
+  assert(pr?.state === 'open' && pr?.head?.sha === candidateSha, 'EV-14 promotion PR must be open and its head must match the exact candidate');
+  assertString(pr?.user?.login, 'EV-14 promotion pull request author');
+  const machineReview = await selectAntibodyPromotionMachineReview(reviewPacket, comments, {
+    prAuthor: pr.user.login,
+    fetchImpl,
+    verifyMachineRun,
+  });
+  const machineComment = comments.find(comment => comment?.id === machineReview.commentId);
+  assert(machineComment, `EV-14 trusted-main review comment ${machineReview.commentId} is missing from the complete PR conversation`);
+  const reviewedAt = machineComment.updated_at ?? machineComment.created_at;
+  assertString(reviewedAt, 'EV-14 trusted-main review timestamp');
+
+  const reviewAuthorization = {
+    reviewer: machineReview.reviewer,
+    reviewedAt,
+    taskId: reviewPacket.taskId,
+    candidateSha,
+    commentId: machineReview.commentId,
+    reviewResultSha256: sha256Value(machineReview.result),
+    authorAssociation: machineReview.authorAssociation,
+    sourceRunId: machineReview.result.sourceRunId,
+    trustedWorkflowSha: machineReview.result.trustedWorkflowSha,
+    decisionDigest: result.decisionDigest,
+    decisionPath: result.decisionPath,
+  };
+
   return {
     schema: 'ironshade-antibody-promotion-authorization:v1',
     candidateSha,
@@ -251,13 +337,14 @@ export async function authorizeAntibodyPromotion(policy, {
     decisionPath: result.decisionPath,
     decisionDigest: result.decisionDigest,
     promotionEligible: result.promotionEligible,
-    reviewAuthorization: result.reviewAuthorization,
+    reviewAuthorization,
     repositoryInputsLoadedFromCandidate: result.repositoryInputsLoadedFromCandidate,
     exactReviewPacketVerified: result.reviewPacketCandidateDerived && result.reviewPacketChangedFilesVerified,
     completeReviewHistoryVerified: result.completeReviewHistoryVerified,
     completeDecisionHistoryVerified: result.completeDecisionHistoryVerified,
     latestDecisionHeadVerified: result.latestDecisionHeadVerified,
     reviewIndependentFromPrAuthorVerified: result.reviewIndependentFromPrAuthorVerified,
+    trustedMainPromotionReviewVerified: true,
     candidatePassGranted: false,
   };
 }
