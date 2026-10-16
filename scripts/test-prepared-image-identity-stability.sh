@@ -74,6 +74,10 @@ for manifest in "$work_root/first-manifest.json" "$work_root/second-manifest.jso
     echo "EV28_PREPARED_IMAGE_STABILITY_FAIL missing fixed source date epoch in $manifest" >&2
     exit 1
   }
+  grep -F '"preparedImageExporter": "docker-rewrite-timestamp"' "$manifest" >/dev/null || {
+    echo "EV28_PREPARED_IMAGE_STABILITY_FAIL missing deterministic Docker exporter in $manifest" >&2
+    exit 1
+  }
 done
 
 cat > "$evidence_dir/evidence.json" <<EOF
@@ -83,6 +87,7 @@ cat > "$evidence_dir/evidence.json" <<EOF
   "freshBuilds": 2,
   "identitiesCompared": 5,
   "sourceDateEpoch": "0",
+  "preparedImageExporter": "docker-rewrite-timestamp",
   "baseImageRef": "$base_image_ref",
   "preparedImageId": "$prepared_image_id",
   "npmCliTreeSha256": "$npm_cli_tree",
@@ -93,4 +98,4 @@ cat > "$evidence_dir/evidence.json" <<EOF
 EOF
 
 printf '%s\n' \
-  "EV28_PREPARED_IMAGE_STABILITY_PASS candidate=$candidate_sha freshBuilds=2 identities=5 preparedImageId=$prepared_image_id sourceDateEpoch=0"
+  "EV28_PREPARED_IMAGE_STABILITY_PASS candidate=$candidate_sha freshBuilds=2 identities=5 preparedImageId=$prepared_image_id sourceDateEpoch=0 exporter=docker-rewrite-timestamp"
