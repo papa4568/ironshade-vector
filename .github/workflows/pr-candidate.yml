@@ -19,6 +19,8 @@ jobs:
       cancel-in-progress: true
     runs-on: ubuntu-24.04
     timeout-minutes: 35
+    env:
+      IRONSHADE_PROOF_CACHE_REUSE: ${{ vars.IRONSHADE_PROOF_CACHE_REUSE }}
     outputs:
       browser-required: ${{ steps.scope.outputs.browser-required }}
       candidate-sha: ${{ steps.identity.outputs.candidate-sha }}
@@ -122,24 +124,73 @@ jobs:
           include-hidden-files: true
           retention-days: 30
 
-      - name: Predict EV-6 causal proof reuse in shadow mode
-        continue-on-error: true
+      - name: Prepare EV-18 closed proof inputs
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0'
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: bash scripts/prepare-full-repository-build-proof-closed.sh
+
+      - name: Compute EV-18 exact closure cache key
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0'
+        id: proof-cache-request
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: |
-          mkdir -p .agent-proof-cache
-          node agent/tools/causal-proof-cache.mjs predict \
-            --proof full-repository-build \
-            --candidate "$CANDIDATE_SHA" \
-            --output .agent-proof-cache/prediction.json
+          mkdir -p .agent-proof-cache-ev18
+          node agent/tools/proof-cache-promotion.mjs request \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-proof-cache-ev18/request.json \
+            --github-output "$GITHUB_OUTPUT"
 
-      - name: Run full repository verification and production build once
+      - name: Restore EV-18 exact closure proof cache
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0'
+        id: proof-cache-restore
+        continue-on-error: true
+        uses: actions/cache/restore@v5
+        with:
+          path: .agent-proof-cache-ev18/cache
+          key: ${{ steps.proof-cache-request.outputs.cache-key }}
+
+      - name: Validate EV-18 cache candidate
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0'
+        id: proof-cache-decision
+        shell: bash
+        run: |
+          set -euo pipefail
+          cache_hit='${{ steps.proof-cache-restore.outputs.cache-hit }}'
+          if [[ "$cache_hit" != 'true' ]]; then
+            cache_hit=false
+          fi
+          node agent/tools/proof-cache-promotion.mjs decide \
+            --request .agent-proof-cache-ev18/request.json \
+            --cache-hit "$cache_hit" \
+            --cache-dir .agent-proof-cache-ev18/cache \
+            --output .agent-proof-cache-ev18/decision.json \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Run authoritative full repository verification or reuse validated closed proof
         id: full-verification
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
-        run: bash scripts/run-full-repository-build-proof.sh
+        run: |
+          set -euo pipefail
+          if [[ "$IRONSHADE_PROOF_CACHE_REUSE" == '0' ]]; then
+            echo "EV18_PROOF_CACHE_ROLLBACK legacy-proof-rerun=true"
+            bash scripts/run-full-repository-build-proof.sh
+          elif [[ '${{ steps.proof-cache-decision.outputs.reuse }}' == 'true' ]]; then
+            node agent/tools/proof-cache-promotion.mjs materialize \
+              --request .agent-proof-cache-ev18/request.json \
+              --cache-dir .agent-proof-cache-ev18/cache \
+              --dist dist
+            rm -rf "${IRONSHADE_PROOF_PREPARED_DIR:-}"
+            mkdir -p .agent-impact-calibration
+            printf '%s\n' 'EV18_PROOF_CACHE_REUSE validated exact-closure success entry; real closed proof intentionally skipped' > .agent-impact-calibration/full-verification.log
+          else
+            bash scripts/run-full-repository-build-proof-closed.sh
+          fi
 
       - name: Record source-bound candidate web digest
         id: source-bound-dist
@@ -175,29 +226,35 @@ jobs:
           include-hidden-files: true
           retention-days: 30
 
-      - name: Compare EV-6 reuse prediction with the real rerun
-        if: always()
-        continue-on-error: true
+      - name: Record EV-18 real-proof cache entry
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0' && steps.proof-cache-decision.outputs.reuse != 'true' && steps.full-verification.outcome == 'success'
         env:
-          FULL_VERIFICATION_OUTCOME: ${{ steps.full-verification.outcome }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          if [[ -f .agent-proof-cache/prediction.json ]]; then
-            node agent/tools/causal-proof-cache.mjs observe \
-              --prediction .agent-proof-cache/prediction.json \
-              --outcome "$FULL_VERIFICATION_OUTCOME" \
-              --run-id "$GITHUB_RUN_ID" \
-              --output .agent-proof-cache/report.json
-          else
-            echo "EV6_PROOF_CACHE_PREDICTION_MISSING shadow-only prediction unavailable"
-          fi
+          node agent/tools/proof-cache-promotion.mjs record \
+            --request .agent-proof-cache-ev18/request.json \
+            --cache-dir .agent-proof-cache-ev18/cache \
+            --dist dist \
+            --run-id "$GITHUB_RUN_ID"
+          cp .agent-proof-cache-ev18/cache/receipt.json .agent-proof-cache-ev18/produced-receipt.json
 
-      - name: Upload EV-6 causal proof cache advisory evidence
-        if: always()
+      - name: Save EV-18 validated proof cache
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0' && steps.proof-cache-decision.outputs.reuse != 'true' && steps.proof-cache-restore.outputs.cache-hit != 'true' && steps.full-verification.outcome == 'success'
+        uses: actions/cache/save@v5
+        with:
+          path: .agent-proof-cache-ev18/cache
+          key: ${{ steps.proof-cache-request.outputs.cache-key }}
+
+      - name: Upload EV-18 proof-cache decision evidence
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0' && always()
         uses: actions/upload-artifact@v7
         with:
-          name: causal-proof-cache-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-          path: .agent-proof-cache/
-          if-no-files-found: warn
+          name: proof-cache-ev18-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: |
+            .agent-proof-cache-ev18/request.json
+            .agent-proof-cache-ev18/decision.json
+            .agent-proof-cache-ev18/produced-receipt.json
+          if-no-files-found: error
           include-hidden-files: true
           retention-days: 30
 

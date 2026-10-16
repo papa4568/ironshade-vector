@@ -11,7 +11,8 @@ const PRODUCER_HEAD = '${{ needs.candidate-build.outputs.candidate-sha }}';
 const PRODUCER_ARTIFACT = '${{ needs.candidate-build.outputs.artifact-name }}';
 const SYNTHETIC_EVENT_SHA = '${{ github.sha }}';
 const CHECKOUT_ACTION = 'actions/checkout@v7';
-const SOURCE_BOUND_BUILD_ACTIVE_SHA256 = 'a22db47859c1d97e6e4a7a137f9501b2c9a426f367f770142bf628447b61193f';
+const EV18_BUILD_ACTIVE_SHA256 = 'bef616f94dd6b0ed9e6763ee33f16e67c43164c910c596624197ed5ac1204b59';
+const REUSE_ENABLED_IF = "env.IRONSHADE_PROOF_CACHE_REUSE != '0'";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -146,8 +147,7 @@ export function parsePrCandidateWorkflow(workflowText) {
   for (let position = 0; position < starts.length; position += 1) {
     const start = starts[position];
     const end = starts[position + 1] ?? lines.length;
-    const id = lines[start].text.slice(0, -1);
-    jobs.set(id, parseJob(lines, start, end));
+    jobs.set(lines[start].text.slice(0, -1), parseJob(lines, start, end));
   }
   return { jobs };
 }
@@ -178,6 +178,11 @@ function runLines(step) {
   return (step?.run ?? '').split('\n').map(line => uncomment(line).trim()).filter(Boolean);
 }
 
+function hasLines(step, expected) {
+  const lines = runLines(step);
+  return expected.every(line => lines.includes(line));
+}
+
 function installScriptsDisabled(producer) {
   const install = stepByName(producer, 'Install locked dependencies');
   return failClosed(install)
@@ -187,12 +192,65 @@ function installScriptsDisabled(producer) {
     && runLines(install)[0] === 'npm ci --ignore-scripts --no-audit --no-fund';
 }
 
+function ev18PreflightContract(producer) {
+  const preflight = stepByName(producer, 'Prepare EV-18 closed proof inputs');
+  return Boolean(preflight)
+    && preflight.if === REUSE_ENABLED_IF
+    && preflight.env?.CANDIDATE_SHA === PR_HEAD
+    && runLines(preflight).length === 1
+    && runLines(preflight)[0] === 'bash scripts/prepare-full-repository-build-proof-closed.sh';
+}
+
+function ev18RequestContract(producer) {
+  const request = stepByName(producer, 'Compute EV-18 exact closure cache key');
+  return Boolean(request)
+    && request.if === REUSE_ENABLED_IF
+    && request.id === 'proof-cache-request'
+    && request.env?.CANDIDATE_SHA === PR_HEAD
+    && hasLines(request, [
+      'node agent/tools/proof-cache-promotion.mjs request \\',
+      '--candidate-sha "$CANDIDATE_SHA" \\',
+      '--output .agent-proof-cache-ev18/request.json \\',
+      '--github-output "$GITHUB_OUTPUT"',
+    ]);
+}
+
+function ev18RestoreContract(producer) {
+  const restore = stepByName(producer, 'Restore EV-18 exact closure proof cache');
+  return Boolean(restore)
+    && restore.if === REUSE_ENABLED_IF
+    && restore.id === 'proof-cache-restore'
+    && restore.uses === 'actions/cache/restore@v5'
+    && restore.with?.path === '.agent-proof-cache-ev18/cache'
+    && restore.with?.key === '${{ steps.proof-cache-request.outputs.cache-key }}'
+    && !Object.hasOwn(restore.with ?? {}, 'restore-keys');
+}
+
+function ev18DecisionContract(producer) {
+  const decision = stepByName(producer, 'Validate EV-18 cache candidate');
+  return Boolean(decision)
+    && decision.if === REUSE_ENABLED_IF
+    && decision.id === 'proof-cache-decision'
+    && hasLines(decision, [
+      'set -euo pipefail',
+      'node agent/tools/proof-cache-promotion.mjs decide \\',
+      '--request .agent-proof-cache-ev18/request.json \\',
+      '--cache-dir .agent-proof-cache-ev18/cache \\',
+      '--output .agent-proof-cache-ev18/decision.json \\',
+      '--github-output "$GITHUB_OUTPUT"',
+    ]);
+}
+
 function sourceBoundBuildContract(producer) {
-  const build = stepByName(producer, 'Run full repository verification and production build once');
+  const build = stepByName(producer, 'Run authoritative full repository verification or reuse validated closed proof');
   if (!failClosed(build) || build?.id !== 'full-verification') return false;
   if (build?.env?.CANDIDATE_SHA !== PR_HEAD) return false;
   const activeRun = runLines(build).join('\n');
-  return sha256(activeRun) === SOURCE_BOUND_BUILD_ACTIVE_SHA256;
+  return ev18PreflightContract(producer)
+    && ev18RequestContract(producer)
+    && ev18RestoreContract(producer)
+    && ev18DecisionContract(producer)
+    && sha256(activeRun) === EV18_BUILD_ACTIVE_SHA256;
 }
 
 function outputContract(producer) {
@@ -233,7 +291,7 @@ export function observePrCandidateHeadContract({ workflowText, candidateSha } = 
   const checks = [
     check('candidate-build-checkout', 'Producer checks out the immutable PR head exactly once.', uniqueCheckout(producer, PR_HEAD), 'candidate-build must contain exactly one actions/checkout@v7 step bound to github.event.pull_request.head.sha'),
     check('candidate-build-install-scripts-disabled', 'Producer dependency installation is fail-closed against lifecycle hooks.', installScriptsDisabled(producer), 'candidate-build must use the reviewed npm ci --ignore-scripts command unconditionally'),
-    check('candidate-build-source-bound-snapshot', 'Full verification delegates the exact PR-head identity to the reviewed shared source-bound proof profile.', sourceBoundBuildContract(producer), 'full-verification must unconditionally execute the reviewed shared proof script with CANDIDATE_SHA bound to the PR head'),
+    check('candidate-build-source-bound-snapshot', 'Every EV-18 producer path remains bound to the exact PR-head request and reviewed fallback/reuse envelope.', sourceBoundBuildContract(producer), 'EV-18 preflight/request/cache decision and full-verification rollback/reuse/fallback paths must match the reviewed exact-head producer contract'),
     check('candidate-output-contract', 'Producer exposes the runtime-asserted exact SHA and artifact identity.', outputContract(producer), 'candidate-build outputs candidate-sha and artifact-name must come from the identity step'),
     check('candidate-identity-runtime-assertion', 'Producer identity output is tied to an unconditional runtime HEAD assertion.', identityContract(producer), 'id: identity must bind CANDIDATE_SHA to PR head, emit candidate/artifact outputs, and assert git rev-parse HEAD'),
     check('review-context-consumer', 'Independent review context consumes the producer exact SHA.', uniqueCheckout(review, PRODUCER_HEAD), 'independent-review-context must contain exactly one checkout bound to producer candidate-sha'),
@@ -286,6 +344,8 @@ export function calibratePrCandidateHeadObserver({ workflowText, candidateSha } 
     { id: 'identity-comment-mentions-checkout', workflowText: replaceOnce(workflowText, '          set -euo pipefail\n          artifact_name=', `          # git checkout ${SYNTHETIC_EVENT_SHA} is documentation only\n          set -euo pipefail\n          artifact_name=`, 'identity comment control') },
   ];
 
+  const fullVerificationHeadBinding = `      - name: Run authoritative full repository verification or reuse validated closed proof\n        id: full-verification\n        env:\n          CANDIDATE_SHA: ${PR_HEAD}`;
+  const proofCacheRequestBinding = '          node agent/tools/proof-cache-promotion.mjs request \\\n            --candidate-sha "$CANDIDATE_SHA" \\';
   const dishonest = [
     {
       id: 'producer-synthetic-event-sha',
@@ -304,17 +364,37 @@ export function calibratePrCandidateHeadObserver({ workflowText, candidateSha } 
     },
     {
       id: 'source-bound-build-uses-synthetic-event-sha',
-      workflowText: replaceOnce(workflowText, '        run: bash scripts/run-full-repository-build-proof.sh', `        run: CANDIDATE_SHA=${SYNTHETIC_EVENT_SHA} bash scripts/run-full-repository-build-proof.sh`, 'source-bound proof delegation'),
+      workflowText: replaceOnce(workflowText, fullVerificationHeadBinding, fullVerificationHeadBinding.replace(PR_HEAD, SYNTHETIC_EVENT_SHA), 'source-bound proof candidate binding'),
       expected: ['candidate-build-source-bound-snapshot'],
     },
     {
       id: 'source-bound-build-comment-spoof',
-      workflowText: replaceOnce(workflowText, '        run: bash scripts/run-full-repository-build-proof.sh', '        run: |\n          # bash scripts/run-full-repository-build-proof.sh\n          echo "source-bound proof delegation removed"', 'source-bound proof comment spoof'),
+      workflowText: replaceOnce(workflowText, '            bash scripts/run-full-repository-build-proof.sh', '            # bash scripts/run-full-repository-build-proof.sh\n            echo "legacy proof delegation removed"', 'source-bound proof comment spoof'),
       expected: ['candidate-build-source-bound-snapshot'],
     },
     {
       id: 'source-bound-build-quoted-string-spoof',
-      workflowText: replaceOnce(workflowText, '        run: bash scripts/run-full-repository-build-proof.sh', "        run: echo 'bash scripts/run-full-repository-build-proof.sh'", 'source-bound proof quoted-string spoof'),
+      workflowText: replaceOnce(workflowText, '            bash scripts/run-full-repository-build-proof.sh', "            echo 'bash scripts/run-full-repository-build-proof.sh'", 'source-bound proof quoted-string spoof'),
+      expected: ['candidate-build-source-bound-snapshot'],
+    },
+    {
+      id: 'cache-request-synthetic-candidate',
+      workflowText: replaceOnce(
+        workflowText,
+        proofCacheRequestBinding,
+        proofCacheRequestBinding.replace('--candidate-sha "$CANDIDATE_SHA"', `--candidate-sha "${SYNTHETIC_EVENT_SHA}"`),
+        'cache request candidate binding',
+      ),
+      expected: ['candidate-build-source-bound-snapshot'],
+    },
+    {
+      id: 'cache-materialize-without-validated-decision',
+      workflowText: replaceOnce(workflowText, "          elif [[ '${{ steps.proof-cache-decision.outputs.reuse }}' == 'true' ]]; then", "          elif [[ 'true' == 'true' ]]; then", 'validated reuse decision'),
+      expected: ['candidate-build-source-bound-snapshot'],
+    },
+    {
+      id: 'closed-proof-fallback-removed',
+      workflowText: replaceOnce(workflowText, '            bash scripts/run-full-repository-build-proof-closed.sh', '            echo "closed proof fallback removed"', 'closed proof fallback'),
       expected: ['candidate-build-source-bound-snapshot'],
     },
     {
