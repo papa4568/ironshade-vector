@@ -46,7 +46,7 @@ Completed 2026-10-09 in advisory/shadow mode.
 - Added validation that shared-infrastructure exemptions can only reference sources whose kind is actually `shared-infrastructure`; implementation or observer sources cannot be relabeled to disguise circularity.
 - Added regressions proving a material signal derived from the implementation under test is rejected for enforcement, a separate observer path passes, unchanged graphs analyze deterministically, and the repository graph intentionally surfaces one circular and one independent important criterion.
 - Added compatibility coverage proving an EV-2 report can be attached to the existing candidate verification ledger as a SHA-bound artifact while cross-SHA independence evidence is still rejected by the existing exact-candidate contract.
-- Agent Orchestration now emits and uploads the advisory independence report for the exact candidate SHA. The report cannot grant a candidate pass and does not replace any existing candidate/browser/Android/APK gate.
+- Agent Orchestration now emits and uploads the advisory independence report for the exact candidate SHA. The report cannot grant a candidate pass and does not replace any existing candidate, browser, Android, APK, or ledger gate.
 
 ### Evidence
 
@@ -56,7 +56,7 @@ The EV-2 regressions reported `circularRejected=1`, `independentAccepted=1`, `sh
 
 Advisory evidence artifact `11622531843` (`causal-evidence-independence-348-5173070628bd0bf5e9e1a379b505c424362cbc7f`) is bound to the candidate SHA and has GitHub Actions digest `9509e5235785fb4435651cf96515acfe636194caa92c944721043a546b4ebe58`. The final candidate evidence artifact `11622128534` has digest `04a8e6fd4724cc81479d1506717b16b48687bd6b4206d8a7ba640563a5f8d8ef`.
 
-Exact-candidate verification also passed the full repository verification/production build, desktop and mobile-landscape browser E2E, APK construction/integrity, API 35 product smoke, API 36 large-screen smoke, the aggregate Android gate, and final PR Candidate Verification. APK artifact `11621947710` is bound to the same candidate SHA with Actions digest `337739f0799b77748029479f2b397cbbd534e597e4a2ebc848c30df8d1031d17`.
+Exact-candidate verification also passed the full repository verification/production build, desktop and mobile-landscape browser E2E, APK construction/integrity, API 35 product smoke, API 36 large-screen smoke, the aggregate Android gate, and final PR Candidate Verification. APK artifact `11621947710` is bound to the same candidate SHA with Actions digest `337739f0799b77748029479f15d47f94b1a2`.
 
 The first implementation candidate exposed a separate verification defect: API 36 reached the ready Babylon large-screen state but twice timed out waiting for the CDP `Page.captureScreenshot` RPC. The closeout candidate preserves all semantic CDP assertions and captures screenshots with the repository's existing `adb exec-out screencap -p` pattern instead. API 36 then passed and uploaded complete large-screen evidence, showing the correction hardened evidence capture rather than weakening the gate.
 
@@ -68,7 +68,7 @@ Rollback is to remove the EV-2 regression/report/upload steps from Agent Orchest
 
 ### Promotion status
 
-Not promoted. The repository report remains advisory and currently identifies one important criterion without a materially independent observation path. AO-6 independent-verifier/mechanical-invariant foundations and the experimental promotion rule remain prerequisites before EV-2 enforcement can become a default gate. The next experimental queue item is EV-3.
+Not promoted. The repository report remains advisory and currently identifies one important criterion without a materially independent observation path. AO-6 independent-verifier/mechanical-invariant foundations and the experimental promotion rule remain prerequisites before any EV-2 enforcement can become a default gate. The next experimental queue item is EV-3.
 
 ## EV-3 — Behavioral Genome
 
@@ -796,7 +796,7 @@ EV-22 changes verification/governance only. The trusted `pull_request_target` ob
 
 Rollback is deterministic: restore EV-9 v8 as the workflow entry point and remove v9. Before EV-18 is merged, that returns the repository to the legacy producer trust boundary and EV-18 remains blocked. After EV-18 is merged, reverting v9 must be paired with reverting the EV-18 producer transition because v8 intentionally does not authorize that producer shape. Existing full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, and independent-review obligations remain unchanged.
 
-This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and its exact-SHA proof set while removing only EV-22 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-22 review; no verdict or final candidate proof is inherited from `134edd00a41a16229e916124afb2e4e9886482f1`.
+This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and its exact-SHA proof set while removing only EV-22 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-22 independent review; no verdict or final candidate proof is inherited from `134edd00a41a16229e916124afb2e4e9886482f1`.
 
 ### Promotion status
 
@@ -859,7 +859,7 @@ Completed 2026-10-15 as the trust-boundary prerequisite required after EV-18 har
 
 Exact implementation candidate `f793d6cb7cd429830e679a411730b2175a68c926` passed Agent Orchestration run `38846374180` and PR Candidate Verification run `38846374307`. The exact-candidate producer, mechanical architecture invariants, promoted acceptance/evidence-independence gates, independent-review context, installable Android APK, API 35 product smoke, API 36 large-screen smoke, aggregate Android verification, and final candidate evidence all succeeded; browser E2E was correctly scope-skipped for verification/governance-only changes.
 
-Final exact-candidate evidence artifact `12025886554` (`agent-candidate-evidence-395-f793d6cb7cd429830e679a411730b2175a68c926`) has GitHub Actions digest `sha256:4f2447e56bcefa19438039245c35d5779b4c029d62a66a0b1c5b41f66409599a`. APK artifact `12023174247` has digest `sha256:e8ed11e96246ef0653985a647d9dcfd3c5bce5fed430434017218f707af43925`; API 35 artifact `12023687813` has digest `sha256:d56a12ae484a9cf510989f5efc77342f4ceb7a961930afd4c1bee3f01922fafc`; API 36 large-screen artifact `12023741881` has digest `sha256:e92d1af66c5a588caec269f6d4f21f6c6fba952acdbb3bc`; and independent-review context artifact `12023601989` has digest `sha256:2dff110857e86f37e536bbc46385120e58d3f3aa21b1363ed6641b3365d52805`.
+Final exact-candidate evidence artifact `12025886554` (`agent-candidate-evidence-395-f793d6cb7cd429830e679a411730b2175a68c926`) has GitHub Actions digest `sha256:4f2447e56bcefa19438039245c35d5779b4c029d62a66a0b1c5b41f66409599a`. APK artifact `12023174247` has digest `sha256:e8ed11e96246ef0653985a647d9dcfd3c5bce5fed430434017218f707af43925`; API 35 artifact `12023687813` has digest `sha256:d56a12ae484a9cf510989f5efc77342f4ceb7a961930afd4c1bee3f01922fafc`; API 36 large-screen artifact `12023741881` has digest `sha256:e92d1af66c5a588caec269f6d4f21f6c6f6b9c509e56217e538597da09982aad`; and independent-review context artifact `12023601989` has digest `sha256:2dff110857e86f37e536bbc46385120e58d3f3aa21b1363ed6641b3365d52805`.
 
 The repository-native automated verifier was unavailable because its GitHub Copilot CLI request exhausted the configured monthly quota. The documented human fallback was therefore used from the separate `Papa3445` collaborator account. After an initial malformed-result comment failed closed at schema validation, corrected independent-review comment `6208220334` matched the exact EV-24 packet/result schema, the exact candidate SHA, and returned `verdict="pass"` with all acceptance checks satisfied, every required proof credible, and no findings. Re-running only the blocked final candidate job then generated the complete exact-SHA evidence above. PR #395 merged the reviewed implementation to trusted `main` as merge commit `f0fce33f72b85c4a9b27dde778686409f4efff08`.
 
