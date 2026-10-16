@@ -8,13 +8,17 @@ on:
       - 'agent/proof-cache.json'
       - 'agent/proof-cache-history.json'
       - 'agent/proof-cache-closure-calibration-corpus.json'
+      - 'agent/proof-cache-promotion-policy.json'
       - 'agent/tools/causal-proof-cache.mjs'
       - 'agent/tools/proof-cache-closure-calibration-evidence.mjs'
+      - 'agent/tools/proof-cache-promotion.mjs'
       - 'agent/tests/causal-proof-cache.mjs'
       - 'agent/tests/proof-cache-calibration-evidence.mjs'
       - 'agent/tests/proof-cache-closure-calibration-evidence.mjs'
+      - 'agent/tests/proof-cache-promotion.mjs'
       - 'scripts/prepare-full-repository-build-proof-closed.sh'
       - 'scripts/run-full-repository-build-proof-closed.sh'
+      - '.github/workflows/pr-candidate.yml'
       - '.github/workflows/ev21-proof-cache-closure-calibration.yml'
       - 'docs/experimental-verification-roadmap.md'
       - 'docs/experimental-verification-archive.md'
@@ -26,13 +30,17 @@ on:
       - 'agent/proof-cache.json'
       - 'agent/proof-cache-history.json'
       - 'agent/proof-cache-closure-calibration-corpus.json'
+      - 'agent/proof-cache-promotion-policy.json'
       - 'agent/tools/causal-proof-cache.mjs'
       - 'agent/tools/proof-cache-closure-calibration-evidence.mjs'
+      - 'agent/tools/proof-cache-promotion.mjs'
       - 'agent/tests/causal-proof-cache.mjs'
       - 'agent/tests/proof-cache-calibration-evidence.mjs'
       - 'agent/tests/proof-cache-closure-calibration-evidence.mjs'
+      - 'agent/tests/proof-cache-promotion.mjs'
       - 'scripts/prepare-full-repository-build-proof-closed.sh'
       - 'scripts/run-full-repository-build-proof-closed.sh'
+      - '.github/workflows/pr-candidate.yml'
       - '.github/workflows/ev21-proof-cache-closure-calibration.yml'
       - 'docs/experimental-verification-roadmap.md'
       - 'docs/experimental-verification-archive.md'
@@ -65,7 +73,21 @@ jobs:
       - name: Install exact dependencies
         run: npm ci
 
-      - name: Run proof-cache contract regressions
+      - name: Detect EV-18 promotion state
+        id: promotion-state
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f agent/proof-cache-promotion-policy.json ]]; then
+            echo 'promoted=true' >> "$GITHUB_OUTPUT"
+            echo 'EV21_POST_PROMOTION_COMPATIBILITY mode=ev18-pinned'
+          else
+            echo 'promoted=false' >> "$GITHUB_OUTPUT"
+            echo 'EV21_CALIBRATION_MODE mode=pre-promotion'
+          fi
+
+      - name: Run pre-promotion proof-cache contract regressions
+        if: steps.promotion-state.outputs.promoted != 'true'
         run: |
           node agent/tests/causal-proof-cache.mjs
           node agent/tests/proof-cache-calibration-evidence.mjs
@@ -73,6 +95,7 @@ jobs:
           node agent/tools/causal-proof-cache.mjs history-check
 
       - name: Generate exact-SHA EV-21 closure evidence
+        if: steps.promotion-state.outputs.promoted != 'true'
         env:
           CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
@@ -113,10 +136,46 @@ jobs:
           NODE
 
       - name: Upload exact-SHA EV-21 closure evidence
+        if: steps.promotion-state.outputs.promoted != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: proof-cache-closure-calibration-ev21-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           path: .agent-proof-cache-closure-evidence-ev21/calibration.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+      - name: Verify archived EV-21 evidence remains pinned after EV-18
+        if: steps.promotion-state.outputs.promoted == 'true'
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          node agent/tests/causal-proof-cache.mjs
+          node agent/tools/causal-proof-cache.mjs history-check
+          node agent/tests/proof-cache-promotion.mjs
+          mkdir -p .agent-proof-cache-closure-evidence-ev21
+          node agent/tools/proof-cache-promotion.mjs evidence \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-proof-cache-closure-evidence-ev21/post-promotion.json
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('.agent-proof-cache-closure-evidence-ev21/post-promotion.json', 'utf8'));
+          const ev21 = report.sourceEvidence?.ev21;
+          const fail = message => { throw new Error(`EV21_POST_PROMOTION_FAIL ${message}`); };
+          if (report.taskId !== 'EV-18' || report.candidateSha !== process.env.CANDIDATE_SHA) fail('exact candidate promotion binding mismatch');
+          if (ev21?.taskId !== 'EV-21' || ev21?.candidateSha !== '945b44853742e43e92f3657df1b7cee1dfe5b0e1' || ev21?.workflowRunId !== '38777138277' || ev21?.artifactId !== '11994293248') fail('archived EV-21 source identity drifted');
+          if (JSON.stringify(ev21?.eligibleProofClasses) !== JSON.stringify(['full-repository-build-closed']) || ev21?.falseHits !== 0 || ev21?.sameClosureDisagreements !== 0 || ev21?.detectedInvalidationDefects !== 1) fail('archived EV-21 eligibility metrics drifted');
+          if (report.rollback?.forcesPrePromotionLegacyProof !== true) fail('EV-18 no longer restores the pre-promotion producer');
+          console.log(`EV21_POST_PROMOTION_PASS candidate=${report.candidateSha} archivedCandidate=${ev21.candidateSha} eligible=${ev21.eligibleProofClasses.join(',')} rollback=legacy`);
+          NODE
+
+      - name: Upload post-promotion EV-21 compatibility evidence
+        if: steps.promotion-state.outputs.promoted == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: proof-cache-closure-compatibility-ev21-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-proof-cache-closure-evidence-ev21/post-promotion.json
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 30
