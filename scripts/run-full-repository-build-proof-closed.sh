@@ -44,13 +44,24 @@ test ! -e "$snapshot/.git"
 test -d "$snapshot/node_modules"
 
 current_engine="$(docker version --format '{{.Server.Version}}')"
-current_image_id="$(docker image inspect --format '{{.Id}}' "$IRONSHADE_PROOF_PREPARED_IMAGE")"
 docker image inspect "$IRONSHADE_PROOF_BASE_IMAGE_REF" >/dev/null
 if [[ "$current_engine" != "$IRONSHADE_PROOF_DOCKER_ENGINE_VERSION" ]]; then
   echo "FULL_REPOSITORY_BUILD_CLOSED_FAIL Docker engine changed after preflight" >&2
   exit 2
 fi
-if [[ "$current_image_id" != "$IRONSHADE_PROOF_PREPARED_IMAGE_ID" ]]; then
+
+current_prepared_image_id="$(
+  bash scripts/compute-prepared-toolchain-identity.sh \
+    "$IRONSHADE_PROOF_PREPARED_IMAGE" \
+    "$IRONSHADE_PROOF_BASE_IMAGE_REF" \
+    '10.9.8' \
+    | sed -n 's/^IRONSHADE_PROOF_PREPARED_IMAGE_ID=//p'
+)"
+if [[ ! "$current_prepared_image_id" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+  echo "FULL_REPOSITORY_BUILD_CLOSED_FAIL invalid current prepared image identity" >&2
+  exit 2
+fi
+if [[ "$current_prepared_image_id" != "$IRONSHADE_PROOF_PREPARED_IMAGE_ID" ]]; then
   echo "FULL_REPOSITORY_BUILD_CLOSED_FAIL prepared image identity changed after preflight" >&2
   exit 2
 fi
