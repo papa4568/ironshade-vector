@@ -796,7 +796,7 @@ EV-22 changes verification/governance only. The trusted `pull_request_target` ob
 
 Rollback is deterministic: restore EV-9 v8 as the workflow entry point and remove v9. Before EV-18 is merged, that returns the repository to the legacy producer trust boundary and EV-18 remains blocked. After EV-18 is merged, reverting v9 must be paired with reverting the EV-18 producer transition because v8 intentionally does not authorize that producer shape. Existing full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, and independent-review obligations remain unchanged.
 
-This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and its exact-SHA proof set while removing only EV-22 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-22 review; no verdict or final candidate proof is inherited from `134edd00a41a16229e916124afb2e4e9886482f1`.
+This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and its exact-SHA proof set while removing only EV-22 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-22 independent review; no verdict or final candidate proof is inherited from `134edd00a41a16229e916124afb2e4e9886482f1`.
 
 ### Promotion status
 
@@ -986,3 +986,45 @@ This archive transition follows the repository's established split-EV self-refer
 ### Promotion status
 
 EV-26 permanently authenticates the reviewed unchanged-roadmap EV-18 transition without broadening experimental task selection or changing EV-18 producer semantics. EV-21, EV-22, EV-23, EV-24, EV-25, EV-27, and EV-26 prerequisites are satisfied; proof reuse remains disabled until EV-18 itself passes its promotion review. EV-18 — Reuse One Validated Proof Class is the next actionable experimental item.
+
+## EV-28 — Stabilize EV-18 Prepared-Image Closure Identity
+
+Completed 2026-10-16 as the prepared-image identity prerequisite split from EV-18 after a live unchanged-SHA reuse attempt exposed a false cache miss. EV-28 does not itself enable proof reuse; it stabilizes one EV-21-calibrated closure dimension so EV-18 can prove live reuse without weakening real drift detection.
+
+### Implemented
+
+- Preserved the existing EV-21 `IRONSHADE_PROOF_PREPARED_IMAGE_ID` closure slot and all five calibrated closure dimensions, but defined the prepared-image value as a deterministic canonical prepared-toolchain identity rather than Docker's rebuild-sensitive raw image `.Id`.
+- The canonical identity binds the immutable base-image ref, pinned npm version, and normalized actual filesystem content under `/usr/local`. The raw runtime Docker image ID remains diagnostic evidence only.
+- Hardened both sides of the closed-proof boundary: preflight computes the canonical identity, while `scripts/run-full-repository-build-proof-closed.sh` independently recomputes it immediately before proof execution and fails closed if it changed after preflight.
+- Added an exact-SHA focused workflow/regression that deletes the prepared image and builder cache between two fresh preflights, requires the same five calibrated identities, and separately mutates a non-npm `/usr/local` path. Stable causal inputs must retain the same canonical identity even when raw Docker IDs differ; the controlled non-npm mutation must change the canonical identity while leaving the npm CLI subtree digest unchanged.
+- Preserved EV-21's calibrated registry-result attribution through `npmCliTreeSha256` plus `dependencyTreeSha256`, the real-proof fallback, `IRONSHADE_PROOF_CACHE_REUSE=0` rollback semantics, exact-SHA review, browser, Android, APK, architecture, and candidate-artifact gates. The six-file EV-28 implementation changes none of EV-18's pinned 11 implementation files.
+
+### Review-driven corrections
+
+The first integrated EV-28 candidate exposed two fail-closed EV-21 compatibility defects and corrected them on the same branch. Candidate `433af7752a07f743087b0e3328ed868a3e850b68` expanded `registryResultBoundBy` beyond the calibrated registry-causality pair; that attribution drift was reverted. Intermediate candidate `d8fad7e4975599da2ecb4fb0b253770589aeddc6` then reached the actual closed-proof runner and failed because the consumer still compared the canonical prepared-image slot directly to Docker's raw `.Id`. EV-28 fixed the consumer to recompute and compare the canonical identity instead of removing or bypassing the validation.
+
+### Exact implementation evidence
+
+Final implementation candidate `1f97b866ea6c75fad7e0b72f204769808e6b88cb` passed EV-28 Prepared Image Stability run `38977083905`. Exact-SHA artifact `12079626042` has GitHub Actions digest `sha256:4f7d9ac1acf0e9abc8650037fbeae8e4bdbdc217ad6e668095437525d3a36c61`.
+
+The focused evidence performed two fresh prepared-image builds with the same candidate and five calibrated closure identities. Raw runtime Docker IDs differed (`sha256:434c845b...` versus `sha256:3e90b61b...`), while canonical `preparedImageId=sha256:029650f1b22c...` remained identical. A controlled non-npm `/usr/local` mutation changed the canonical prepared identity to `sha256:89c61b04...` while the npm CLI subtree digest remained unchanged, proving EV-28 removes the false miss without hiding real prepared-toolchain drift.
+
+The same exact candidate passed retained EV-21 Proof Cache Closure Calibration run `38977083996`; exact-SHA EV-21 artifact `12079034174` has digest `sha256:113b65fdd24fa7d5ef9d740915c53d61c4941791482c545647d3d3db3e42e46d`. It also passed retained EV-17 Proof Cache Calibration run `38977083953` and Agent Orchestration run `38977084059`.
+
+PR Candidate Verification run `38977084219` passed the authoritative full repository verification/production build, exact EV-28 independent-review packet, desktop and mobile-landscape browser journeys, installable APK construction/integrity/delivery, API 35 product smoke, API 36 large-screen smoke, aggregate Android verification, the trusted exact-SHA review gate, and complete candidate-evidence generation. Final candidate evidence artifact `12080385515` has digest `sha256:d285fd3a5136b04e0359b1d8c09f05823aec8328a122af76fbc67155dc7c4bbb`; review-context artifact `12078979066` has digest `sha256:8b4423e2735983521fbfe74ba1061f6dd431079d9b0f82a2e4c5c97b48192606`.
+
+APK artifact `12080046349` has digest `sha256:2e4ccf33a58facb4939ac7e147a175c734ebd86c2b133694621e5b0661e7acf4`; API 35 artifact `12078964695` has digest `sha256:15da3083f4bf5a6da63324a96bd6fcce6c36500b2c81b3f5cab9d6b983faca9d`; API 36 artifact `12079044857` has digest `sha256:320bb9f5d1a51caf1714cfa7f395f4a3c97daf665a3a0ef778784bb164d4536f`; desktop browser artifact `12080241118` has digest `sha256:174d1f252d33c211dd9e51f2b21d5cf9378454c0e710398432cf8b6ba02df446`; and mobile-landscape browser artifact `12080101984` has digest `sha256:dbc947501831d004bdcd849669da9d8cd27bb9c9f5c52acfe55d149d637b163c`.
+
+The first AO-6 dispatch on this exact candidate exited before Copilot review because Android aggregate was still running; it is not credited as review evidence. After all producers were terminal, trusted-main AO-6 run `38978446558` completed the real adversarial review and published exact-SHA pass comment `6226215850` from `github-actions[bot]`, with all five EV-28 acceptance checks satisfied, all six proof classes credible, and no major or blocking findings. The reviewer noted one minor optional hardening idea—running the read-only identity tar under `--network none`—but explicitly found the current deterministic read-only identity path non-blocking. PR #404 then merged the reviewed implementation to trusted `main` as merge commit `19945479da7230bc7b29c0436f6983a9214131bc`.
+
+### Isolation and rollback
+
+EV-28 changes verification infrastructure only. Canonical identity computation reads a prepared image and hashes normalized `/usr/local` content; the focused mutation occurs only in disposable Docker state. Product/runtime behavior is untouched and every existing exact-candidate proof remains authoritative.
+
+Rollback is deterministic: revert the EV-28 helper, preflight/closed-proof consumer integration, focused workflow/test, and roadmap prerequisite transition. That restores the prior raw-Docker-ID closure behavior, which is fail-closed but reintroduces the reproduced unchanged-input false cache miss; EV-18 reuse must therefore remain blocked if EV-28 is reverted. No full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, or independent-review requirement is weakened by rollback.
+
+This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and exact-SHA proof set while removing only EV-28 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-28 independent review; no proof or verdict is inherited from `1f97b866ea6c75fad7e0b72f204769808e6b88cb`.
+
+### Promotion status
+
+EV-28 permanently stabilizes the prepared-toolchain closure identity while preserving real drift detection and the five-input EV-21 contract. EV-18 is now the next actionable experimental item and must demonstrate a live first-miss/second-hit reuse sequence on one unchanged exact candidate before promotion completion.
