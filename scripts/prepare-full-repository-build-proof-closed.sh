@@ -48,8 +48,8 @@ if [[ "$existing_base_ref" != "$base_image_ref" ]]; then
   docker build --pull=false --tag "$prepared_image" - <<DOCKERFILE >/dev/null
 FROM ${base_image_ref}
 LABEL org.ironshade.proof-base="${base_image_ref}"
-RUN npm install --global npm@${prepared_npm_version} \
-    && test "\$(npm --version)" = '${prepared_npm_version}'
+RUN npm install --global npm@10.9.8 \
+    && test "\$(npm --version)" = '10.9.8'
 DOCKERFILE
 fi
 
