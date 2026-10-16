@@ -14,6 +14,7 @@ import {
   validateCandidateManifest,
   validateVerificationLedger,
 } from '../tools/candidate-evidence.mjs';
+import { matchPinnedExperimentalImplementation } from '../tools/select-review-task.mjs';
 
 const BASE_SHA = '1111111111111111111111111111111111111111';
 const HEAD_SHA = '2222222222222222222222222222222222222222';
@@ -182,4 +183,62 @@ try {
   await rm(tempRoot, { recursive: true, force: true });
 }
 
-console.log(`CANDIDATE_EVIDENCE_TEST_PASS proofs=${manifest.requiredProofs.length} manifestSha256=${manifestSummary.manifestSha256} artifacts=${richSummary.artifactCount} externalQa=${richSummary.unresolvedExternalQaCount} gitDiff=pass mismatchRejection=pass`);
+const ev18TransitionPaths = [
+  '.github/workflows/ev18-proof-cache-promotion.yml',
+  '.github/workflows/ev21-proof-cache-closure-calibration.yml',
+  '.github/workflows/pr-candidate.yml',
+  'AGENTS.md',
+  'agent/proof-cache-promotion-policy.json',
+  'agent/proof-cache-promotion-policy.schema.json',
+  'agent/tests/ci-proof-reuse.mjs',
+  'agent/tests/pr-candidate-head-observer.mjs',
+  'agent/tests/proof-cache-promotion.mjs',
+  'agent/tools/pr-candidate-head-observer.mjs',
+  'agent/tools/proof-cache-promotion.mjs',
+].sort();
+const referenceBlobByPath = new Map(ev18TransitionPaths.map((path, index) => [path, `reference-${index}`]));
+const matchingHeadBlobByPath = new Map(referenceBlobByPath);
+assert.equal(
+  matchPinnedExperimentalImplementation('EV-18', ev18TransitionPaths, {
+    headBlobByPath: matchingHeadBlobByPath,
+    referenceBlobByPath,
+  }),
+  true,
+  'the reviewed EV-18 11-file transition must authenticate when every blob matches the pinned reference',
+);
+assert.equal(
+  matchPinnedExperimentalImplementation('EV-18', ev18TransitionPaths.slice(0, -1), {
+    headBlobByPath: matchingHeadBlobByPath,
+    referenceBlobByPath,
+  }),
+  false,
+  'an incomplete transition must not claim EV-18 review ownership',
+);
+assert.throws(
+  () => matchPinnedExperimentalImplementation('EV-18', [...ev18TransitionPaths, 'src/unrelated.ts'], {
+    headBlobByPath: matchingHeadBlobByPath,
+    referenceBlobByPath,
+  }),
+  /must change exactly its reviewed transition paths/,
+  'extra files must fail closed instead of being hidden under EV-18 review ownership',
+);
+const driftedHeadBlobByPath = new Map(matchingHeadBlobByPath);
+driftedHeadBlobByPath.set(ev18TransitionPaths[0], 'drifted-blob');
+assert.throws(
+  () => matchPinnedExperimentalImplementation('EV-18', ev18TransitionPaths, {
+    headBlobByPath: driftedHeadBlobByPath,
+    referenceBlobByPath,
+  }),
+  /drifted from reviewed reference/,
+  'same-path semantic drift must fail closed',
+);
+assert.equal(
+  matchPinnedExperimentalImplementation('EV-19', ev18TransitionPaths, {
+    headBlobByPath: matchingHeadBlobByPath,
+    referenceBlobByPath,
+  }),
+  false,
+  'unpinned EV tasks must not gain review ownership from the EV-18 transition',
+);
+
+console.log(`CANDIDATE_EVIDENCE_TEST_PASS proofs=${manifest.requiredProofs.length} manifestSha256=${manifestSummary.manifestSha256} artifacts=${richSummary.artifactCount} externalQa=${richSummary.unresolvedExternalQaCount} gitDiff=pass mismatchRejection=pass pinnedEv18Review=pass`);
