@@ -16,10 +16,22 @@ const HEAD_SHA = '5555555555555555555555555555555555555555';
 
 const graph = await loadEvidenceGraph('agent/evidence-independence.json');
 const policy = JSON.parse(await readFile('agent/evidence-independence-policy.json', 'utf8'));
+const trustedObserverWorkflow = await readFile('.github/workflows/ev9-trusted-pr-candidate-observer.yml', 'utf8');
 const scope = validateEvidenceIndependencePolicy(policy, graph);
 assert.deepEqual(scope.enforcedCriterionIds, ['candidate-workflows-use-exact-pr-head']);
 assert.deepEqual(scope.excludedImportantCriteria.map(entry => entry.criterionId), ['candidate-evidence-rejects-cross-sha-proof']);
 assert.match(scope.excludedImportantCriteria[0].reason, /circular/i);
+
+assert.match(
+  trustedObserverWorkflow,
+  /verify-pr-candidate:[\s\S]*if: github\.event_name == 'pull_request_target'[\s\S]*ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}[\s\S]*persist-credentials: false/,
+  'trusted PR-candidate observation must execute from the exact trusted base without persisted credentials',
+);
+assert.match(
+  trustedObserverWorkflow,
+  /Fetch candidate object as untrusted data[\s\S]*git fetch --no-tags --force origin "pull\/\$\{PR_NUMBER\}\/head"[\s\S]*test "\$\(git rev-parse HEAD\)" = "\$\{\{ github\.event\.pull_request\.base\.sha \}\}"/,
+  'trusted observer bootstrap must fetch the candidate only as data and keep HEAD pinned to trusted base',
+);
 
 const calibration = runEvidenceIndependenceCalibration();
 assert.equal(calibration.pass, true);
@@ -173,4 +185,4 @@ assert.throws(
   'independence decisions must remain bound to the exact candidate SHA',
 );
 
-console.log(`EVIDENCE_INDEPENDENCE_PROMOTION_PASS enforced=${decision.enforcedCriteria.length} excluded=${decision.excludedImportantCriteria.length} calibrationCases=${calibration.cases.length} stable=${calibration.cases.filter(entry => entry.stable).length} falsePositives=${calibration.falsePositives}/${calibration.falsePositiveTrials} falseNegatives=${calibration.falseNegatives}/${calibration.falseNegativeTrials} producerSurfaceFalsePositives=${producerSurfaceCalibration.falsePositives}/${producerSurfaceCalibration.falsePositiveTrials} producerSurfaceFalseNegatives=${producerSurfaceCalibration.falseNegatives}/${producerSurfaceCalibration.falseNegativeTrials} createRequire=blocked circularBlocked=${circularDecision.blocking} unsupportedBlocked=${unsupportedDecision.blocking} rollback=${rollbackDecision.mode} exactSha=bound candidatePassGranted=false`);
+console.log(`EVIDENCE_INDEPENDENCE_PROMOTION_PASS enforced=${decision.enforcedCriteria.length} excluded=${decision.excludedImportantCriteria.length} calibrationCases=${calibration.cases.length} stable=${calibration.cases.filter(entry => entry.stable).length} falsePositives=${calibration.falsePositives}/${calibration.falsePositiveTrials} falseNegatives=${calibration.falseNegatives}/${calibration.falseNegativeTrials} producerSurfaceFalsePositives=${producerSurfaceCalibration.falsePositives}/${producerSurfaceCalibration.falsePositiveTrials} producerSurfaceFalseNegatives=${producerSurfaceCalibration.falseNegatives}/${producerSurfaceCalibration.falseNegativeTrials} createRequire=blocked circularBlocked=${circularDecision.blocking} unsupportedBlocked=${unsupportedDecision.blocking} rollback=${rollbackDecision.mode} exactSha=bound trustedObserverBase=pinned candidatePassGranted=false`);
