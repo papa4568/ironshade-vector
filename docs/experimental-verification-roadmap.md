@@ -28,14 +28,8 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-23 — Rebind Trusted Observer to Provenance-Hardened EV-18 Producer**
-  - **Split from blocked EV-18 after independent review:** trusted review of the first EV-18 candidate found that cache receipts could claim a syntactically valid source candidate/run without authenticating that GitHub Actions run as the real proof producer. The EV-18 branch now fails closed on live source-run provenance, which changes objects intentionally pinned by EV-22 trusted observer v9.
-  - Bootstrap a new trusted observer revision from trusted `main` that preserves v9 for legacy candidates while authorizing only the reviewed provenance-hardened EV-18 transition object set; candidate-controlled observer code must never become its own trust root.
-  - Exercise the real Git-object transition verifier against a valid corrected EV-18 reference plus unexpected-path, pinned-object, browser/Android, source-bound dependency, and protected-agent drift attacks with zero false positives and zero false negatives.
-  - The implementation candidate is merge-eligible when the observer bootstrap passes exact-candidate technical gates and independent review. Keep EV-23 active through that implementation merge; only the required follow-up closeout on a trusted-main base may archive/remove EV-23 and allow EV-18 to resume.
-
 - [ ] **EV-18 — Reuse One Validated Proof Class**
-  - **EV-21 and EV-22 satisfied; EV-23 required after review hardening:** archived EV-21 calibration independently established `full-repository-build-closed` as the one reuse-eligible proof class by closure-binding the five required immutable/artifact identities and eliminating network/registry causality from the reused build segment; merged EV-22 trusted observer v9 authenticated the original reviewed producer transition. EV-23 must rebind that trust boundary to the provenance-hardened EV-18 candidate before promotion can merge.
+  - **EV-21, EV-22, and EV-23 prerequisites satisfied:** archived EV-21 calibration independently established `full-repository-build-closed` as the one reuse-eligible proof class by closure-binding the five required immutable/artifact identities and eliminating network/registry causality from the reused build segment; merged EV-22 trusted observer v9 authenticated the original reviewed producer transition; merged EV-23 trusted observer v10 independently authenticates the provenance-hardened producer reference and full Git tree-entry identity. Promotion remains disabled until EV-18 itself passes review.
   - Enable reuse for one proof class justified by EV-17 plus EV-21 closure calibration, requiring exact input/context digests, immutable candidate identity, authenticated and auditable cache provenance, and fail-closed fallback to the real proof for any unknown or inconsistent dependency.
   - Prove cache disablement forces the original proof to rerun and preserves prior acceptance semantics.
   - Done when `AGENTS.md` and proof-cache contracts document the promoted class and rollback, and the exact candidate is archived with required proofs and independent review; further proof classes require separate roadmap items.
@@ -52,7 +46,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Intended dependency order
 
-EV-8 through EV-20 should normally execute in order. EV-8 and EV-9 establish stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/21/22/23/18, and EV-19/20 deliberately separate calibration, trust bootstrapping, governance, and enforcement so each ownership cycle has one primary verification closure. EV-21, EV-22, and EV-23 are intentionally numbered after the original queue because they were split only after earlier EV work exposed concrete prerequisites; their executable positions before EV-18 are authoritative until that reviewed prerequisite work completes.
+EV-8 through EV-20 should normally execute in order. EV-8 and EV-9 establish stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/21/22/23/18, and EV-19/20 deliberately separate calibration, trust bootstrapping, governance, and enforcement so each ownership cycle has one primary verification closure. EV-21, EV-22, and EV-23 are intentionally numbered after the original queue because they were split only after earlier EV work exposed concrete prerequisites; their executable positions before EV-18 were authoritative until that reviewed prerequisite work completed.
 
 EV-1 through EV-7 remain verified prototype history in `docs/experimental-verification-archive.md`. Completing a promotion item does not rewrite that history; the promotion itself receives a new archived record.
 

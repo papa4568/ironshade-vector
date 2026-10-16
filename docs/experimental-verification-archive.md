@@ -801,3 +801,44 @@ This archive transition follows the repository's established split-EV self-refer
 ### Promotion status
 
 Trusted observer v9 is now permanent repository trust infrastructure for the reviewed EV-18 producer transition; proof reuse is still disabled. EV-21 and EV-22 prerequisites are satisfied, so EV-18 — Reuse One Validated Proof Class is the next actionable experimental item.
+
+## EV-23 — Rebind Trusted Observer to Provenance-Hardened EV-18 Producer
+
+Completed 2026-10-15 as the trust-boundary prerequisite required after EV-18's first independent review. EV-23 does not enable proof reuse; it advances the trusted EV-9 observer so the provenance-hardened producer can be authenticated without trusting candidate-controlled observer code.
+
+### Implemented
+
+- Added trusted EV-9 observer v10 while preserving v8 for legacy candidate producers.
+- Pinned the provenance-hardened EV-18 implementation reference `2174a1092a3b478589c2d26c2acb56ed2a99fd05`, required it to remain an ancestor, required exactly the reviewed 12 transition paths, and compared full Git tree entries (`mode type object`) rather than blob content alone.
+- Kept browser and Android consumer workflows, source-bound consumer dependencies, and protected non-transition `agent/` objects trusted-base identical across the transition.
+- Added production transition calibration against unexpected-path, pinned-content, pinned-mode, browser, Android, dependency, and protected-agent drift with zero false-positive and zero false-negative budgets.
+- Added a steady-state v10 boundary that pins the reviewed provenance-hardened PR Candidate workflow tree entry after EV-18 promotion.
+- Kept proof reuse disabled throughout EV-23. EV-18 remains responsible for promotion, fallback semantics, rollback, and its own independent review.
+
+### Review-driven corrections
+
+Trusted review of superseded EV-23 candidate `19e0272f2874a947a126cd9a6ec78e428d570460` passed the primary acceptance checks but reported a minor gap: pinned transition checks compared blob hashes and would not detect executable-bit-only drift. Candidate `de12c3dfde16f368bf0c4898e57186140a1e494b` corrected that by comparing full Git tree entries and adding an explicit `pinned-mode-drift` production attack.
+
+Fresh trusted review of `de12c3dfde16f368bf0c4898e57186140a1e494b` then exposed a lifecycle self-reference defect in the roadmap acceptance wording: the pre-merge implementation review was asked to prove the future implementation merge and separate closeout. The same branch clarified the existing two-phase lifecycle without changing trust code. Exact implementation candidate `ff174778be2cbeeb1427e3207c17de4e8df72ef5` therefore preserves the fail-closed review-before-merge rule while making implementation merge eligibility independently reviewable.
+
+### Exact implementation evidence
+
+Candidate `ff174778be2cbeeb1427e3207c17de4e8df72ef5` passed EV-9 Trusted PR Candidate Observer run `38825803886`, Agent Orchestration run `38825803869`, retained EV-17 Proof Cache Calibration run `38825803978`, and EV-21 Proof Cache Closure Calibration run `38825803889`.
+
+PR Candidate Verification run `38825803962` on the same exact SHA passed the authoritative full repository verification/production build, promoted repository gates, mechanical architecture invariants, exact candidate web artifact, independent-review context, installable APK construction/integrity/delivery, API 35 product smoke, API 36 large-screen smoke, aggregate Android verification, and—after trusted review existed—the final exact-SHA review/evidence gate. Browser E2E was correctly skipped because EV-23 changes verification/governance only.
+
+Exact-SHA final candidate evidence artifact `12017067165` (`agent-candidate-evidence-393-ff174778be2cbeeb1427e3207c17de4e8df72ef5`) has GitHub Actions digest `sha256:47f8dc324f1d7db0266505412df72312e315989f1c251054978c2e54a3c2cda1`. APK artifact `12015253373` has digest `sha256:1dcf9a707c0e276b9f9e1fd21aa403c782273f05d0f10d298cdb43be552a2666`; API 35 artifact `12015069387` has digest `sha256:3d3f00f99d84338eb293d60256c8d9392f9505221f463c1ae039d824663d1717`; API 36 large-screen artifact `12014963739` has digest `sha256:2db37171eb0601aba5735bab24b7b042d5a816a98bac996a4a66dadc93211053`; independent-review context artifact `12015347854` has digest `sha256:a833b5357c32827cbfd49ccec8b8e590ac8c2e0597243f19b6fba952acdbb3bc`.
+
+Fresh trusted review source run `38830407127` (PR comment `6205318197`) returned `verdict="pass"` on exact candidate `ff174778be2cbeeb1427e3207c17de4e8df72ef5`; trusted-review artifact `12016064318` has digest `sha256:8229afcebba2581484e5ebd47e29705e22b4a8d39e355e3b38ae6874779926ce`. PR #393 then merged the reviewed implementation to trusted `main` as merge commit `6d65ce60f884e4abf11404e9ca41a98acd9bc2ba`.
+
+### Isolation and rollback
+
+EV-23 changes verification/governance only. The trusted `pull_request_target` observer executes from the exact trusted base checkout and treats candidate EV-18 objects only as Git data; candidate-controlled observer code never becomes its own trust root. Production calibration creates temporary Git commits/index state only and does not alter product/runtime state.
+
+Rollback is deterministic: before EV-18 merges, restore observer v9/v8 as the workflow entry point and remove v10, which leaves EV-18 blocked. After EV-18 merges, reverting v10 must be paired with reverting the provenance-hardened EV-18 producer transition because the earlier observer does not authorize that producer object set. Existing full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, and independent-review obligations remain unchanged.
+
+This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and exact-SHA proof set while removing only EV-23 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-23 independent review; no verdict or final candidate proof is inherited from `ff174778be2cbeeb1427e3207c17de4e8df72ef5`.
+
+### Promotion status
+
+Trusted observer v10 is now permanent repository trust infrastructure for the provenance-hardened EV-18 producer transition; proof reuse remains disabled. EV-21, EV-22, and EV-23 prerequisites are satisfied, so EV-18 — Reuse One Validated Proof Class is the next actionable experimental item.
