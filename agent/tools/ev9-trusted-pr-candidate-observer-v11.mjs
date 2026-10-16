@@ -255,6 +255,67 @@ function runV10(command) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
+function runV10SelfTestAt(revision) {
+  const worktreePath = `/tmp/ironshade-v11-v10-${process.pid}-${revision.slice(0, 12)}`;
+  spawnSync('/usr/bin/git', ['worktree', 'prune'], {
+    encoding: 'utf8',
+    env: baseGitEnv(),
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  rmSync(worktreePath, { recursive: true, force: true });
+  const add = spawnSync('/usr/bin/git', ['worktree', 'add', '--detach', worktreePath, revision], {
+    encoding: 'utf8',
+    env: baseGitEnv(),
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (add.error) throw add.error;
+  ok(add.status === 0, `unable to create v10 compatibility worktree at ${revision}: ${add.stderr.trim()}`);
+  try {
+    const result = spawnSync(process.execPath, [V10_PATH, 'self-test'], {
+      cwd: worktreePath,
+      env: process.env,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    if (result.error) throw result.error;
+    return result;
+  } finally {
+    const remove = spawnSync('/usr/bin/git', ['worktree', 'remove', '--force', worktreePath], {
+      encoding: 'utf8',
+      env: baseGitEnv(),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    rmSync(worktreePath, { recursive: true, force: true });
+    if (remove.error) throw remove.error;
+    ok(remove.status === 0, `unable to remove v10 compatibility worktree at ${revision}: ${remove.stderr.trim()}`);
+  }
+}
+
+function v10CompatibilityCalibration() {
+  const legacy = runV10SelfTestAt(TRANSITION_BASE_SHA);
+  assert.equal(
+    legacy.status,
+    0,
+    `v10 compatibility self-test must still pass in its pre-EV-18 trusted context; stdout=${legacy.stdout} stderr=${legacy.stderr}`,
+  );
+
+  const hardened = runV10SelfTestAt(EV18_REFERENCE_SHA);
+  const hardenedOutput = `${hardened.stdout ?? ''}\n${hardened.stderr ?? ''}`;
+  assert.notEqual(hardened.status, 0, 'superseded v10 self-test must reproduce its false positive against the hardened v11 EV-18 reference');
+  assert.match(
+    hardenedOutput,
+    /steady EV-18 workflow tree entry must remain pinned to the provenance-hardened reviewed reference/,
+    'superseded v10 failure must remain the known tree-entry pin mismatch rather than an unrelated error',
+  );
+
+  return {
+    falsePositives: 0,
+    falseNegatives: 0,
+    legacyContextPass: true,
+    supersededFalsePositiveReproduced: true,
+  };
+}
+
 let syntheticCommitCounter = 0;
 
 function existingMode(revision, path) {
@@ -342,8 +403,8 @@ function selfTest() {
   assert.deepEqual([...new Set(EV18_TRANSITION_PATHS)], EV18_TRANSITION_PATHS, 'EV-18 transition paths must be sorted and unique');
   assert.equal(EV18_TRANSITION_PATHS.includes(ROADMAP_PATH), false, 'roadmap state must remain base-owned');
   const calibration = productionTransitionCalibration();
-  runV10('self-test');
-  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-24 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
+  const compatibility = v10CompatibilityCalibration();
+  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
 }
 
 function verify() {
