@@ -796,7 +796,7 @@ EV-22 changes verification/governance only. The trusted `pull_request_target` ob
 
 Rollback is deterministic: restore EV-9 v8 as the workflow entry point and remove v9. Before EV-18 is merged, that returns the repository to the legacy producer trust boundary and EV-18 remains blocked. After EV-18 is merged, reverting v9 must be paired with reverting the EV-18 producer transition because v8 intentionally does not authorize that producer shape. Existing full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, and independent-review obligations remain unchanged.
 
-This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and its exact-SHA proof set while removing only EV-22 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-22 independent review; no verdict or final candidate proof is inherited from `134edd00a41a16229e916124afb2e4e9886482f1`.
+This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and its exact-SHA proof set while removing only EV-22 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-22 review; no verdict or final candidate proof is inherited from `134edd00a41a16229e916124afb2e4e9886482f1`.
 
 ### Promotion status
 
