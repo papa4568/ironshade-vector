@@ -14,6 +14,25 @@ import {
 } from './roadmap-adapter.mjs';
 import { loadTaskGraph, validateTaskGraph } from './validate-task-graph.mjs';
 
+const PINNED_EXPERIMENTAL_IMPLEMENTATIONS = Object.freeze({
+  'EV-18': Object.freeze({
+    referenceSha: '0d996b64ac47306a244fcd67e938b937910f3d85',
+    changedFiles: Object.freeze([
+      '.github/workflows/ev18-proof-cache-promotion.yml',
+      '.github/workflows/ev21-proof-cache-closure-calibration.yml',
+      '.github/workflows/pr-candidate.yml',
+      'AGENTS.md',
+      'agent/proof-cache-promotion-policy.json',
+      'agent/proof-cache-promotion-policy.schema.json',
+      'agent/tests/ci-proof-reuse.mjs',
+      'agent/tests/pr-candidate-head-observer.mjs',
+      'agent/tests/proof-cache-promotion.mjs',
+      'agent/tools/pr-candidate-head-observer.mjs',
+      'agent/tools/proof-cache-promotion.mjs',
+    ].sort()),
+  }),
+});
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -60,6 +79,59 @@ function experimentalContract(markdown) {
     title: task.title,
     acceptance: [...task.acceptance],
   }));
+}
+
+function changedFilesBetween(baseRef, headRef) {
+  const raw = execFileSync('git', ['diff', '--name-only', '-z', baseRef, headRef], { encoding: 'utf8' });
+  return raw.split('\0').filter(Boolean).sort();
+}
+
+function blobAtRef(ref, path) {
+  return execFileSync('git', ['rev-parse', `${ref}:${path}`], { encoding: 'utf8' }).trim();
+}
+
+export function matchPinnedExperimentalImplementation(
+  taskId,
+  changedFiles,
+  { headBlobByPath = new Map(), referenceBlobByPath = new Map() } = {},
+) {
+  const transition = PINNED_EXPERIMENTAL_IMPLEMENTATIONS[taskId];
+  if (!transition) return false;
+  const actual = [...changedFiles].sort();
+  const expected = [...transition.changedFiles];
+  const hasEveryExpectedPath = expected.every(path => actual.includes(path));
+  if (!hasEveryExpectedPath) return false;
+  assert(
+    actual.length === expected.length && actual.every((path, index) => path === expected[index]),
+    `pinned experimental implementation ${taskId} must change exactly its reviewed transition paths`,
+  );
+  for (const path of expected) {
+    const headBlob = headBlobByPath.get(path);
+    const referenceBlob = referenceBlobByPath.get(path);
+    assert(typeof headBlob === 'string' && headBlob.length > 0, `pinned experimental implementation ${taskId} is missing head blob identity for ${path}`);
+    assert(typeof referenceBlob === 'string' && referenceBlob.length > 0, `pinned experimental implementation ${taskId} is missing reference blob identity for ${path}`);
+    assert(headBlob === referenceBlob, `pinned experimental implementation ${taskId} drifted from reviewed reference at ${path}`);
+  }
+  return true;
+}
+
+export function selectPinnedExperimentalImplementationReviewTask(baseMarkdown, { baseRef, headRef } = {}) {
+  if (!baseRef || !headRef) return null;
+  const active = selectExperimentalReviewTask(baseMarkdown);
+  if (!active) return null;
+  const transition = PINNED_EXPERIMENTAL_IMPLEMENTATIONS[active.task.id];
+  if (!transition) return null;
+  const changedFiles = changedFilesBetween(baseRef, headRef);
+  const hasEveryExpectedPath = transition.changedFiles.every(path => changedFiles.includes(path));
+  if (!hasEveryExpectedPath) return null;
+  const headBlobByPath = new Map();
+  const referenceBlobByPath = new Map();
+  for (const path of transition.changedFiles) {
+    headBlobByPath.set(path, blobAtRef(headRef, path));
+    referenceBlobByPath.set(path, blobAtRef(transition.referenceSha, path));
+  }
+  if (!matchPinnedExperimentalImplementation(active.task.id, changedFiles, { headBlobByPath, referenceBlobByPath })) return null;
+  return { task: active.task, mode: 'experimental' };
 }
 
 export function selectExperimentalCandidateReviewTask(headMarkdown, { baseMarkdown = null } = {}) {
@@ -131,10 +203,12 @@ export async function selectReviewTask({ baseRef = null, headRef = null, useEven
   }
 
   if (headRef && baseRef) {
+    const headExperimentalRoadmap = loadExperimentalRoadmapAtRef(headRef);
+    const baseExperimentalRoadmap = loadExperimentalRoadmapAtRef(baseRef);
     const experimental = selectExperimentalCandidateReviewTask(
-      loadExperimentalRoadmapAtRef(headRef),
-      { baseMarkdown: loadExperimentalRoadmapAtRef(baseRef) },
-    );
+      headExperimentalRoadmap,
+      { baseMarkdown: baseExperimentalRoadmap },
+    ) ?? selectPinnedExperimentalImplementationReviewTask(baseExperimentalRoadmap, { baseRef, headRef });
     if (experimental) {
       return {
         taskId: experimental.task.id,
@@ -154,7 +228,7 @@ export async function selectReviewTask({ baseRef = null, headRef = null, useEven
     product = selectProductReviewTask(graph);
   }
 
-  if (!product) throw new Error('no active orchestration task, changed experimental promotion contract, or executable product-roadmap task is available for independent review');
+  if (!product) throw new Error('no active orchestration task, authenticated experimental promotion transition, changed experimental promotion contract, or executable product-roadmap task is available for independent review');
   return { taskId: product.task.id, source: 'docs/content-roadmap.md', mode: product.mode };
 }
 
