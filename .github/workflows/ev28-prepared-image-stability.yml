@@ -1,0 +1,54 @@
+name: EV-28 Prepared Image Stability
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ev28-prepared-image-stability.yml'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'scripts/compute-prepared-toolchain-identity.sh'
+      - 'scripts/prepare-full-repository-build-proof-closed.sh'
+      - 'scripts/run-full-repository-build-proof-closed.sh'
+      - 'scripts/test-prepared-image-identity-stability.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ev28-prepared-image-stability-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepared-image-stability:
+    name: Prepared Image Stability
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact candidate identity
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+
+      - name: Prove two fresh prepared-image builds are closure-stable
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EV28_EVIDENCE_DIR: .ev28-prepared-image-stability
+        run: bash scripts/test-prepared-image-identity-stability.sh
+
+      - name: Upload EV-28 exact-SHA stability evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: ev28-prepared-image-stability-${{ github.event.pull_request.number || 'manual' }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: .ev28-prepared-image-stability/evidence.json
+          if-no-files-found: error
+          retention-days: 30

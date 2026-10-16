@@ -18,12 +18,14 @@ fi
 
 base_image='node:22.23.2-bookworm'
 prepared_image='ironshade-proof-closed:node-22.23.2-npm-10.9.8'
+prepared_npm_version='10.9.8'
 work_root="${FULL_REPOSITORY_BUILD_PREPARED_ROOT:-.agent-proof-cache-closure}"
 if [[ "$work_root" != /* ]]; then
   work_root="$PWD/$work_root"
 fi
 prepared_dir="$work_root/$candidate_sha"
 snapshot="$prepared_dir/snapshot"
+identity_env="$prepared_dir/prepared-toolchain-identity.env"
 
 rm -rf "$prepared_dir"
 mkdir -p "$snapshot"
@@ -50,11 +52,18 @@ RUN npm install --global npm@10.9.8 \
     && test "\$(npm --version)" = '10.9.8'
 DOCKERFILE
 fi
-prepared_image_id="$(docker image inspect --format '{{.Id}}' "$prepared_image")"
-if [[ ! "$prepared_image_id" =~ ^sha256:[a-f0-9]{64}$ ]]; then
-  echo "FULL_REPOSITORY_BUILD_CLOSURE_PREP_FAIL invalid prepared image identity: $prepared_image_id" >&2
-  exit 2
-fi
+
+bash scripts/compute-prepared-toolchain-identity.sh \
+  "$prepared_image" \
+  "$base_image_ref" \
+  "$prepared_npm_version" \
+  > "$identity_env"
+# Values are machine-generated sha256/version tokens with no shell metacharacters.
+# shellcheck disable=SC1090
+source "$identity_env"
+prepared_image_id="$IRONSHADE_PROOF_PREPARED_IMAGE_ID"
+prepared_toolchain_tree_sha256="$IRONSHADE_PROOF_PREPARED_TOOLCHAIN_TREE_SHA256"
+runtime_docker_image_id="$IRONSHADE_PROOF_RUNTIME_DOCKER_IMAGE_ID"
 
 npm_cli_tree_sha256="$(
   docker run --rm "$prepared_image" sh -lc '
@@ -111,6 +120,9 @@ cat > "$prepared_dir/manifest.json" <<EOF
   "baseImageRef": "$base_image_ref",
   "preparedImage": "$prepared_image",
   "preparedImageId": "$prepared_image_id",
+  "preparedImageIdentityMethod": "canonical-usrlocal-v1",
+  "preparedToolchainTreeSha256": "$prepared_toolchain_tree_sha256",
+  "runtimeDockerImageId": "$runtime_docker_image_id",
   "npmCliTreeSha256": "$npm_cli_tree_sha256",
   "dockerEngineVersion": "$docker_engine_version",
   "dependencyTreeSha256": "$dependency_tree_sha256",
@@ -124,4 +136,4 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   cat "$prepared_dir/closure.env" >> "$GITHUB_ENV"
 fi
 
-echo "FULL_REPOSITORY_BUILD_CLOSURE_PREP_PASS candidate=$candidate_sha baseImageRef=$base_image_ref npmCliTree=$npm_cli_tree_sha256 preparedImageId=$prepared_image_id dockerEngine=$docker_engine_version dependencyTree=$dependency_tree_sha256 networkPhase=completed-before-cache-decision"
+echo "FULL_REPOSITORY_BUILD_CLOSURE_PREP_PASS candidate=$candidate_sha baseImageRef=$base_image_ref npmCliTree=$npm_cli_tree_sha256 preparedImageId=$prepared_image_id runtimeDockerImageId=$runtime_docker_image_id preparedToolchainTree=$prepared_toolchain_tree_sha256 dockerEngine=$docker_engine_version dependencyTree=$dependency_tree_sha256 networkPhase=completed-before-cache-decision identityMethod=canonical-usrlocal-v1"
