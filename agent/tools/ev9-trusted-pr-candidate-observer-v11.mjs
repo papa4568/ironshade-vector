@@ -4,7 +4,7 @@ import { rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const LEGACY_ANCHOR_SHA = 'ad4ec884ba2aa262b06f91a03411a972550cbb87';
-const TRANSITION_BASE_SHA = 'e77b70fe4766ba9cd2892c222df0acd1b4c827ca';
+const TRANSITION_BASE_SHA = '29eca981f898c838072824d6edb1d0a107ba2d28';
 const EV18_REFERENCE_SHA = '4e3f2021e2ee208dffe454f2af527840c8ff7aff';
 const PR_CANDIDATE_PATH = '.github/workflows/pr-candidate.yml';
 const BROWSER_WORKFLOW_PATH = '.github/workflows/browser-e2e.yml';
