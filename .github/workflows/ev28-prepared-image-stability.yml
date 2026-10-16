@@ -7,6 +7,7 @@ on:
       - 'docs/experimental-verification-roadmap.md'
       - 'scripts/compute-prepared-toolchain-identity.sh'
       - 'scripts/prepare-full-repository-build-proof-closed.sh'
+      - 'scripts/run-full-repository-build-proof-closed.sh'
       - 'scripts/test-prepared-image-identity-stability.sh'
   workflow_dispatch:
 
