@@ -21,7 +21,7 @@ Implementation candidate `bd79b1de7c2689ee45278d610ddae2f607d8eca1` passed Agent
 
 The persisted P28 attack plan had digest `a6ac67d8177ab92d70d43381acd6ae43768c4eabb1900c33e2259c1ac8eece2f` and compiled six attacks from the real `P28-PLOAD1` acceptance contract. Multiple attacks challenged the serialized-placement criterion. The exercise caught the direct hidden-serialization mutation and reported the other five dishonest variants as proof gaps; none became a pass. The report recorded `sourceUnchanged: true`, `sandboxRemoteDetached: true`, and `candidatePassGranted: false`.
 
-Advisory evidence artifact `11617032776` (`acceptance-attack-shadow-347-bd79b1de7c2689ee45278d610ddae2f607d8eca1`) is SHA-256 bound by GitHub Actions as `00e80383af79d99b6be892f4dfda7bc836346f958ad78ce0449fdeeb9cc2b7ddb`.
+Advisory evidence artifact `11617032776` (`acceptance-attack-shadow-347-bd79b1de7c2689ee45278d610ddae2f607d8eca1`) is SHA-256 bound by GitHub Actions as `00e80383af79d99b6be892f4dfda7bc836346f958ad78ce0449fdeeb9cc2b7dd`.
 
 The exact implementation candidate also passed the full repository verification/production build, generated and validated the installable Android APK, passed API 35 product smoke and API 36 large-screen smoke, and passed the aggregate Android and PR Candidate gates. APK artifact `11617099244` is bound to the same candidate SHA with Actions digest `48f04980414b5130ed82572ba24f0216e2d887ae7202326ac57a15d47f94b1a2`. Browser E2E was correctly skipped by the repository's scope detector because EV-1 touched no browser/runtime surface.
 
@@ -835,7 +835,7 @@ Fresh trusted review source run `38830407127` (PR comment `6205318197`) returned
 
 EV-23 changes verification/governance only. The trusted `pull_request_target` observer executes from the exact trusted base checkout and treats candidate EV-18 objects only as Git data; candidate-controlled observer code never becomes its own trust root. Production calibration creates temporary Git commits/index state only and does not alter product/runtime state.
 
-Rollback is deterministic: before EV-18 merges, restore observer v9/v8 as the workflow entry point and remove v10, which leaves EV-18 blocked. After EV-18 merges, reverting v10 must be paired with reverting the provenance-hardened EV-18 producer transition because the earlier observer does not authorize that producer object set. Existing full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, and independent-review obligations remain unchanged.
+Rollback is deterministic: before EV-18 merges, restore observer v9/v8 as the trusted observer entry point and remove v10, which leaves EV-18 blocked. After EV-18 merges, reverting v10 must be paired with reverting the provenance-hardened EV-18 producer transition because the earlier observer does not authorize that producer object set. Existing full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, and independent-review obligations remain unchanged.
 
 This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and exact-SHA proof set while removing only EV-23 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-23 independent review; no verdict or final candidate proof is inherited from `ff174778be2cbeeb1427e3207c17de4e8df72ef5`.
 
