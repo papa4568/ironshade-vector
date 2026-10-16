@@ -18,6 +18,7 @@ fi
 
 base_image='node:22.23.2-bookworm'
 prepared_image='ironshade-proof-closed:node-22.23.2-npm-10.9.8'
+prepared_image_source_date_epoch='0'
 work_root="${FULL_REPOSITORY_BUILD_PREPARED_ROOT:-.agent-proof-cache-closure}"
 if [[ "$work_root" != /* ]]; then
   work_root="$PWD/$work_root"
@@ -43,11 +44,22 @@ fi
 
 existing_base_ref="$(docker image inspect --format '{{index .Config.Labels "org.ironshade.proof-base"}}' "$prepared_image" 2>/dev/null || true)"
 if [[ "$existing_base_ref" != "$base_image_ref" ]]; then
-  docker build --pull=false --tag "$prepared_image" - <<DOCKERFILE >/dev/null
+  docker build \
+    --pull=false \
+    --build-arg "SOURCE_DATE_EPOCH=$prepared_image_source_date_epoch" \
+    --tag "$prepared_image" \
+    - <<DOCKERFILE >/dev/null
 FROM ${base_image_ref}
+ARG SOURCE_DATE_EPOCH
 LABEL org.ironshade.proof-base="${base_image_ref}"
 RUN npm install --global npm@10.9.8 \
-    && test "\$(npm --version)" = '10.9.8'
+    && test "\$(npm --version)" = '10.9.8' \
+    && find /usr/local/lib/node_modules/npm -exec touch -h -d "@\${SOURCE_DATE_EPOCH}" {} + \
+    && touch -h -d "@\${SOURCE_DATE_EPOCH}" \
+      /usr/local/lib/node_modules \
+      /usr/local/bin \
+      /usr/local/bin/npm \
+      /usr/local/bin/npx
 DOCKERFILE
 fi
 prepared_image_id="$(docker image inspect --format '{{.Id}}' "$prepared_image")"
@@ -111,6 +123,7 @@ cat > "$prepared_dir/manifest.json" <<EOF
   "baseImageRef": "$base_image_ref",
   "preparedImage": "$prepared_image",
   "preparedImageId": "$prepared_image_id",
+  "preparedImageSourceDateEpoch": "$prepared_image_source_date_epoch",
   "npmCliTreeSha256": "$npm_cli_tree_sha256",
   "dockerEngineVersion": "$docker_engine_version",
   "dependencyTreeSha256": "$dependency_tree_sha256",
@@ -124,4 +137,4 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   cat "$prepared_dir/closure.env" >> "$GITHUB_ENV"
 fi
 
-echo "FULL_REPOSITORY_BUILD_CLOSURE_PREP_PASS candidate=$candidate_sha baseImageRef=$base_image_ref npmCliTree=$npm_cli_tree_sha256 preparedImageId=$prepared_image_id dockerEngine=$docker_engine_version dependencyTree=$dependency_tree_sha256 networkPhase=completed-before-cache-decision"
+echo "FULL_REPOSITORY_BUILD_CLOSURE_PREP_PASS candidate=$candidate_sha baseImageRef=$base_image_ref npmCliTree=$npm_cli_tree_sha256 preparedImageId=$prepared_image_id dockerEngine=$docker_engine_version dependencyTree=$dependency_tree_sha256 networkPhase=completed-before-cache-decision sourceDateEpoch=$prepared_image_source_date_epoch"
