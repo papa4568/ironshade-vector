@@ -874,3 +874,39 @@ This archive transition follows the repository's established split-EV self-refer
 ### Promotion status
 
 Trusted observer v11 is now the permanent repository trust infrastructure for the restore-error-hardened EV-18 producer transition; proof reuse remains disabled. EV-21, EV-22, EV-23, and EV-24 prerequisites are satisfied, so EV-18 — Reuse One Validated Proof Class is the next actionable experimental item.
+
+## EV-25 — Isolate v11 Legacy Compatibility Self-Test
+
+Completed 2026-10-16 as the trust-boundary prerequisite split from EV-18 after the reviewed v11 bootstrap exposed a compatibility-calibration false positive. EV-25 does not enable proof reuse and does not change v11 production `verify()` semantics.
+
+### Implemented
+
+- Added an isolated `runV10SelfTestAt(revision)` path inside trusted EV-9 observer v11 so the legacy v10 compatibility self-test executes from an explicit detached pre-EV-18 trusted worktree instead of candidate HEAD.
+- Pinned the legacy compatibility context to trusted transition base `29eca981f898c838072824d6edb1d0a107ba2d28` while retaining hardened EV-18 reference `0d996b64ac47306a244fcd67e938b937910f3d85` for the live v11 transition boundary.
+- Required v10 compatibility calibration to pass in the legacy trusted context and to deterministically reproduce the superseded-v10 tree-entry false positive against the hardened EV-18 reference, proving the defect is isolated rather than ignored.
+- Preserved the production v11 transition verifier, exact 11-file EV-18 transition reference, roadmap base ownership, restore-error fallback, browser/Android consumers, source-bound dependencies, and all exact-SHA/independent-review obligations unchanged.
+- Retained zero false-positive and zero false-negative budgets for both the v11 production transition attacks and the compatibility-context calibration. Proof reuse remained disabled throughout EV-25.
+
+### Exact implementation evidence
+
+Exact implementation candidate `3246287c9a3d800c4dc72f5199fe3ec8d5ad4555` passed EV-9 Trusted PR Candidate Observer run `38855517659`, Agent Orchestration run `38855517724`, retained EV-17 Proof Cache Calibration run `38855517688`, and EV-21 Proof Cache Closure Calibration run `38855517774`.
+
+Agent Orchestration recorded `transitionAttacks=8`, `falsePositives=0`, `falseNegatives=0`, `compatibilityFalsePositives=0`, `compatibilityFalseNegatives=0`, `v10LegacyContext=pass`, and `v10SupersededFalsePositive=reproduced`. This proves the new worktree context removes the live false positive without broadening the production authorization boundary.
+
+PR Candidate Verification run `38855517743` on the same exact SHA passed the authoritative full repository verification/production build, promoted repository gates, mechanical architecture invariants, independent-review context generation, installable APK construction/integrity/delivery, API 35 product smoke, API 36 large-screen smoke, aggregate Android verification, and—after the trusted verdict existed—the final exact-SHA review/evidence gate. Browser E2E was correctly scope-skipped because EV-25 changes verification/governance only.
+
+Final exact-candidate evidence artifact `12027729838` (`agent-candidate-evidence-398-3246287c9a3d800c4dc72f5199fe3ec8d5ad4555`) has GitHub Actions digest `sha256:8366388c0797672513092fc99f572a2bfded16fa4e48348728e44ccea60db9a6`. APK artifact `12027312541` has digest `sha256:1d8fd10e242648333d58c85c79050477248cac8261e929c936a1e4d087fa1ac1`; API 35 artifact `12027322838` has digest `sha256:046663c2c9a2f64e09183318b26a93d4b79ac713be85f4d12381d514bf7c933e`; API 36 large-screen artifact `12027586629` has digest `sha256:95214ba85f86760bc1c8c311f55fec4e0665f01b52e429cf43f8e4eb66c7d1bd`; and independent-review context artifact `12027243099` has digest `sha256:87e0ee3aa8a2816a392c1a8054c3d67d0f2774526c4bebb2c14e87900acb0169`.
+
+The repository-native AO-6 verifier was attempted in run `38856771635`; all parser/fail-closed self-tests passed, but the Copilot CLI stopped at the adversarial-review step because the configured monthly quota was exhausted and produced no verdict artifact. The documented human fallback was therefore used from the separate `Papa3445` collaborator account. Independent-review comment `6209141647` matched the exact EV-25 packet/result schema and candidate SHA, returned `verdict="pass"`, marked all four acceptance checks satisfied and all six required proofs credible, and reported no findings. Re-running only the blocked final candidate job then generated the complete exact-SHA evidence above. PR #398 merged the reviewed implementation to trusted `main` as merge commit `f9480f934f4bf5ceb725d12901d0f9f2ea82bfc3`.
+
+### Isolation and rollback
+
+EV-25 changes verification/governance only. The compatibility self-test creates a detached temporary worktree at the explicit trusted legacy revision, executes the unchanged v10 self-test with that worktree as its Git context, and removes the worktree afterward. Candidate-controlled code does not become the trusted observer and product/runtime behavior is untouched.
+
+Rollback is deterministic: revert the EV-25 self-test-context change and keep EV-18 blocked. That restores the prior fail-closed behavior in which v11 production verification remains intact but its compatibility self-test reproduces the known false positive on the hardened EV-18 candidate. No build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, or independent-review obligation is weakened by rollback.
+
+This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and exact-SHA proof set while removing only EV-25 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-25 independent review; no verdict or final candidate proof is inherited from `3246287c9a3d800c4dc72f5199fe3ec8d5ad4555`.
+
+### Promotion status
+
+EV-25 permanently isolates legacy v10 compatibility calibration from the live hardened EV-18 candidate without changing v11 production verification semantics. Proof reuse remains disabled. EV-21, EV-22, EV-23, EV-24, and EV-25 prerequisites are satisfied, so EV-18 — Reuse One Validated Proof Class is the next actionable experimental item.
