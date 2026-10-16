@@ -950,3 +950,39 @@ This archive transition follows the repository's established split-EV self-refer
 ### Promotion status
 
 EV-27 permanently allows trusted separate human review for EV-14 mechanism-only governance when trusted-main machine review is unavailable, while actual EV-14 antibody promotion remains trusted-main-machine-only. The EV-14 mechanism-governance availability blocker is cleared. Resume EV-26 PR #400 before returning to EV-18.
+
+## EV-26 — Authenticate Unchanged-Roadmap EV-18 Review Selection
+
+Completed 2026-10-16 as the review-selection trust-boundary prerequisite split from EV-18. EV-26 does not enable proof reuse; it authenticates the already-reviewed unchanged-roadmap EV-18 implementation so independent-review task selection cannot fall through to the normal product queue.
+
+### Implemented
+
+- Added a pinned unchanged-roadmap experimental implementation path for EV-18 only. The trusted base must have EV-18 as its first active experimental item, and the exact base-to-head diff must contain the complete reviewed 11-file EV-18 transition.
+- Pinned every EV-18 transition path to reviewed reference `0d996b64ac47306a244fcd67e938b937910f3d85` by Git blob identity. Incomplete transitions fall through normally; an otherwise-complete transition with extra files or same-path blob drift fails closed instead of being authenticated as EV-18.
+- Preserved the existing changed-roadmap experimental implementation/closeout selector ahead of the new fallback and preserved normal product selection when an unchanged roadmap does not exactly match the pinned EV-18 transition.
+- Added focused candidate-evidence regressions for exact match, incomplete transition, extra-file rejection, blob-drift rejection, and unpinned-task fallback. The measured valid case had zero false rejection and the four required negative cases had zero false acceptance.
+- Left the EV-18 11-file producer implementation, v11 production verifier, proof-cache enforcement semantics, browser/Android/APK consumers, exact-SHA evidence, and independent-review gate unchanged. Proof reuse remained disabled throughout EV-26.
+
+### Integration and exact implementation evidence
+
+The original reviewed EV-26 implementation candidate `e47df059292d34f59035a9f3b770045b7b16f30d` proved the selector fix but remained blocked behind the later EV-27 mechanism-governance prerequisite. After EV-27 implementation and trusted-main closeout completed, the EV-26 branch was reintegrated onto trusted main while carrying the reviewed selector/test blobs forward unchanged and reconciling only the roadmap prerequisite state.
+
+Final exact candidate `7cee91965527baaa06d815e770bc486b232b0fe9` passed Agent Orchestration run `38940098880`, retained EV-17 Proof Cache Calibration run `38940098821`, EV-21 Proof Cache Closure Calibration run `38940098872`, and EV-14 Antibody Promotion run `38940098984`. EV-14's promotion/enforcement and nine-scenario governance-authorization regressions passed; after the fresh trusted human review existed, mechanism authorization consumed that review and uploaded authorization artifact `12066485273` with digest `sha256:fcfcc0d64842037933ff23e3ec6edbe9e69959d61fedac1276a68caca1b0a263`. Actual antibody-promotion authorization remained skipped because EV-26 changes only the review mechanism.
+
+PR Candidate Verification run `38940099004` on the same exact SHA passed the authoritative full repository verification/production build, mechanical architecture invariants, exact EV-26 independent-review context, installable APK construction/integrity/delivery, API 35 product smoke, the successful unchanged-SHA API 36 large-screen retry, aggregate Android verification, the final independent-review gate, and complete exact-candidate evidence generation. Browser E2E was correctly scope-skipped for the verification/governance-only diff.
+
+Final candidate evidence artifact `12066828618` (`agent-candidate-evidence-400-7cee91965527baaa06d815e770bc486b232b0fe9`) has GitHub Actions digest `sha256:7f97fd6d66840aea29e04e5526f2c3b1cd8bf6aaf77753910657ea0d96dcda13`. Independent-review context artifact `12063436285` has digest `sha256:ae2b86f591c1e85419983373cb16702d626321cd67b3fbd4b21b7fdfe5d5620e`. APK artifact `12062688499` has digest `sha256:3b069e90fb1ee5cbe1d7fe888ee2a2409d9e870dfb102b9cd7426feb123c2f63`; API 35 artifact `12063646773` has digest `sha256:641bc83ad1cb8fd5b1b55e3c0c5c53938467d5bdaf0cf6d99ab90da21dd3ab9e`; and the successful API 36 retry artifact `12064631879` has digest `sha256:bf838ac091851b6eff81d95e3a6cdede0f47df744ab02bd1a804bf4b6d492f5f`. The earlier API 36 attempt timed out only after the substantive large-screen assertions had passed; its partial artifact is not credited as positive proof.
+
+Trusted-main AO-6 run `38945107675` was attempted from trusted main and again stopped at the Copilot CLI adversarial-review step because the external monthly quota was exhausted; it produced no machine verdict and is not counted as review evidence. Fresh independent-review comment `6221931102` from separate collaborator `Papa3445` matched task EV-26 and exact candidate `7cee91965527baaa06d815e770bc486b232b0fe9`, marked all four acceptance checks satisfied and all six required proof classes credible, returned `verdict="pass"`, and reported no findings. The repository's final candidate gate and EV-14 mechanism-governance fallback both authenticated that same exact-SHA human result. PR #400 then merged the reviewed implementation to trusted `main` as merge commit `aef9ecd0060a66bc16f7d8c4d12708959f699368`.
+
+### Isolation and rollback
+
+EV-26 changes verification/governance only. The pinned selector reads trusted-base roadmap state and Git object identities; it does not execute candidate-controlled EV-18 producer code as a trust root and does not change product/runtime behavior.
+
+Rollback is deterministic: revert the EV-26 selector/test/roadmap transition. That restores the prior behavior in which an unchanged-roadmap EV-18 implementation falls through to product review selection and therefore remains blocked. Proof reuse stays disabled, and no full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, or independent-review obligation is weakened.
+
+This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and exact-SHA proof set while removing only EV-26 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-26 independent review; no proof or verdict is inherited from `7cee91965527baaa06d815e770bc486b232b0fe9`.
+
+### Promotion status
+
+EV-26 permanently authenticates the reviewed unchanged-roadmap EV-18 transition without broadening experimental task selection or changing EV-18 producer semantics. EV-21, EV-22, EV-23, EV-24, EV-25, EV-27, and EV-26 prerequisites are satisfied; proof reuse remains disabled until EV-18 itself passes its promotion review. EV-18 — Reuse One Validated Proof Class is the next actionable experimental item.
