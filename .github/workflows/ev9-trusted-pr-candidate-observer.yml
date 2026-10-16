@@ -15,6 +15,7 @@ on:
       - 'agent/tools/ev9-trusted-pr-candidate-observer-v8.mjs'
       - 'agent/tools/ev9-trusted-pr-candidate-observer-v9.mjs'
       - 'agent/tools/ev9-trusted-pr-candidate-observer-v10.mjs'
+      - 'agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs'
       - 'agent/task-graph.json'
       - '.github/workflows/agent-orchestration.yml'
   pull_request_target:
@@ -37,18 +38,18 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Fetch provenance-hardened EV-18 reference as calibration data
+      - name: Fetch restore-error-hardened EV-18 reference as calibration data
         shell: /usr/bin/bash -e {0}
         run: |
-          git fetch --no-tags --force origin 2174a1092a3b478589c2d26c2acb56ed2a99fd05
-          test "$(git rev-parse FETCH_HEAD)" = 2174a1092a3b478589c2d26c2acb56ed2a99fd05
+          git fetch --no-tags --force origin 0d996b64ac47306a244fcd67e938b937910f3d85
+          test "$(git rev-parse FETCH_HEAD)" = 0d996b64ac47306a244fcd67e938b937910f3d85
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
       - name: Set up Node 22
         uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
       - name: Verify trusted observer parser and production-gate attack calibration
-        run: node agent/tools/ev9-trusted-pr-candidate-observer-v10.mjs self-test
+        run: node agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs self-test
 
   verify-pr-candidate:
     if: github.event_name == 'pull_request_target'
@@ -65,12 +66,14 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
-      - name: Fetch candidate object as untrusted data
+      - name: Fetch candidate and hardened reference as untrusted data
         shell: /usr/bin/bash -e {0}
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          git fetch --no-tags --force origin 0d996b64ac47306a244fcd67e938b937910f3d85
+          test "$(git rev-parse FETCH_HEAD)" = 0d996b64ac47306a244fcd67e938b937910f3d85
           git fetch --no-tags --force origin "pull/${PR_NUMBER}/head"
           test "$(git rev-parse FETCH_HEAD)" = "$CANDIDATE_SHA"
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.base.sha }}"
@@ -78,4 +81,4 @@ jobs:
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
           TRUSTED_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: node agent/tools/ev9-trusted-pr-candidate-observer-v10.mjs verify
+        run: node agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs verify
