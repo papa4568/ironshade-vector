@@ -3,14 +3,16 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const LEGACY_ANCHOR_SHA = 'ad4ec884ba2aa262b06f91a03411a972550cbb87';
 const TRANSITION_BASE_SHA = '29eca981f898c838072824d6edb1d0a107ba2d28';
-const EV18_REFERENCE_SHA = '4e3f2021e2ee208dffe454f2af527840c8ff7aff';
+const EV18_REFERENCE_SHA = '0d996b64ac47306a244fcd67e938b937910f3d85';
 const PR_CANDIDATE_PATH = '.github/workflows/pr-candidate.yml';
+const ROADMAP_PATH = 'docs/experimental-verification-roadmap.md';
+const TRUSTED_OBSERVER_WORKFLOW_PATH = '.github/workflows/ev9-trusted-pr-candidate-observer.yml';
 const BROWSER_WORKFLOW_PATH = '.github/workflows/browser-e2e.yml';
 const ANDROID_WORKFLOW_PATH = '.github/workflows/pr-android-apk.yml';
 const EV18_MARKER = 'Prepare EV-18 closed proof inputs';
-const V8_PATH = fileURLToPath(new URL('./ev9-trusted-pr-candidate-observer-v8.mjs', import.meta.url));
+const RESTORE_FALLBACK_MARKER = 'id: proof-cache-restore\n        continue-on-error: true\n        uses: actions/cache/restore@v5';
+const V10_PATH = fileURLToPath(new URL('./ev9-trusted-pr-candidate-observer-v10.mjs', import.meta.url));
 
 const EV18_TRANSITION_PATHS = [
   '.github/workflows/ev18-proof-cache-promotion.yml',
@@ -24,7 +26,6 @@ const EV18_TRANSITION_PATHS = [
   'agent/tests/proof-cache-promotion.mjs',
   'agent/tools/pr-candidate-head-observer.mjs',
   'agent/tools/proof-cache-promotion.mjs',
-  'docs/experimental-verification-roadmap.md',
 ].sort((a, b) => a.localeCompare(b));
 
 const EV18_AGENT_TRANSITION_PATHS = new Set(EV18_TRANSITION_PATHS.filter(path => path.startsWith('agent/')));
@@ -80,10 +81,6 @@ function gitWithEnv(args, extraEnv, { input = undefined } = {}) {
   }).trim();
 }
 
-function gitBlob(revision, path) {
-  return git(['rev-parse', `${revision}:${path}`]);
-}
-
 function gitEntry(revision, path) {
   const result = git(['ls-tree', revision, '--', path], { allowFailure: true });
   ok(result.status === 0 && result.stdout.trim(), `missing Git tree entry ${revision}:${path}`);
@@ -111,9 +108,20 @@ function changedPaths(baseSha, candidateSha) {
   return output.toString('utf8').split('\0').filter(Boolean).sort((a, b) => a.localeCompare(b));
 }
 
+function changedEv9Paths(baseSha, candidateSha) {
+  return changedPaths(baseSha, candidateSha).filter(path => EV9_LIVE_AGENT_PATHS.has(path));
+}
+
 function isAncestor(ancestor, descendant) {
-  const result = git(['merge-base', '--is-ancestor', ancestor, descendant], { allowFailure: true });
-  return result.status === 0;
+  return git(['merge-base', '--is-ancestor', ancestor, descendant], { allowFailure: true }).status === 0;
+}
+
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function check(id, pass, evidence) {
+  return { id, pass: Boolean(pass), evidence };
 }
 
 function allowedAgentMutation(path) {
@@ -140,22 +148,13 @@ function gitAgentRefs(revision, { transition = false } = {}) {
   return refs;
 }
 
-function sameJson(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
-function check(id, pass, evidence) {
-  return { id, pass: Boolean(pass), evidence };
-}
-
 function referenceAvailable() {
   return git(['cat-file', '-e', `${EV18_REFERENCE_SHA}^{commit}`], { allowFailure: true }).status === 0;
 }
 
 function trustedMode(trustedBaseSha) {
   const baseEntry = gitEntry(trustedBaseSha, PR_CANDIDATE_PATH);
-  const legacyEntry = gitEntry(LEGACY_ANCHOR_SHA, PR_CANDIDATE_PATH);
-  if (baseEntry === legacyEntry) return 'legacy';
+  if (baseEntry === gitEntry(TRANSITION_BASE_SHA, PR_CANDIDATE_PATH)) return 'legacy';
   if (referenceAvailable() && baseEntry === gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH)) return 'ev18-steady';
   return 'unknown';
 }
@@ -167,32 +166,56 @@ function transitionChecks({ trustedBaseSha, candidateSha }) {
     : Object.fromEntries(EV18_TRANSITION_PATHS.map(path => [path, false]));
   const baseDeps = gitPathRefs(trustedBaseSha, TRUSTED_CONSUMER_DEPENDENCIES);
   const candidateDeps = gitPathRefs(candidateSha, TRUSTED_CONSUMER_DEPENDENCIES);
+  const workflow = gitText(candidateSha, PR_CANDIDATE_PATH);
   const checks = [
-    check('ev18-reference-object-present', referenceAvailable(), `reviewed EV-18 reference commit ${EV18_REFERENCE_SHA} must be present in the fetched object graph`),
-    check('ev18-reference-is-ancestor', referenceAvailable() && isAncestor(EV18_REFERENCE_SHA, candidateSha), 'the synchronized EV-18 candidate must retain the reviewed reference commit as an ancestor'),
-    check('ev18-transition-path-set-exact', sameJson(changed, EV18_TRANSITION_PATHS), `candidate tree diff must be exactly the reviewed EV-18 paths; actual=${changed.join(',')}`),
-    check('ev18-transition-pinned-objects', Object.values(pinned).every(Boolean), `every EV-18 transition path must match the reviewed ${EV18_REFERENCE_SHA} Git tree entry exactly, including mode`),
-    check('ev18-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser consumer workflow tree entry must remain trusted-base identical'),
-    check('ev18-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH), 'Android consumer workflow tree entry must remain trusted-base identical'),
-    check('ev18-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps), 'source-bound consumer dependency tree entries must remain trusted-base identical'),
-    check('ev18-nontransition-agent-boundary-unchanged', sameJson(gitAgentRefs(candidateSha, { transition: true }), gitAgentRefs(trustedBaseSha, { transition: true })), 'all protected agent tree entries outside the exact EV-18 transition set must remain trusted-base identical'),
-    check('ev18-candidate-workflow-marker', gitText(candidateSha, PR_CANDIDATE_PATH).includes(EV18_MARKER), 'reviewed EV-18 candidate producer marker must be present'),
+    check('ev18-reference-object-present', referenceAvailable(), `restore-error-hardened EV-18 reference ${EV18_REFERENCE_SHA} must be present`),
+    check('ev18-reference-is-ancestor', referenceAvailable() && isAncestor(EV18_REFERENCE_SHA, candidateSha), 'the synchronized EV-18 candidate must retain the hardened reference as an ancestor'),
+    check('ev18-transition-path-set-exact', sameJson(changed, EV18_TRANSITION_PATHS), `candidate diff must be exactly the reviewed EV-18 implementation paths; actual=${changed.join(',')}`),
+    check('ev18-transition-pinned-objects', Object.values(pinned).every(Boolean), `every EV-18 implementation path must match ${EV18_REFERENCE_SHA} including mode/type/object identity`),
+    check('ev18-roadmap-state-base-owned', gitEntry(candidateSha, ROADMAP_PATH) === gitEntry(trustedBaseSha, ROADMAP_PATH), 'experimental roadmap state must remain trusted-base identical'),
+    check('ev18-observer-workflow-unchanged', gitEntry(candidateSha, TRUSTED_OBSERVER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, TRUSTED_OBSERVER_WORKFLOW_PATH), 'trusted observer workflow must remain trusted-base identical'),
+    check('ev18-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser workflow must remain trusted-base identical'),
+    check('ev18-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH), 'Android workflow must remain trusted-base identical'),
+    check('ev18-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps), 'source-bound consumer dependencies must remain trusted-base identical'),
+    check('ev18-nontransition-agent-boundary-unchanged', sameJson(gitAgentRefs(candidateSha, { transition: true }), gitAgentRefs(trustedBaseSha, { transition: true })), 'protected agent entries outside the EV-18 implementation set must remain trusted-base identical'),
+    check('ev18-candidate-workflow-marker', workflow.includes(EV18_MARKER), 'EV-18 closed-proof producer marker must be present'),
+    check('ev18-cache-restore-error-fallback', workflow.includes(RESTORE_FALLBACK_MARKER), 'cache restore service/API failures must continue into the real-proof fallback'),
   ];
   return { checks, changed, pinned };
 }
 
-function steadyChecks({ trustedBaseSha, candidateSha }) {
+function legacySteadyChecks({ trustedBaseSha, candidateSha }) {
   const baseDeps = gitPathRefs(trustedBaseSha, TRUSTED_CONSUMER_DEPENDENCIES);
   const candidateDeps = gitPathRefs(candidateSha, TRUSTED_CONSUMER_DEPENDENCIES);
-  const expectedWorkflowEntry = gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH);
+  const ev9Changed = changedEv9Paths(trustedBaseSha, candidateSha);
   return {
     checks: [
-      check('ev18-steady-trusted-base-pinned', gitEntry(trustedBaseSha, PR_CANDIDATE_PATH) === expectedWorkflowEntry, 'trusted main must retain the reviewed provenance-hardened EV-18 producer Git tree entry'),
-      check('ev18-steady-candidate-workflow-unchanged', gitEntry(candidateSha, PR_CANDIDATE_PATH) === expectedWorkflowEntry, 'candidate may not redefine the trusted EV-18 producer tree entry without a new observer bootstrap'),
-      check('ev18-steady-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser consumer workflow tree entry must remain trusted-base identical'),
-      check('ev18-steady-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH), 'Android consumer workflow tree entry must remain trusted-base identical'),
-      check('ev18-steady-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps), 'source-bound consumer dependency tree entries must remain trusted-base identical'),
-      check('ev18-steady-protected-agent-boundary-unchanged', sameJson(gitAgentRefs(candidateSha), gitAgentRefs(trustedBaseSha)), 'protected agent tree entries must remain trusted-base identical outside the established EV-9 mutation allowlist'),
+      check('legacy-producer-workflow-unchanged', gitEntry(candidateSha, PR_CANDIDATE_PATH) === gitEntry(trustedBaseSha, PR_CANDIDATE_PATH), 'pre-EV-18 producer workflow must remain trusted-base identical'),
+      check('legacy-observer-workflow-unchanged', gitEntry(candidateSha, TRUSTED_OBSERVER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, TRUSTED_OBSERVER_WORKFLOW_PATH), 'trusted observer workflow must remain trusted-base identical outside a reviewed observer bootstrap'),
+      check('legacy-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser workflow must remain trusted-base identical'),
+      check('legacy-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH), 'Android workflow must remain trusted-base identical'),
+      check('legacy-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps), 'source-bound consumer dependencies must remain trusted-base identical'),
+      check('legacy-protected-agent-boundary-unchanged', sameJson(gitAgentRefs(candidateSha), gitAgentRefs(trustedBaseSha)), 'protected agent entries must remain trusted-base identical outside the established allowlist'),
+      check('legacy-ev9-live-paths-unchanged', ev9Changed.length === 0, `legacy compatibility path does not authorize EV-9 live implementation changes; changed=${ev9Changed.join(',')}`),
+    ],
+  };
+}
+
+function steadyChecks({ trustedBaseSha, candidateSha }) {
+  const expectedWorkflowEntry = gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH);
+  const baseDeps = gitPathRefs(trustedBaseSha, TRUSTED_CONSUMER_DEPENDENCIES);
+  const candidateDeps = gitPathRefs(candidateSha, TRUSTED_CONSUMER_DEPENDENCIES);
+  const ev9Changed = changedEv9Paths(trustedBaseSha, candidateSha);
+  return {
+    checks: [
+      check('ev18-steady-trusted-base-pinned', gitEntry(trustedBaseSha, PR_CANDIDATE_PATH) === expectedWorkflowEntry, 'trusted main must retain the hardened EV-18 producer tree entry'),
+      check('ev18-steady-candidate-workflow-unchanged', gitEntry(candidateSha, PR_CANDIDATE_PATH) === expectedWorkflowEntry, 'candidate may not redefine the trusted EV-18 producer without a new observer bootstrap'),
+      check('ev18-steady-observer-workflow-unchanged', gitEntry(candidateSha, TRUSTED_OBSERVER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, TRUSTED_OBSERVER_WORKFLOW_PATH), 'trusted observer workflow must remain trusted-base identical'),
+      check('ev18-steady-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser workflow must remain trusted-base identical'),
+      check('ev18-steady-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH), 'Android workflow must remain trusted-base identical'),
+      check('ev18-steady-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps), 'source-bound consumer dependencies must remain trusted-base identical'),
+      check('ev18-steady-protected-agent-boundary-unchanged', sameJson(gitAgentRefs(candidateSha), gitAgentRefs(trustedBaseSha)), 'protected agent entries must remain trusted-base identical outside the established allowlist'),
+      check('ev18-steady-ev9-live-paths-unchanged', ev9Changed.length === 0, `EV-9 live implementation changes require a new trusted observer bootstrap after EV-18; changed=${ev9Changed.join(',')}`),
     ],
   };
 }
@@ -204,7 +227,6 @@ function reportFor({ mode, trustedBaseSha, candidateSha, checks, details = {} })
     mode,
     trustedBaseSha,
     candidateSha,
-    legacyAnchorSha: LEGACY_ANCHOR_SHA,
     transitionBaseSha: TRANSITION_BASE_SHA,
     ev18ReferenceSha: EV18_REFERENCE_SHA,
     checks,
@@ -223,8 +245,8 @@ function writeOptionalOutput(report) {
   writeFileSync(path, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 }
 
-function runV8(command) {
-  const result = spawnSync(process.execPath, [V8_PATH, command], {
+function runV10(command) {
+  const result = spawnSync(process.execPath, [V10_PATH, command], {
     env: process.env,
     encoding: 'utf8',
     stdio: 'inherit',
@@ -245,13 +267,13 @@ function existingMode(revision, path) {
 
 function createSyntheticCandidate({ id, path, content = undefined, mode = undefined }) {
   syntheticCommitCounter += 1;
-  const indexPath = `/tmp/ironshade-ev18-v11-index-${process.pid}-${syntheticCommitCounter}`;
+  const indexPath = `/tmp/ironshade-ev24-index-${process.pid}-${syntheticCommitCounter}`;
   const env = {
     GIT_INDEX_FILE: indexPath,
-    GIT_AUTHOR_NAME: 'EV-18 Observer Calibration',
-    GIT_AUTHOR_EMAIL: 'ev18-observer@example.invalid',
-    GIT_COMMITTER_NAME: 'EV-18 Observer Calibration',
-    GIT_COMMITTER_EMAIL: 'ev18-observer@example.invalid',
+    GIT_AUTHOR_NAME: 'EV-24 Calibration',
+    GIT_AUTHOR_EMAIL: 'ev24@example.invalid',
+    GIT_COMMITTER_NAME: 'EV-24 Calibration',
+    GIT_COMMITTER_EMAIL: 'ev24@example.invalid',
     GIT_AUTHOR_DATE: '2000-01-01T00:00:00Z',
     GIT_COMMITTER_DATE: '2000-01-01T00:00:00Z',
   };
@@ -267,10 +289,8 @@ function createSyntheticCandidate({ id, path, content = undefined, mode = undefi
     const targetMode = mode ?? existingMode(EV18_REFERENCE_SHA, path);
     gitWithEnv(['update-index', '--add', '--cacheinfo', targetMode, blob, path], env);
     const tree = gitWithEnv(['write-tree'], env);
-    const commit = gitWithEnv(['commit-tree', tree, '-p', EV18_REFERENCE_SHA, '-m', `EV-18 observer calibration ${id}`], env);
-    if (referenceBlob.status === 0) {
-      ok(gitEntry(commit, path) !== gitEntry(EV18_REFERENCE_SHA, path), `${id} calibration mutation must change the target Git tree entry`);
-    }
+    const commit = gitWithEnv(['commit-tree', tree, '-p', EV18_REFERENCE_SHA, '-m', `EV-24 production calibration ${id}`], env);
+    if (referenceBlob.status === 0) ok(gitEntry(commit, path) !== gitEntry(EV18_REFERENCE_SHA, path), `${id} must change the target Git tree entry`);
     return commit;
   } finally {
     rmSync(indexPath, { force: true });
@@ -284,21 +304,22 @@ function evaluateTransition(candidateSha) {
 }
 
 function productionTransitionCalibration() {
-  ok(referenceAvailable(), `production calibration requires corrected EV-18 reference ${EV18_REFERENCE_SHA}`);
+  ok(referenceAvailable(), `production calibration requires hardened EV-18 reference ${EV18_REFERENCE_SHA}`);
   const baseline = evaluateTransition(EV18_REFERENCE_SHA);
   let falsePositives = baseline.pass ? 0 : 1;
   let falseNegatives = 0;
-  assert.equal(baseline.pass, true, `production transition baseline failed: ${baseline.failedCheckIds.join(',')}`);
+  assert.equal(baseline.pass, true, `EV-24 transition baseline failed: ${baseline.failedCheckIds.join(',')}`);
 
   const modePath = 'agent/tools/proof-cache-promotion.mjs';
   const referenceMode = existingMode(EV18_REFERENCE_SHA, modePath);
   const alternateMode = referenceMode === '100755' ? '100644' : '100755';
   const attacks = [
-    { id: 'unexpected-path', path: 'src/__ev18_v11_unreviewed_transition__.ts', content: 'export const ev18V11UnexpectedTransition = true;\n', expectedFailedCheckId: 'ev18-transition-path-set-exact' },
-    { id: 'pinned-object-drift', path: 'AGENTS.md', content: `${gitText(EV18_REFERENCE_SHA, 'AGENTS.md')}\n<!-- EV-18 v11 pinned-object attack -->\n`, expectedFailedCheckId: 'ev18-transition-pinned-objects' },
+    { id: 'unexpected-path', path: 'src/__ev24_unreviewed_transition__.ts', content: 'export const ev24UnexpectedTransition = true;\n', expectedFailedCheckId: 'ev18-transition-path-set-exact' },
+    { id: 'pinned-object-drift', path: 'AGENTS.md', content: `${gitText(EV18_REFERENCE_SHA, 'AGENTS.md')}\n<!-- EV-24 pinned-object attack -->\n`, expectedFailedCheckId: 'ev18-transition-pinned-objects' },
     { id: 'pinned-mode-drift', path: modePath, mode: alternateMode, expectedFailedCheckId: 'ev18-transition-pinned-objects' },
-    { id: 'browser-drift', path: BROWSER_WORKFLOW_PATH, content: `${gitText(EV18_REFERENCE_SHA, BROWSER_WORKFLOW_PATH)}\n# EV-18 v11 browser drift attack\n`, expectedFailedCheckId: 'ev18-browser-workflow-unchanged' },
-    { id: 'android-drift', path: ANDROID_WORKFLOW_PATH, content: `${gitText(EV18_REFERENCE_SHA, ANDROID_WORKFLOW_PATH)}\n# EV-18 v11 Android drift attack\n`, expectedFailedCheckId: 'ev18-android-workflow-unchanged' },
+    { id: 'roadmap-drift', path: ROADMAP_PATH, content: `${gitText(EV18_REFERENCE_SHA, ROADMAP_PATH)}\n<!-- EV-24 roadmap drift -->\n`, expectedFailedCheckId: 'ev18-roadmap-state-base-owned' },
+    { id: 'browser-drift', path: BROWSER_WORKFLOW_PATH, content: `${gitText(EV18_REFERENCE_SHA, BROWSER_WORKFLOW_PATH)}\n# EV-24 browser drift attack\n`, expectedFailedCheckId: 'ev18-browser-workflow-unchanged' },
+    { id: 'android-drift', path: ANDROID_WORKFLOW_PATH, content: `${gitText(EV18_REFERENCE_SHA, ANDROID_WORKFLOW_PATH)}\n# EV-24 Android drift attack\n`, expectedFailedCheckId: 'ev18-android-workflow-unchanged' },
     { id: 'dependency-drift', path: 'package.json', content: `${gitText(EV18_REFERENCE_SHA, 'package.json')}\n \n`, expectedFailedCheckId: 'ev18-source-bound-dependencies-unchanged' },
     { id: 'protected-agent-drift', path: 'agent/architecture-invariants.json', content: `${gitText(EV18_REFERENCE_SHA, 'agent/architecture-invariants.json')}\n \n`, expectedFailedCheckId: 'ev18-nontransition-agent-boundary-unchanged' },
   ];
@@ -309,26 +330,20 @@ function productionTransitionCalibration() {
     const result = evaluateTransition(candidateSha);
     const detected = !result.pass && result.failedCheckIds.includes(attack.expectedFailedCheckId);
     if (!detected) falseNegatives += 1;
-    assert.equal(detected, true, `production transition verifier did not reject ${attack.id} through ${attack.expectedFailedCheckId}; failed=${result.failedCheckIds.join(',')}`);
+    assert.equal(detected, true, `EV-24 production verifier did not reject ${attack.id}; failed=${result.failedCheckIds.join(',')}`);
     rows.push({ id: attack.id, candidateSha, expectedFailedCheckId: attack.expectedFailedCheckId, failedCheckIds: result.failedCheckIds });
   }
-  assert.equal(falsePositives, 0, 'EV-18 observer production calibration false-positive budget exceeded');
-  assert.equal(falseNegatives, 0, 'EV-18 observer production calibration false-negative budget exceeded');
+  assert.equal(falsePositives, 0, 'EV-24 production calibration false-positive budget exceeded');
+  assert.equal(falseNegatives, 0, 'EV-24 production calibration false-negative budget exceeded');
   return { baseline, rows, falsePositives, falseNegatives };
 }
 
 function selfTest() {
-  assert.deepEqual([...new Set(EV18_TRANSITION_PATHS)], EV18_TRANSITION_PATHS, 'EV-18 transition path set must be sorted and unique');
+  assert.deepEqual([...new Set(EV18_TRANSITION_PATHS)], EV18_TRANSITION_PATHS, 'EV-18 transition paths must be sorted and unique');
+  assert.equal(EV18_TRANSITION_PATHS.includes(ROADMAP_PATH), false, 'roadmap state must remain base-owned');
   const calibration = productionTransitionCalibration();
-  const liveWorkflow = gitText('HEAD', PR_CANDIDATE_PATH);
-  if (!liveWorkflow.includes(EV18_MARKER)) {
-    runV8('self-test');
-    console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS mode=legacy-v8 productionTransition=true transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
-    return;
-  }
-  ok(referenceAvailable(), `EV-18 reference commit ${EV18_REFERENCE_SHA} must remain reachable after promotion`);
-  assert.equal(gitEntry('HEAD', PR_CANDIDATE_PATH), gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH), 'steady EV-18 workflow tree entry must remain pinned to the corrected reviewed reference');
-  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS mode=ev18-steady productionTransition=true transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
+  runV10('self-test');
+  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-24 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
 }
 
 function verify() {
@@ -337,40 +352,55 @@ function verify() {
   ok(/^[a-f0-9]{40}$/.test(candidateSha ?? ''), 'CANDIDATE_SHA must be a full lowercase Git SHA');
   ok(/^[a-f0-9]{40}$/.test(trustedBaseSha ?? ''), 'TRUSTED_BASE_SHA must be a full lowercase Git SHA');
   ok(git(['rev-parse', 'HEAD']) === trustedBaseSha, 'trusted observer must execute from the exact trusted base checkout');
+  ok(referenceAvailable(), `EV-18 reference commit ${EV18_REFERENCE_SHA} must be fetched as untrusted calibration data`);
 
   const mode = trustedMode(trustedBaseSha);
   if (mode === 'legacy') {
-    const candidateWorkflowMatchesEv18 = referenceAvailable()
-      && gitEntry(candidateSha, PR_CANDIDATE_PATH) === gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH);
-    if (!candidateWorkflowMatchesEv18) {
-      runV8('verify');
-      console.log(`EV9_TRUSTED_V11_VERIFY_PASS mode=legacy-v8 candidate=${candidateSha} trustedBase=${trustedBaseSha}`);
+    const candidateMatchesHardened = gitEntry(candidateSha, PR_CANDIDATE_PATH) === gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH);
+    if (candidateMatchesHardened) {
+      const transition = transitionChecks({ trustedBaseSha, candidateSha });
+      const report = reportFor({
+        mode: 'ev18-restore-fallback-transition',
+        trustedBaseSha,
+        candidateSha,
+        checks: transition.checks,
+        details: { changedPaths: transition.changed, pinnedPaths: transition.pinned },
+      });
+      writeOptionalOutput(report);
+      ok(report.pass, `EV-18 restore-fallback transition failed: ${report.failedCheckIds.join(',')}`);
+      console.log(`EV9_TRUSTED_V11_VERIFY_PASS mode=ev18-restore-fallback-transition candidate=${candidateSha} trustedBase=${trustedBaseSha} paths=${transition.changed.length} roadmap=base-owned`);
       return;
     }
-    const transition = transitionChecks({ trustedBaseSha, candidateSha });
-    const report = reportFor({
-      mode: 'ev18-transition',
-      trustedBaseSha,
-      candidateSha,
-      checks: transition.checks,
-      details: { changedPaths: transition.changed, pinnedPaths: transition.pinned },
-    });
-    writeOptionalOutput(report);
-    ok(report.pass, `EV-18 trusted corrected transition failed: ${report.failedCheckIds.join(',')}`);
-    console.log(`EV9_TRUSTED_V11_VERIFY_PASS mode=ev18-transition candidate=${candidateSha} trustedBase=${trustedBaseSha} paths=${transition.changed.length} treeEntryModes=true`);
+
+    if (gitEntry(candidateSha, PR_CANDIDATE_PATH) === gitEntry(trustedBaseSha, PR_CANDIDATE_PATH)) {
+      const ev9Changed = changedEv9Paths(trustedBaseSha, candidateSha);
+      if (ev9Changed.length > 0) {
+        runV10('verify');
+        console.log(`EV9_TRUSTED_V11_VERIFY_PASS mode=v10-ev9-live candidate=${candidateSha} trustedBase=${trustedBaseSha} ev9ChangedPaths=${ev9Changed.length}`);
+        return;
+      }
+      const legacy = legacySteadyChecks({ trustedBaseSha, candidateSha });
+      const report = reportFor({ mode: 'legacy-steady', trustedBaseSha, candidateSha, checks: legacy.checks });
+      writeOptionalOutput(report);
+      ok(report.pass, `legacy trusted observer compatibility failed: ${report.failedCheckIds.join(',')}`);
+      console.log(`EV9_TRUSTED_V11_VERIFY_PASS mode=legacy-steady candidate=${candidateSha} trustedBase=${trustedBaseSha}`);
+      return;
+    }
+
+    runV10('verify');
     return;
   }
 
   if (mode === 'ev18-steady') {
     const steady = steadyChecks({ trustedBaseSha, candidateSha });
-    const report = reportFor({ mode: 'ev18-steady', trustedBaseSha, candidateSha, checks: steady.checks });
+    const report = reportFor({ mode: 'ev18-hardened-steady', trustedBaseSha, candidateSha, checks: steady.checks });
     writeOptionalOutput(report);
-    ok(report.pass, `EV-18 trusted steady-state observation failed: ${report.failedCheckIds.join(',')}`);
-    console.log(`EV9_TRUSTED_V11_VERIFY_PASS mode=ev18-steady candidate=${candidateSha} trustedBase=${trustedBaseSha} treeEntryModes=true`);
+    ok(report.pass, `EV-18 hardened steady-state observation failed: ${report.failedCheckIds.join(',')}`);
+    console.log(`EV9_TRUSTED_V11_VERIFY_PASS mode=ev18-hardened-steady candidate=${candidateSha} trustedBase=${trustedBaseSha}`);
     return;
   }
 
-  throw new Error(`trusted PR Candidate producer is neither the legacy anchor nor the corrected reviewed EV-18 producer: base=${trustedBaseSha}`);
+  throw new Error(`trusted PR Candidate producer is neither the pre-EV-18 base nor the restore-error-hardened EV-18 producer: base=${trustedBaseSha}`);
 }
 
 const command = process.argv[2];

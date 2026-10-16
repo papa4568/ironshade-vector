@@ -38,11 +38,11 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Fetch corrected EV-18 reference as calibration data
+      - name: Fetch restore-error-hardened EV-18 reference as calibration data
         shell: /usr/bin/bash -e {0}
         run: |
-          git fetch --no-tags --force origin 4e3f2021e2ee208dffe454f2af527840c8ff7aff
-          test "$(git rev-parse FETCH_HEAD)" = 4e3f2021e2ee208dffe454f2af527840c8ff7aff
+          git fetch --no-tags --force origin 0d996b64ac47306a244fcd67e938b937910f3d85
+          test "$(git rev-parse FETCH_HEAD)" = 0d996b64ac47306a244fcd67e938b937910f3d85
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
       - name: Set up Node 22
         uses: actions/setup-node@v7
@@ -72,6 +72,8 @@ jobs:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          git fetch --no-tags --force origin 0d996b64ac47306a244fcd67e938b937910f3d85
+          test "$(git rev-parse FETCH_HEAD)" = 0d996b64ac47306a244fcd67e938b937910f3d85
           git fetch --no-tags --force origin "pull/${PR_NUMBER}/head"
           test "$(git rev-parse FETCH_HEAD)" = "$CANDIDATE_SHA"
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.base.sha }}"
