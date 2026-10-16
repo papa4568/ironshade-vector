@@ -910,3 +910,43 @@ This archive transition follows the repository's established split-EV self-refer
 ### Promotion status
 
 EV-25 permanently isolates legacy v10 compatibility calibration from the live hardened EV-18 candidate without changing v11 production verification semantics. Proof reuse remains disabled. EV-21, EV-22, EV-23, EV-24, and EV-25 prerequisites are satisfied, so EV-18 — Reuse One Validated Proof Class is the next actionable experimental item.
+
+## EV-27 — Add Trusted-Human Fallback for EV-14 Mechanism Governance
+
+Completed 2026-10-16 as the mechanism-governance availability prerequisite split while EV-26 PR #400 remained blocked. EV-27 does not weaken actual EV-14 antibody promotion authorization; it adds a trusted-human fallback only for mechanism-only governance changes.
+
+### Implemented
+
+- Added a dedicated EV-14 governance-review authorization helper. Mechanism-only EV-14 changes may consume either authenticated trusted-main Actions review or an exact-SHA trusted `OWNER`/`MEMBER`/`COLLABORATOR` human distinct from the PR author.
+- Preserved fail-closed handling for malformed, stale-SHA, untrusted, self-authored, and failing review results. Human mechanism authorization records `sourceRunId=null` and `trustedWorkflowSha=null`; forged machine provenance is rejected.
+- Kept actual EV-14 antibody promotion machine-only. `authorizeAntibodyPromotion` independently fetches the complete PR conversation, selects only trusted-main `github-actions[bot]` provenance, and requires a positive source run plus trusted workflow SHA before returning promotion review authorization.
+- Added a real-path adversarial matrix with nine measured scenarios. It exercises trusted-human and trusted-main mechanism acceptance, self-authored/untrusted/stale/failing rejection, human-only promotion rejection, machine promotion with a later human comment, and forged human machine-provenance rejection. Final calibration measured zero false positives and zero false negatives and recorded `promotionLaterHuman=ignored`.
+- Preserved the original trusted-main review dispatch attempt, full candidate/build verification, browser/Android/APK scope semantics, exact-SHA evidence, architecture invariants, and independent-review gate.
+
+### Review-driven correction
+
+Papa3445 review comment `6218407913` on superseded candidate `3e315f794f2ed21270672102beb29a05028c6d0a` returned `fail` with two major findings. First, the preliminary workflow filter was machine-only but `agent/tools/antibody-promotion.mjs authorize` could later reselect a trusted human from the complete PR conversation, so actual promotion provenance was not truly machine-bound. Second, the focused regression did not exercise that real authorization path, its false-positive/false-negative counters were constant, and it claimed eight trials for a nine-scenario matrix.
+
+The same branch fixed both defects without weakening the acceptance contract. Final candidate `22bd162aa509573b6423bb3e73c745d055982e1e` binds actual promotion authorization to trusted-main machine review in the production function and measures the complete nine-scenario attack matrix from observed outcomes.
+
+### Exact implementation evidence
+
+EV-14 Antibody Promotion run `38925773793` passed on the exact candidate. Promotion gate job `117056803522` passed the existing promotion regressions, the nine-trial EV-27 authorization regression, and enforcement/rollback evidence. After the fresh independent review existed, mechanism authorization job `117063371454` accepted the trusted human review while the actual antibody-promotion authorization step was correctly skipped for this mechanism-only diff.
+
+Agent Orchestration run `38925774005` passed. PR Candidate Verification run `38925773822` passed its regenerated exact-head full repository verification/build, independent-review context, installable APK, API 35 smoke, API 36 large-screen smoke, Android aggregate, trusted review gate, and final complete-evidence generation; browser E2E was correctly scope-skipped.
+
+Final candidate evidence artifact `12058329100` has GitHub Actions digest `sha256:5ddbab519a92707f90e39ee0304e5b6677530e924dbd90a01cb28b11d320cfe4`. Independent-review context artifact `12057181412` has digest `sha256:933630b9e519025844dec74232ff7a728bfcee3fa3daaa42295d83f9fcd9a3f3`. APK artifact `12056409137` has digest `sha256:c33f37a8f25db19cf75901e8bc74bbf5f5e457bf65ddeddd9403063c65f348c8`; API 35 artifact `12057062772` has digest `sha256:2de989705d22db1b6f3b89e8914c716d79ee1b08c4dd189fe307db0cbc101c6d`; API 36 artifact `12057641692` has digest `sha256:d7da0b2acf77905c2cbed8f4dbbb22a95f2d6d615f192116df296f6fdd8ba274`.
+
+Fresh independent-review comment `6219673965` from `Papa3445` matched task EV-27 and exact candidate `22bd162aa509573b6423bb3e73c745d055982e1e`, marked all five acceptance checks satisfied and all six required proof classes credible, returned `verdict="pass"`, and reported no findings. PR #401 then merged the reviewed implementation to trusted `main` as merge commit `864a044d680f6b33175de0a8b9a3370043352ef9`.
+
+### Isolation and rollback
+
+EV-27 changes verification/governance only and does not alter product/runtime behavior. Human fallback applies only to EV-14 mechanism governance; actual antibody promotion remains trusted-main-machine-only.
+
+Rollback is deterministic: revert EV-27's mechanism-human-fallback workflow/helper path to restore the prior machine-only mechanism authorization. The promotion-provenance hardening preserves machine-only actual antibody authorization, and no candidate build, browser, Android/APK, exact-SHA, architecture-invariant, or independent-review obligation is weakened.
+
+This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and exact-SHA proof set while removing only EV-27 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-27 independent review; no proof or verdict is inherited from `22bd162aa509573b6423bb3e73c745d055982e1e`.
+
+### Promotion status
+
+EV-27 permanently allows trusted separate human review for EV-14 mechanism-only governance when trusted-main machine review is unavailable, while actual EV-14 antibody promotion remains trusted-main-machine-only. The EV-14 mechanism-governance availability blocker is cleared. Resume EV-26 PR #400 before returning to EV-18.
