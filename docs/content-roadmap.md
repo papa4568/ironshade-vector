@@ -34,10 +34,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 ### P28 — Babylon flagship visual-quality overhaul
 
-#### P. Performance and load-readiness recovery before further flagship escalation
-
-- [ ] **P28-PLOAD2 — Add cold/warm map-load timing and readiness regression coverage** — Add repository-visible phase timing for backend ready, family preload/decode, placement instantiation, mapped-world-object readiness, and final mission-visual readiness across Deep Salvage plus representative detailed routes. Measure repeat entry separately from cold entry so cache/reload churn is visible without treating emulator milliseconds as physical-phone acceptance. **Done when:** deterministic route harnesses emit the same load-phase signature, cold and repeat entries cannot reach playable state before critical visuals, regressions detect serialized/redundant reload behavior or missing readiness, Android lifecycle/re-entry remains clean, and standard production/CI/APK gates pass.
-
 #### D. Hero operators and enemy presentation
 
 - [ ] **P28-D8 — Ship refinery boss LOD0** — Add a boss-quality LOD0 with stronger phase-readable hard-surface detail and emissive anchors while keeping boss mechanics and cue timing unchanged. **Done when:** Flagship uses the boss LOD0, phase cues align with the authored model, visual quality is materially above the current asset, and standard build/APK gates pass.
@@ -97,9 +93,9 @@ Each rollout below reuses the P28 lighting/material/grounding/detail systems and
 
 - [ ] **P28-H1 — Refresh Perseid capstone visuals** — Adopt the shared P28 visual stack in the Perseid capstone without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment on the flagship target, boss/hazard cues remain dominant, and standard build/APK gates pass.
 
-- [ ] **P28-H2 — Refresh K-91 capstone visuals** — Adopt the shared P28 visual stack in K-91 without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment on the flagship target, boss/hazard cues remain dominant, and standard build/APK gates pass.
+- [ ] **P28-H2 — Refresh K-91 capstone visuals** — Adopt the shared P28 stack in K-91 without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment on the flagship target, boss/hazard cues remain dominant, and standard build/APK gates pass.
 
-- [ ] **P28-H3 — Refresh Orpheline capstone visuals** — Adopt the shared P28 visual stack in Orpheline without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment on the flagship target, boss/hazard cues remain dominant, and standard build/APK gates pass.
+- [ ] **P28-H3 — Refresh Orpheline capstone visuals** — Adopt the shared P28 stack in Orpheline without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment on the flagship target, boss/hazard cues remain dominant, and standard build/APK gates pass.
 
 - [ ] **P28-H4 — Refresh Hecate capstone visuals** — Adopt the shared P28 visual stack in Hecate without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment on the flagship target, boss/hazard cues remain dominant, and standard build/APK gates pass.
 
