@@ -162,7 +162,7 @@ export class BabylonRefineryBossPresentation {
     this.root.setEnabled(false);
     this.canvas.dataset.babylonBossPresentation = 'ready:idle';
     this.canvas.dataset.babylonBossAsset = 'none';
-    this.canvas.dataset.babylonBossPhaseCue = 'idle';
+    this.canvas.dataset.babylonBossPresentationPhaseCue = 'idle';
     this.canvas.dataset.babylonBossQaPreview = this.qaPreview ? 'enabled' : 'disabled';
     this.canvas.dataset.babylonBossQaQuality = this.qaPreview ? 'flagship-asset-lock' : 'runtime-adaptive';
   }
@@ -178,7 +178,7 @@ export class BabylonRefineryBossPresentation {
     if (!boss) {
       if (!this.qaPreview) {
         this.root.setEnabled(false);
-        this.canvas.dataset.babylonBossPhaseCue = 'inactive';
+        this.canvas.dataset.babylonBossPresentationPhaseCue = 'inactive';
         return;
       }
       this.root.setEnabled(true);
@@ -222,7 +222,7 @@ export class BabylonRefineryBossPresentation {
     if (boss.dead) this.root.rotation.z = (boss.id % 2 === 0 ? -1 : 1) * 0.82 * clamp01(1 - boss.deathT);
     else this.root.rotation.z = 0;
 
-    this.canvas.dataset.babylonBossPhaseCue = `${motion.phase}:phase-${boss.bossPhase}`;
+    this.canvas.dataset.babylonBossPresentationPhaseCue = `${motion.phase}:phase-${boss.bossPhase}`;
     this.canvas.dataset.babylonBossCueTiming = 'enemyBossAnimation:unchanged';
     this.canvas.dataset.babylonBossDetailScale = detailScale.toFixed(2);
   }
@@ -258,7 +258,7 @@ export class BabylonRefineryBossPresentation {
         node.scaling.set(rest.scaling.x * 1.28, rest.scaling.y * 1.28, rest.scaling.z * 1.28);
       }
     }
-    this.canvas.dataset.babylonBossPhaseCue = 'qa-preview:phase-2';
+    this.canvas.dataset.babylonBossPresentationPhaseCue = 'qa-preview:phase-2';
     this.canvas.dataset.babylonBossCueTiming = 'enemyBossAnimation:unchanged';
     this.canvas.dataset.babylonBossDetailScale = detailScale.toFixed(2);
   }

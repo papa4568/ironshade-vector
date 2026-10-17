@@ -92,7 +92,8 @@ const readBossStateExpression = `(() => {
     bossRig: canvas.dataset.babylonBossRig ?? '',
     bossQaPreview: canvas.dataset.babylonBossQaPreview ?? '',
     bossQaQuality: canvas.dataset.babylonBossQaQuality ?? '',
-    bossPhaseCue: canvas.dataset.babylonBossPhaseCue ?? '',
+    bossPresentationPhaseCue: canvas.dataset.babylonBossPresentationPhaseCue ?? '',
+    bossTelegraphPhaseCue: canvas.dataset.babylonBossPhaseCue ?? '',
     bossCueTiming: canvas.dataset.babylonBossCueTiming ?? '',
     bossDetailScale: canvas.dataset.babylonBossDetailScale ?? '',
     enemyTelegraphs: canvas.dataset.babylonEnemyTelegraphs ?? '',
@@ -152,7 +153,7 @@ try {
       && boss.bossPresentation === 'authored:enemy-boss-lod0'
       && boss.bossAsset === 'enemy-boss-lod0'
       && boss.bossRig === 'articulated+phase-anchors'
-      && boss.bossPhaseCue === 'qa-preview:phase-2'
+      && boss.bossPresentationPhaseCue === 'qa-preview:phase-2'
       && boss.bossCueTiming === 'enemyBossAnimation:unchanged'
       && boss.bossDetailScale === '1.00') break;
     await sleep(100);
@@ -163,7 +164,7 @@ try {
     || boss.bossPresentation !== 'authored:enemy-boss-lod0'
     || boss.bossAsset !== 'enemy-boss-lod0'
     || boss.bossRig !== 'articulated+phase-anchors'
-    || boss.bossPhaseCue !== 'qa-preview:phase-2'
+    || boss.bossPresentationPhaseCue !== 'qa-preview:phase-2'
     || boss.bossCueTiming !== 'enemyBossAnimation:unchanged'
     || boss.bossDetailScale !== '1.00') {
     throw new Error(`Timed out waiting for authored Flagship refinery boss LOD0 preview: ${JSON.stringify(boss)}`);
@@ -176,7 +177,7 @@ try {
     || boss.bossRig !== 'articulated+phase-anchors'
     || boss.bossQaPreview !== 'enabled'
     || boss.bossQaQuality !== 'flagship-asset-lock'
-    || boss.bossPhaseCue !== 'qa-preview:phase-2'
+    || boss.bossPresentationPhaseCue !== 'qa-preview:phase-2'
     || boss.bossCueTiming !== 'enemyBossAnimation:unchanged'
     || boss.bossDetailScale !== '1.00'
     || boss.enemyTelegraphs !== 'attack+aim+range+boss-pattern+phase'
@@ -204,7 +205,7 @@ try {
     screenshot: screenshotPath,
   }, null, 2));
 
-  console.log(`BROWSER_P28D8_BOSS_PASS hostTier=${boss.tier} qaQuality=${boss.bossQaQuality} asset=${boss.bossAsset} rig=${boss.bossRig} phase=${boss.bossPhaseCue} timing=${boss.bossCueTiming} detail=${boss.bossDetailScale} screenshot=${screenshotPath} bytes=${png.length}`);
+  console.log(`BROWSER_P28D8_BOSS_PASS hostTier=${boss.tier} qaQuality=${boss.bossQaQuality} asset=${boss.bossAsset} rig=${boss.bossRig} phase=${boss.bossPresentationPhaseCue} timing=${boss.bossCueTiming} detail=${boss.bossDetailScale} screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
   socket.close();
 }

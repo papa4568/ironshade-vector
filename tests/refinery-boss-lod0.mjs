@@ -92,6 +92,8 @@ for (const image of gltf.images ?? []) {
 const presentationSource = await readFile(resolve(process.cwd(), 'src/game/babylonRefineryBossPresentation.ts'), 'utf8');
 assert(presentationSource.includes('return qaPreview ? 1 : refineryBossDetailScale(qualityMode, runtimeTier);'), 'D8 visual QA must lock only the boss presentation asset to Flagship detail while production remains runtime-adaptive');
 assert(presentationSource.includes("babylonBossQaQuality = this.qaPreview ? 'flagship-asset-lock' : 'runtime-adaptive'"), 'D8 visual QA must expose the QA-only flagship asset lock separately from production adaptive recovery');
+assert(presentationSource.includes('babylonBossPresentationPhaseCue'), 'D8 boss model phase telemetry must use a presentation-owned channel');
+assert(!presentationSource.includes('dataset.babylonBossPhaseCue'), 'D8 boss presentation must not overwrite the canonical simulation-owned telegraph phase channel');
 
 const animationSource = await readFile(resolve(process.cwd(), 'src/game/enemyBossAnimation.ts'), 'utf8');
 assert(profileNumber(animationSource, 'phaseDuration') === contract.phaseCueTiming.phaseDuration, 'authored boss phase duration no longer aligns with enemyBossAnimation');
