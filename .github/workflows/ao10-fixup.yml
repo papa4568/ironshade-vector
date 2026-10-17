@@ -23,10 +23,10 @@ jobs:
           node-version: '22.23.2'
       - name: Apply and verify AO-10 parser fix
         run: python3 .github/ao10-fixup.py
-      - name: Commit verified fix
+      - name: Commit verified parser fix
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add agent/tools/trusted-review-json-sanitizer.mjs agent/tools/ao6-trusted-independent-review-v2.mjs .github/workflows/ao6-trusted-independent-review.yml
+          git add agent/tools/trusted-review-json-sanitizer.mjs agent/tools/ao6-trusted-independent-review-v2.mjs
           git commit -m 'AO-10 bind terminal sanitization to parser'
           git push origin HEAD:agent/ao6-trusted-review-control-sanitize
