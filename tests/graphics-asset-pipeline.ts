@@ -43,7 +43,8 @@ const runtimeSource=readFileSync(resolve(process.cwd(),'src/game/babylonGraphics
 const loaderSource=readFileSync(resolve(process.cwd(),'src/game/babylonGltfLoader.ts'),'utf8');
 const manifestSource=readFileSync(resolve(process.cwd(),'src/game/graphicsAssetManifest.ts'),'utf8');
 const rendererSource=readFileSync(resolve(process.cwd(),'src/game/babylonCombatRenderer.ts'),'utf8');
-const backendSource=readFileSync(resolve(process.cwd(),'src/game/combatGraphicsBackend.ts'),'utf8');
+const backendCoreSource=readFileSync(resolve(process.cwd(),'src/game/combatGraphicsBackendCore.ts'),'utf8');
+const backendFacadeSource=readFileSync(resolve(process.cwd(),'src/game/combatGraphicsBackend.ts'),'utf8');
 const bossPresentationSource=readFileSync(resolve(process.cwd(),'src/game/babylonRefineryBossPresentation.ts'),'utf8');
 const prepareCodecs=readFileSync(resolve(process.cwd(),'scripts/prepare-graphics-codecs.mjs'),'utf8');
 assert(!contractSource.includes("from 'three'") && !contractSource.includes('@babylonjs/'),'shared graphics asset contract must remain renderer-neutral');
@@ -55,7 +56,8 @@ for (const token of ['OPERATOR_ASSET_FAMILY','OPERATOR_CLASS_ASSET_FAMILIES','EN
 assert(rendererSource.includes("from './graphicsAssetManifest'") && rendererSource.includes("from './graphicsAssets'") && rendererSource.includes("from './babylonGraphicsAssets'"),'Babylon combat renderer must consume shared manifest/contract through Babylon runtime');
 assert(rendererSource.includes('runtime.preload(') && rendererSource.includes('runtime.instantiate('),'Babylon combat renderer must use the shared cached asset runtime');
 assert(rendererSource.includes("dataset.operatorVisual = 'authored-fallback-babylon'") && rendererSource.includes("dataset.weaponVisual = 'authored-fallback-babylon'") && rendererSource.includes("dataset.environmentVisual = 'authored-fallback-babylon'"),'authored asset failures must preserve Babylon procedural presentation fallbacks');
-assert(backendSource.includes("state.enemies.some(enemy => enemy.role === 'boss' && enemy.active)") && backendSource.includes("import('./babylonRefineryBossPresentation')") && backendSource.includes('this.bossPresentation?.sync(state, qualityMode)'),'Babylon backend must lazily attach and synchronize the refinery boss presentation only when a real boss or explicit D8 QA preview needs it');
-assert(backendSource.includes("renderer as unknown as { scene?: Scene }") && !backendSource.includes('EngineStore.LastCreatedScene'),'Refinery boss presentation must bind to the exact renderer scene and never a global Babylon scene');
+assert(backendCoreSource.includes("state.enemies.some(enemy => enemy.role === 'boss' && enemy.active)") && backendCoreSource.includes("import('./babylonRefineryBossPresentation')") && backendCoreSource.includes('this.bossPresentation?.sync(state, qualityMode)'),'Babylon backend core must lazily attach and synchronize the refinery boss presentation only when a real refinery boss or explicit D8 QA preview needs it');
+assert(backendCoreSource.includes("scene?: ConstructorParameters<typeof BabylonRefineryBossPresentation>[0]") && !backendCoreSource.includes('EngineStore.LastCreatedScene'),'Refinery boss presentation must bind to the exact renderer scene and never a global Babylon scene');
+assert(!backendFacadeSource.includes('babylonRefineryBossPresentation') && !backendFacadeSource.includes('@babylonjs/'),'Public combat graphics facade must preserve the AO-6 backend-core boundary');
 assert(bossPresentationSource.includes("cueTimingOwnership")===false && bossPresentationSource.includes("resolveEnemyBossAnimation"),'runtime boss presentation must consume existing boss timing signals rather than own gameplay timing');
 console.log('GRAPHICS_ASSET_PIPELINE_PASS contract=renderer-neutral runtime=babylon codecs=local lod=adaptive cache=bounded fallbacks=preserved assault-lod0=flagship suppressor-lod0=flagship technician-lod0=flagship elite-lod0=flagship boss-lod0=flagship');
