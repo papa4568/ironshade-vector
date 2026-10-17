@@ -30,6 +30,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 - [ ] **EV-19 — Validate EV-7 Roadmap Shadow Predictions**
   - Compare prior shadow-friction predictions with actual implementation outcomes from later roadmap work and quantify useful predictions, false alarms, and missed integration pressure.
+  - Count repeatability only from distinct committed prediction snapshots that predate the measured implementation outcome; duplicated snapshots, cumulative outcome revisions, and post-hoc signals do not establish predictive value. If multiple trials forecast the same later task, scope any validated claim to cross-snapshot robustness rather than cross-task generalization.
   - Keep all roadmap-pressure scoring advisory in this item and confirm disposable probes remain outside product/runtime state.
   - Done when the evidence identifies any signal with repeatable predictive value and records unsupported signals that must remain advisory.
 
