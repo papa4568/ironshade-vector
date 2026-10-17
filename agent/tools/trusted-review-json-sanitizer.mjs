@@ -22,10 +22,6 @@ export function sanitizeTrustedJsonValue(value) {
   return value;
 }
 
-export function serializeTrustedJsonValue(value, space = 2) {
-  return JSON.stringify(sanitizeTrustedJsonValue(value), null, space);
-}
-
 function selfTest() {
   const escape = String.fromCharCode(0x1b);
   const bell = String.fromCharCode(0x07);
@@ -57,11 +53,6 @@ function selfTest() {
     rejectedEscapedKey = /JSON key/.test(String(error));
   }
   ok(rejectedEscapedKey, 'escaped C0 controls in JSON keys must fail closed instead of collapsing keys');
-
-  const serialized = serializeTrustedJsonValue(JSON.parse(String.raw`{"note":"reviewed \u001b]8;;urn:ironshade:trusted-review:test\u0007VISIBLE_REFERENCE\u001b]8;;\u0007"}`));
-  const roundTrip = JSON.parse(serialized);
-  ok(roundTrip.note.includes('VISIBLE_REFERENCE'), 'serialized trusted JSON must preserve visible review text');
-  ok(!HAS_NON_WHITESPACE_C0.test(roundTrip.note), 'serialized trusted JSON must not recreate terminal-control bytes after strict JSON round-trip');
 
   const ordinary = sanitizeTrustedJsonValue(JSON.parse('{"status":"safe","note":"ordinary visible text"}'));
   ok(ordinary.status === 'safe' && ordinary.note === 'ordinary visible text', 'ordinary JSON semantics must remain unchanged');
