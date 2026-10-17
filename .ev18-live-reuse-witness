@@ -1,3 +1,0 @@
-EV-18 live reuse witness.
-
-This temporary tracked input exists only to force a fresh full-repository-build-closed repository closure for the required unchanged-SHA first-miss/second-hit demonstration. It is removed before EV-18 closeout.

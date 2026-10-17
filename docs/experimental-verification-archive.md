@@ -1028,3 +1028,38 @@ This archive transition follows the repository's established split-EV self-refer
 ### Promotion status
 
 EV-28 permanently stabilizes the prepared-toolchain closure identity while preserving real drift detection and the five-input EV-21 contract. EV-18 is now the next actionable experimental item and must demonstrate a live first-miss/second-hit reuse sequence on one unchanged exact candidate before promotion completion.
+
+## EV-18 — Reuse One Validated Proof Class
+
+Completed 2026-10-16 as the permanent promotion of exactly the EV-21-calibrated `full-repository-build-closed` proof class. No second EV-6 proof class is promoted.
+
+### Implemented
+
+- PR #390 promoted only `full-repository-build-closed`. Mandatory EV-21 preflight still resolves every calibrated closure dimension before the reuse decision, the exact closure digest is the cache key, and a reusable success receipt binds repository/context/policy/dist identities plus immutable source candidate, run, repository, workflow, and proof-profile provenance.
+- Any unknown or inconsistent cache state—including a miss, malformed receipt, provenance mismatch, closure mismatch, non-success outcome, or bundle-digest mismatch—fails closed to the real closed proof.
+- `IRONSHADE_PROOF_CACHE_REUSE=0` is the deterministic rollback switch and restores the pre-EV-18 legacy proof producer.
+- Existing exact-SHA candidate, architecture-invariant, independent-review, browser, Android, APK, and artifact-consumer gates remain mandatory. EV-18 can skip only the promoted expensive producer proof after exact-closure validation.
+- Permanent behavior lives in `AGENTS.md`, `agent/proof-cache-promotion-policy.json`, its schema/tool/tests, and `.github/workflows/ev18-proof-cache-promotion.yml`; this archive transition changes lifecycle state, not producer semantics.
+
+### Evidence
+
+Implementation candidate `4ca71414707850777fd6655d47096ddbe82659fe` passed EV-18 Proof Cache Promotion run `38962549718`, Agent Orchestration run `38962549739`, PR Candidate Verification run `38962549782`, retained EV-21 Proof Cache Closure Calibration run `38962549676`, retained EV-17 Proof Cache Calibration run `38962549740`, and trusted AO-6 pass comment `6225994903`. PR #390 then merged the reviewed implementation to trusted `main` as merge commit `d39d917636a126b99f701b29ee2b4fbcd4c36363`.
+
+The promotion calibration measured zero false positives and zero false negatives for its pinned scope across the valid-hit control, miss, closure mismatch, failed receipt, invalid source-candidate provenance, dist tamper, and rollback cases.
+
+A fresh live unchanged-SHA witness then used exact candidate `c5f0ce70ecb2c22181d49810ddee3348354c7243`:
+
+- First PR Candidate Verification run `38987569310` computed exact closure `76b83268dc15611759b0355ab6e9cdfd38bac19b1f98b58dc8ee6affe668b2fa`, missed exact key `ironshade-proof-full-repository-build-closed-v2-76b83268dc15611759b0355ab6e9cdfd38bac19b1f98b58dc8ee6affe668b2fa`, executed the real closed proof successfully, and emitted a success receipt sourced from candidate `c5f0ce70ecb2c22181d49810ddee3348354c7243`, run `38987569310`, attempt `1`, with cache-dist digest `510ce1b3a5e13e98ff50dc6bbb1b6f93f16ee5d71053ed6edae7880d4756e994`. Exact proof-cache evidence artifact `12083587645` has GitHub Actions digest `sha256:21d3d33b4caa28f7b79e8c58a215a8bbc74589dd3e276865fed764c1030df0c0`.
+- A separate pull-request event then ran PR Candidate Verification `38988205045` on the unchanged exact same candidate. It recomputed the identical closure and exact key, restored and validated the first run's receipt, recorded `reuse=true`, `proofMode=reused`, and `reason=validated-exact-closure-success-entry`, preserved source candidate/run/attempt provenance, materialized the same cache-dist digest, and skipped the real-proof receipt/save steps. Exact proof-cache evidence artifact `12084270871` has GitHub Actions digest `sha256:652f9bb23ca33c24351ccdebabfd9cd2ae43f1d964ad66b409dfc6152a3ae9a0`.
+- The source-bound web digest was identical in both runs: `0cf19c3ccd2b8755e1321a03818e5aa7b275c4ee4e4fd14dfade5c9530947f63`. The exact candidate artifact tree digest was also identical: `aaa2f1ecf82b19debce91a1d9bd84374dc52c3733cea1dcaffc7a7388c91f2f8`.
+- Both runs retained the same canonical prepared-toolchain identity `sha256:029650f1b22c824ca8c3ee4dfb4a02c2072139e3675bf8e543561791355d503a`, immutable base-image ref, npm CLI tree, prepared-toolchain tree, Docker engine, dependency tree, and resulting closure. Their fresh runtime Docker image-object IDs differed, so the hit exercised the concrete rebuild-sensitive false-miss condition that EV-28 repaired rather than merely reusing an unchanged Docker object instance.
+
+### Rollback and retained safety
+
+`IRONSHADE_PROOF_CACHE_REUSE=0` bypasses EV-18 and executes the pre-EV-18 legacy `scripts/run-full-repository-build-proof.sh` path; `.github/workflows/ev18-proof-cache-promotion.yml` proves that rollback on EV-18 candidates. Default-enforced reuse remains fail-closed: any cache uncertainty runs the real closed proof, and browser, Android, APK, exact-SHA, architecture-invariant, and independent-review obligations are never reused or waived.
+
+This closeout follows the repository's split-EV lifecycle rule: it records immutable reviewed implementation and live unchanged-SHA evidence, removes only EV-18 from the active experimental queue, and must itself pass fresh exact-head technical gates plus a fresh trusted EV-18 independent review before merge. No prior review verdict is inherited by the closeout candidate.
+
+### Promotion status
+
+Promoted permanently for exactly `full-repository-build-closed`. All other EV-6 proof classes remain advisory/shadow-only and require separate calibration and promotion work. EV-19 — Validate EV-7 Roadmap Shadow Predictions is the next actionable experimental item.
