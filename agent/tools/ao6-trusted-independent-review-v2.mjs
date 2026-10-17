@@ -28,7 +28,7 @@ export function repairJson(text) {
       continue;
     }
     const code = ch.codePointAt(0);
-    if (code < 32) out += ch === '\n' ? '\\n' : ch === '\r' ? '\\r' : ch === '\t' ? '\\t' : `\\u${code.toString(16).padStart(4, '0')}`;
+    if (code < 32) out += ch === '\n' ? '\\n' : ch === '\r' ? '\\r' : ch === '\t' ? '\\t' : '';
     else out += ch;
   }
   return out;
@@ -478,6 +478,9 @@ function selfTest() {
   ok(parsedTrailing.schemaVersion === 1 && parsedTrailing.note === 'quoted } brace', 'balanced verdict extraction failed');
   const parsedRawNewline = parseReview('{"note":"line 1\nline 2"} trailing');
   ok(parsedRawNewline.note === 'line 1\nline 2', 'control-character repair failed');
+  const parsedTerminalControls = parseReview('{"note":"reviewed PR \u001b]8;;https://github.com/example/repo/issues/390\u0007#390\u001b]8;;\u0007"}');
+  ok(parsedTerminalControls.note.includes('#390'), 'terminal-control repair must preserve visible trusted-review text');
+  ok(!/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(parsedTerminalControls.note), 'terminal-control repair must remove non-whitespace C0 bytes before publication');
   const parsedInvalidEscapes = parseReview(String.raw`{"note":"regex \. and \s and \d and literal \uZZZZ"}`);
   ok(parsedInvalidEscapes.note === String.raw`regex \. and \s and \d and literal \uZZZZ`, 'invalid JSON escape repair failed');
   const parsedValidEscapes = parseReview(String.raw`{"note":"quote \" slash \\ newline \n unicode \u263A"}`);
