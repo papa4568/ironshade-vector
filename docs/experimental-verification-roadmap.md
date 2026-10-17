@@ -31,6 +31,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 - [ ] **EV-20 — Graduate One Roadmap-Pressure Signal**
   - Using only EV-19 evidence, either convert one validated signal into a deterministic architecture invariant, proof obligation, or roadmap rule, or explicitly record that no signal is ready for enforcement.
   - Do not make a heuristic score authoritative; verify disabling the simulator restores the previous planning/verification path.
+  - Decision candidate: **no promotion**. The EV-19-supported signal has only same-task cross-snapshot robustness across one completed product outcome, while both measured forecasts contain false alarms and three missed production surfaces. `agent/roadmap-shadow-promotion-policy.json` pins that evidence and keeps the EV-7 simulator advisory pending exact-SHA verification and independent review.
   - Done when the permanent rule or no-promotion decision is documented and, if enforcement changes, the exact candidate is archived with required proofs and independent review.
 
 ## Intended dependency order
