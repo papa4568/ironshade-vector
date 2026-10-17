@@ -79,6 +79,12 @@ const readBossStateExpression = `(() => {
   if (!(canvas instanceof HTMLCanvasElement)) return null;
   const rect = canvas.getBoundingClientRect();
   return {
+    href: location.href,
+    search: location.search,
+    babylonInit: canvas.dataset.babylonInit ?? '',
+    backendLoaded: canvas.dataset.babylonBackendLoaded ?? '',
+    bossRequest: canvas.dataset.babylonBossRequest ?? '',
+    bossFallbackReason: canvas.dataset.babylonBossFallbackReason ?? '',
     tier: canvas.dataset.renderTier ?? '',
     qualityInput: canvas.dataset.renderQualityInput ?? '',
     bossPresentation: canvas.dataset.babylonBossPresentation ?? '',
@@ -136,19 +142,32 @@ try {
   await clickButton('Deploy Selected Contract');
   await waitFor(`document.querySelectorAll('canvas').length > 0`, 'P28-D8 combat surface', 20_000);
 
-  await waitFor(`(() => {
-    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
-    return canvas?.dataset.babylonBossQaPreview === 'enabled'
-      && canvas?.dataset.babylonBossQaQuality === 'flagship-asset-lock'
-      && canvas?.dataset.babylonBossPresentation === 'authored:enemy-boss-lod0'
-      && canvas?.dataset.babylonBossAsset === 'enemy-boss-lod0'
-      && canvas?.dataset.babylonBossRig === 'articulated+phase-anchors'
-      && canvas?.dataset.babylonBossPhaseCue === 'qa-preview:phase-2'
-      && canvas?.dataset.babylonBossCueTiming === 'enemyBossAnimation:unchanged'
-      && canvas?.dataset.babylonBossDetailScale === '1.00';
-  })()`, 'authored Flagship refinery boss LOD0 preview', 90_000);
-
-  const boss = await evaluate(readBossStateExpression);
+  const bossDeadline = Date.now() + 90_000;
+  let boss = null;
+  while (Date.now() < bossDeadline) {
+    boss = await evaluate(readBossStateExpression);
+    if (boss
+      && boss.bossQaPreview === 'enabled'
+      && boss.bossQaQuality === 'flagship-asset-lock'
+      && boss.bossPresentation === 'authored:enemy-boss-lod0'
+      && boss.bossAsset === 'enemy-boss-lod0'
+      && boss.bossRig === 'articulated+phase-anchors'
+      && boss.bossPhaseCue === 'qa-preview:phase-2'
+      && boss.bossCueTiming === 'enemyBossAnimation:unchanged'
+      && boss.bossDetailScale === '1.00') break;
+    await sleep(100);
+  }
+  if (!boss
+    || boss.bossQaPreview !== 'enabled'
+    || boss.bossQaQuality !== 'flagship-asset-lock'
+    || boss.bossPresentation !== 'authored:enemy-boss-lod0'
+    || boss.bossAsset !== 'enemy-boss-lod0'
+    || boss.bossRig !== 'articulated+phase-anchors'
+    || boss.bossPhaseCue !== 'qa-preview:phase-2'
+    || boss.bossCueTiming !== 'enemyBossAnimation:unchanged'
+    || boss.bossDetailScale !== '1.00') {
+    throw new Error(`Timed out waiting for authored Flagship refinery boss LOD0 preview: ${JSON.stringify(boss)}`);
+  }
   if (!boss
     || !['high', 'balanced', 'performance'].includes(boss.tier)
     || !boss.qualityInput.includes('effective:1.00')

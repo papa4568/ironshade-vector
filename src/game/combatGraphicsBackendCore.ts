@@ -247,6 +247,9 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     const bossPresentationRequested = mission.location === 'asteroid-refinery'
       && (state.enemies.some(enemy => enemy.role === 'boss' && enemy.active)
         || (typeof location !== 'undefined' && new URLSearchParams(location.search).get('p28d8BossQa') === '1'));
+    this.canvas.dataset.babylonBossRequest = bossPresentationRequested
+      ? (state.enemies.some(enemy => enemy.role === 'boss' && enemy.active) ? 'active-boss' : 'qa-preview')
+      : 'inactive';
     if (bossPresentationRequested || this.bossPresentation) {
       if (bossPresentationRequested && !this.bossPresentation && !this.bossPresentationInitialization) {
         const renderer = this.delegate;
