@@ -9,6 +9,7 @@ import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { SSAO2RenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/ssao2RenderingPipeline';
 import { Scene } from '@babylonjs/core/scene';
+import { BabylonAmbientParticles } from './babylonAmbientParticles';
 import {
   REFINERY_BLOOM_PROFILE,
   refineryBloomStrengthForCost,
@@ -130,6 +131,7 @@ export function resolveBabylonRefineryPostProcessingBudget(
 }
 
 export class BabylonRefineryPostProcessing {
+  private readonly ambientParticles: BabylonAmbientParticles;
   private readonly glow: GlowLayer;
   private readonly contactTexture: RawTexture;
   private readonly contactMaterial: StandardMaterial;
@@ -151,6 +153,7 @@ export class BabylonRefineryPostProcessing {
   ) {
     this.upstreamExposure = scene.imageProcessingConfiguration.exposure;
     this.upstreamContrast = scene.imageProcessingConfiguration.contrast;
+    this.ambientParticles = new BabylonAmbientParticles(scene, canvas);
 
     this.glow = new GlowLayer('p27-b12-refinery-selective-bloom', scene, {
       mainTextureRatio: 0.5,
@@ -204,6 +207,7 @@ export class BabylonRefineryPostProcessing {
 
   sync(lowVisibility: boolean, renderBudget: RenderBudgetSnapshot) {
     this.released = false;
+    this.ambientParticles.sync(renderBudget, 'asteroid-refinery');
     this.captureUpstreamImageProcessing();
     const qaExplicit = this.canvas.dataset.graphicsPathSelection === 'qa-explicit';
     const qaLowVisibility = qaExplicit && this.canvas.dataset.refineryImageGradeQa === 'low-visibility';
@@ -314,6 +318,7 @@ export class BabylonRefineryPostProcessing {
   }
 
   release(reason: string) {
+    this.ambientParticles.release(reason);
     if (this.released) return;
     this.released = true;
     this.captureUpstreamImageProcessing();
@@ -347,6 +352,7 @@ export class BabylonRefineryPostProcessing {
 
   dispose() {
     this.release('renderer-dispose');
+    this.ambientParticles.dispose();
     this.ssao?.dispose();
     this.ssao = null;
     this.ssaoCamera = null;

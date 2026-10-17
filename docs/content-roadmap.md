@@ -36,8 +36,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 #### E. Refinery ambience and local visual richness
 
-- [ ] **P28-E1 — Add a shared flagship ambient-particle system** — Add a Babylon ambient-effects layer with pooled dust, sparks, vapor/steam, and drifting debris primitives. Art-direct density for the flagship target first; optional runtime reduction may react to real measured pressure rather than fixed pre-selected caps. **Done when:** the system supports rich ambience, never suppresses gameplay VFX/cues, releases resources on renderer/location teardown, and targeted resource/performance plus standard build/APK gates pass.
-
 - [ ] **P28-E2 — Art-direct refinery ambient particles** — Place the shared ambience around refinery machinery, vents, damaged service areas, and open industrial spaces without adding gameplay state. **Done when:** Deep Salvage gains visible depth/motion, particles never mask telegraphs/targets, and standard build/APK gates pass.
 
 - [ ] **P28-E3 — Upgrade refinery practical/emissive fixtures** — Give furnace ports, terminals, warning fixtures, and selected machinery authored emissive surfaces that visually correspond to existing practical lights and selective bloom sources. **Done when:** bright fixtures appear to emit the light already present in the scene, bloom remains controlled, dark-area navigation improves without extra HUD, and standard build/APK gates pass.
