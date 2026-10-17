@@ -9,10 +9,62 @@ import type { Scene } from '@babylonjs/core/scene';
 import type { RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize } from './sim';
 
-const WORLD_SCALE = 0.02;
+export const BABYLON_AMBIENT_WORLD_SCALE = 0.02;
 const AMBIENT_RESOURCE_PREFIX = 'p28-e1-';
+const REFINERY_ART_DIRECTION_ID = 'refinery-industrial-v1';
 
 export type BabylonAmbientParticleKind = 'dust' | 'sparks' | 'vapor' | 'debris';
+export type BabylonAmbientParticleContext = 'machinery' | 'vents' | 'damaged-service' | 'open-industrial';
+
+export type BabylonAmbientParticleZone = Readonly<{
+  id: string;
+  context: BabylonAmbientParticleContext;
+  x: number;
+  z: number;
+  radiusX: number;
+  radiusZ: number;
+  yMin: number;
+  yMax: number;
+}>;
+
+export const BABYLON_REFINERY_AMBIENT_CUE_CLEARANCE = Object.freeze({
+  xMin: 0.38,
+  xMax: 0.62,
+  zMin: 0.38,
+  zMax: 0.62,
+});
+
+export const BABYLON_REFINERY_AMBIENT_ZONES = Object.freeze({
+  dust: Object.freeze([
+    { id: 'open-bay-north-west', context: 'open-industrial', x: 0.22, z: 0.31, radiusX: 0.12, radiusZ: 0.11, yMin: 0.28, yMax: 1.55 },
+    { id: 'open-bay-north-east', context: 'open-industrial', x: 0.78, z: 0.31, radiusX: 0.12, radiusZ: 0.11, yMin: 0.28, yMax: 1.55 },
+    { id: 'open-bay-south-west', context: 'open-industrial', x: 0.22, z: 0.72, radiusX: 0.12, radiusZ: 0.10, yMin: 0.22, yMax: 1.42 },
+    { id: 'open-bay-south-east', context: 'open-industrial', x: 0.78, z: 0.72, radiusX: 0.12, radiusZ: 0.10, yMin: 0.22, yMax: 1.42 },
+  ] satisfies readonly BabylonAmbientParticleZone[]),
+  sparks: Object.freeze([
+    { id: 'processor-west', context: 'machinery', x: 0.29, z: 0.67, radiusX: 0.045, radiusZ: 0.052, yMin: 0.12, yMax: 1.24 },
+    { id: 'processor-north', context: 'machinery', x: 0.50, z: 0.26, radiusX: 0.050, radiusZ: 0.040, yMin: 0.12, yMax: 1.30 },
+    { id: 'processor-east', context: 'machinery', x: 0.71, z: 0.67, radiusX: 0.045, radiusZ: 0.052, yMin: 0.12, yMax: 1.24 },
+    { id: 'smelter-gantry', context: 'machinery', x: 0.50, z: 0.09, radiusX: 0.090, radiusZ: 0.035, yMin: 0.48, yMax: 1.78 },
+    { id: 'damaged-service-west', context: 'damaged-service', x: 0.10, z: 0.53, radiusX: 0.040, radiusZ: 0.105, yMin: 0.10, yMax: 0.96 },
+    { id: 'damaged-service-east', context: 'damaged-service', x: 0.90, z: 0.74, radiusX: 0.040, radiusZ: 0.085, yMin: 0.10, yMax: 0.96 },
+  ] satisfies readonly BabylonAmbientParticleZone[]),
+  vapor: Object.freeze([
+    { id: 'pipe-vent-west', context: 'vents', x: 0.26, z: 0.14, radiusX: 0.070, radiusZ: 0.035, yMin: 0.10, yMax: 1.68 },
+    { id: 'pipe-vent-center', context: 'vents', x: 0.50, z: 0.14, radiusX: 0.070, radiusZ: 0.035, yMin: 0.10, yMax: 1.68 },
+    { id: 'pipe-vent-east', context: 'vents', x: 0.74, z: 0.14, radiusX: 0.070, radiusZ: 0.035, yMin: 0.10, yMax: 1.68 },
+    { id: 'service-vent-west-north', context: 'vents', x: 0.08, z: 0.24, radiusX: 0.025, radiusZ: 0.060, yMin: 0.08, yMax: 1.42 },
+    { id: 'service-vent-west-south', context: 'vents', x: 0.08, z: 0.76, radiusX: 0.025, radiusZ: 0.060, yMin: 0.08, yMax: 1.42 },
+    { id: 'service-vent-east-north', context: 'vents', x: 0.92, z: 0.24, radiusX: 0.025, radiusZ: 0.060, yMin: 0.08, yMax: 1.42 },
+    { id: 'service-vent-east-south', context: 'vents', x: 0.92, z: 0.76, radiusX: 0.025, radiusZ: 0.060, yMin: 0.08, yMax: 1.42 },
+  ] satisfies readonly BabylonAmbientParticleZone[]),
+  debris: Object.freeze([
+    { id: 'service-debris-west', context: 'damaged-service', x: 0.12, z: 0.54, radiusX: 0.070, radiusZ: 0.130, yMin: 0.10, yMax: 0.72 },
+    { id: 'service-debris-east', context: 'damaged-service', x: 0.88, z: 0.72, radiusX: 0.070, radiusZ: 0.105, yMin: 0.10, yMax: 0.72 },
+    { id: 'open-debris-north-west', context: 'open-industrial', x: 0.23, z: 0.27, radiusX: 0.105, radiusZ: 0.080, yMin: 0.12, yMax: 0.78 },
+    { id: 'open-debris-south-east', context: 'open-industrial', x: 0.77, z: 0.75, radiusX: 0.105, radiusZ: 0.080, yMin: 0.12, yMax: 0.78 },
+  ] satisfies readonly BabylonAmbientParticleZone[]),
+} satisfies Readonly<Record<BabylonAmbientParticleKind, readonly BabylonAmbientParticleZone[]>>);
 
 export const BABYLON_AMBIENT_FLAGSHIP_COUNTS = Object.freeze({
   dust: 128,
@@ -54,6 +106,33 @@ function wrap01(value: number) {
   return value - Math.floor(value);
 }
 
+function refineryZone(kind: BabylonAmbientParticleKind, index: number) {
+  const zones = BABYLON_REFINERY_AMBIENT_ZONES[kind];
+  return zones[index % zones.length];
+}
+
+function refineryAxis(center: number, radius: number, index: number, salt: number, time: number, rate: number) {
+  return center + (wrap01(unitNoise(index, salt) + time * rate) * 2 - 1) * radius;
+}
+
+function refineryHeight(zone: BabylonAmbientParticleZone, cycle: number) {
+  return zone.yMin + (zone.yMax - zone.yMin) * cycle;
+}
+
+function refineryArtDirectionTelemetry() {
+  const contexts = new Set<BabylonAmbientParticleContext>();
+  const zoneCount = (Object.keys(BABYLON_REFINERY_AMBIENT_ZONES) as BabylonAmbientParticleKind[])
+    .reduce((count, kind) => {
+      for (const zone of BABYLON_REFINERY_AMBIENT_ZONES[kind]) contexts.add(zone.context);
+      return count + BABYLON_REFINERY_AMBIENT_ZONES[kind].length;
+    }, 0);
+  return {
+    id: REFINERY_ART_DIRECTION_ID,
+    zoneCount,
+    contexts: [...contexts].sort().join('+'),
+  };
+}
+
 export function babylonAmbientParticleBudget(budget: RenderBudgetSnapshot): BabylonAmbientParticleBudget {
   const scale = RUNTIME_PRESSURE_SCALE[budget.runtimeTierName];
   const counts = Object.fromEntries(
@@ -78,6 +157,8 @@ export class BabylonAmbientParticles {
     canvas.dataset.babylonAmbientParticleSimulationOwnership = 'read-only-presentation';
     canvas.dataset.babylonAmbientGameplayCuePolicy = 'independent:1.00';
     canvas.dataset.babylonAmbientParticleCounts = 'dust:0/128|sparks:0/48|vapor:0/24|debris:0/40';
+    canvas.dataset.babylonAmbientParticleArtDirection = 'unassigned';
+    canvas.dataset.babylonAmbientParticleCueClearance = 'unassigned';
   }
 
   sync(budget: RenderBudgetSnapshot, locationKey: string) {
@@ -90,8 +171,8 @@ export class BabylonAmbientParticles {
     this.elapsedSeconds += (Number.isFinite(deltaMs) && deltaMs > 0 ? Math.min(deltaMs, 50) : 1000 / 60) / 1000;
     const particleBudget = babylonAmbientParticleBudget(budget);
     const world = getWorldSize();
-    const worldW = world.w * WORLD_SCALE;
-    const worldH = world.h * WORLD_SCALE;
+    const worldW = world.w * BABYLON_AMBIENT_WORLD_SCALE;
+    const worldH = world.h * BABYLON_AMBIENT_WORLD_SCALE;
 
     this.syncDust(this.pools.get('dust')!, particleBudget.counts.dust, worldW, worldH);
     this.syncSparks(this.pools.get('sparks')!, particleBudget.counts.sparks, worldW, worldH);
@@ -117,6 +198,8 @@ export class BabylonAmbientParticles {
     this.canvas.dataset.babylonAmbientParticlePoolSize = '0';
     this.canvas.dataset.babylonAmbientParticleDrawFamilies = '0';
     this.canvas.dataset.babylonAmbientParticleRelease = reason;
+    this.canvas.dataset.babylonAmbientParticleArtDirection = 'released';
+    this.canvas.dataset.babylonAmbientParticleCueClearance = 'released';
   }
 
   dispose() {
@@ -195,15 +278,26 @@ export class BabylonAmbientParticles {
 
   private syncDust(pool: AmbientPool, activeCount: number, worldW: number, worldH: number) {
     const time = this.elapsedSeconds;
+    const refinery = this.locationKey === 'asteroid-refinery';
     pool.particles.forEach((particle, index) => {
       particle.setEnabled(index < activeCount);
       if (index >= activeCount) return;
-      const y0 = unitNoise(index, 3);
-      particle.position.set(
-        wrap01(unitNoise(index, 1) + time * (0.004 + unitNoise(index, 4) * 0.006)) * worldW,
-        0.18 + y0 * 1.35 + Math.sin(time * (0.35 + y0 * 0.25) + index) * 0.055,
-        wrap01(unitNoise(index, 2) + Math.sin(time * 0.12 + index * 0.71) * 0.018) * worldH,
-      );
+      if (refinery) {
+        const zone = refineryZone('dust', index);
+        const cycle = wrap01(unitNoise(index, 3) + time * (0.012 + unitNoise(index, 4) * 0.008));
+        particle.position.set(
+          refineryAxis(zone.x, zone.radiusX, index, 1, time, 0.004 + unitNoise(index, 4) * 0.004) * worldW,
+          refineryHeight(zone, cycle) + Math.sin(time * 0.38 + index) * 0.04,
+          refineryAxis(zone.z, zone.radiusZ, index, 2, time, 0.0025 + unitNoise(index, 7) * 0.003) * worldH,
+        );
+      } else {
+        const y0 = unitNoise(index, 3);
+        particle.position.set(
+          wrap01(unitNoise(index, 1) + time * (0.004 + unitNoise(index, 4) * 0.006)) * worldW,
+          0.18 + y0 * 1.35 + Math.sin(time * (0.35 + y0 * 0.25) + index) * 0.055,
+          wrap01(unitNoise(index, 2) + Math.sin(time * 0.12 + index * 0.71) * 0.018) * worldH,
+        );
+      }
       const scale = 0.62 + unitNoise(index, 5) * 1.3;
       particle.scaling.setAll(scale);
       particle.rotation.y = time * (0.12 + unitNoise(index, 6) * 0.18) + index;
@@ -212,15 +306,25 @@ export class BabylonAmbientParticles {
 
   private syncSparks(pool: AmbientPool, activeCount: number, worldW: number, worldH: number) {
     const time = this.elapsedSeconds;
+    const refinery = this.locationKey === 'asteroid-refinery';
     pool.particles.forEach((particle, index) => {
       particle.setEnabled(index < activeCount);
       if (index >= activeCount) return;
       const cycle = wrap01(unitNoise(index, 14) + time * (0.16 + unitNoise(index, 13) * 0.18));
-      particle.position.set(
-        wrap01(unitNoise(index, 11) + Math.sin(time * 0.65 + index) * 0.012) * worldW,
-        0.08 + cycle * 1.15,
-        wrap01(unitNoise(index, 12) + Math.cos(time * 0.52 + index * 0.43) * 0.012) * worldH,
-      );
+      if (refinery) {
+        const zone = refineryZone('sparks', index);
+        particle.position.set(
+          refineryAxis(zone.x, zone.radiusX, index, 11, time, 0.018 + unitNoise(index, 16) * 0.012) * worldW,
+          refineryHeight(zone, cycle),
+          refineryAxis(zone.z, zone.radiusZ, index, 12, time, 0.014 + unitNoise(index, 17) * 0.010) * worldH,
+        );
+      } else {
+        particle.position.set(
+          wrap01(unitNoise(index, 11) + Math.sin(time * 0.65 + index) * 0.012) * worldW,
+          0.08 + cycle * 1.15,
+          wrap01(unitNoise(index, 12) + Math.cos(time * 0.52 + index * 0.43) * 0.012) * worldH,
+        );
+      }
       particle.scaling.set(0.75, 0.75, 0.72 + unitNoise(index, 15) * 1.45);
       particle.rotation.set(Math.PI * 0.5, time * (1.2 + unitNoise(index, 16) * 2.4), index * 0.37);
     });
@@ -228,16 +332,26 @@ export class BabylonAmbientParticles {
 
   private syncVapor(pool: AmbientPool, activeCount: number, worldW: number, worldH: number) {
     const time = this.elapsedSeconds;
+    const refinery = this.locationKey === 'asteroid-refinery';
     pool.particles.forEach((particle, index) => {
       particle.setEnabled(index < activeCount);
       if (index >= activeCount) return;
-      const edge = unitNoise(index, 21) < 0.5 ? 0.06 + unitNoise(index, 22) * 0.18 : 0.76 + unitNoise(index, 22) * 0.18;
       const cycle = wrap01(unitNoise(index, 23) + time * (0.025 + unitNoise(index, 24) * 0.022));
-      particle.position.set(
-        edge * worldW + Math.sin(time * 0.18 + index) * 0.12,
-        0.12 + cycle * 1.55,
-        unitNoise(index, 25) * worldH + Math.cos(time * 0.13 + index) * 0.18,
-      );
+      if (refinery) {
+        const zone = refineryZone('vapor', index);
+        particle.position.set(
+          refineryAxis(zone.x, zone.radiusX, index, 21, time, 0.006 + unitNoise(index, 26) * 0.004) * worldW,
+          refineryHeight(zone, cycle),
+          refineryAxis(zone.z, zone.radiusZ, index, 22, time, 0.004 + unitNoise(index, 27) * 0.003) * worldH,
+        );
+      } else {
+        const edge = unitNoise(index, 21) < 0.5 ? 0.06 + unitNoise(index, 22) * 0.18 : 0.76 + unitNoise(index, 22) * 0.18;
+        particle.position.set(
+          edge * worldW + Math.sin(time * 0.18 + index) * 0.12,
+          0.12 + cycle * 1.55,
+          unitNoise(index, 25) * worldH + Math.cos(time * 0.13 + index) * 0.18,
+        );
+      }
       const scale = (0.68 + unitNoise(index, 26) * 0.9) * (0.78 + cycle * 0.55);
       particle.scaling.set(scale * 1.18, scale, scale);
       particle.rotation.z = time * 0.08 + index * 0.61;
@@ -246,15 +360,26 @@ export class BabylonAmbientParticles {
 
   private syncDebris(pool: AmbientPool, activeCount: number, worldW: number, worldH: number) {
     const time = this.elapsedSeconds;
+    const refinery = this.locationKey === 'asteroid-refinery';
     pool.particles.forEach((particle, index) => {
       particle.setEnabled(index < activeCount);
       if (index >= activeCount) return;
       const drift = 0.002 + unitNoise(index, 31) * 0.004;
-      particle.position.set(
-        wrap01(unitNoise(index, 32) + time * drift) * worldW,
-        0.12 + unitNoise(index, 33) * 0.72,
-        wrap01(unitNoise(index, 34) - time * drift * 0.55) * worldH,
-      );
+      if (refinery) {
+        const zone = refineryZone('debris', index);
+        const cycle = wrap01(unitNoise(index, 33) + time * drift * 0.9);
+        particle.position.set(
+          refineryAxis(zone.x, zone.radiusX, index, 32, time, drift) * worldW,
+          refineryHeight(zone, cycle),
+          refineryAxis(zone.z, zone.radiusZ, index, 34, time, -drift * 0.55) * worldH,
+        );
+      } else {
+        particle.position.set(
+          wrap01(unitNoise(index, 32) + time * drift) * worldW,
+          0.12 + unitNoise(index, 33) * 0.72,
+          wrap01(unitNoise(index, 34) - time * drift * 0.55) * worldH,
+        );
+      }
       const scale = 0.48 + unitNoise(index, 35) * 1.18;
       particle.scaling.set(scale, scale * (0.5 + unitNoise(index, 36) * 0.55), scale);
       particle.rotation.set(
@@ -287,4 +412,14 @@ function canvasTelemetry(
   );
   canvas.dataset.babylonAmbientParticleDrawFamilies = String(drawFamilies);
   canvas.dataset.babylonAmbientGameplayCuePolicy = `independent:${budget.gameplayCueScale.toFixed(2)}`;
+  if (locationKey === 'asteroid-refinery') {
+    const artDirection = refineryArtDirectionTelemetry();
+    canvas.dataset.babylonAmbientParticleArtDirection = artDirection.id;
+    canvas.dataset.babylonAmbientParticleZones = `${artDirection.zoneCount}:${artDirection.contexts}`;
+    canvas.dataset.babylonAmbientParticleCueClearance = 'center:x38-62+z38-62+presentation-only';
+  } else {
+    canvas.dataset.babylonAmbientParticleArtDirection = 'shared-world-default';
+    canvas.dataset.babylonAmbientParticleZones = 'world-distributed';
+    canvas.dataset.babylonAmbientParticleCueClearance = 'gameplay-cues-independent';
+  }
 }
