@@ -6,12 +6,12 @@ const reportPath = process.env.BROWSER_E2E_P28E1_AMBIENT_REPORT ?? 'browser-p28e
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
-  throw new Error('P28-E1 capture requires Node 22+ global WebSocket support.');
+  throw new Error('P28-E2 capture requires Node 22+ global WebSocket support.');
 }
 
 const targets = await fetch(`${cdpBase}/json`).then(response => response.json());
 const page = targets.find(target => target.type === 'page');
-if (!page?.webSocketDebuggerUrl) throw new Error('No Chrome page target is available for the P28-E1 ambient capture.');
+if (!page?.webSocketDebuggerUrl) throw new Error('No Chrome page target is available for the P28-E2 refinery ambient capture.');
 
 const socket = new WebSocket(page.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
@@ -65,6 +65,9 @@ const readAmbientStateExpression = `(() => {
     scale: canvas.dataset.babylonAmbientParticleScale ?? '',
     cuePolicy: canvas.dataset.babylonAmbientGameplayCuePolicy ?? '',
     ownership: canvas.dataset.babylonAmbientParticleSimulationOwnership ?? '',
+    artDirection: canvas.dataset.babylonAmbientParticleArtDirection ?? '',
+    artDirectionZones: canvas.dataset.babylonAmbientParticleZones ?? '',
+    cueClearance: canvas.dataset.babylonAmbientParticleCueClearance ?? '',
     telegraphs: canvas.dataset.babylonEnemyTelegraphs ?? '',
     telegraphOwnership: canvas.dataset.babylonEnemyTelegraphSimulationOwnership ?? '',
     protocolOwnership: canvas.dataset.babylonProtocolStatusSimulationOwnership ?? '',
@@ -101,6 +104,9 @@ try {
       && ambient.drawFamilies === '4'
       && ambient.cuePolicy === 'independent:1.00'
       && ambient.ownership === 'read-only-presentation'
+      && ambient.artDirection === 'refinery-industrial-v1'
+      && ambient.artDirectionZones === '21:damaged-service+machinery+open-industrial+vents'
+      && ambient.cueClearance === 'center:x38-62+z38-62+presentation-only'
       && counts.dust?.pooled === 128
       && counts.sparks?.pooled === 48
       && counts.vapor?.pooled === 24
@@ -121,6 +127,9 @@ try {
     || ambient.drawFamilies !== '4'
     || ambient.cuePolicy !== 'independent:1.00'
     || ambient.ownership !== 'read-only-presentation'
+    || ambient.artDirection !== 'refinery-industrial-v1'
+    || ambient.artDirectionZones !== '21:damaged-service+machinery+open-industrial+vents'
+    || ambient.cueClearance !== 'center:x38-62+z38-62+presentation-only'
     || !['high', 'balanced', 'performance'].includes(ambient.runtimeTier)
     || !['high', 'balanced', 'performance'].includes(ambient.hostTier)
     || counts.dust?.pooled !== 128
@@ -139,24 +148,24 @@ try {
     || !ambient.qualityInput.includes('effective:1.00')
     || !ambient.sceneTelemetry.includes('meshes:')
     || !ambient.sceneTelemetry.includes('materials:')) {
-    throw new Error(`P28-E1 ambient proof is not deterministic: ${JSON.stringify(ambient)}`);
+    throw new Error(`P28-E2 refinery ambient proof is not deterministic: ${JSON.stringify(ambient)}`);
   }
 
   const capture = await call('Page.captureScreenshot', { format: 'png', fromSurface: true });
   const png = Buffer.from(capture.data, 'base64');
-  if (png.length < 20_000) throw new Error(`P28-E1 ambient screenshot is unexpectedly small: ${png.length} bytes`);
+  if (png.length < 20_000) throw new Error(`P28-E2 refinery ambient screenshot is unexpectedly small: ${png.length} bytes`);
   await writeFile(screenshotPath, png);
   await writeFile(reportPath, JSON.stringify({
     viewport: 'desktop',
-    visualDetail: 'p28-e1-shared-ambient-particles',
-    captureMode: 'flagship-pool-with-production-runtime-pressure',
+    visualDetail: 'p28-e2-refinery-ambient-art-direction',
+    captureMode: 'flagship-refinery-zones-with-production-runtime-pressure',
     ambient,
     parsedCounts: counts,
     screenshot: screenshotPath,
     screenshotBytes: png.length,
   }, null, 2));
 
-  console.log(`BROWSER_P28E1_AMBIENT_PASS runtimeTier=${ambient.runtimeTier} hostTier=${ambient.hostTier} scale=${ambient.scale} counts=${ambient.counts} pool=${ambient.poolSize} families=${ambient.drawFamilies} cues=${ambient.cuePolicy} screenshot=${screenshotPath} bytes=${png.length}`);
+  console.log(`BROWSER_P28E2_REFINERY_AMBIENT_PASS artDirection=${ambient.artDirection} zones=${ambient.artDirectionZones} clearance=${ambient.cueClearance} runtimeTier=${ambient.runtimeTier} hostTier=${ambient.hostTier} scale=${ambient.scale} counts=${ambient.counts} pool=${ambient.poolSize} families=${ambient.drawFamilies} cues=${ambient.cuePolicy} screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
   socket.close();
 }
