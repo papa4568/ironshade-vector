@@ -1,0 +1,387 @@
+{
+  "schemaVersion": 1,
+  "mode": "advisory",
+  "minRecurrenceCount": 2,
+  "calibrationMaxSamplesPerClass": 10,
+  "calibrationMaxSerializedBytes": 65536,
+  "eligibleErrorBudget": {
+    "overClusteringPairs": 0,
+    "underClusteringPairs": 0,
+    "recurrenceFalsePositiveRecords": 0,
+    "recurrenceFalseNegativeRecords": 0
+  },
+  "expectedMeasuredErrors": {
+    "overClusteringPairs": 1,
+    "underClusteringPairs": 1,
+    "recurrenceFalsePositiveRecords": 2,
+    "recurrenceFalseNegativeRecords": 2
+  },
+  "truthGroups": [
+    {
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "governance": "eligible-for-ev13-review",
+      "rationale": "Two historical EV-2 occurrences and a synthetic recurrence share the same structured transport-timeout identity and the same earlier focused-regression gap.",
+      "records": [
+        {
+          "id": "ev2-api36-capture-timeout-1",
+          "source": "historical",
+          "observedOn": "2026-10-09",
+          "failureClass": "android-screenshot-capture-transport-timeout",
+          "failureSignature": { "kind": "timeout", "key": "cdp-page-capture-screenshot-timeout" },
+          "rootCause": {
+            "code": "flaky-cdp-screenshot-transport",
+            "summary": "The API 36 semantic state was ready, but the CDP Page.captureScreenshot transport timed out while collecting evidence."
+          },
+          "affectedDomain": "android-evidence",
+          "escapeStage": "api36-large-screen-smoke",
+          "discoveringProof": { "kind": "ci-smoke", "id": "android-api36-large-screen" },
+          "fixClass": "focused-regression",
+          "earlierProof": {
+            "kind": "focused-regression",
+            "id": "android-screenshot-capture-contract",
+            "gap": "The evidence path depended on a CDP screenshot RPC even though the repository already had a stable adb screencap transport pattern.",
+            "check": {
+              "targetPath": "scripts/android-large-screen-smoke.sh",
+              "requiredSubstrings": [
+                "adb exec-out screencap -p > android-large-screen-portrait.png",
+                "adb exec-out screencap -p > android-large-screen-resized.png"
+              ],
+              "forbiddenSubstrings": ["Page.captureScreenshot"]
+            }
+          },
+          "detail": "Historical EV-2 API 36 screenshot transport timeout after semantic readiness."
+        },
+        {
+          "id": "ev2-api36-capture-timeout-2",
+          "source": "historical",
+          "observedOn": "2026-10-09",
+          "failureClass": "android-screenshot-capture-transport-timeout",
+          "failureSignature": { "kind": "timeout", "key": "cdp-page-capture-screenshot-timeout" },
+          "rootCause": {
+            "code": "flaky-cdp-screenshot-transport",
+            "summary": "The API 36 semantic state was ready, but the CDP Page.captureScreenshot transport timed out while collecting evidence."
+          },
+          "affectedDomain": "android-evidence",
+          "escapeStage": "api36-large-screen-smoke",
+          "discoveringProof": { "kind": "ci-smoke", "id": "android-api36-large-screen" },
+          "fixClass": "focused-regression",
+          "earlierProof": {
+            "kind": "focused-regression",
+            "id": "android-screenshot-capture-contract",
+            "gap": "The evidence path depended on a CDP screenshot RPC even though the repository already had a stable adb screencap transport pattern.",
+            "check": {
+              "targetPath": "scripts/android-large-screen-smoke.sh",
+              "requiredSubstrings": [
+                "adb exec-out screencap -p > android-large-screen-portrait.png",
+                "adb exec-out screencap -p > android-large-screen-resized.png"
+              ],
+              "forbiddenSubstrings": ["Page.captureScreenshot"]
+            }
+          },
+          "detail": "Historical unchanged retry reproduced the same screenshot transport timeout."
+        },
+        {
+          "id": "ev12-api36-capture-timeout-synthetic-recurrence",
+          "source": "synthetic",
+          "observedOn": "2026-10-13",
+          "failureClass": "android-screenshot-capture-transport-timeout",
+          "failureSignature": { "kind": "timeout", "key": "cdp-page-capture-screenshot-timeout" },
+          "rootCause": {
+            "code": "flaky-cdp-screenshot-transport",
+            "summary": "The API 36 semantic state was ready, but the CDP Page.captureScreenshot transport timed out while collecting evidence."
+          },
+          "affectedDomain": "android-evidence",
+          "escapeStage": "api36-large-screen-smoke",
+          "discoveringProof": { "kind": "ci-smoke", "id": "android-api36-large-screen" },
+          "fixClass": "focused-regression",
+          "earlierProof": {
+            "kind": "focused-regression",
+            "id": "android-screenshot-capture-contract",
+            "gap": "The evidence path depended on a CDP screenshot RPC even though the repository already had a stable adb screencap transport pattern.",
+            "check": {
+              "targetPath": "scripts/android-large-screen-smoke.sh",
+              "requiredSubstrings": [
+                "adb exec-out screencap -p > android-large-screen-portrait.png",
+                "adb exec-out screencap -p > android-large-screen-resized.png"
+              ],
+              "forbiddenSubstrings": ["Page.captureScreenshot"]
+            }
+          },
+          "detail": "Synthetic recurrence control preserving the exact historical structured identity."
+        }
+      ]
+    },
+    {
+      "truthId": "candidate-artifact-integrity-drift",
+      "governance": "eligible-for-ev13-review",
+      "rationale": "Two synthetic exact-candidate artifact identity failures exercise a second deterministic recurrence shape without relying on the Android screenshot history.",
+      "records": [
+        {
+          "id": "ev12-artifact-drift-a",
+          "source": "synthetic",
+          "observedOn": "2026-10-12",
+          "failureClass": "candidate-artifact-integrity-drift",
+          "failureSignature": { "kind": "integrity-mismatch", "key": "candidate-artifact-sha-mismatch" },
+          "rootCause": {
+            "code": "stale-candidate-artifact",
+            "summary": "A downstream consumer observed an artifact identity that did not match the exact candidate revision."
+          },
+          "affectedDomain": "candidate-artifact",
+          "escapeStage": "browser-consumer",
+          "discoveringProof": { "kind": "invariant", "id": "candidate-artifact-integrity" },
+          "fixClass": "focused-regression",
+          "earlierProof": {
+            "kind": "focused-regression",
+            "id": "candidate-artifact-integrity",
+            "gap": "The reusable candidate artifact should have been rejected before downstream consumption.",
+            "check": {
+              "targetPath": "agent/tests/candidate-artifact.mjs",
+              "requiredSubstrings": ["candidate-sha-match"],
+              "forbiddenSubstrings": ["accept-cross-sha-artifact"]
+            }
+          },
+          "detail": "Synthetic browser-consumer recurrence control."
+        },
+        {
+          "id": "ev12-artifact-drift-b",
+          "source": "synthetic",
+          "observedOn": "2026-10-13",
+          "failureClass": "candidate-artifact-integrity-drift",
+          "failureSignature": { "kind": "integrity-mismatch", "key": "candidate-artifact-sha-mismatch" },
+          "rootCause": {
+            "code": "stale-candidate-artifact",
+            "summary": "A downstream consumer observed an artifact identity that did not match the exact candidate revision."
+          },
+          "affectedDomain": "candidate-artifact",
+          "escapeStage": "android-consumer",
+          "discoveringProof": { "kind": "invariant", "id": "candidate-artifact-integrity" },
+          "fixClass": "focused-regression",
+          "earlierProof": {
+            "kind": "focused-regression",
+            "id": "candidate-artifact-integrity",
+            "gap": "The reusable candidate artifact should have been rejected before downstream consumption.",
+            "check": {
+              "targetPath": "agent/tests/candidate-artifact.mjs",
+              "requiredSubstrings": ["candidate-sha-match"],
+              "forbiddenSubstrings": ["accept-cross-sha-artifact"]
+            }
+          },
+          "detail": "Synthetic Android-consumer recurrence control."
+        }
+      ]
+    },
+    {
+      "truthId": "artifact-upload-dns-resolution",
+      "governance": "advisory-only",
+      "rationale": "The structured EV-4 identity intentionally omits free-form detail, so this distinct transport cause is indistinguishable from the storage-throttle control below and demonstrates measured over-clustering.",
+      "records": [
+        {
+          "id": "ev12-ambiguous-transport-dns",
+          "source": "synthetic",
+          "observedOn": "2026-10-12",
+          "failureClass": "ci-artifact-upload-transport-failure",
+          "failureSignature": { "kind": "transport-error", "key": "artifact-upload-transport" },
+          "rootCause": {
+            "code": "ci-artifact-transport-failure",
+            "summary": "Artifact evidence upload failed after the producing proof completed."
+          },
+          "affectedDomain": "ci-evidence",
+          "escapeStage": "artifact-upload",
+          "discoveringProof": { "kind": "ci", "id": "artifact-upload" },
+          "fixClass": "focused-regression",
+          "earlierProof": {
+            "kind": "focused-regression",
+            "id": "artifact-upload-transport-contract",
+            "gap": "Evidence transport failures need a deterministic transport-level regression before they can be governed as one recurrence class.",
+            "check": {
+              "targetPath": ".github/workflows/pr-candidate.yml",
+              "requiredSubstrings": ["actions/upload-artifact@v7"],
+              "forbiddenSubstrings": ["artifact-upload-ignore-failure"]
+            }
+          },
+          "detail": "Ground truth cause: DNS resolution failed before the upload request reached artifact storage."
+        }
+      ]
+    },
+    {
+      "truthId": "artifact-upload-storage-throttle",
+      "governance": "advisory-only",
+      "rationale": "This distinct transport cause has the same stored identity as the DNS control, so EV-12 requires it to remain advisory rather than treating the resulting repeated failureClass as governance-ready.",
+      "records": [
+        {
+          "id": "ev12-ambiguous-transport-throttle",
+          "source": "synthetic",
+          "observedOn": "2026-10-13",
+          "failureClass": "ci-artifact-upload-transport-failure",
+          "failureSignature": { "kind": "transport-error", "key": "artifact-upload-transport" },
+          "rootCause": {
+            "code": "ci-artifact-transport-failure",
+            "summary": "Artifact evidence upload failed after the producing proof completed."
+          },
+          "affectedDomain": "ci-evidence",
+          "escapeStage": "artifact-upload",
+          "discoveringProof": { "kind": "ci", "id": "artifact-upload" },
+          "fixClass": "focused-regression",
+          "earlierProof": {
+            "kind": "focused-regression",
+            "id": "artifact-upload-transport-contract",
+            "gap": "Evidence transport failures need a deterministic transport-level regression before they can be governed as one recurrence class.",
+            "check": {
+              "targetPath": ".github/workflows/pr-candidate.yml",
+              "requiredSubstrings": ["actions/upload-artifact@v7"],
+              "forbiddenSubstrings": ["artifact-upload-ignore-failure"]
+            }
+          },
+          "detail": "Ground truth cause: artifact storage accepted the request but throttled the upload stream."
+        }
+      ]
+    },
+    {
+      "truthId": "android-evidence-ready-state-timeout-alias",
+      "governance": "advisory-only",
+      "rationale": "Equivalent structured failures carrying two different failureClass labels demonstrate naming-sensitive under-clustering and must remain advisory until governance defines canonical class ownership.",
+      "records": [
+        {
+          "id": "ev12-alias-split-a",
+          "source": "synthetic",
+          "observedOn": "2026-10-12",
+          "failureClass": "android-ready-state-timeout",
+          "failureSignature": { "kind": "timeout", "key": "android-ready-state-observer-timeout" },
+          "rootCause": {
+            "code": "android-ready-state-observer-timeout",
+            "summary": "The Android semantic readiness observer timed out before recording the expected ready-state evidence."
+          },
+          "affectedDomain": "android-evidence",
+          "escapeStage": "api35-product-smoke",
+          "discoveringProof": { "kind": "ci-smoke", "id": "android-api35-product-smoke" },
+          "fixClass": "focused-regression",
+          "earlierProof": {
+            "kind": "focused-regression",
+            "id": "android-ready-state-contract",
+            "gap": "Equivalent ready-state timeout labels need canonical ownership before recurrence can be governed reliably.",
+            "check": {
+              "targetPath": "scripts/android-product-smoke.sh",
+              "requiredSubstrings": ["ready"],
+              "forbiddenSubstrings": ["skip-ready-state"]
+            }
+          },
+          "detail": "Synthetic alias A for one semantic recurrence group."
+        },
+        {
+          "id": "ev12-alias-split-b",
+          "source": "synthetic",
+          "observedOn": "2026-10-13",
+          "failureClass": "android-semantic-ready-timeout",
+          "failureSignature": { "kind": "timeout", "key": "android-ready-state-observer-timeout" },
+          "rootCause": {
+            "code": "android-ready-state-observer-timeout",
+            "summary": "The Android semantic readiness observer timed out before recording the expected ready-state evidence."
+          },
+          "affectedDomain": "android-evidence",
+          "escapeStage": "api35-product-smoke",
+          "discoveringProof": { "kind": "ci-smoke", "id": "android-api35-product-smoke" },
+          "fixClass": "focused-regression",
+          "earlierProof": {
+            "kind": "focused-regression",
+            "id": "android-ready-state-contract",
+            "gap": "Equivalent ready-state timeout labels need canonical ownership before recurrence can be governed reliably.",
+            "check": {
+              "targetPath": "scripts/android-product-smoke.sh",
+              "requiredSubstrings": ["ready"],
+              "forbiddenSubstrings": ["skip-ready-state"]
+            }
+          },
+          "detail": "Synthetic alias B for the same semantic recurrence group."
+        }
+      ]
+    }
+  ],
+  "sourceMemoryBindings": [
+    {
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "failureClass": "android-screenshot-capture-transport-timeout",
+      "minimumHistoricalOccurrences": 2
+    }
+  ],
+  "rejectionControls": [
+    {
+      "id": "same-label-incompatible-identity",
+      "expectedErrorIncludes": "contains incompatible classification fields",
+      "records": [
+        {
+          "id": "ev12-incompatible-a",
+          "source": "synthetic",
+          "observedOn": "2026-10-12",
+          "failureClass": "impact-map-miss-incompatible-control",
+          "failureSignature": { "kind": "selection-miss", "key": "graphics-change-missed-render-verification" },
+          "rootCause": { "code": "impact-rule-gap", "summary": "A graphics change was not mapped to required render verification." },
+          "affectedDomain": "affected-verification",
+          "escapeStage": "full-verification",
+          "discoveringProof": { "kind": "build", "id": "verify-full" },
+          "fixClass": "impact-map-rule",
+          "earlierProof": {
+            "kind": "impact-map-rule",
+            "id": "graphics-impact-expansion",
+            "gap": "Graphics changes must widen to render verification.",
+            "check": {
+              "targetPath": "agent/impact-map.json",
+              "requiredSubstrings": ["graphics-assets-and-generators"],
+              "forbiddenSubstrings": ["auto-narrow-verification"]
+            }
+          },
+          "detail": "Compatible control identity A."
+        },
+        {
+          "id": "ev12-incompatible-b",
+          "source": "synthetic",
+          "observedOn": "2026-10-13",
+          "failureClass": "impact-map-miss-incompatible-control",
+          "failureSignature": { "kind": "selection-miss", "key": "graphics-change-missed-render-verification" },
+          "rootCause": { "code": "different-root-cause", "summary": "A generated asset dependency was omitted for a different reason." },
+          "affectedDomain": "affected-verification",
+          "escapeStage": "full-verification",
+          "discoveringProof": { "kind": "build", "id": "verify-full" },
+          "fixClass": "impact-map-rule",
+          "earlierProof": {
+            "kind": "impact-map-rule",
+            "id": "graphics-impact-expansion",
+            "gap": "Graphics changes must widen to render verification.",
+            "check": {
+              "targetPath": "agent/impact-map.json",
+              "requiredSubstrings": ["graphics-assets-and-generators"],
+              "forbiddenSubstrings": ["auto-narrow-verification"]
+            }
+          },
+          "detail": "Incompatible root-cause control must be rejected instead of silently merged."
+        }
+      ]
+    }
+  ],
+  "compactionProbe": {
+    "occurrences": 100,
+    "maxSamplesPerClass": 3,
+    "maxSerializedBytes": 16384,
+    "rejectSerializedBytes": 1024,
+    "recordTemplate": {
+      "source": "synthetic",
+      "observedOn": "2026-10-13",
+      "failureClass": "ev12-bounded-compaction-probe",
+      "failureSignature": { "kind": "integrity-mismatch", "key": "ev12-bounded-compaction-probe" },
+      "rootCause": { "code": "ev12-compaction-probe", "summary": "Synthetic repeated failure used only to measure deterministic bounded compaction." },
+      "affectedDomain": "agent-orchestration",
+      "escapeStage": "calibration",
+      "discoveringProof": { "kind": "calibration", "id": "ev12-failure-recurrence-calibration" },
+      "fixClass": "focused-regression",
+      "earlierProof": {
+        "kind": "focused-regression",
+        "id": "ev12-compaction-contract",
+        "gap": "Failure memory must retain bounded representative samples without replaying every occurrence.",
+        "check": {
+          "targetPath": "agent/tests/failure-recurrence-calibration.mjs",
+          "requiredSubstrings": ["compaction"],
+          "forbiddenSubstrings": ["unbounded-history"]
+        }
+      }
+    }
+  }
+}

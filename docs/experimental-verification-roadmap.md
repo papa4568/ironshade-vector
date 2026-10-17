@@ -1,0 +1,58 @@
+# Experimental verification roadmap
+
+This roadmap tracks speculative repository-level engineering intended to make Ironshade Vector's AI development environment improve its own verification quality over time.
+
+These ideas deliberately combine known software-engineering primitives in unusual ways. Treat them as experiments until repository evidence proves they are reliable. EV-1 through EV-7 completed their prototype/shadow phases and are archived in `docs/experimental-verification-archive.md`; the queue below is the explicit graduation path from experimental mechanisms to normal repository infrastructure.
+
+## Execution contract
+
+- This is **not** the default product queue.
+- `docs/content-roadmap.md` remains the authoritative product/game queue unless the user explicitly selects this experimental roadmap.
+- `agent/task-graph.json` remains authoritative only for the `AO-*` migration tasks covered by its authority rules.
+- Work this roadmap only when the user explicitly asks to execute the experimental verification track or names one of the `EV-*` items below.
+- Execute top to bottom unless the user changes priority or an item is blocked by an unmet dependency.
+- One checkbox should fit one implementation -> targeted test -> final verification cycle. Split an item before coding if it contains independent experiments.
+- When enforcement depends on measured evidence, separate calibration/evidence collection from default enforcement into different roadmap items. Calibration items must remain advisory and must not flip default enforcement.
+- An enforcement item may promote only the scope justified by already-recorded calibration evidence. Do not expand the calibration corpus, invent a second experiment, or combine unrelated refactoring in the same ownership cycle.
+- If a task needs more than one independent verification closure (for example calibration plus enforcement plus rollback), split it before implementation. Keep one active EV implementation PR at a time.
+- When a new EV prerequisite is split from an already-active blocked item, keep that new EV item active through its implementation merge. Archive/remove it only in a follow-up closeout PR whose base branch already contains that EV ID, so trusted-main exact-candidate selection can authenticate the closeout instead of losing the task from the base-to-head diff.
+- Promotion is new engineering work. Never rewrite the archived EV-1 through EV-7 records to imply they were previously enforced.
+- Experiments and promotion candidates must fail closed. No promotion may weaken an existing proof gate, exact-SHA evidence, Android/browser coverage, or independent-review requirement.
+- Promotion may enforce only behavior supported by measured shadow evidence. If the evidence supports only a narrower deterministic subset, promote that subset and leave the unsupported remainder advisory.
+- Every promoted mechanism must have a deterministic rollback/disable path that restores the prior verified pipeline without data or evidence corruption.
+- Do not mark a promotion item complete until the exact candidate has passed its technically available required proofs and independent review, and the permanent rule is documented outside this experimental roadmap.
+
+## Prerequisite
+
+The AO-6 independent-verifier and mechanical-invariant foundation must be merged and active before any promotion item below may enable default enforcement. No EV promotion may weaken or bypass AO-6's exact-candidate review gate.
+
+## Active experimental queue
+
+No active experimental promotion items remain.
+
+## Intended dependency order
+
+EV-8 through EV-20 normally executed in order. EV-8 and EV-9 established stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/21/22/23/24/25/27/26/28/18, and EV-19/20 deliberately separated calibration, trust bootstrapping, governance, and enforcement so each ownership cycle had one primary verification closure. EV-21, EV-22, EV-23, EV-24, EV-25, EV-27, EV-26, and EV-28 were intentionally numbered after the original queue because they were split only after earlier EV work exposed concrete prerequisites; their executable positions before EV-18 were authoritative until that reviewed prerequisite work completed. EV-27, EV-26, and EV-28 completed their trusted-main closeouts, clearing the mechanism-governance availability, unchanged-roadmap review-selection, and prepared-image closure-identity blockers. EV-18 then completed the reviewed single-proof promotion and a live unchanged-SHA first-miss/second-hit reuse demonstration for `full-repository-build-closed`. EV-19 completed its reviewed advisory calibration: only `expected-surface:shared-backend-readiness` showed repeatable same-task cross-snapshot predictive value, while cross-task generalization and the remaining signals stayed unsupported. EV-20 then completed a reviewed no-promotion decision: the lone EV-19 signal remains advisory because its evidence covers only one completed product outcome and both measured forecasts contain false alarms and missed production surfaces. No additional experimental promotion item is currently queued.
+
+EV-1 through EV-7 remain verified prototype history in `docs/experimental-verification-archive.md`. Completing a promotion item does not rewrite that history; the promotion itself receives a new archived record.
+
+This order is conservative, not absolute. The user may add or reprioritize independent promotion work, but only one implementation writer should own a given EV item at a time.
+
+## Promotion completion rule
+
+A promotion item may leave this roadmap only after:
+
+1. the underlying mechanism has sufficient shadow/advisory evidence for the exact scope being promoted;
+2. repository evidence shows that it detects real defects, safely widens verification, or safely avoids redundant work as claimed;
+3. false-positive and false-negative behavior is measured for the promoted scope;
+4. disabling the promoted mechanism restores the previous verified pipeline cleanly;
+5. all existing exact-candidate proof obligations remain intact unless the promotion itself proves and documents an explicitly approved replacement;
+6. the exact promotion candidate passes the independent verifier;
+7. the permanent behavior is documented in `AGENTS.md`, the relevant `agent/` contract, architecture/impact policy, or active product verification policy; and
+8. the promotion evidence and rollback history are moved to `docs/experimental-verification-archive.md`.
+
+Calibration-only items may complete when their measured evidence is recorded and independently reproducible; they must not claim promotion or default enforcement. Their paired promotion item remains responsible for the full promotion completion rule above.
+
+## Research boundary
+
+Known concepts such as mutation testing, architecture fitness functions, predictive test selection, provenance, and adversarial review may be used as primitives. The experimental value here is the repository-specific combination: attacking acceptance semantics, checking causal proof independence, fingerprinting semantic behavior, learning from escaped failures, calibrating change-impact predictions, reusing proofs only from causal input closure, and stress-testing current architecture against future roadmap pressure.

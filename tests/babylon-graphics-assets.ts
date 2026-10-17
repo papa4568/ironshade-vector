@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { readFile as readFileAsync } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import './p28-pload1-refinery-placement-runtime';
+import './p28-pload2-map-load-readiness';
 import { LoadAssetContainerAsync, SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
 import { KhronosTextureContainer2 } from '@babylonjs/core/Misc/khronosTextureContainer2';
 import { MeshoptCompression } from '@babylonjs/core/Meshes/Compression/meshoptCompression';
@@ -24,6 +26,54 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 const runtimeSource = readFileSync(resolve(process.cwd(), 'src/game/babylonGraphicsAssets.ts'), 'utf8');
+const refineryRendererSource = readFileSync(resolve(process.cwd(), 'src/game/babylonCombatRenderer.ts'), 'utf8');
+const refineryLoadStart = refineryRendererSource.indexOf('  private async loadRefineryEnvironment(');
+const refineryLoadEnd = refineryRendererSource.indexOf('  private releaseRefineryEnvironment(', refineryLoadStart);
+const refineryLoadSource = refineryRendererSource.slice(refineryLoadStart, refineryLoadEnd);
+const placementBatchSize = Number(refineryRendererSource.match(/REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE = (\d+);/)?.[1] ?? 0);
+assert(refineryLoadStart >= 0 && refineryLoadEnd > refineryLoadStart, 'P28-PLOAD1 must retain an inspectable refinery environment load boundary');
+assert(placementBatchSize === 4, `P28-PLOAD1 refinery placement creation must use the intended bounded batch size, got ${placementBatchSize}`);
+assert(
+  refineryLoadSource.includes('Promise.allSettled(batch.map(task => runtime.instantiate(task.spec)))')
+    && refineryLoadSource.includes('offset += REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE'),
+  'P28-PLOAD1 refinery placement creation must instantiate bounded parallel batches instead of one serial await chain',
+);
+assert(
+  !refineryLoadSource.includes('const instance = await runtime.instantiate(spec);'),
+  'P28-PLOAD1 must not regress to the refinery nested serial placement-instantiation await chain',
+);
+assert(
+  refineryLoadSource.includes("placementRoot.position.set(placement.x, key === 'floor' ? 0.005 : key === 'floorGrate' ? 0.010 : 0, placement.z)")
+    && refineryLoadSource.includes('placementRoot.rotation.y = placement.rotationY ?? 0')
+    && refineryLoadSource.includes('placementRoot.scaling.set(scale, scale, scale)')
+    && refineryLoadSource.includes('`p27-b2-${key}-${task.index}`'),
+  'P28-PLOAD1 batching must preserve refinery placement identity and position/rotation/scale transforms',
+);
+assert(
+  refineryLoadSource.includes('batchInstances.forEach(instance => instance.release())')
+    && refineryLoadSource.includes('mountedInstances.forEach(instance => instance.release())')
+    && refineryLoadSource.includes('generation !== this.refineryLoadGeneration'),
+  'P28-PLOAD1 cancellation/failure must release fulfilled in-flight batch instances and previously mounted instances',
+);
+assert(
+  refineryRendererSource.includes("'strategy:bounded-batches'")
+    && refineryRendererSource.includes('`batch-size:${REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE}`')
+    && refineryRendererSource.includes('`peak:${placementPeakConcurrency}`')
+    && refineryRendererSource.includes('`batches:${placementBatchCount}`')
+    && refineryRendererSource.includes('`placements:${placementCount}`'),
+  'P28-PLOAD1 must expose deterministic placement batching telemetry for cold-load profiling',
+);
+const batchProbePlacements = 73;
+const batchProbeSizes: number[] = [];
+for (let offset = 0; offset < batchProbePlacements; offset += placementBatchSize) {
+  batchProbeSizes.push(Math.min(placementBatchSize, batchProbePlacements - offset));
+}
+assert(
+  batchProbeSizes.length === Math.ceil(batchProbePlacements / placementBatchSize)
+    && Math.max(...batchProbeSizes) === placementBatchSize
+    && batchProbeSizes.every(size => size > 0 && size <= placementBatchSize),
+  'P28-PLOAD1 bounded placement work must scale by batches rather than one await per placement',
+);
 const loaderBoundarySource = readFileSync(resolve(process.cwd(), 'src/game/babylonGltfLoader.ts'), 'utf8');
 const assetContractSource = readFileSync(resolve(process.cwd(), 'src/game/graphicsAssets.ts'), 'utf8');
 assert(!runtimeSource.includes("from 'three'") && !runtimeSource.includes('three/examples'), 'Babylon asset runtime must not depend on the Three asset loader');
@@ -252,6 +302,34 @@ async function run() {
   scene.dispose();
   engine.dispose();
 
+  const raceEngine = new NullEngine();
+  const raceScene = new Scene(raceEngine);
+  const raceRuntime = new BabylonGraphicsAssetRuntime(raceScene, async (spec, targetScene) => loadLocalGlb(spec, targetScene, `${spec.id}-reactivation-race`));
+  for (const spec of [operatorLod1, operatorLod2, refineryLod1]) {
+    const instance = await raceRuntime.instantiate(spec);
+    instance.release();
+  }
+  const raceControls = raceRuntime as unknown as {
+    budget: { maxCachedCompressedBytes: number; maxTextureAnisotropy: number; maxCachedAssets: number };
+    enforceCacheBudget: () => Promise<void>;
+  };
+  raceControls.budget = {
+    maxCachedCompressedBytes: 64 * 1024 * 1024,
+    maxTextureAnisotropy: 4,
+    maxCachedAssets: 1,
+  };
+  const raceEviction = raceControls.enforceCacheBudget();
+  const reactivatedPromise = raceRuntime.instantiate(operatorLod2);
+  await raceEviction;
+  const reactivatedOperator = await reactivatedPromise;
+  assert(raceRuntime.isCached(operatorLod2.url), 'cache pressure must not evict an entry reactivated after the idle eviction snapshot');
+  assert(raceRuntime.stats().activeInstances === 1, 'reactivated cache entry must retain its live instance ownership during eviction');
+  assert(reactivatedOperator.rootNodes.length > 0, 'reactivated cached source must remain fully instantiable after concurrent eviction');
+  reactivatedOperator.release();
+  await raceRuntime.dispose();
+  raceScene.dispose();
+  raceEngine.dispose();
+
   const teardownEngine = new NullEngine();
   const teardownScene = new Scene(teardownEngine);
   let teardownDisposeCount = 0;
@@ -274,8 +352,9 @@ async function run() {
   assert(teardownDisposeCount === 1, `renderer teardown must leave source-container ownership to Babylon scene disposal, got ${teardownDisposeCount} disposals`);
   teardownEngine.dispose();
 
+  console.log(`P28_PLOAD1_REFINERY_PLACEMENT_BATCH_PASS batchSize=${placementBatchSize} schedule=${batchProbeSizes.join('+')} sourceDedup=shared-cache instancing=native transforms=preserved cancellation=fulfilled-release`);
   console.log(
-    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} flagshipFloor=${refineryFloorLod0.id} flagshipGrate=${refineryGrateLod0.id} flagshipBulkhead=${refineryBulkheadLod0.id} flagshipWall=${refineryWallPanelLod0.id} flagshipPipe=${refineryPipeRackLod0.id} flagshipCable=${refineryCableTrayLod0.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native lod0ReuseVertices=${floorVerticesB} lod0Reentry=true cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
+    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} flagshipFloor=${refineryFloorLod0.id} flagshipGrate=${refineryGrateLod0.id} flagshipBulkhead=${refineryBulkheadLod0.id} flagshipWall=${refineryWallPanelLod0.id} flagshipPipe=${refineryPipeRackLod0.id} flagshipCable=${refineryCableTrayLod0.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native lod0ReuseVertices=${floorVerticesB} lod0Reentry=true cacheTrim=count+bytes cacheReactivation=protected cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
   );
 
 }

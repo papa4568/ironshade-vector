@@ -1,0 +1,127 @@
+name: EV-17 Proof Cache Calibration
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'agent/proof-cache.json'
+      - 'agent/proof-cache-history.json'
+      - 'agent/proof-cache-calibration-corpus.json'
+      - 'agent/tools/causal-proof-cache.mjs'
+      - 'agent/tools/proof-cache-calibration-evidence.mjs'
+      - 'agent/tools/pr-candidate-head-observer.mjs'
+      - 'agent/tests/causal-proof-cache.mjs'
+      - 'agent/tests/proof-cache-calibration-evidence.mjs'
+      - 'agent/tests/ci-proof-reuse.mjs'
+      - 'agent/tests/pr-candidate-head-observer.mjs'
+      - 'scripts/run-full-repository-build-proof.sh'
+      - '.github/workflows/pr-candidate.yml'
+      - '.github/workflows/ev17-proof-cache-calibration.yml'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'docs/experimental-verification-archive.md'
+      - 'AGENTS.md'
+  push:
+    branches:
+      - main
+    paths:
+      - 'agent/proof-cache.json'
+      - 'agent/proof-cache-history.json'
+      - 'agent/proof-cache-calibration-corpus.json'
+      - 'agent/tools/causal-proof-cache.mjs'
+      - 'agent/tools/proof-cache-calibration-evidence.mjs'
+      - 'agent/tools/pr-candidate-head-observer.mjs'
+      - 'agent/tests/causal-proof-cache.mjs'
+      - 'agent/tests/proof-cache-calibration-evidence.mjs'
+      - 'agent/tests/ci-proof-reuse.mjs'
+      - 'agent/tests/pr-candidate-head-observer.mjs'
+      - 'scripts/run-full-repository-build-proof.sh'
+      - '.github/workflows/pr-candidate.yml'
+      - '.github/workflows/ev17-proof-cache-calibration.yml'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'docs/experimental-verification-archive.md'
+      - 'AGENTS.md'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  calibrate:
+    name: Exact Candidate Proof Cache Calibration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+          cache: npm
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Run EV-6 and EV-17 contract regressions
+        run: |
+          node agent/tests/causal-proof-cache.mjs
+          node agent/tests/proof-cache-calibration-evidence.mjs
+          node agent/tools/causal-proof-cache.mjs history-check
+
+      - name: Generate exact-SHA EV-17 calibration evidence
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          mkdir -p .agent-proof-cache-calibration-ev17
+          node agent/tools/proof-cache-calibration-evidence.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-proof-cache-calibration-ev17/calibration.json
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('.agent-proof-cache-calibration-ev17/calibration.json', 'utf8'));
+          const fail = message => { throw new Error(`EV17_EXACT_EVIDENCE_FAIL ${message}`); };
+          if (report.taskId !== 'EV-17' || report.candidateSha !== process.env.CANDIDATE_SHA) fail('task/candidate binding mismatch');
+          if (report.mode !== 'advisory' || report.acceptedForReuse !== false || report.acceptedForEnforcement !== false || report.candidatePassGranted !== false) fail('EV-17 must remain advisory and grant no acceptance');
+          if (report.metrics.proofClassCount !== 1 || report.metrics.executedTrialCount !== 4) fail('unexpected proof/trial scope');
+          if (report.metrics.falseHits !== 0 || report.metrics.falseMisses !== 1 || report.metrics.sameClosureDisagreements !== 0 || report.metrics.retainedHistoricalSameClosureDisagreements !== 0) fail('measured false-hit/false-miss/disagreement metrics drifted');
+          if (report.eligibleProofClasses.length !== 0 || report.unresolvedProofClasses.length !== 1 || report.unresolvedProofClasses[0].proofId !== 'full-repository-build') fail('EV-18 must fail closed while authoritative proof inputs remain outside the closure');
+          const proof = report.proofReports[0];
+          if (proof.metrics.sameClosureRunCount !== 2 || proof.metrics.detectedInvalidationDefectCount !== 1 || proof.metrics.historicalSameClosureDisagreements !== 0) fail('same-closure, historical, or defect-invalidation evidence incomplete');
+          const expectedMissingInputs = ['docker-base-image-identity','docker-engine-version','external-network-availability','npm-registry-response-identity'];
+          if (proof.runtimeClosureAudit.requiredInputsClosed !== false || JSON.stringify(proof.runtimeClosureAudit.missingInputs) !== JSON.stringify(expectedMissingInputs) || proof.runtimeClosureAudit.runnerImageIdentityBound !== true || proof.runtimeClosureAudit.executionProfileInRepositoryClosure !== true || proof.runtimeClosureAudit.externalDependencyAccountingPass !== true || proof.runtimeClosureAudit.invalidationControlsPass !== true) fail('runtime closure audit failed closed incorrectly');
+          const expectedExternalInputs = ['external-network-availability','npm-registry-response-identity'];
+          const externalAudit = proof.runtimeClosureAudit.externalDependencyAudit ?? [];
+          if (JSON.stringify(externalAudit.map(entry => entry.input)) !== JSON.stringify(expectedExternalInputs) || !externalAudit.every(entry => entry.profileReferencesInput === true && entry.boundByExecutionContext === false && entry.knownBlockingGap === true)) fail('external proof dependency accounting drifted');
+          const expectedDimensions = ['runnerLabel','node','npm','platform','arch','env:ImageOS','env:ImageVersion','env:VITE_API_BASE_URL'];
+          if (JSON.stringify(proof.runtimeClosureAudit.invalidationControls.map(entry => entry.dimension)) !== JSON.stringify(expectedDimensions) || !proof.runtimeClosureAudit.invalidationControls.every(entry => entry.invalidatesClosure === true)) fail('runtime invalidation controls drifted');
+          const expectedGaps = ['docker-base-image-identity-not-bound','docker-engine-version-not-bound','external-network-availability-not-bound','npm-registry-response-identity-not-bound'];
+          if (JSON.stringify(proof.knownClosureGaps.map(entry => entry.id)) !== JSON.stringify(expectedGaps) || !proof.knownClosureGaps.every(entry => entry.blocksEligibility === true)) fail('causal closure gaps drifted');
+          if (proof.calibrationCommand !== 'bash scripts/run-full-repository-build-proof.sh' || proof.executionProfilePath !== 'scripts/run-full-repository-build-proof.sh') fail('calibration is not executing the authoritative production proof profile');
+          const sameClosure = proof.trials.find(entry => entry.kind === 'same-closure-control');
+          if (!sameClosure || sameClosure.targetPaths.length !== 7 || sameClosure.prediction !== 'hit' || sameClosure.outcome !== 'success' || sameClosure.proofActuallyRerun !== true) fail('excluded-input same-closure control incomplete');
+          if (report.rollback.proofReuseEnabled !== false || report.rollback.proofPolicyChanged !== false || report.rollback.sourceMutationsRestored !== true || report.rollback.exactHeadRestored !== true || report.rollback.trackedStateClean !== true) fail('rollback/exact-head contract failed');
+          console.log(`EV17_EXACT_EVIDENCE_PASS candidate=${report.candidateSha} trials=${report.metrics.executedTrialCount} fp=${report.metrics.falseHits} fn=${report.metrics.falseMisses} disagreements=${report.metrics.sameClosureDisagreements} eligible=${report.eligibleProofClasses.join(',')} reuse=false`);
+          NODE
+
+      - name: Upload exact-SHA EV-17 calibration evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: proof-cache-calibration-ev17-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-proof-cache-calibration-ev17/calibration.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30

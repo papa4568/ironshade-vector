@@ -72,6 +72,7 @@ const FLOOR_Y = 0;
 const CAMERA_FOV_DEGREES = 42;
 const CAMERA_FOV_RADIANS = CAMERA_FOV_DEGREES * Math.PI / 180;
 const REFINERY_ENVIRONMENT_KIT = 'floor,floor-grate,bulkhead,processor,pipe-rack,wall-panel,cable-tray,service-conduit,gantry,crate,terminal';
+const REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE = 4;
 const BABYLON_WEAPON_IDS: readonly WeaponId[] = ['carbine', 'breacher', 'rail'];
 type BabylonEnemyRole = Exclude<Enemy['role'], 'boss'>;
 const BABYLON_ENEMY_ROLES: readonly BabylonEnemyRole[] = ['assault', 'suppressor', 'technician', 'elite'];
@@ -2071,11 +2072,15 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const generation = ++this.refineryLoadGeneration;
     this.releaseMountedRefineryAssets();
 
+    this.canvas.dataset.babylonEnvironmentLoadGeneration = String(generation);
     this.canvas.dataset.environmentVisual = 'authored-loading-babylon';
     this.canvas.dataset.babylonEnvironmentState = 'loading';
     delete this.canvas.dataset.babylonEnvironmentError;
     delete this.canvas.dataset.babylonEnvironmentPremiumSurfaces;
     delete this.canvas.dataset.babylonEnvironmentMaterialDetail;
+    delete this.canvas.dataset.babylonEnvironmentPlacementLoad;
+    delete this.canvas.dataset.mapLoadFamilyPreloadMs;
+    delete this.canvas.dataset.mapLoadPlacementInstantiationMs;
     void this.loadRefineryEnvironment(state, world.w, world.h, selected, generation);
   }
 
@@ -2118,8 +2123,10 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     generation: number,
   ) {
     const runtime = getBabylonGraphicsAssetRuntime(this.scene);
+    const preloadStartedAt = performance.now();
     const preload = await runtime.preload(selected.map(item => item.spec), 2);
     if (this.disposed || generation !== this.refineryLoadGeneration) return;
+    this.canvas.dataset.mapLoadFamilyPreloadMs = Math.max(0, performance.now() - preloadStartedAt).toFixed(2);
 
     if (preload.failed > 0) {
       this.canvas.dataset.environmentVisual = 'authored-fallback-babylon';
@@ -2128,41 +2135,68 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       return;
     }
 
+    const placementStartedAt = performance.now();
     const placements = refineryPlacements(state, worldW, worldH);
     const byKey = new Map(selected.map(item => [item.key, item.spec]));
+    const placementTasks = (Object.keys(placements) as RefineryFamilyKey[]).flatMap(key => {
+      const spec = byKey.get(key);
+      if (!spec) throw new Error(`Missing selected authored refinery asset for ${key}`);
+      return placements[key].map((placement, index) => ({ key, index, placement, spec }));
+    });
     const loadRoot = new TransformNode(`p27-b2-refinery-shell-${generation}`, this.scene);
     loadRoot.setEnabled(false);
     const mountedInstances: BabylonGraphicsAssetInstance[] = [];
     const premiumSurfaceUsage = new Map<RefineryFamilyKey, Set<PremiumPbrSurfaceId>>();
     let placementCount = 0;
+    let placementBatchCount = 0;
+    let placementPeakConcurrency = 0;
 
     try {
-      for (const key of Object.keys(placements) as RefineryFamilyKey[]) {
-        const spec = byKey.get(key);
-        if (!spec) throw new Error(`Missing selected authored refinery asset for ${key}`);
+      for (let offset = 0; offset < placementTasks.length; offset += REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE) {
+        const batch = placementTasks.slice(offset, offset + REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE);
+        const results = await Promise.allSettled(batch.map(task => runtime.instantiate(task.spec)));
+        placementBatchCount += 1;
+        placementPeakConcurrency = Math.max(placementPeakConcurrency, batch.length);
 
-        for (let index = 0; index < placements[key].length; index += 1) {
-          const placement = placements[key][index];
-          const instance = await runtime.instantiate(spec);
-          if (this.disposed || generation !== this.refineryLoadGeneration) {
-            instance.release();
-            mountedInstances.forEach(item => item.release());
-            loadRoot.dispose();
-            return;
+        const batchInstances = results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
+        if (this.disposed || generation !== this.refineryLoadGeneration) {
+          batchInstances.forEach(instance => instance.release());
+          mountedInstances.forEach(instance => instance.release());
+          loadRoot.dispose();
+          return;
+        }
+
+        const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+        if (rejected) {
+          batchInstances.forEach(instance => instance.release());
+          throw rejected.reason;
+        }
+
+        const unmountedBatchInstances = new Set(batchInstances);
+        try {
+          for (let index = 0; index < batch.length; index += 1) {
+            const task = batch[index];
+            const result = results[index];
+            if (!task || result?.status !== 'fulfilled') throw new Error('Refinery placement batch completed without a fulfilled instance');
+            const instance = result.value;
+            const { key, placement } = task;
+            const placementRoot = new TransformNode(`p27-b2-${key}-${task.index}`, this.scene);
+            placementRoot.parent = loadRoot;
+            placementRoot.position.set(placement.x, key === 'floor' ? 0.005 : key === 'floorGrate' ? 0.010 : 0, placement.z);
+            placementRoot.rotation.y = placement.rotationY ?? 0;
+            const scale = placement.scale ?? 1;
+            placementRoot.scaling.set(scale, scale, scale);
+            instance.rootNodes.forEach(root => {
+              root.parent = placementRoot;
+            });
+            this.applyRefineryPremiumSurfaces(key, instance, premiumSurfaceUsage);
+            mountedInstances.push(instance);
+            unmountedBatchInstances.delete(instance);
+            placementCount += 1;
           }
-
-          const placementRoot = new TransformNode(`p27-b2-${key}-${index}`, this.scene);
-          placementRoot.parent = loadRoot;
-          placementRoot.position.set(placement.x, key === 'floor' ? 0.005 : key === 'floorGrate' ? 0.010 : 0, placement.z);
-          placementRoot.rotation.y = placement.rotationY ?? 0;
-          const scale = placement.scale ?? 1;
-          placementRoot.scaling.set(scale, scale, scale);
-          instance.rootNodes.forEach(root => {
-            root.parent = placementRoot;
-          });
-          this.applyRefineryPremiumSurfaces(key, instance, premiumSurfaceUsage);
-          mountedInstances.push(instance);
-          placementCount += 1;
+        } catch (error) {
+          unmountedBatchInstances.forEach(instance => instance.release());
+          throw error;
         }
       }
 
@@ -2195,11 +2229,19 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.babylonEnvironmentMaterialDetail = 'normal+roughness+metalness:shared-premium-pbr';
       this.canvas.dataset.environmentMachineDetail = `processor-functional:${placements.processor.length}+floor-grate:${placements.floorGrate.length}`;
       this.canvas.dataset.environmentComposition = 'clear-center-lane+processor-triangle+gantry-focal+perimeter-clutter';
+      this.canvas.dataset.mapLoadPlacementInstantiationMs = Math.max(0, performance.now() - placementStartedAt).toFixed(2);
       this.canvas.dataset.babylonEnvironmentState = 'ready';
       this.canvas.dataset.babylonEnvironmentAssets = String(selected.length);
       this.canvas.dataset.babylonEnvironmentPlacements = String(placementCount);
       this.canvas.dataset.babylonEnvironmentLod = lods.join(',');
       this.canvas.dataset.babylonEnvironmentReuse = 'cache-shared+geometry-shared+material-shared';
+      this.canvas.dataset.babylonEnvironmentPlacementLoad = [
+        'strategy:bounded-batches',
+        `batch-size:${REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE}`,
+        `peak:${placementPeakConcurrency}`,
+        `batches:${placementBatchCount}`,
+        `placements:${placementCount}`,
+      ].join('|');
       this.canvas.dataset.babylonEnvironmentRuntime = [
         `cached:${stats.cachedAssets}`,
         `active:${stats.activeInstances}`,
@@ -2211,6 +2253,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       loadRoot.dispose();
       if (this.disposed || generation !== this.refineryLoadGeneration) return;
       this.canvas.dataset.environmentVisual = 'authored-fallback-babylon';
+      this.canvas.dataset.mapLoadPlacementInstantiationMs = Math.max(0, performance.now() - placementStartedAt).toFixed(2);
       this.canvas.dataset.babylonEnvironmentState = 'error';
       this.canvas.dataset.babylonEnvironmentError = error instanceof Error ? error.message : String(error);
     }
@@ -2229,6 +2272,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.canvas.dataset.environmentTerminals = '0';
     delete this.canvas.dataset.babylonEnvironmentPremiumSurfaces;
     delete this.canvas.dataset.babylonEnvironmentMaterialDetail;
+    delete this.canvas.dataset.babylonEnvironmentPlacementLoad;
+    delete this.canvas.dataset.mapLoadFamilyPreloadMs;
+    delete this.canvas.dataset.mapLoadPlacementInstantiationMs;
     this.canvas.dataset.babylonEnvironmentState = 'released';
     this.canvas.dataset.babylonEnvironmentRelease = `${reason}:released-${released}`;
     const stats = getBabylonGraphicsAssetRuntime(this.scene).stats();

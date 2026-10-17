@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironshade-vector.local/agent/roadmap-shadow-simulator.schema.json",
+  "title": "Ironshade roadmap shadow simulator",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "mode", "scenarios"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "mode": { "const": "advisory" },
+    "scenarios": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/scenario" }
+    }
+  },
+  "$defs": {
+    "extensionPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "contains", "description"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "contains": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "forbiddenDependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "contains", "description"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "contains": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "probeImport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "typeOnly", "names"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "typeOnly": { "type": "boolean" },
+        "names": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["imports", "body"],
+      "properties": {
+        "imports": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/probeImport" }
+        },
+        "body": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "probeId",
+        "expectedSurfaces",
+        "preferredSurfaceCount",
+        "extensionPoints",
+        "forbiddenDependencies",
+        "probe"
+      ],
+      "properties": {
+        "taskId": { "type": "string", "pattern": "^P[0-9A-Z-]+$" },
+        "probeId": { "type": "string", "minLength": 1 },
+        "expectedSurfaces": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "preferredSurfaceCount": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "extensionPoints": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/extensionPoint" }
+        },
+        "forbiddenDependencies": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/forbiddenDependency" }
+        },
+        "probe": { "$ref": "#/$defs/probe" }
+      }
+    }
+  }
+}

@@ -2,9 +2,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   REFINERY_ACTOR_GROUNDING_PROFILE,
+  RefineryLightingWorkProfile,
   refineryActorGroundingScale,
   resolveBabylonRefineryLightingBudget,
+  resolveRefineryMaterialWorkKey,
   resolveRefineryShadowAnchor,
+  resolveRefineryShadowWorkKey,
+  resolveRefineryTopologyToken,
 } from '../src/game/babylonRefineryLighting';
 import { REFINERY_BABYLON_LIGHTING_PROFILE } from '../src/game/refineryLightingProfile';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
@@ -47,6 +51,36 @@ const anchorB = resolveRefineryShadowAnchor(10.4, 7.4);
 const anchorC = resolveRefineryShadowAnchor(11.4, 8.4);
 assert.deepEqual(anchorA, anchorB, 'Sub-snap player motion must not continuously move the directional shadow volume.');
 assert.notDeepEqual(anchorA, anchorC, 'The directional shadow volume must advance once the player crosses a snap cell.');
+
+const workProfile = new RefineryLightingWorkProfile();
+const stableMeshTopology = resolveRefineryTopologyToken([{ uniqueId: 11 }, { uniqueId: 14 }, { uniqueId: 19 }]);
+const stableMaterialTopology = resolveRefineryTopologyToken([{ uniqueId: 3 }, { uniqueId: 8 }]);
+const stableShadowKey = resolveRefineryShadowWorkKey(stableMeshTopology, anchorA, high.shadowMapSize);
+const stableMaterialKey = resolveRefineryMaterialWorkKey(stableMaterialTopology, high.maxSimultaneousLights);
+for (let frame = 0; frame < 180; frame += 1) {
+  workProfile.beginFrame();
+  workProfile.needsShadowListRebuild(stableShadowKey);
+  workProfile.needsMaterialLightRebuild(stableMaterialKey);
+}
+assert.equal(workProfile.frameCount, 180, 'P28-P1 deterministic profiling must represent sustained stable refinery frames.');
+assert.equal(workProfile.shadowListRebuildCount, 1, 'P28-P1 stable frames must not rebuild the full shadow list per frame.');
+assert.equal(workProfile.materialLightRebuildCount, 1, 'P28-P1 stable frames must not reapply material light limits per frame.');
+workProfile.beginFrame();
+workProfile.needsShadowListRebuild(resolveRefineryShadowWorkKey(stableMeshTopology, anchorC, high.shadowMapSize));
+workProfile.needsMaterialLightRebuild(stableMaterialKey);
+assert.equal(workProfile.shadowListRebuildCount, 2, 'P28-P1 a snapped shadow-anchor change must rebuild shadow admission exactly once.');
+assert.equal(workProfile.materialLightRebuildCount, 1, 'P28-P1 shadow-anchor movement must not rebuild unrelated material-light state.');
+const changedMeshTopology = resolveRefineryTopologyToken([{ uniqueId: 11 }, { uniqueId: 14 }, { uniqueId: 19 }, { uniqueId: 27 }]);
+workProfile.beginFrame();
+workProfile.needsShadowListRebuild(resolveRefineryShadowWorkKey(changedMeshTopology, anchorC, high.shadowMapSize));
+workProfile.needsMaterialLightRebuild(stableMaterialKey);
+assert.equal(workProfile.shadowListRebuildCount, 3, 'P28-P1 mesh topology changes must invalidate cached receiver/caster work.');
+const changedMaterialTopology = resolveRefineryTopologyToken([{ uniqueId: 3 }, { uniqueId: 8 }, { uniqueId: 13 }]);
+workProfile.beginFrame();
+workProfile.needsShadowListRebuild(resolveRefineryShadowWorkKey(changedMeshTopology, anchorC, balanced.shadowMapSize));
+workProfile.needsMaterialLightRebuild(resolveRefineryMaterialWorkKey(changedMaterialTopology, balanced.maxSimultaneousLights));
+assert.equal(workProfile.shadowListRebuildCount, 4, 'P28-P1 shadow tier changes must rebuild the shadow map/list exactly once.');
+assert.equal(workProfile.materialLightRebuildCount, 2, 'P28-P1 material topology/tier changes must reapply PBR light limits exactly once.');
 
 assert.equal(REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize, 64, 'P28-A2 actor grounding must use a higher-resolution feathered alpha than the legacy static contact cards.');
 assert(REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius >= 650, 'P28-A2 must cover the camera-relevant nearby-enemy envelope.');
@@ -114,6 +148,12 @@ assert.doesNotMatch(lightingSource, /for \(const mesh of receivers\) mesh\.recei
 assert.match(lightingSource, /environmentShadowAnchor/, 'P28-A4 must expose the snapped key-shadow anchor for browser and phone QA.');
 assert.match(lightingSource, /pcf-high:bias-/, 'P28-A4 must expose filter and bias tuning in deterministic runtime telemetry.');
 assert.match(lightingSource, /refineryIblQa === 'off'/, 'B11 must preserve deterministic IBL stack-off QA capture control.');
+assert.match(lightingSource, /resolveRefineryTopologyToken\(this\.scene\.meshes\)/, 'P28-P1 shadow rebuild decisions must use O(1) topology identity rather than a full-scene filter every frame.');
+assert.match(lightingSource, /needsShadowListRebuild\(workKey\)/, 'P28-P1 must gate receiver filtering, caster admission, and sorting behind a stable work key.');
+assert.match(lightingSource, /resolveRefineryTopologyToken\(this\.scene\.materials\)/, 'P28-P1 material-light rebuild decisions must use O(1) topology identity.');
+assert.match(lightingSource, /needsMaterialLightRebuild\(workKey\)/, 'P28-P1 must gate full material traversal behind topology/tier changes.');
+assert.match(lightingSource, /refineryLightingWork/, 'P28-P1 must publish deterministic frame-to-rebuild telemetry for runtime profiling.');
+assert.match(lightingSource, /material-rebuilds:/, 'P28-P1 browser-visible telemetry must expose material-light rebuild counts.');
 assert.match(worldSource, /new PBRMaterial\('p27-b5-object-material-'/, 'Babylon refinery world fallback materials must use Babylon PBR.');
 assert.match(worldSource, /visual\.material\.metallic =/, 'Babylon world material response must preserve authored metalness.');
 assert.match(worldSource, /visual\.material\.roughness =/, 'Babylon world material response must preserve authored roughness.');
@@ -125,4 +165,4 @@ assert.match(browserSource, /p27b11-ibl-off/, 'Browser QA must retain the refine
 assert.match(browserSource, /p27b11-ibl-on/, 'Browser QA must retain the refinery IBL-on comparison capture.');
 assert.match(packageSource, /test:babylon-refinery-lighting/, 'Production build must execute the refinery lighting regression.');
 
-console.log('P28_A4_KEY_SHADOW_QUALITY_PASS maps=2048>1024>off filter=pcf-high bias=tuned casters=spatial-footprint anchor=snapped p28a1-a3=preserved');
+console.log('P28_P1_REFINERY_LIGHTING_WORK_PASS frames=180 stable-shadow-rebuilds=1 stable-material-rebuilds=1 invalidation=topology+anchor+tier high-shadow=2048 adaptive=1024>off cues=preserved');

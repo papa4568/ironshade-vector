@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "templates": [
+    {
+      "id": "false-readiness",
+      "class": "false-readiness",
+      "keywords": ["ready", "readiness", "playable", "complete", "final", "await", "load"],
+      "intent": "Advertise completion or readiness before the underlying work is actually complete.",
+      "mutationStrategy": "Bypass or falsify the real completion dependency while preserving the outward ready signal.",
+      "proofExpectation": "Independent observation of completed work should catch this; flag-only checks can be fooled."
+    },
+    {
+      "id": "fake-telemetry",
+      "class": "fake-telemetry",
+      "keywords": ["profiling", "telemetry", "timing", "count", "measured", "signature", "performance"],
+      "intent": "Report a healthy metric that is disconnected from the underlying behavior.",
+      "mutationStrategy": "Keep the defective behavior but replace measured evidence with a constant or derived success value.",
+      "proofExpectation": "An observation path independent of the implementation-reported metric should catch this."
+    },
+    {
+      "id": "skipped-quality-work",
+      "class": "skipped-quality-work",
+      "keywords": ["quality", "flagship", "visual", "authored", "premium", "material", "detail"],
+      "intent": "Claim quality work completed while skipping the expensive or substantive work itself.",
+      "mutationStrategy": "Turn a real quality/resource operation into a no-op while preserving its success marker.",
+      "proofExpectation": "Artifact/content inspection should catch this; status-only checks may not."
+    },
+    {
+      "id": "hidden-serialization",
+      "class": "hidden-serialization",
+      "keywords": ["parallel", "batched", "concurrency", "serialized", "serial", "awaited", "placement", "bottleneck"],
+      "intent": "Preserve outputs while secretly restoring serialized execution that violates the performance requirement.",
+      "mutationStrategy": "Reduce effective concurrency to one without changing final counts or transforms.",
+      "proofExpectation": "Independent concurrency or phase observation should catch this."
+    },
+    {
+      "id": "special-cased-test-route",
+      "class": "special-cased-test-route",
+      "keywords": ["deterministic", "route", "refinery", "representative", "test", "cold", "warm"],
+      "intent": "Make only the exercised route satisfy the requirement while production-equivalent routes remain defective.",
+      "mutationStrategy": "Branch on the known verification route or fixture identifier and keep the defective behavior elsewhere.",
+      "proofExpectation": "A second independent route or structural proof should catch this."
+    },
+    {
+      "id": "omitted-resource-work",
+      "class": "omitted-resource-work",
+      "keywords": ["asset", "resource", "load", "preload", "decode", "material", "texture", "geometry", "family"],
+      "intent": "Omit required asset/resource work while preserving counts, flags, or other superficial outputs.",
+      "mutationStrategy": "Skip the resource operation and synthesize the expected outward count/state.",
+      "proofExpectation": "Resource ownership or artifact identity checks should catch this."
+    }
+  ]
+}

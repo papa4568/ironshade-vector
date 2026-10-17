@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "taskId": "P28-PLOAD1",
+  "verifyCommand": "node agent/fixtures/acceptance-attacks/p28-pload1/verify.mjs",
+  "targetFile": "agent/fixtures/acceptance-attacks/p28-pload1/implementation.mjs",
+  "attacks": {
+    "hidden-serialization": {
+      "replacements": [
+        { "find": "const scheduling = schedulePlacements(3);", "replace": "const scheduling = schedulePlacements(1);" }
+      ]
+    },
+    "fake-telemetry": {
+      "replacements": [
+        { "find": "const scheduling = schedulePlacements(3);", "replace": "const scheduling = schedulePlacements(1);" },
+        { "find": "telemetry: { maxConcurrent: scheduling.maxConcurrent }", "replace": "telemetry: { maxConcurrent: 3 }" }
+      ]
+    },
+    "false-readiness": {
+      "replacements": [
+        { "find": "completed: placements.length,", "replace": "completed: placements.length - 1," },
+        { "find": "visualReady: readiness,", "replace": "visualReady: true," }
+      ]
+    },
+    "skipped-quality-work": {
+      "replacements": [
+        { "find": "const quality = performQualityWork();", "replace": "const quality = { performed: false };" },
+        { "find": "qualityWorkPerformed: quality.performed,", "replace": "qualityWorkPerformed: true," }
+      ]
+    },
+    "special-cased-test-route": {
+      "replacements": [
+        { "find": "const scheduling = schedulePlacements(3);", "replace": "const scheduling = schedulePlacements(routeId === 'deep-salvage' ? 3 : 1);" }
+      ]
+    },
+    "omitted-resource-work": {
+      "replacements": [
+        { "find": "const assets = buildAssets();", "replace": "const assets = [];" },
+        { "find": "assetCount: assets.length,", "replace": "assetCount: 2," }
+      ]
+    }
+  }
+}

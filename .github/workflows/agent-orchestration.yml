@@ -4,27 +4,20 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'agent/**'
-      - 'docs/content-roadmap.md'
-      - 'docs/agent-orchestration.md'
-      - 'AGENTS.md'
-      - '.github/workflows/agent-orchestration.yml'
-      - '.github/workflows/pr-candidate.yml'
-      - '.github/workflows/browser-e2e.yml'
-      - '.github/workflows/pr-android-apk.yml'
   push:
     branches:
       - main
     paths:
       - 'agent/**'
       - 'docs/content-roadmap.md'
+      - 'docs/experimental-verification-roadmap.md'
       - 'docs/agent-orchestration.md'
       - 'AGENTS.md'
       - '.github/workflows/agent-orchestration.yml'
       - '.github/workflows/pr-candidate.yml'
       - '.github/workflows/browser-e2e.yml'
       - '.github/workflows/pr-android-apk.yml'
+      - '.github/workflows/ev9-trusted-pr-candidate-observer.yml'
   workflow_dispatch:
 
 permissions:
@@ -48,6 +41,9 @@ jobs:
         with:
           node-version: '22.23.2'
 
+      - name: Install locked dependencies for runtime calibration and architecture checks
+        run: npm ci --ignore-scripts
+
       - name: Validate orchestration task graph
         run: node agent/tools/validate-task-graph.mjs
 
@@ -70,6 +66,132 @@ jobs:
       - name: Run roadmap adapter regressions
         run: node agent/tests/roadmap-adapter.mjs
 
+      - name: Run acceptance attack compiler shadow regressions
+        env:
+          ACCEPTANCE_ATTACK_EVIDENCE_DIR: .agent-attacks
+        run: node agent/tests/acceptance-attack-compiler.mjs
+
+      - name: Run promoted acceptance attack regressions
+        run: node agent/tests/acceptance-attack-promotion.mjs
+
+      - name: Enforce promoted acceptance attack scope
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node agent/tools/acceptance-attack-gate.mjs gate \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --policy agent/acceptance-attack-policy.json \
+            --output .agent-attacks/promotion-gate.json
+
+      - name: Upload acceptance attack advisory and enforcement evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: acceptance-attack-shadow-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-attacks/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+      - name: Run causal evidence independence regressions
+        run: node agent/tests/evidence-independence.mjs
+
+      - name: Run promoted causal evidence independence regressions
+        run: |
+          node agent/tests/evidence-independence-promotion.mjs
+          node agent/tests/pr-candidate-head-observer.mjs
+
+      - name: Record causal evidence independence advisory report
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node agent/tools/evidence-independence.mjs \
+            --graph agent/evidence-independence.json \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-independence/report.json
+
+      - name: Enforce promoted causal evidence independence scope
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node agent/tools/evidence-independence-promotion-gate.mjs gate \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --graph agent/evidence-independence.json \
+            --policy agent/evidence-independence-policy.json \
+            --output .agent-independence/promotion-gate.json
+
+      - name: Upload causal evidence independence advisory and enforcement evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: causal-evidence-independence-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-independence/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+      - name: Run repository immune system regressions
+        run: node agent/tests/repository-immune-system.mjs
+
+      - name: Record repository immune system advisory report
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node agent/tools/repository-immune-system.mjs analyze \
+            --memory agent/failure-memory.json \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-immune/report.json
+
+      - name: Upload repository immune system advisory evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: repository-immune-system-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-immune/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+      - name: Run causal proof cache shadow regressions
+        run: node agent/tests/causal-proof-cache.mjs
+
+      - name: Validate exact-SHA causal proof cache history
+        run: node agent/tools/causal-proof-cache.mjs history-check
+
+      - name: Run roadmap shadow simulator regressions
+        run: node agent/tests/roadmap-shadow-simulator.mjs
+
+      - name: Require exact-SHA EV-10 calibration proof
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          node agent/tests/behavioral-genome-calibration.mjs
+          mkdir -p .agent-genome-calibration
+          node agent/tools/behavioral-genome-calibration.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-genome-calibration/calibration.json
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('.agent-genome-calibration/calibration.json', 'utf8'));
+          const expectedSha = process.env.CANDIDATE_SHA;
+          const requiredDomains = ['load', 'mission', 'performance', 'presentation', 'resources', 'simulation'];
+          const fail = message => { throw new Error(`EV10_CALIBRATION_PROOF_FAIL ${message}`); };
+          if (report.candidateSha !== expectedSha) fail(`candidateSha expected=${expectedSha} actual=${report.candidateSha}`);
+          if (report.mode !== 'advisory' || report.blocking !== false) fail('report must remain advisory and non-blocking');
+          if (report.calibrationPass !== true) fail('representative calibration must pass its zero-error budgets');
+          if (report.falsePositives !== 0 || report.falseNegatives !== 0) fail(`errors fp=${report.falsePositives} fn=${report.falseNegatives}`);
+          if (report.acceptedForEnforcement !== false || report.candidatePassGranted !== false) fail('report must not grant enforcement or candidate acceptance');
+          if (JSON.stringify(report.validatedDomains) !== JSON.stringify(requiredDomains)) fail(`validatedDomains=${JSON.stringify(report.validatedDomains)}`);
+          console.log(`EV10_CALIBRATION_PROOF_PASS candidate=${report.candidateSha} falsePositives=0 falseNegatives=0 domains=${report.validatedDomains.join(',')} blocking=${report.blocking}`);
+          NODE
+
+      - name: Upload exact-SHA EV-10 calibration proof
+        uses: actions/upload-artifact@v7
+        with:
+          name: behavioral-genome-calibration-proof-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-genome-calibration/calibration.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
       - name: Validate affected-verification map
         run: node agent/tools/select-affected-verification.mjs --validate-only
 
@@ -79,6 +201,27 @@ jobs:
       - name: Run affected-verification regressions
         run: node agent/tests/affected-verification.mjs
 
+      - name: Run promoted impact-widening regressions
+        run: node agent/tests/impact-widening-promotion.mjs
+
+      - name: Enforce EV-16 impact-widening scope and rollback contract
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p .agent-impact-widening
+          node agent/tools/impact-widening-promotion.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-impact-widening/promotion.json
+
+      - name: Upload exact-SHA EV-16 impact-widening evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: impact-widening-ev16-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-impact-widening/promotion.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
       - name: Run candidate evidence regressions
         run: node agent/tests/candidate-evidence.mjs
 
@@ -87,6 +230,20 @@ jobs:
 
       - name: Enforce single-producer CI proof reuse contract
         run: node agent/tests/ci-proof-reuse.mjs
+
+      - name: Enforce mechanical architecture invariants
+        run: |
+          node agent/tools/check-architecture-invariants.mjs
+          node agent/tests/architecture-invariants.mjs
+
+      - name: Run independent verifier gate regressions
+        run: |
+          node agent/tools/select-review-task.mjs --json
+          node agent/tests/independent-review.mjs
+          node agent/tests/trusted-main-review-gate.mjs
+
+      - name: Verify trusted EV-9 observer bootstrap
+        run: node agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs self-test
 
       - name: Detect active orchestration evidence task
         id: evidence-task
@@ -158,7 +315,7 @@ jobs:
             --allow-incomplete \
             --output .agent-evidence/verification-ledger.json
 
-      - name: Validate partial candidate evidence without crediting downstream CI
+      - name: Validate partial candidate evidence without crediting downstream CI or review
         run: |
           node agent/tools/candidate-evidence.mjs validate \
             --manifest .agent-evidence/candidate-manifest.json \

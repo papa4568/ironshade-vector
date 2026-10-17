@@ -6,7 +6,10 @@ on:
       - main
 
 permissions:
+  actions: read
   contents: read
+  issues: read
+  pull-requests: read
 
 jobs:
   candidate-build:
@@ -16,6 +19,8 @@ jobs:
       cancel-in-progress: true
     runs-on: ubuntu-24.04
     timeout-minutes: 35
+    env:
+      IRONSHADE_PROOF_CACHE_REUSE: ${{ vars.IRONSHADE_PROOF_CACHE_REUSE }}
     outputs:
       browser-required: ${{ steps.scope.outputs.browser-required }}
       candidate-sha: ${{ steps.identity.outputs.candidate-sha }}
@@ -40,13 +45,41 @@ jobs:
           test "$(npm --version)" = '10.9.8'
 
       - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Verify candidate artifact integrity contract
         run: node agent/tests/candidate-artifact.mjs
 
       - name: Verify single-producer CI reuse contract
         run: node agent/tests/ci-proof-reuse.mjs
+
+      - name: Enforce mechanical architecture invariants
+        run: |
+          node agent/tools/check-architecture-invariants.mjs
+          node agent/tests/architecture-invariants.mjs
+
+      - name: Verify independent-review contracts
+        run: |
+          node agent/tools/select-review-task.mjs --json
+          node agent/tests/independent-review.mjs
+
+      - name: Enforce promoted acceptance attack scope
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node agent/tools/acceptance-attack-gate.mjs gate \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --policy agent/acceptance-attack-policy.json \
+            --output .agent-attacks/promotion-gate.json
+
+      - name: Upload promoted acceptance attack exact-SHA evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: acceptance-attack-gate-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-attacks/promotion-gate.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
 
       - name: Audit runtime dependencies once
         run: |
@@ -71,10 +104,180 @@ jobs:
             exit "$status"
           done
 
-      - name: Run full repository verification and production build once
+      - name: Capture EV-7 roadmap shadow simulator advisory evidence
+        continue-on-error: true
         env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node agent/tools/roadmap-shadow-simulator.mjs \
+            --candidate "$CANDIDATE_SHA" \
+            --compile \
+            --output .agent-roadmap-shadow/report.json
+
+      - name: Upload EV-7 roadmap shadow simulator advisory evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: roadmap-shadow-simulator-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-roadmap-shadow/
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
+
+      - name: Prepare EV-18 closed proof inputs
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0'
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
-        run: npm run build
+        run: bash scripts/prepare-full-repository-build-proof-closed.sh
+
+      - name: Compute EV-18 exact closure cache key
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0'
+        id: proof-cache-request
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: |
+          mkdir -p .agent-proof-cache-ev18
+          node agent/tools/proof-cache-promotion.mjs request \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-proof-cache-ev18/request.json \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Restore EV-18 exact closure proof cache
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0'
+        id: proof-cache-restore
+        continue-on-error: true
+        uses: actions/cache/restore@v5
+        with:
+          path: .agent-proof-cache-ev18/cache
+          key: ${{ steps.proof-cache-request.outputs.cache-key }}
+
+      - name: Validate EV-18 cache candidate
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0'
+        id: proof-cache-decision
+        shell: bash
+        run: |
+          set -euo pipefail
+          cache_hit='${{ steps.proof-cache-restore.outputs.cache-hit }}'
+          if [[ "$cache_hit" != 'true' ]]; then
+            cache_hit=false
+          fi
+          node agent/tools/proof-cache-promotion.mjs decide \
+            --request .agent-proof-cache-ev18/request.json \
+            --cache-hit "$cache_hit" \
+            --cache-dir .agent-proof-cache-ev18/cache \
+            --output .agent-proof-cache-ev18/decision.json \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Run authoritative full repository verification or reuse validated closed proof
+        id: full-verification
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          if [[ "$IRONSHADE_PROOF_CACHE_REUSE" == '0' ]]; then
+            echo "EV18_PROOF_CACHE_ROLLBACK legacy-proof-rerun=true"
+            bash scripts/run-full-repository-build-proof.sh
+          elif [[ '${{ steps.proof-cache-decision.outputs.reuse }}' == 'true' ]]; then
+            node agent/tools/proof-cache-promotion.mjs materialize \
+              --request .agent-proof-cache-ev18/request.json \
+              --cache-dir .agent-proof-cache-ev18/cache \
+              --dist dist
+            rm -rf "${IRONSHADE_PROOF_PREPARED_DIR:-}"
+            mkdir -p .agent-impact-calibration
+            printf '%s\n' 'EV18_PROOF_CACHE_REUSE validated exact-closure success entry; real closed proof intentionally skipped' > .agent-impact-calibration/full-verification.log
+          else
+            bash scripts/run-full-repository-build-proof-closed.sh
+          fi
+
+      - name: Record source-bound candidate web digest
+        id: source-bound-dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          dist_sha256="$(tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -cf - dist | sha256sum | cut -d' ' -f1)"
+          echo "dist-sha256=$dist_sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Capture EV-5 impact-map calibration shadow evidence
+        if: always()
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          FULL_VERIFICATION_OUTCOME: ${{ steps.full-verification.outcome }}
+        run: |
+          node agent/tools/impact-map-calibration.mjs observe \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --candidate-sha "$HEAD_SHA" \
+            --outcome "$FULL_VERIFICATION_OUTCOME" \
+            --log .agent-impact-calibration/full-verification.log \
+            --output .agent-impact-calibration/report.json
+
+      - name: Upload EV-5 impact-map calibration advisory evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: impact-map-calibration-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-impact-calibration/
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
+
+      - name: Record EV-18 real-proof cache entry
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0' && steps.proof-cache-decision.outputs.reuse != 'true' && steps.full-verification.outcome == 'success'
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node agent/tools/proof-cache-promotion.mjs record \
+            --request .agent-proof-cache-ev18/request.json \
+            --cache-dir .agent-proof-cache-ev18/cache \
+            --dist dist \
+            --run-id "$GITHUB_RUN_ID"
+          cp .agent-proof-cache-ev18/cache/receipt.json .agent-proof-cache-ev18/produced-receipt.json
+
+      - name: Save EV-18 validated proof cache
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0' && steps.proof-cache-decision.outputs.reuse != 'true' && steps.proof-cache-restore.outputs.cache-hit != 'true' && steps.full-verification.outcome == 'success'
+        uses: actions/cache/save@v5
+        with:
+          path: .agent-proof-cache-ev18/cache
+          key: ${{ steps.proof-cache-request.outputs.cache-key }}
+
+      - name: Upload EV-18 proof-cache decision evidence
+        if: env.IRONSHADE_PROOF_CACHE_REUSE != '0' && always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: proof-cache-ev18-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: |
+            .agent-proof-cache-ev18/request.json
+            .agent-proof-cache-ev18/decision.json
+            .agent-proof-cache-ev18/produced-receipt.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+      - name: Capture EV-3 behavioral genome shadow evidence
+        id: behavioral-genome-shadow
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node scripts/run-behavioral-genome-shadow.mjs \
+            --base-sha "$BASE_SHA" \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output-dir .agent-genome
+
+      - name: Upload EV-3 behavioral genome advisory evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: behavioral-genome-shadow-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-genome/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
 
       - name: Record candidate identity
         id: identity
@@ -87,20 +290,6 @@ jobs:
           echo "candidate-sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
           echo "artifact-name=$artifact_name" >> "$GITHUB_OUTPUT"
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-
-      - name: Create exact candidate web artifact manifest
-        env:
-          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          node agent/tools/candidate-artifact.mjs create \
-            --candidate "$CANDIDATE_SHA" \
-            --root dist \
-            --build-command 'npm run build' \
-            --output .candidate-artifact/candidate-web.json
-          node agent/tools/candidate-artifact.mjs validate \
-            --candidate "$CANDIDATE_SHA" \
-            --root dist \
-            --manifest .candidate-artifact/candidate-web.json
 
       - name: Detect browser validation scope
         id: scope
@@ -122,6 +311,27 @@ jobs:
           echo "browser-required=$browser_required" >> "$GITHUB_OUTPUT"
           echo "PR_CANDIDATE_BROWSER_REQUIRED value=$browser_required"
 
+      - name: Create exact candidate web artifact manifest
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          SOURCE_BOUND_DIST_SHA256: ${{ steps.source-bound-dist.outputs.dist-sha256 }}
+        run: |
+          set -euo pipefail
+          digest() {
+            tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -cf - dist | sha256sum | cut -d' ' -f1
+          }
+          test "$(digest)" = "$SOURCE_BOUND_DIST_SHA256"
+          node agent/tools/candidate-artifact.mjs create \
+            --candidate "$CANDIDATE_SHA" \
+            --root dist \
+            --build-command 'npm run build' \
+            --output .candidate-artifact/candidate-web.json
+          node agent/tools/candidate-artifact.mjs validate \
+            --candidate "$CANDIDATE_SHA" \
+            --root dist \
+            --manifest .candidate-artifact/candidate-web.json
+          test "$(digest)" = "$SOURCE_BOUND_DIST_SHA256"
+
       - name: Upload exact candidate web bundle
         uses: actions/upload-artifact@v7
         with:
@@ -129,6 +339,133 @@ jobs:
           path: |
             dist/
             .candidate-artifact/candidate-web.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Run promoted causal evidence independence regressions
+        run: |
+          node agent/tests/evidence-independence-promotion.mjs
+          node agent/tests/pr-candidate-head-observer.mjs
+
+      - name: Enforce promoted causal evidence independence scope
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node agent/tools/evidence-independence-promotion-gate.mjs gate \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --graph agent/evidence-independence.json \
+            --policy agent/evidence-independence-policy.json \
+            --output .agent-independence/promotion-gate.json
+
+      - name: Upload promoted causal evidence independence exact-SHA evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: evidence-independence-gate-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-independence/promotion-gate.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+  independent-review-context:
+    name: Independent Review Context
+    needs: candidate-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Check out exact candidate read-only
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.candidate-build.outputs.candidate-sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Install locked dependencies for architecture checks
+        run: npm ci --ignore-scripts
+
+      - name: Resolve independent-review task
+        id: review-task
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          import { selectReviewTask } from './agent/tools/select-review-task.mjs';
+          const selection = await selectReviewTask();
+          appendFileSync(process.env.GITHUB_OUTPUT, `task=${selection.taskId}\n`);
+          console.log(`INDEPENDENT_REVIEW_TASK task=${selection.taskId} mode=${selection.mode} source=${selection.source}`);
+          NODE
+
+      - name: Download EV-10 exact-candidate calibration evidence
+        if: steps.review-task.outputs.task == 'EV-10'
+        uses: actions/download-artifact@v7
+        with:
+          name: behavioral-genome-shadow-${{ github.event.pull_request.number }}-${{ needs.candidate-build.outputs.candidate-sha }}
+          path: .independent-review/ev10-calibration
+
+      - name: Verify EV-10 exact-candidate calibration closeout evidence
+        if: steps.review-task.outputs.task == 'EV-10'
+        env:
+          CANDIDATE_SHA: ${{ needs.candidate-build.outputs.candidate-sha }}
+        run: |
+          node agent/tools/behavioral-genome-calibration-evidence.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --report .independent-review/ev10-calibration/calibration.json \
+            --require-pass
+
+      - name: Download EV-11 exact-candidate behavioral genome evidence
+        if: steps.review-task.outputs.task == 'EV-11'
+        uses: actions/download-artifact@v7
+        with:
+          name: behavioral-genome-shadow-${{ github.event.pull_request.number }}-${{ needs.candidate-build.outputs.candidate-sha }}
+          path: .independent-review/ev11-genome
+
+      - name: Verify EV-11 exact-candidate promotion evidence
+        if: steps.review-task.outputs.task == 'EV-11'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CANDIDATE_SHA: ${{ needs.candidate-build.outputs.candidate-sha }}
+        run: |
+          node agent/tools/behavioral-genome-promotion-evidence.mjs \
+            --base-sha "$BASE_SHA" \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --task-id EV-11 \
+            --base-observations .independent-review/ev11-genome/base-observations.json \
+            --candidate-observations .independent-review/ev11-genome/observations-a.json \
+            --report .independent-review/ev11-genome/promotion-gate.json \
+            --require-pass
+
+      - name: Generate exact candidate review packet
+        env:
+          TASK_ID: ${{ steps.review-task.outputs.task }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ needs.candidate-build.outputs.candidate-sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          mkdir -p .independent-review
+          node agent/tools/candidate-evidence.mjs manifest \
+            --task "$TASK_ID" \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --branch "$HEAD_BRANCH" \
+            --output .independent-review/candidate-manifest.json
+          node agent/tools/independent-review.mjs packet \
+            --manifest .independent-review/candidate-manifest.json \
+            --output .independent-review/review-packet.json \
+            --verify-git
+
+      - name: Upload read-only independent review context
+        uses: actions/upload-artifact@v7
+        with:
+          name: independent-review-context-${{ github.event.pull_request.number }}-${{ needs.candidate-build.outputs.candidate-sha }}
+          path: .independent-review/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
@@ -155,14 +492,16 @@ jobs:
     if: always()
     needs:
       - candidate-build
+      - independent-review-context
       - browser-e2e
       - android
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
-      - name: Require exact candidate gates
+      - name: Require exact candidate technical gates
         env:
           BUILD_RESULT: ${{ needs.candidate-build.result }}
+          REVIEW_CONTEXT_RESULT: ${{ needs.independent-review-context.result }}
           BROWSER_RESULT: ${{ needs.browser-e2e.result }}
           ANDROID_RESULT: ${{ needs.android.result }}
           BROWSER_REQUIRED: ${{ needs.candidate-build.outputs.browser-required }}
@@ -170,40 +509,71 @@ jobs:
         run: |
           set -euo pipefail
           test "$BUILD_RESULT" = 'success'
+          test "$REVIEW_CONTEXT_RESULT" = 'success'
           test "$ANDROID_RESULT" = 'success'
           if [[ "$BROWSER_REQUIRED" == 'true' ]]; then
             test "$BROWSER_RESULT" = 'success'
           else
             test "$BROWSER_RESULT" = 'skipped'
           fi
-          echo "PR_CANDIDATE_VERIFICATION_PASS candidate=$CANDIDATE_SHA fullVerification=once browser=$BROWSER_RESULT android=$ANDROID_RESULT"
+          echo "PR_CANDIDATE_TECHNICAL_GATES_PASS candidate=$CANDIDATE_SHA fullVerification=once reviewContext=$REVIEW_CONTEXT_RESULT browser=$BROWSER_RESULT android=$ANDROID_RESULT"
 
-      - name: Check out exact candidate revision for proof ledger
+      - name: Check out exact candidate revision for final evidence
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Set up Node 22 for proof ledger
+      - name: Set up Node 22 for final evidence
         uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
 
-      - name: Generate complete AO-5 exact-candidate evidence
+      - name: Download exact candidate independent-review packet
+        uses: actions/download-artifact@v7
+        with:
+          name: independent-review-context-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .independent-review
+
+      - name: Fetch trusted PR conversation evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          gh api --paginate --slurp \
+            -H 'Accept: application/vnd.github+json' \
+            "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
+            | jq 'add // []' > .independent-review/pr-comments.json
+
+      - name: Require actual exact-SHA independent-review pass
+        run: |
+          node agent/tools/review-comment-gate.mjs gate \
+            --packet .independent-review/review-packet.json \
+            --comments .independent-review/pr-comments.json \
+            --output .independent-review/review-result.json
+          node agent/tools/independent-review.mjs validate-result \
+            --packet .independent-review/review-packet.json \
+            --result .independent-review/review-result.json
+
+      - name: Generate complete exact-candidate evidence
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
+          set -euo pipefail
+          TASK_ID="$(node --input-type=module -e "import { readFileSync } from 'node:fs'; console.log(JSON.parse(readFileSync('.independent-review/review-packet.json', 'utf8')).taskId)")"
           node agent/tools/candidate-evidence.mjs manifest \
-            --task AO-5 \
+            --task "$TASK_ID" \
             --base "$BASE_SHA" \
             --head "$HEAD_SHA" \
             --branch "$HEAD_BRANCH" \
             --output .agent-evidence/candidate-manifest.json
           node agent/tools/candidate-evidence.mjs ledger \
             --manifest .agent-evidence/candidate-manifest.json \
-            --pass-kinds test,ci,invariant \
+            --pass-kinds test,build,ci,artifact,review,invariant \
             --workflow 'PR Candidate Verification' \
             --run-id "$GITHUB_RUN_ID" \
             --job 'candidate-verification' \
@@ -212,12 +582,15 @@ jobs:
             --manifest .agent-evidence/candidate-manifest.json \
             --ledger .agent-evidence/verification-ledger.json \
             --verify-git
+          echo "PR_CANDIDATE_VERIFICATION_PASS candidate=$HEAD_SHA task=$TASK_ID independentReview=pass"
 
-      - name: Upload complete AO-5 candidate evidence
+      - name: Upload complete candidate evidence
         uses: actions/upload-artifact@v7
         with:
           name: agent-candidate-evidence-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-          path: .agent-evidence/
+          path: |
+            .agent-evidence/
+            .independent-review/review-result.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30

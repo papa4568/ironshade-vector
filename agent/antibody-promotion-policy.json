@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "mode": "single-antibody-enforcement",
+  "enabled": true,
+  "promotionTask": "EV-14",
+  "governance": {
+    "policyPath": "agent/antibody-governance-policy.json",
+    "policySha256": "500ccf844b7e00b609960ffb61633b63d7dd456bbf8adab2f161008e4d58dcd2",
+    "ev12CorpusSha256": "ab1be48150edfad5f16f97339f7e5c62a8d8eb6f56382b47749a1ac008c2c493",
+    "failureMemorySha256": "d6f151d1bb399943b959d2ff03f63c69ac1f78414d68ff353de685130aea2254",
+    "decisionPath": "agent/antibody-decisions/candidate-artifact-integrity-drift-r1.json"
+  },
+  "antibody": {
+    "truthId": "candidate-artifact-integrity-drift",
+    "antibodyId": "antibody-candidate-artifact-integrity-drift",
+    "sourceFailureClass": "candidate-artifact-integrity-drift",
+    "proposalSha256": "aa1baf06adc51206a4faf015420c3c1c45462d5388eeb8f0d41c0354704fcd1e",
+    "sourceOfTruth": {
+      "kind": "focused-regression",
+      "path": "agent/tests/candidate-artifact.mjs",
+      "entryId": "candidate-artifact-integrity"
+    }
+  },
+  "calibration": {
+    "benignControls": [
+      "append-comment"
+    ],
+    "dishonestMutations": [
+      "remove-required-candidate-sha-match",
+      "inject-forbidden-cross-sha-acceptance"
+    ],
+    "errorBudget": {
+      "falsePositives": 0,
+      "falseNegatives": 0
+    }
+  },
+  "rollback": {
+    "environmentVariable": "IRONSHADE_ANTIBODY_ENFORCEMENT",
+    "disabledValue": "0",
+    "behavior": "Run the same policy, governance-intent, canonical-source, and calibration checks but remove only the EV-14 blocking decision. Existing candidate-artifact verification and all unrelated failure history remain unchanged."
+  }
+}

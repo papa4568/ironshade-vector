@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "mode": "single-proof-reuse",
+  "enabled": true,
+  "promotionTask": "EV-18",
+  "proofClass": "full-repository-build-closed",
+  "sourceEvidence": {
+    "ev17": {
+      "taskId": "EV-17",
+      "corpusPath": "agent/proof-cache-calibration-corpus.json",
+      "corpusGitBlobSha": "5caa5704f943dec7da3f526e509baff48a51d5c0",
+      "result": "legacy full-repository-build remained ineligible because causal runtime inputs were unbound"
+    },
+    "ev21": {
+      "taskId": "EV-21",
+      "corpusPath": "agent/proof-cache-closure-calibration-corpus.json",
+      "corpusGitBlobSha": "674b149cef2d167d71875f335c1721254ad1171a",
+      "candidateSha": "945b44853742e43e92f3657df1b7cee1dfe5b0e1",
+      "workflowRunId": "38777138277",
+      "artifactId": "11994293248",
+      "artifactDigest": "sha256:a311ab890247ae9f68f6a14f2e3dcac0f075dd192df8b4836fb1e7b5a0fee66c",
+      "eligibleProofClasses": [
+        "full-repository-build-closed"
+      ],
+      "falseHits": 0,
+      "sameClosureDisagreements": 0,
+      "detectedInvalidationDefects": 1
+    }
+  },
+  "cache": {
+    "provider": "github-actions-cache",
+    "keyPrefix": "ironshade-proof-full-repository-build-closed-v2",
+    "exactKeyOnly": true,
+    "path": ".agent-proof-cache-ev18/cache",
+    "receiptPath": ".agent-proof-cache-ev18/cache/receipt.json",
+    "distPath": ".agent-proof-cache-ev18/cache/dist",
+    "provenance": {
+      "workflowName": "PR Candidate Verification",
+      "workflowPath": ".github/workflows/pr-candidate.yml",
+      "event": "pull_request",
+      "producerJobName": "Candidate Build and Full Verification",
+      "realProofStepName": "Run authoritative full repository verification or reuse validated closed proof",
+      "recordStepName": "Record EV-18 real-proof cache entry",
+      "cacheSaveStepName": "Save EV-18 validated proof cache"
+    }
+  },
+  "calibration": {
+    "errorBudget": {
+      "falsePositives": 0,
+      "falseNegatives": 0
+    },
+    "positiveControls": [
+      "valid-exact-closure-success-entry"
+    ],
+    "negativeControls": [
+      "cache-miss",
+      "closure-mismatch",
+      "failed-proof-receipt",
+      "invalid-source-candidate",
+      "fabricated-source-candidate",
+      "missing-source-workflow",
+      "fabricated-source-run",
+      "failed-source-producer-job",
+      "missing-source-cache-save",
+      "dist-digest-mismatch"
+    ]
+  },
+  "rollback": {
+    "environmentVariable": "IRONSHADE_PROOF_CACHE_REUSE",
+    "disabledValue": "0",
+    "behavior": "Bypass EV-18 preflight/cache reuse and run scripts/run-full-repository-build-proof.sh exactly as the pre-EV-18 authoritative producer."
+  }
+}

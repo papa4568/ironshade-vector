@@ -6,7 +6,7 @@ Ironshade Vector is moving from a purely linear Markdown execution queue toward 
 
 `docs/content-roadmap.md` remains the authoritative product/game queue until an explicit migration phase changes that rule. The machine-readable graph in `agent/task-graph.json` is authoritative only for `AO-*` orchestration-migration tasks during compatibility mode.
 
-`agent/roadmap-metadata.json` is a sidecar, not a duplicate roadmap. It stores only machine-oriented information: the active unchecked ID/order inventory, affected-domain rules, proof profiles, and optional dependency overrides. Product task titles, descriptions, and `Done when` acceptance text are parsed directly from `docs/content-roadmap.md` and are not copied into the sidecar.
+`agent/roadmap-metadata.json` is a sidecar, not a duplicate roadmap. It stores only machine-oriented information: the active unchecked ID/order inventory, affected-domain rules, proof profiles, and optional dependency overrides. Product task titles/descriptions/acceptance remain authoritative only in `docs/content-roadmap.md`.
 
 `agent/impact-map.json` is the implementation-time change-impact map. It maps changed paths to affected domains and verification commands. It is conservative by design: unknown paths and high-risk build/dependency/Android/CI paths expand to `npm run verify:full` instead of silently selecting too little verification.
 
@@ -97,7 +97,29 @@ AO-5 was proven on exact implementation candidate `8da57fa08719ac9ca6aa2fae927dc
 
 ### AO-6 — Independent verifier and mechanical invariants
 
-Ready. Add a separate completion-review contract and promote stable architectural assumptions and recurring failure classes into deterministic checks where practical.
+Verified. AO-6 adds a mandatory exact-SHA independent-review gate plus mechanical architecture proofs without changing product/runtime behavior.
+
+`agent/architecture-invariants.json` records deterministic architectural assumptions that can be checked reliably. `agent/tools/check-architecture-invariants.mjs` evaluates source contracts and named-import allowlists fail-closed, while `agent/tests/architecture-invariants.mjs` proves missing/forbidden contracts, unexpected imports, and dynamic-import bypasses are rejected.
+
+`agent/INDEPENDENT_VERIFIER.md` defines the separate read-only adversarial verifier role. The implementation owner remains the only writer; a verifier may inspect the exact candidate, proof artifacts, and review packet, but may not implement fixes, push commits, change PR state, or create a competing implementation. Findings return to the same implementation branch.
+
+`agent/tools/independent-review.mjs` binds the review packet and result to the selected task and exact candidate SHA. `agent/tools/review-comment-gate.mjs` accepts only the latest trusted top-level PR-conversation result using the `ironshade-independent-review:v1` envelope and rejects missing, malformed, untrusted, stale-SHA, incomplete, or failing evidence.
+
+`agent/tools/select-review-task.mjs` selects an active/verifying AO migration task while migration work is in flight. For an AO closeout candidate, the selector reads the pull-request event's exact base/head SHAs and preserves the single AO task that transitions to `verified` in that range as the review target. This lets the same immutable SHA both record completion and receive the required independent verdict. Once the verified transition is already in the base branch, the selector falls through to the first executable product-roadmap item so independent review remains permanent after AO migration completes.
+
+The authoritative PR candidate flow is therefore:
+
+`exact PR head -> full build/invariants -> exact-SHA review packet -> browser/Android/APK -> trusted independent-review PASS -> complete evidence ledger`
+
+Any implementation commit changes the candidate SHA and invalidates all older verdicts automatically. A failed review returns to the same writer branch, produces a new exact candidate, and must be reviewed again from scratch.
+
+### AO-7 — Trusted experimental-promotion review routing
+
+Verified candidate. AO-7 extends the trusted-main independent-review request and packet path to `EV-*` tasks while preserving AO-6's ordinary no-AO fallback to the first executable product-roadmap item.
+
+The trusted workflow still executes verifier code from current `main`, never from the candidate. EV task identity and acceptance are resolved from the exact candidate/base copies of `docs/experimental-verification-roadmap.md`. Active EV review selects the first executable promotion item; closeout review may recover only that single removed first item from the base roadmap and fails closed on combined or reordered removals. This extension does not make the experimental queue a default work source: EV selection remains explicit and candidate-scoped.
+
+The AO-7 implementation candidate passed Agent Orchestration, full repository verification/production build, exact candidate review-context generation, APK packaging, API 35 smoke, and API 36 large-screen smoke before this closeout transition. This verified closeout candidate is itself required to receive a trusted exact-SHA independent-review PASS and the final candidate gate before merge; only after that merge may EV-8 rely on the trusted-main EV packet path.
 
 ## Orchestration commands
 

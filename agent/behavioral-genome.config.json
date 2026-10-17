@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "mode": "advisory",
+  "requiredDomains": [
+    "simulation",
+    "mission",
+    "presentation",
+    "load",
+    "resources",
+    "performance"
+  ],
+  "domains": {
+    "simulation": {
+      "excludePaths": [],
+      "normalizers": {
+        "time": { "kind": "round", "decimals": 3 },
+        "player.x": { "kind": "round", "decimals": 3 },
+        "player.y": { "kind": "round", "decimals": 3 },
+        "player.hp": { "kind": "round", "decimals": 3 },
+        "player.armor": { "kind": "round", "decimals": 3 },
+        "player.capacitor": { "kind": "round", "decimals": 3 }
+      }
+    },
+    "mission": {
+      "excludePaths": [],
+      "normalizers": {
+        "elapsed": { "kind": "round", "decimals": 3 },
+        "deepElapsed": { "kind": "round", "decimals": 3 }
+      }
+    },
+    "presentation": {
+      "excludePaths": [],
+      "normalizers": {
+        "high.pixelRatioScale": { "kind": "round", "decimals": 3 },
+        "pressure.pixelRatioScale": { "kind": "round", "decimals": 3 },
+        "pressure.detailScale": { "kind": "round", "decimals": 3 }
+      }
+    },
+    "load": {
+      "excludePaths": [
+        "loadDurationMs"
+      ],
+      "normalizers": {}
+    },
+    "resources": {
+      "excludePaths": [],
+      "normalizers": {}
+    },
+    "performance": {
+      "excludePaths": [],
+      "normalizers": {
+        "high.rawFrameMs": { "kind": "round", "decimals": 2 },
+        "high.smoothedFrameMs": { "kind": "round", "decimals": 2 },
+        "pressure.rawFrameMs": { "kind": "round", "decimals": 2 },
+        "pressure.smoothedFrameMs": { "kind": "bucket", "size": 0.25 }
+      }
+    }
+  }
+}

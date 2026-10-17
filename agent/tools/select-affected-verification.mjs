@@ -64,6 +64,22 @@ function ruleMatchesFile(rule, filePath) {
   return !(rule.exclude ?? []).some(pattern => matchesGlob(filePath, pattern));
 }
 
+export function effectiveRuleRisk(rule, env = process.env) {
+  const promotion = rule?.promotion;
+  if (promotion && env?.[promotion.disableEnvironmentVariable] === promotion.disabledValue) {
+    return promotion.previousRisk;
+  }
+  return rule.risk;
+}
+
+export function impactWideningEnforcementEnabled(impactMap, env = process.env) {
+  const promotionRules = impactMap.rules.filter(rule => rule.promotion?.taskId === 'EV-16');
+  if (promotionRules.length === 0) return false;
+  assert(promotionRules.length === 1, `EV-16 selector requires exactly one promoted rule, found ${promotionRules.length}`);
+  const promotion = promotionRules[0].promotion;
+  return env?.[promotion.disableEnvironmentVariable] !== promotion.disabledValue;
+}
+
 export function validateImpactMap(impactMap) {
   assert(impactMap && typeof impactMap === 'object' && !Array.isArray(impactMap), 'impact map must be an object');
   assert(impactMap.schemaVersion === 1, 'impact map schemaVersion must be 1');
@@ -100,6 +116,23 @@ export function validateImpactMap(impactMap) {
     assertStringArray(rule.verificationIds, `${rule.id}.verificationIds`);
     assert(['normal', 'high'].includes(rule.risk), `${rule.id}.risk must be normal or high`);
     if (rule.reason !== undefined) assertString(rule.reason, `${rule.id}.reason`);
+    if (rule.promotion !== undefined) {
+      const promotion = rule.promotion;
+      assert(promotion && typeof promotion === 'object' && !Array.isArray(promotion), `${rule.id}.promotion must be an object`);
+      for (const field of ['taskId', 'sourceTaskId', 'sourceCorpusPath', 'sourceCorpusGitBlobSha', 'sourceImpactMapGitBlobSha', 'sourceCandidateSha', 'sourceArtifactDigest', 'previousRisk', 'disableEnvironmentVariable', 'disabledValue']) {
+        assertString(promotion[field], `${rule.id}.promotion.${field}`);
+      }
+      assert(/^EV-\d+$/.test(promotion.taskId), `${rule.id}.promotion.taskId must be an EV task ID`);
+      assert(/^EV-\d+$/.test(promotion.sourceTaskId), `${rule.id}.promotion.sourceTaskId must be an EV task ID`);
+      assert(/^[a-f0-9]{40}$/.test(promotion.sourceCorpusGitBlobSha), `${rule.id}.promotion.sourceCorpusGitBlobSha must be a full lowercase Git blob SHA`);
+      assert(/^[a-f0-9]{40}$/.test(promotion.sourceImpactMapGitBlobSha), `${rule.id}.promotion.sourceImpactMapGitBlobSha must be a full lowercase Git blob SHA`);
+      assert(/^[a-f0-9]{40}$/.test(promotion.sourceCandidateSha), `${rule.id}.promotion.sourceCandidateSha must be a full lowercase commit SHA`);
+      assert(/^sha256:[a-f0-9]{64}$/.test(promotion.sourceArtifactDigest), `${rule.id}.promotion.sourceArtifactDigest must be a sha256 digest`);
+      assert(Number.isInteger(promotion.sourceWorkflowRunId) && promotion.sourceWorkflowRunId > 0, `${rule.id}.promotion.sourceWorkflowRunId must be positive`);
+      assert(Number.isInteger(promotion.sourceArtifactId) && promotion.sourceArtifactId > 0, `${rule.id}.promotion.sourceArtifactId must be positive`);
+      assert(rule.risk === 'high', `${rule.id}.promotion requires current risk=high`);
+      assert(promotion.previousRisk === 'normal', `${rule.id}.promotion.previousRisk must preserve the previous normal-risk behavior`);
+    }
     for (const verificationId of rule.verificationIds) {
       assert(impactMap.verifications[verificationId], `${rule.id} references unknown verification ${verificationId}`);
     }
@@ -121,7 +154,7 @@ function materializeVerifications(ids, impactMap) {
   return orderedUnique(ids, order).map(id => ({ id, ...impactMap.verifications[id] }));
 }
 
-export function selectAffectedVerification(changedFiles, impactMap) {
+export function selectAffectedVerification(changedFiles, impactMap, { env = process.env } = {}) {
   validateImpactMap(impactMap);
   assertStringArray(changedFiles, 'changedFiles', { minItems: 1 });
 
@@ -130,8 +163,10 @@ export function selectAffectedVerification(changedFiles, impactMap) {
   const normalVerificationIds = [];
   const matchedRuleIds = new Set();
   const highRiskRules = new Map();
+  const lowConfidenceRules = new Map();
   const unknownFiles = [];
   const fileImpacts = [];
+  const wideningEnforcementEnabled = impactWideningEnforcementEnabled(impactMap, env);
 
   for (const file of files) {
     const matchedRules = impactMap.rules.filter(rule => ruleMatchesFile(rule, file));
@@ -151,9 +186,13 @@ export function selectAffectedVerification(changedFiles, impactMap) {
         fileDomains.add(domain);
       });
       normalVerificationIds.push(...rule.verificationIds);
-      if (rule.risk === 'high') {
+      const ruleRisk = effectiveRuleRisk(rule, env);
+      if (ruleRisk === 'high') {
         fileRisk = 'high';
         highRiskRules.set(rule.id, rule.reason ?? `${rule.id} is high risk`);
+      } else if (wideningEnforcementEnabled && rule.risk === 'normal') {
+        if (fileRisk !== 'high') fileRisk = 'low-confidence';
+        lowConfidenceRules.set(rule.id, `${rule.id} remains unresolved/low-confidence under EV-16`);
       }
     }
     fileImpacts.push({
@@ -171,6 +210,9 @@ export function selectAffectedVerification(changedFiles, impactMap) {
   for (const [ruleId, reason] of highRiskRules) {
     escalationReasons.push(`${ruleId}: ${reason}`);
   }
+  for (const [ruleId, reason] of lowConfidenceRules) {
+    escalationReasons.push(`${ruleId}: ${reason}`);
+  }
 
   const escalated = escalationReasons.length > 0;
   let verificationIds;
@@ -178,7 +220,7 @@ export function selectAffectedVerification(changedFiles, impactMap) {
   if (escalated) {
     verificationIds = [
       ...(unknownFiles.length > 0 ? impactMap.fallback.unknownVerificationIds : []),
-      ...(highRiskRules.size > 0 ? impactMap.fallback.highRiskVerificationIds : []),
+      ...(highRiskRules.size > 0 || lowConfidenceRules.size > 0 ? impactMap.fallback.highRiskVerificationIds : []),
     ];
     mode = 'full';
   } else if (normalVerificationIds.length > 0) {
@@ -195,6 +237,7 @@ export function selectAffectedVerification(changedFiles, impactMap) {
     files,
     domains: [...domains].sort(),
     matchedRuleIds: [...matchedRuleIds].sort(),
+    lowConfidenceRuleIds: [...lowConfidenceRules.keys()].sort(),
     unknownFiles,
     escalationReasons,
     verifications: materializeVerifications(verificationIds, impactMap),

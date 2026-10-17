@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "mode": "advisory",
+  "route": "ev3-representative-route-v1",
+  "requiredDomains": [
+    "simulation",
+    "mission",
+    "presentation",
+    "load",
+    "resources",
+    "performance"
+  ],
+  "falsePositiveBudget": 0,
+  "falseNegativeBudget": 0,
+  "baselineObservations": {
+    "schema": "ironshade-behavior-observations:v1",
+    "route": "ev3-representative-route-v1",
+    "domains": {
+      "simulation": {
+        "time": 2.0000004,
+        "player": {
+          "x": 420.0004,
+          "y": 540,
+          "hp": 100,
+          "armor": 60,
+          "capacitor": 100,
+          "currentWeapon": "carbine"
+        },
+        "activeEnemies": 8,
+        "activeHazards": 0,
+        "telemetry": {
+          "kills": 0,
+          "damageDealt": 0,
+          "damageTaken": 0
+        }
+      },
+      "mission": {
+        "contract": {
+          "location": "orbital-station",
+          "objectiveMode": "machinery-recovery",
+          "seed": 101
+        },
+        "elapsed": 10.0000004,
+        "deepElapsed": 0,
+        "deep": false,
+        "reinforcementsReleased": false,
+        "gridTriggered": false,
+        "pressureTriggered": false,
+        "gravityTriggered": false
+      },
+      "presentation": {
+        "high": {
+          "tierName": "high",
+          "pixelRatioScale": 1,
+          "detailScale": 1,
+          "shadows": true
+        },
+        "pressure": {
+          "tierName": "performance",
+          "pixelRatioScale": 0.68,
+          "detailScale": 0.5,
+          "shadows": false
+        },
+        "selectedAsset": {
+          "id": "operator-meridian-lod2",
+          "lod": 2
+        }
+      },
+      "load": {
+        "selectedAssetId": "operator-meridian-lod2",
+        "selectedLod": 2,
+        "loadCount": 1,
+        "firstReady": true,
+        "secondReady": true,
+        "cachedAssets": 1,
+        "loadDurationMs": 18.472
+      },
+      "resources": {
+        "peakActiveInstances": 2,
+        "peakNativeMeshInstances": 6,
+        "activeAfterOneRelease": 1,
+        "activeAfterAllRelease": 0,
+        "nativeAfterAllRelease": 0,
+        "cachedCompressedBytes": 600000
+      },
+      "performance": {
+        "high": {
+          "rawFrameMs": 16.7004,
+          "smoothedFrameMs": 16.7004,
+          "tier": "high",
+          "transitionCount": 0
+        },
+        "pressure": {
+          "rawFrameMs": 160.004,
+          "smoothedFrameMs": 144.119,
+          "tier": "performance",
+          "transition": "high->performance",
+          "transitionCount": 1
+        }
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "simulation-rounding-noise",
+      "kind": "noise-control",
+      "description": "Sub-threshold fixed-step float jitter must normalize away.",
+      "mutations": [
+        { "path": "domains.simulation.time", "value": 2.0000001 },
+        { "path": "domains.simulation.player.x", "value": 420.0001 }
+      ],
+      "expectedChangedDomains": []
+    },
+    {
+      "id": "load-duration-noise",
+      "kind": "noise-control",
+      "description": "Measured wall-clock asset load duration is deliberately excluded from semantic comparison.",
+      "mutations": [
+        { "path": "domains.load.loadDurationMs", "value": 91.008 }
+      ],
+      "expectedChangedDomains": []
+    },
+    {
+      "id": "performance-bucket-noise",
+      "kind": "noise-control",
+      "description": "Sub-bucket smoothed-frame jitter must normalize away.",
+      "mutations": [
+        { "path": "domains.performance.pressure.smoothedFrameMs", "value": 144.121 }
+      ],
+      "expectedChangedDomains": []
+    },
+    {
+      "id": "simulation-player-health-change",
+      "kind": "semantic-change",
+      "description": "A representative gameplay-state change must alter the simulation digest.",
+      "mutations": [
+        { "path": "domains.simulation.player.hp", "value": 91 }
+      ],
+      "expectedChangedDomains": ["simulation"]
+    },
+    {
+      "id": "mission-timing-change",
+      "kind": "semantic-change",
+      "description": "A representative mission-progression change must alter the mission digest.",
+      "mutations": [
+        { "path": "domains.mission.elapsed", "value": 11 }
+      ],
+      "expectedChangedDomains": ["mission"]
+    },
+    {
+      "id": "presentation-asset-change",
+      "kind": "semantic-change",
+      "description": "A representative presentation selection change must alter the presentation digest.",
+      "mutations": [
+        { "path": "domains.presentation.selectedAsset.id", "value": "operator-meridian-lod1" },
+        { "path": "domains.presentation.selectedAsset.lod", "value": 1 }
+      ],
+      "expectedChangedDomains": ["presentation"]
+    },
+    {
+      "id": "load-cache-use-change",
+      "kind": "semantic-change",
+      "description": "A representative asset-load/cache behavior change must alter the load digest.",
+      "mutations": [
+        { "path": "domains.load.loadCount", "value": 2 }
+      ],
+      "expectedChangedDomains": ["load"]
+    },
+    {
+      "id": "resource-release-change",
+      "kind": "semantic-change",
+      "description": "A representative resource-release regression must alter the resources digest.",
+      "mutations": [
+        { "path": "domains.resources.activeAfterAllRelease", "value": 1 }
+      ],
+      "expectedChangedDomains": ["resources"]
+    },
+    {
+      "id": "performance-frame-change",
+      "kind": "semantic-change",
+      "description": "A frame-time change outside configured normalization tolerance must alter the performance digest.",
+      "mutations": [
+        { "path": "domains.performance.high.rawFrameMs", "value": 17.31 }
+      ],
+      "expectedChangedDomains": ["performance"]
+    }
+  ],
+  "unresolvedCases": [
+    {
+      "id": "load-duration-excluded",
+      "domains": ["load"],
+      "reason": "load.loadDurationMs is intentionally excluded because wall-clock timing is nondeterministic in the representative route.",
+      "ev11Constraint": "EV-11 must not claim behavioral-genome enforcement detects load-latency regressions; existing load/performance proofs remain authoritative."
+    },
+    {
+      "id": "normalized-thresholds-not-semantic-resolution",
+      "domains": ["simulation", "presentation", "performance"],
+      "reason": "Configured rounding and bucketing deliberately hide sub-threshold numeric jitter.",
+      "ev11Constraint": "EV-11 may enforce only post-normalization digest changes and must preserve the reviewed thresholds exactly unless separately recalibrated."
+    },
+    {
+      "id": "representative-route-not-complete-product-observer",
+      "domains": ["simulation", "mission", "presentation", "load", "resources", "performance"],
+      "reason": "The corpus validates genome sensitivity and noise handling for representative observed signals, not coverage of every possible product behavior change.",
+      "ev11Constraint": "A genome delta may supplement but never replace the underlying behavioral tests, browser/Android checks, exact-SHA evidence, or independent review."
+    }
+  ]
+}

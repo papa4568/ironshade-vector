@@ -202,3 +202,4 @@ if (screenshotPath) {
 
 console.log(`ANDROID_P25B_LARGE_SCREEN_PHASE_PASS phase=${phase} viewport=${width}x${height} sw=${smallestWidth} orientation=${metrics.orientation} overflow=none preserved=${phase === 'resized' ? 'true' : 'armed'} babylon=webgl2 renderer=${phase === 'resized' ? 'preserved' : 'armed'}`);
 socket.close();
+setTimeout(() => process.exit(0), 1_000).unref();

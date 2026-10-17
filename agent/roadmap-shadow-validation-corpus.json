@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 2,
+  "taskId": "EV-19",
+  "mode": "advisory",
+  "predictionTrials": [
+    {
+      "id": "ev7-original",
+      "candidateSha": "d1ddb444ba86c9b23b97b0e1987486b6ebc6cca0",
+      "configPath": "agent/roadmap-shadow-simulator.json",
+      "configBlobSha": "522efd6e86b0dfde647b3fbfc981c995c216e165",
+      "taskId": "P28-PLOAD2",
+      "probeId": "mission-load-readiness-observer",
+      "preferredSurfaceCount": 2,
+      "expectedSurfaces": [
+        "src/game/combatGraphicsBackend.ts",
+        "src/game/missionVisualReadinessGate.ts"
+      ],
+      "signalPath": "src/game/combatGraphicsBackend.ts",
+      "normalizedSignalPath": "src/game/combatGraphicsBackendCore.ts",
+      "lineage": {
+        "migrationCommit": "48c3d9539d408875d8887777cc45c8c94e956347",
+        "migrationParent": "0d255886b39e65135ba9729773b82f7faeb0a859",
+        "resolvedPath": "src/game/combatGraphicsBackendCore.ts",
+        "publicFacadePath": "src/game/combatGraphicsBackend.ts",
+        "publicFacadeExport": "export * from './combatGraphicsBackendCore';",
+        "carryoverContracts": [
+          "export type MissionVisualReadiness = {",
+          "missionVisualReadiness?(): MissionVisualReadiness;"
+        ]
+      }
+    },
+    {
+      "id": "ao6-snapshot-isolated",
+      "candidateSha": "87641dba570c1c389d4878a6996ad7bf872fbf67",
+      "configPath": "agent/roadmap-shadow-simulator.json",
+      "configBlobSha": "387167310ae177441d9d28a1903fdab4354c7f99",
+      "taskId": "P28-PLOAD2",
+      "probeId": "mission-load-readiness-observer",
+      "preferredSurfaceCount": 3,
+      "expectedSurfaces": [
+        "src/game/combatGraphicsBackend.ts",
+        "src/game/combatGraphicsBackendCore.ts",
+        "src/game/missionVisualReadinessGate.ts"
+      ],
+      "signalPath": "src/game/combatGraphicsBackendCore.ts",
+      "normalizedSignalPath": "src/game/combatGraphicsBackendCore.ts"
+    }
+  ],
+  "trialRetirement": {
+    "commit": "2b3881a85a52bc0a23ba77febe1fadf66e7a03da",
+    "parent": "87641dba570c1c389d4878a6996ad7bf872fbf67",
+    "replacementTaskId": "P28-F6"
+  },
+  "actualOutcome": {
+    "kind": "merged-implementation",
+    "pullRequest": 366,
+    "baseSha": "2b1099df2a1869919683d3e2438217e09130ae88",
+    "implementationHeadSha": "8d97a4fcbf20dd540009388487fecd979ae3c265",
+    "finalHeadSha": "a41aaaeb97df197664fb2f6f216c66768bb314fc",
+    "mergeCommitSha": "452e91bd239a91441bd1dd8559833dd1edde2547",
+    "productionPrefix": "src/",
+    "testPrefix": "tests/",
+    "expectedProductionSurfaces": [
+      "src/game/babylonCombatRenderer.ts",
+      "src/game/babylonRefineryMissionReadiness.ts",
+      "src/game/combatGraphicsBackendCore.ts",
+      "src/game/mapLoadReadinessTelemetry.ts"
+    ],
+    "requiredChangedPaths": [
+      "src/game/combatGraphicsBackendCore.ts",
+      "tests/p28-pload2-map-load-readiness.ts"
+    ]
+  },
+  "supportedSignals": [
+    {
+      "id": "expected-surface:shared-backend-readiness",
+      "normalizedOutcomePath": "src/game/combatGraphicsBackendCore.ts",
+      "minimumPredeclaredTrialHits": 2,
+      "scope": "same-task forecast robustness across a pre-outcome architecture refactor"
+    }
+  ],
+  "unsupportedSignals": [
+    {
+      "id": "extension-point:missionVisualReadiness-observer",
+      "reason": "The merged P28-PLOAD2 implementation did not consume the disposable EV-7 observer probe, so extension-point availability is not counted as predictive outcome evidence."
+    },
+    {
+      "id": "forbidden-dependency:public-backend-no-static-babylon-import",
+      "reason": "The merged P28-PLOAD2 implementation did not modify the public facade carrying this boundary, so continued cleanliness is not counted as predictive outcome evidence."
+    },
+    {
+      "id": "low-friction:surface-count",
+      "reason": "Both predeclared trials underestimated the four production surfaces required by the merged P28-PLOAD2 implementation, so the low-friction surface-count forecast remains unsupported."
+    }
+  ],
+  "unsupportedScenarios": [
+    {
+      "taskId": "P28-G1",
+      "probeId": "orbital-station-refresh-extension",
+      "reason": "No later P28-G1 implementation outcome exists yet, so EV-19 records no accuracy or repeatability claim for this scenario."
+    }
+  ],
+  "promotionBoundary": {
+    "acceptedForEnforcement": false,
+    "candidatePassGranted": false,
+    "blocking": false,
+    "ev20MayReviewOnlySupportedSignals": true,
+    "crossTaskGeneralizationEstablished": false
+  }
+}

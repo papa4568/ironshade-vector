@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironshade-vector.local/agent/antibody-governance.schema.json",
+  "title": "Ironshade antibody governance decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "antibodyId",
+    "truthId",
+    "sourceFailureClass",
+    "proposalDigest",
+    "revision",
+    "action",
+    "previousDecisionDigest",
+    "sourceOfTruth",
+    "review",
+    "promotion"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "antibodyId": { "type": "string", "minLength": 1 },
+    "truthId": { "type": "string", "minLength": 1 },
+    "sourceFailureClass": { "type": "string", "minLength": 1 },
+    "proposalDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "action": { "enum": ["accept", "update", "retire"] },
+    "previousDecisionDigest": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      ]
+    },
+    "sourceOfTruth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "entryId"],
+      "properties": {
+        "kind": { "enum": ["architecture-invariant", "impact-map-rule", "focused-regression", "telemetry-check"] },
+        "path": { "type": "string", "minLength": 1 },
+        "entryId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "taskId", "rationale"],
+      "properties": {
+        "required": { "const": true },
+        "taskId": { "type": "string", "pattern": "^EV-[0-9]+$" },
+        "rationale": { "type": "string", "minLength": 20 }
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "taskId"],
+      "properties": {
+        "state": { "enum": ["not-promoted", "retired"] },
+        "taskId": {
+          "oneOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}

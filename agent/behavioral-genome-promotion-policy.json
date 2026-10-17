@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "enforcementEnabled": true,
+  "route": "ev3-representative-route-v1",
+  "calibration": {
+    "configSha256": "ee78e5fbdd6013a62452d1a53c761b5319d5c6a79be988bc2207aa1f714e4a9e",
+    "corpusSha256": "1450d50e1337580e9732cf9a53e22f41a3dcbe1615580da613a923439418b360",
+    "falsePositiveBudget": 0,
+    "falseNegativeBudget": 0,
+    "validatedDomains": [
+      "simulation",
+      "mission",
+      "presentation",
+      "load",
+      "resources",
+      "performance"
+    ]
+  },
+  "domains": {
+    "simulation": { "classification": "declaration-required" },
+    "mission": { "classification": "declaration-required" },
+    "presentation": { "classification": "declaration-required" },
+    "load": { "classification": "declaration-required" },
+    "resources": { "classification": "declaration-required" },
+    "performance": { "classification": "declaration-required" }
+  },
+  "declarations": {
+    "directory": "agent/behavioral-genome-declarations",
+    "schemaVersion": 1
+  },
+  "advisoryConstraints": [
+    {
+      "id": "load-duration-excluded",
+      "classification": "informational",
+      "reason": "load.loadDurationMs remains excluded because EV-10 measured it as nondeterministic wall-clock noise; EV-11 does not claim load-latency coverage."
+    },
+    {
+      "id": "normalized-thresholds-not-semantic-resolution",
+      "classification": "informational",
+      "reason": "Configured rounding and bucketing remain exactly pinned to the EV-10 calibration and sub-threshold changes are outside promoted semantic resolution."
+    },
+    {
+      "id": "representative-route-not-complete-product-observer",
+      "classification": "informational",
+      "reason": "The representative route covers only the calibrated observed signals; existing behavioral, browser, Android, APK, exact-SHA, and independent-review proofs remain authoritative."
+    }
+  ],
+  "rollback": {
+    "environmentVariable": "IRONSHADE_BEHAVIORAL_GENOME_ENFORCEMENT",
+    "disabledValue": "0",
+    "behavior": "Run the same exact-base/exact-head route comparison, EV-10 calibration, declarations, and evidence capture while removing only the promoted blocking decision."
+  }
+}
