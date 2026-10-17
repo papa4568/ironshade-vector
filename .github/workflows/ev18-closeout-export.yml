@@ -1,0 +1,28 @@
+name: EV-18 Closeout Archive Export
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/ev18-closeout-export.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ev18-closeout-source-${{ github.event.pull_request.head.sha }}
+          path: |
+            docs/experimental-verification-archive.md
+            docs/experimental-verification-roadmap.md
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 1
