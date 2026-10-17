@@ -1,5 +1,6 @@
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
+import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh';
 import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
@@ -8,6 +9,7 @@ import type { RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize } from './sim';
 
 const WORLD_SCALE = 0.02;
+const AMBIENT_RESOURCE_PREFIX = 'p28-e1-';
 
 export type BabylonAmbientParticleKind = 'dust' | 'sparks' | 'vapor' | 'debris';
 
@@ -106,6 +108,7 @@ export class BabylonAmbientParticles {
       pool.material.dispose();
     }
     this.pools.clear();
+    this.releaseOwnedSceneRegistrations();
     this.locationKey = '';
     this.elapsedSeconds = 0;
     this.canvas.dataset.babylonAmbientParticleState = 'released';
@@ -123,9 +126,20 @@ export class BabylonAmbientParticles {
     this.canvas.dataset.babylonAmbientParticleState = 'disposed';
   }
 
-  private disposeMesh(mesh: Mesh | InstancedMesh) {
+  private disposeMesh(mesh: AbstractMesh) {
     mesh.dispose();
     if (this.scene.meshes.includes(mesh)) this.scene.removeMesh(mesh);
+  }
+
+  private releaseOwnedSceneRegistrations() {
+    for (const mesh of [...this.scene.meshes]) {
+      if (mesh.name.startsWith(AMBIENT_RESOURCE_PREFIX)) this.disposeMesh(mesh);
+    }
+    for (const material of [...this.scene.materials]) {
+      if (!material.name.startsWith(AMBIENT_RESOURCE_PREFIX)) continue;
+      material.dispose();
+      if (this.scene.materials.includes(material)) this.scene.removeMaterial(material);
+    }
   }
 
   private ensurePools() {
@@ -136,29 +150,29 @@ export class BabylonAmbientParticles {
   }
 
   private createPool(kind: BabylonAmbientParticleKind, count: number): AmbientPool {
-    const material = new StandardMaterial(`p28-e1-${kind}-material`, this.scene);
+    const material = new StandardMaterial(`${AMBIENT_RESOURCE_PREFIX}${kind}-material`, this.scene);
     material.specularColor = Color3.Black();
     material.disableLighting = true;
     material.backFaceCulling = false;
 
     let source: Mesh;
     if (kind === 'dust') {
-      source = MeshBuilder.CreateSphere('p28-e1-dust-source', { diameter: 0.026, segments: 3 }, this.scene);
+      source = MeshBuilder.CreateSphere(`${AMBIENT_RESOURCE_PREFIX}dust-source`, { diameter: 0.026, segments: 3 }, this.scene);
       material.diffuseColor = colorFromHex(0xb7b09d).scale(0.34);
       material.emissiveColor = colorFromHex(0xb7b09d).scale(0.08);
       material.alpha = 0.14;
     } else if (kind === 'sparks') {
-      source = MeshBuilder.CreateBox('p28-e1-sparks-source', { width: 0.018, height: 0.018, depth: 0.12 }, this.scene);
+      source = MeshBuilder.CreateBox(`${AMBIENT_RESOURCE_PREFIX}sparks-source`, { width: 0.018, height: 0.018, depth: 0.12 }, this.scene);
       material.diffuseColor = colorFromHex(0xffb866).scale(0.32);
       material.emissiveColor = colorFromHex(0xff9b4a).scale(0.78);
       material.alpha = 0.72;
     } else if (kind === 'vapor') {
-      source = MeshBuilder.CreatePlane('p28-e1-vapor-source', { width: 0.56, height: 0.36 }, this.scene);
+      source = MeshBuilder.CreatePlane(`${AMBIENT_RESOURCE_PREFIX}vapor-source`, { width: 0.56, height: 0.36 }, this.scene);
       material.diffuseColor = colorFromHex(0xb8c6c7).scale(0.16);
       material.emissiveColor = colorFromHex(0x91a9aa).scale(0.035);
       material.alpha = 0.075;
     } else {
-      source = MeshBuilder.CreateBox('p28-e1-debris-source', { width: 0.065, height: 0.025, depth: 0.035 }, this.scene);
+      source = MeshBuilder.CreateBox(`${AMBIENT_RESOURCE_PREFIX}debris-source`, { width: 0.065, height: 0.025, depth: 0.035 }, this.scene);
       material.diffuseColor = colorFromHex(0x5d554b).scale(0.28);
       material.emissiveColor = colorFromHex(0x2d2925).scale(0.04);
       material.alpha = 0.82;
@@ -169,7 +183,7 @@ export class BabylonAmbientParticles {
 
     const particles: InstancedMesh[] = [];
     for (let index = 0; index < count; index += 1) {
-      const particle = source.createInstance(`p28-e1-${kind}-${index}`);
+      const particle = source.createInstance(`${AMBIENT_RESOURCE_PREFIX}${kind}-${index}`);
       particle.isPickable = false;
       particle.setEnabled(false);
       if (kind === 'vapor') particle.billboardMode = Mesh.BILLBOARDMODE_ALL;
