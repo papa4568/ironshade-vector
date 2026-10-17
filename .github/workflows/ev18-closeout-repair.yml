@@ -1,0 +1,89 @@
+name: EV-18 Closeout Repair
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/ev18-closeout-repair.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    if: ${{ github.event.pull_request.number == 406 && github.head_ref == 'agent/ev18-closeout' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Write verified EV-18 closeout state
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64, hashlib, re
+
+          archive_path = Path('docs/experimental-verification-archive.md')
+          roadmap_path = Path('docs/experimental-verification-roadmap.md')
+          source_workflow = Path('.github/workflows/ev18-closeout-export.yml').read_text()
+          archive = archive_path.read_text()
+          roadmap = roadmap_path.read_text()
+
+          if hashlib.sha256(archive.encode()).hexdigest() != '23a3237267d01be7975c98bb3785675bdbc12e72fff3b5e1c05ca3ec61903677':
+              raise SystemExit('unexpected archive source digest')
+          if hashlib.sha256(roadmap.encode()).hexdigest() != 'a80dfd9d608c78fe15a81d0f2d099a76da5b186e0269e5aa399413ff2043ba31':
+              raise SystemExit('unexpected roadmap source digest')
+
+          m = re.search(r'^\s*EV18_ARCHIVE_APPEND_B64:\s*(\S+)\s*$', source_workflow, re.M)
+          if not m:
+              raise SystemExit('archive append payload missing')
+          append = base64.b64decode(m.group(1)).decode()
+          if '## EV-18 — Reuse One Validated Proof Class' in archive:
+              raise SystemExit('EV-18 already archived')
+          archive_new = archive + append
+
+          task = re.compile(
+              r'- \[ \] \*\*EV-18 — Reuse One Validated Proof Class\*\*\n'
+              r'(?:  - .*\n)+\n', re.M)
+          match = task.search(roadmap)
+          if not match:
+              raise SystemExit('EV-18 active block not found')
+          roadmap_new = roadmap[:match.start()] + roadmap[match.end():]
+
+          old = ('EV-27, EV-26, and EV-28 have completed their trusted-main closeouts, clearing the '
+                 'mechanism-governance availability, unchanged-roadmap review-selection, and prepared-image '
+                 'closure-identity blockers. EV-18 is therefore the resumed active experimental item and must '
+                 'prove live unchanged-SHA first-miss/second-hit reuse before completion.')
+          new = ('EV-27, EV-26, and EV-28 completed their trusted-main closeouts, clearing the '
+                 'mechanism-governance availability, unchanged-roadmap review-selection, and prepared-image '
+                 'closure-identity blockers. EV-18 then completed the reviewed single-proof promotion and a live '
+                 'unchanged-SHA first-miss/second-hit reuse demonstration for `full-repository-build-closed`. '
+                 'EV-19 — Validate EV-7 Roadmap Shadow Predictions is therefore the next actionable experimental item; '
+                 'EV-20 remains dependent on EV-19 evidence.')
+          if old not in roadmap_new:
+              raise SystemExit('expected dependency text not found')
+          roadmap_new = roadmap_new.replace(old, new, 1)
+
+          if hashlib.sha256(archive_new.encode()).hexdigest() != 'e871796eec443ad4cb5f8574f32a3c2ac1f892f8367cfd9e66590562a3422f42':
+              raise SystemExit('final archive digest mismatch')
+          if hashlib.sha256(roadmap_new.encode()).hexdigest() != 'e9378f648aaa5a40971ecedabacae71da42473336ffb912dbddb5bd3614a54a9':
+              raise SystemExit('final roadmap digest mismatch')
+          if '- [ ] **EV-18' in roadmap_new or roadmap_new.count('- [ ] **EV-19') != 1:
+              raise SystemExit('final roadmap queue invalid')
+          if archive_new.count('## EV-18 — Reuse One Validated Proof Class') != 1:
+              raise SystemExit('EV-18 archive count invalid')
+
+          archive_path.write_text(archive_new)
+          roadmap_path.write_text(roadmap_new)
+          PY
+
+          git rm .ev18-live-reuse-witness .github/workflows/ev18-closeout-export.yml .github/workflows/ev18-closeout-repair.yml
+          git diff --check
+          test "$(git diff HEAD --name-only | sort | tr '\n' ' ')" = ".ev18-live-reuse-witness .github/workflows/ev18-closeout-export.yml .github/workflows/ev18-closeout-repair.yml docs/experimental-verification-archive.md docs/experimental-verification-roadmap.md "
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add docs/experimental-verification-archive.md docs/experimental-verification-roadmap.md
+          git commit -m "docs: archive EV-18 proof reuse promotion"
+          git push origin HEAD:${{ github.head_ref }}
