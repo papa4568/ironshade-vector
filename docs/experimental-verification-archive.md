@@ -150,7 +150,7 @@ Completed 2026-10-09 in advisory/shadow mode.
 - Added fail-closed selection behavior: once enough trusted failure observations exist, calibration confidence below the configured `0.8` threshold can only escalate the existing selection to `verify:full`; healthy calibration preserves the current selection and never removes checks.
 - Added deterministic regression coverage for a synthetic graphics miss, repeated misses converging on the same proposal, low-confidence full-verification fallback, healthy-confidence no-narrowing behavior, exact-SHA candidate shadow reports, and root-level path-family normalization such as `agent/impact-calibration.json -> agent/**`.
 - Integrated EV-5 into the existing PR candidate producer without adding a second full build. The one authoritative `npm run build` is observed through `tee` under `set -o pipefail`, preserving the producer's failure status while making its log available to the calibration observer. The advisory observe/upload steps run after that producer and cannot waive browser, Android, APK, ledger, or full-build gates.
-- Updated the existing single-producer CI regression and `AGENTS.md` so EV-5 is mechanically constrained to advisory, preserve-or-widen behavior.
+- Updated the existing single-producer CI contract and `AGENTS.md` so EV-5 is mechanically constrained to advisory, preserve-or-widen behavior.
 
 ### Evidence
 
@@ -330,7 +330,7 @@ Trusted review run `38205473692` (PR comment `6117984729`) on `dd8629ec561be44bd
 
 After rebasing onto the merged trusted AO-8/AO-9 observer boundary, implementation candidate `9eebecbc5bd57bdfc3398ee4822a79e182c35c02` passed EV-9 Trusted PR Candidate Observer run `38383613792`, Agent Orchestration run `38383613785`, and every technically available exact-candidate gate in PR Candidate Verification run `38383615087`. The candidate build/full verification, independent-review context, desktop and mobile-landscape browser journeys, APK construction/integrity and delivery checks, API 35 product smoke, API 36 large-screen smoke, aggregate Android verification, architecture invariants, EV-8 enforcement, and EV-9 promoted evidence-independence gate all succeeded; the final candidate job failed only at the expected exact-SHA independent-review decision step before the trusted verdict was published.
 
-Exact-SHA EV-9 artifact `11804354144` (`evidence-independence-gate-368-9eebecbc5bd57bdfc3398ee4822a79e182c35c02`) has GitHub Actions digest `sha256:050bf68517d1712ac8b2c2c3dc5f388859f84a0ff13586069d6f6a82218da1f6`. The exact-SHA APK artifact `11805295087` has digest `sha256:b48509132b0117bfab2ba86486848a4667622e6438e630cc76b1425be7270b40`; desktop browser artifact `11805041623` has digest `sha256:40a77857db6c8d009e05bdde33d5f25d8b4d17bbefca0e3279baac8e1c110663`; mobile-landscape browser artifact `11805520490` has digest `sha256:95bcb07fd299434ad2243cd20558758f5205a81cc40f3b2f0cef932b4177b404`; API 35 artifact `11805635007` has digest `sha256:3905353348cc3ae322fdabcdd4bdeda8224b4339b48136af8d9fc82e480e42d6`; and API 36 large-screen artifact `11804784550` has digest `sha256:569ef18b55ad4da7447c38156a7606b2d6531652a93384185846a753fb4f9723`.
+Exact-SHA EV-9 artifact `11804354144` (`evidence-independence-gate-368-9eebecbc5bd57bdfc3398ee4822a79e182c35c02`) has GitHub Actions digest `sha256:050bf68517d1712ac8b2c2c3dc5f388859f84a0ff13586069d6f6a82218da1f6`. The exact-SHA APK artifact `11805295087` has digest `sha256:b48509132b0117bfab2ba86486848a4667622e6438e630cc76b1425be7270b40`; desktop browser artifact `11805041623` has digest `sha256:40a77857db6c8d009e05bdde33d5f25d8b4d17bbefca0e3279baac8e1c110663`; mobile-landscape browser artifact `11805520490` has digest `sha256:95bcb07fd299434ad2243cd20558758f5205a81cc40f3b2f0cef932b4177b404`; API 35 artifact `11805635007` has digest `sha256:3905353348cc3ae322fdabcdd4bdeda8224b4339b48136af8d9a456e575c43e0`; and API 36 large-screen artifact `11804784550` has digest `sha256:569ef18b55ad4da7447c38156a7606b2d6531652a93384185846a753fb4f9723`.
 
 Trusted review run `38385149118` (PR comment `6143797067`) on `9eebecbc5bd57bdfc3398ee4822a79e182c35c02` marked acceptance criteria 0 through 3 satisfied and every required proof credible. It returned `fail` solely because the archive did not yet record this reviewed candidate and its exact-SHA evidence. This archive-only transition records that immutable evidence without changing EV-9 implementation or workflow semantics; the resulting closeout SHA still requires its own exact-head technical proof and fresh trusted EV-9 review.
 
@@ -796,7 +796,7 @@ EV-22 changes verification/governance only. The trusted `pull_request_target` ob
 
 Rollback is deterministic: restore EV-9 v8 as the workflow entry point and remove v9. Before EV-18 is merged, that returns the repository to the legacy producer trust boundary and EV-18 remains blocked. After EV-18 is merged, reverting v9 must be paired with reverting the EV-18 producer transition because v8 intentionally does not authorize that producer shape. Existing full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, and independent-review obligations remain unchanged.
 
-This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and its exact-SHA proof set while removing only EV-22 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-22 review; no verdict or final candidate proof is inherited from `134edd00a41a16229e916124afb2e4e9886482f1`.
+This archive transition follows the repository's established split-EV self-reference rule. It records the immutable reviewed implementation candidate and its exact-SHA proof set while removing only EV-22 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-22 independent review; no verdict or final candidate proof is inherited from `134edd00a41a16229e916124afb2e4e9886482f1`.
 
 ### Promotion status
 
@@ -1063,3 +1063,44 @@ This closeout follows the repository's split-EV lifecycle rule: it records immut
 ### Promotion status
 
 Promoted permanently for exactly `full-repository-build-closed`. All other EV-6 proof classes remain advisory/shadow-only and require separate calibration and promotion work. EV-19 — Validate EV-7 Roadmap Shadow Predictions is the next actionable experimental item.
+
+## EV-19 — Validate EV-7 Roadmap Shadow Predictions
+
+Completed 2026-10-17 as an advisory calibration of EV-7 Roadmap Shadow predictions against the later P28-PLOAD2 implementation outcome. No roadmap-pressure signal was promoted to default enforcement; EV-20 owns any later graduation.
+
+### Implemented
+
+- Added `agent/roadmap-shadow-validation-corpus.json`, `agent/tools/roadmap-shadow-validation.mjs`, `agent/tests/roadmap-shadow-validation.mjs`, and `.github/workflows/ev19-roadmap-shadow-validation.yml`.
+- Pinned two distinct committed pre-outcome P28-PLOAD2 forecast snapshots: original EV-7 candidate `d1ddb444ba86c9b23b97b0e1987486b6ebc6cca0` / config blob `522efd6e86b0dfde647b3fbfc981c995c216e165`, and AO-6-isolated candidate `87641dba570c1c389d4878a6996ad7bf872fbf67` / config blob `387167310ae177441d9d28a1903fdab4354c7f99`.
+- Bound the outcome to final merged P28-PLOAD2 change `452e91bd239a91441bd1dd8559833dd1edde2547` and authenticated the pre-outcome AO-6 path lineage rather than scoring post-hoc paths.
+- Repeatability requires distinct predeclared candidates/config blobs and rejects duplicate snapshots, post-outcome trials, and non-hits. Because both trials forecast the same later task, the validated claim is same-task cross-snapshot robustness only; cross-task generalization remains false.
+- Kept all scoring advisory: `blocking=false`, `acceptedForEnforcement=false`, `candidatePassGranted=false`, and enforcement is rejected. Live EV-7 simulator and product/runtime state remain unchanged.
+- During exact-candidate verification, API 36 exposed CDP transport/shutdown behavior after substantive large-screen assertions. The unchanged retry passed both portrait and resized semantic phases but hung after its pass marker, isolating the defect to verifier WebSocket shutdown. `scripts/android-large-screen-smoke.mjs` now requests normal socket close and arms an unref'd one-second forced-exit fallback after all synchronous evidence/report writes. The exact corrected candidate then passed API 36 without weakening any semantic assertion.
+
+### Evidence
+
+Reviewed implementation candidate `a71c963a3054143b1d722b50891a92a4f4ea52c3` passed EV-19 Roadmap Shadow Validation run `39006773190`, Agent Orchestration run `39006773202`, and PR Candidate Verification run `39006773149`, including the second-attempt final review/evidence gate.
+
+Exact-SHA EV-19 artifact `12090922600` (`roadmap-shadow-validation-ev19-408-a71c963a3054143b1d722b50891a92a4f4ea52c3`) has GitHub Actions digest `sha256:16d5f33f5e85d3eee84ab37062777d950bb4bbb34c8d402c5aff28ab0f4d84b2`. The validation report digest is `54bfc9bd741d78f048e5abfcdd8c3f0c6ff00e0fd642e3638678dddcc5aafc4c`.
+
+The measured signal was `expected-surface:shared-backend-readiness`, normalized to `src/game/combatGraphicsBackendCore.ts`. Original EV-7 trial: 1 useful hit, 1 false alarm, 3 misses (precision 0.5, recall 0.25). AO-6 snapshot trial: 1 useful hit, 2 false alarms, 3 misses (precision 0.333333, recall 0.25). Across the two distinct committed pre-outcome snapshots the signal hit twice. Because there is only one distinct product outcome, this establishes only same-task cross-snapshot robustness across the AO-6 refactor, not general cross-task predictive value.
+
+Detector calibration rejected duplicate-snapshot, post-hoc, and non-hit controls and accepted the two-distinct-predeclared-hit control, measuring `falsePositives=0` and `falseNegatives=0` under zero budgets.
+
+Unsupported signals remain advisory: `extension-point:missionVisualReadiness-observer`, `forbidden-dependency:public-backend-no-static-babylon-import`, `low-friction:surface-count`, and the P28-G1 scenario because no later P28-G1 outcome exists.
+
+The exact implementation candidate passed authoritative full repository verification/production build, desktop and mobile-landscape browser E2E, APK construction/integrity/delivery, API 35 product smoke, API 36 large-screen smoke, Android aggregate, architecture invariants, and final exact-candidate evidence. Final candidate evidence artifact `12091008489` has digest `sha256:0e836f9249f0be18d7975f4d7b419fc336b904c39d2728b5cb200228d43e510c`. APK artifact `12090923177` has digest `sha256:a2a7ee476ddc9e95fa17a803c09dff2854bfcdebea42e76004640142214cc0e7`; API 35 artifact `12091302406` has digest `sha256:79eb980f0ca0e822ae84824607a8212aeae6a036bacd35c6121b20e5caad195a`; API 36 large-screen artifact `12091487883` has digest `sha256:deaa8d4eb73004e7ef5f63bd11d7c4603fb1d150673ff06abdcf721006db7c3f`; desktop browser artifact `12090444653` has digest `sha256:a760bd2f70f3f5e780ed974201a45bab779e9a8cbd1e6404961fe1366b7efd95`; mobile-landscape browser artifact `12091393529` has digest `sha256:febd9ecb5bdfa3e40f233a60cf7520b37150009d3ee53e0f8e6c3256b8dbc66b`; and independent-review context artifact `12090934555` has digest `sha256:dc2b10b8879f427698f44d6d9c271445484d923719eca686b20ed84b519db818`.
+
+Fresh trusted-main AO-6 review run `39007568086` published exact-SHA pass comment `6230352733` for task EV-19 and candidate `a71c963a3054143b1d722b50891a92a4f4ea52c3`. It marked all four EV-19 acceptance checks satisfied and all required proof classes credible. It reported only one minor, non-blocking note: the verifier shutdown hardening is outside the core EV-19 calibration scope but harmless and does not weaken assertions.
+
+### Isolation and rollback
+
+EV-19 changes verification/governance only. Forecast provenance and outcomes are read from pinned immutable Git history; calibration mutates no product/runtime state, live EV-7 probe state remains disposable, and the report cannot block or grant a candidate pass.
+
+Rollback is deterministic: remove `.github/workflows/ev19-roadmap-shadow-validation.yml`, `agent/roadmap-shadow-validation-corpus.json`, `agent/tools/roadmap-shadow-validation.mjs`, `agent/tests/roadmap-shadow-validation.mjs`, and EV-19 rule/source entries from `AGENTS.md`. The pre-EV-19 EV-7 advisory simulator and all existing exact-SHA build/browser/Android/APK/architecture/trusted-review gates remain unchanged. The Android CDP shutdown hardening is independent gate maintenance discovered during exact-candidate verification and need not be reverted with EV-19.
+
+This archive transition follows the repository's established independent-review self-reference rule. It records the immutable reviewed pre-archive implementation candidate `a71c963a3054143b1d722b50891a92a4f4ea52c3` and exact-SHA evidence. The resulting closeout SHA cannot literally contain its own Git SHA because that SHA depends on these archive contents, so it must pass fresh exact-head technical gates and a fresh trusted EV-19 independent review; no predecessor verdict or candidate proof is inherited.
+
+### Promotion status
+
+Calibration complete; no Roadmap Shadow signal was promoted to default enforcement in EV-19. Exactly one signal—`expected-surface:shared-backend-readiness`—is eligible for EV-20 review only under the recorded same-task cross-snapshot evidence boundary. The three unsupported EV-7 signals, P28-G1, and cross-task generalization remain experimental/advisory. EV-20 — Graduate One Roadmap-Pressure Signal is the next actionable experimental item.
