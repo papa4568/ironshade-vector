@@ -266,11 +266,18 @@ assert.throws(
 
 const currentExperimentalRoadmap = readFileSync('docs/experimental-verification-roadmap.md', 'utf8');
 const currentExperimentalSelection = selectExperimentalReviewTask(currentExperimentalRoadmap);
-assert(currentExperimentalSelection, 'candidate evidence regression requires at least one active experimental promotion item');
-const experimentalCandidate = await loadCandidateTask(currentExperimentalSelection.task.id);
-assert.equal(experimentalCandidate.task.id, currentExperimentalSelection.task.id, 'candidate evidence must materialize the first exact experimental task rather than a historical hard-coded EV item');
-assert.equal(experimentalCandidate.source, 'docs/experimental-verification-roadmap.md');
-assert(experimentalCandidate.task.proofs.some(proof => proof.id === 'independent-review' && proof.required), 'experimental candidate evidence must preserve the independent-review proof');
+if (currentExperimentalSelection) {
+  const experimentalCandidate = await loadCandidateTask(currentExperimentalSelection.task.id);
+  assert.equal(experimentalCandidate.task.id, currentExperimentalSelection.task.id, 'candidate evidence must materialize the first exact experimental task rather than a historical hard-coded EV item');
+  assert.equal(experimentalCandidate.source, 'docs/experimental-verification-roadmap.md');
+  assert(experimentalCandidate.task.proofs.some(proof => proof.id === 'independent-review' && proof.required), 'experimental candidate evidence must preserve the independent-review proof');
+} else {
+  assert.match(
+    currentExperimentalRoadmap,
+    /No active experimental promotion items remain\./,
+    'an empty experimental queue must be explicit rather than an unparseable task list',
+  );
+}
 
 const selectorSource = readFileSync('agent/tools/select-review-task.mjs', 'utf8');
 assert.match(selectorSource, /GITHUB_EVENT_PATH/, 'PR review selection must inspect the exact pull-request base and head refs');

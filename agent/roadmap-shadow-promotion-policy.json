@@ -1,0 +1,44 @@
+{
+  "$schema": "./roadmap-shadow-promotion-policy.schema.json",
+  "schemaVersion": 1,
+  "taskId": "EV-20",
+  "mode": "no-promotion",
+  "sourceCalibration": {
+    "taskId": "EV-19",
+    "corpusPath": "agent/roadmap-shadow-validation-corpus.json",
+    "corpusBlobSha": "d8203bcf55a9c9e3d365bea6aafb5053a1c1b824",
+    "reviewedCandidateSha": "a71c963a3054143b1d722b50891a92a4f4ea52c3",
+    "workflowRunId": 39006773190,
+    "artifactId": 12090922600,
+    "artifactDigest": "sha256:16d5f33f5e85d3eee84ab37062777d950bb4bbb34c8d402c5aff28ab0f4d84b2",
+    "reportDigest": "54bfc9bd741d78f048e5abfcdd8c3f0c6ff00e0fd642e3638678dddcc5aafc4c",
+    "independentReviewCommentId": 6230352733
+  },
+  "reviewedSignal": {
+    "id": "expected-surface:shared-backend-readiness",
+    "normalizedOutcomePath": "src/game/combatGraphicsBackendCore.ts",
+    "scope": "same-task forecast robustness across a pre-outcome architecture refactor"
+  },
+  "decision": {
+    "promote": false,
+    "acceptedForEnforcement": false,
+    "candidatePassGranted": false,
+    "blocking": false,
+    "reasonCodes": [
+      "single-distinct-product-outcome",
+      "cross-task-generalization-unproven",
+      "forecast-false-alarms-observed",
+      "forecast-misses-observed"
+    ],
+    "futurePromotionRequiresFreshCalibration": true
+  },
+  "preservedBoundary": {
+    "simulatorMode": "advisory",
+    "authoritativeHeuristicScore": false,
+    "architectureInvariantAdded": false,
+    "proofObligationAdded": false,
+    "roadmapRuleAdded": false,
+    "productRuntimeChanged": false,
+    "existingProofGatesChanged": false
+  }
+}

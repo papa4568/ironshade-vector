@@ -2,7 +2,7 @@
 
 This roadmap tracks speculative repository-level engineering intended to make Ironshade Vector's AI development environment improve its own verification quality over time.
 
-These ideas deliberately combine known software-engineering primitives in unusual ways. Treat them as experiments until repository evidence proves they are reliable. EV-1 through EV-7 completed their prototype/shadow phases and are archived in `docs/experimental-verification-archive.md`; the active queue below is the explicit graduation path from experimental mechanisms to normal repository infrastructure.
+These ideas deliberately combine known software-engineering primitives in unusual ways. Treat them as experiments until repository evidence proves they are reliable. EV-1 through EV-7 completed their prototype/shadow phases and are archived in `docs/experimental-verification-archive.md`; the queue below is the explicit graduation path from experimental mechanisms to normal repository infrastructure.
 
 ## Execution contract
 
@@ -28,18 +28,15 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-20 — Graduate One Roadmap-Pressure Signal**
-  - Using only EV-19 evidence, either convert one validated signal into a deterministic architecture invariant, proof obligation, or roadmap rule, or explicitly record that no signal is ready for enforcement.
-  - Do not make a heuristic score authoritative; verify disabling the simulator restores the previous planning/verification path.
-  - Done when the permanent rule or no-promotion decision is documented and, if enforcement changes, the exact candidate is archived with required proofs and independent review.
+No active experimental promotion items remain.
 
 ## Intended dependency order
 
-EV-8 through EV-20 should normally execute in order. EV-8 and EV-9 establish stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/21/22/23/24/25/27/26/28/18, and EV-19/20 deliberately separate calibration, trust bootstrapping, governance, and enforcement so each ownership cycle has one primary verification closure. EV-21, EV-22, EV-23, EV-24, EV-25, EV-27, EV-26, and EV-28 are intentionally numbered after the original queue because they were split only after earlier EV work exposed concrete prerequisites; their executable positions before EV-18 were authoritative until that reviewed prerequisite work completed. EV-27, EV-26, and EV-28 completed their trusted-main closeouts, clearing the mechanism-governance availability, unchanged-roadmap review-selection, and prepared-image closure-identity blockers. EV-18 then completed the reviewed single-proof promotion and a live unchanged-SHA first-miss/second-hit reuse demonstration for `full-repository-build-closed`. EV-19 has now completed its reviewed advisory calibration: only `expected-surface:shared-backend-readiness` showed repeatable same-task cross-snapshot predictive value, while cross-task generalization and the remaining signals stay unsupported. EV-20 — Graduate One Roadmap-Pressure Signal is therefore the next actionable experimental item and may use only that recorded EV-19 evidence.
+EV-8 through EV-20 normally executed in order. EV-8 and EV-9 established stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/21/22/23/24/25/27/26/28/18, and EV-19/20 deliberately separated calibration, trust bootstrapping, governance, and enforcement so each ownership cycle had one primary verification closure. EV-21, EV-22, EV-23, EV-24, EV-25, EV-27, EV-26, and EV-28 were intentionally numbered after the original queue because they were split only after earlier EV work exposed concrete prerequisites; their executable positions before EV-18 were authoritative until that reviewed prerequisite work completed. EV-27, EV-26, and EV-28 completed their trusted-main closeouts, clearing the mechanism-governance availability, unchanged-roadmap review-selection, and prepared-image closure-identity blockers. EV-18 then completed the reviewed single-proof promotion and a live unchanged-SHA first-miss/second-hit reuse demonstration for `full-repository-build-closed`. EV-19 completed its reviewed advisory calibration: only `expected-surface:shared-backend-readiness` showed repeatable same-task cross-snapshot predictive value, while cross-task generalization and the remaining signals stayed unsupported. EV-20 then completed a reviewed no-promotion decision: the lone EV-19 signal remains advisory because its evidence covers only one completed product outcome and both measured forecasts contain false alarms and missed production surfaces. No additional experimental promotion item is currently queued.
 
 EV-1 through EV-7 remain verified prototype history in `docs/experimental-verification-archive.md`. Completing a promotion item does not rewrite that history; the promotion itself receives a new archived record.
 
-This order is conservative, not absolute. The user may reprioritize independent promotion work, but only one implementation writer should own a given EV item at a time.
+This order is conservative, not absolute. The user may add or reprioritize independent promotion work, but only one implementation writer should own a given EV item at a time.
 
 ## Promotion completion rule
 

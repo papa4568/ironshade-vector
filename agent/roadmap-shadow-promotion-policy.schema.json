@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironshade.invalid/agent/roadmap-shadow-promotion-policy.schema.json",
+  "title": "Ironshade Roadmap Shadow promotion decision policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "taskId",
+    "mode",
+    "sourceCalibration",
+    "reviewedSignal",
+    "decision",
+    "preservedBoundary"
+  ],
+  "properties": {
+    "$schema": { "const": "./roadmap-shadow-promotion-policy.schema.json" },
+    "schemaVersion": { "const": 1 },
+    "taskId": { "const": "EV-20" },
+    "mode": { "const": "no-promotion" },
+    "sourceCalibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "corpusPath",
+        "corpusBlobSha",
+        "reviewedCandidateSha",
+        "workflowRunId",
+        "artifactId",
+        "artifactDigest",
+        "reportDigest",
+        "independentReviewCommentId"
+      ],
+      "properties": {
+        "taskId": { "const": "EV-19" },
+        "corpusPath": { "const": "agent/roadmap-shadow-validation-corpus.json" },
+        "corpusBlobSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "reviewedCandidateSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "workflowRunId": { "type": "integer", "minimum": 1 },
+        "artifactId": { "type": "integer", "minimum": 1 },
+        "artifactDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "reportDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "independentReviewCommentId": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "reviewedSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "normalizedOutcomePath", "scope"],
+      "properties": {
+        "id": { "const": "expected-surface:shared-backend-readiness" },
+        "normalizedOutcomePath": { "const": "src/game/combatGraphicsBackendCore.ts" },
+        "scope": { "const": "same-task forecast robustness across a pre-outcome architecture refactor" }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "promote",
+        "acceptedForEnforcement",
+        "candidatePassGranted",
+        "blocking",
+        "reasonCodes",
+        "futurePromotionRequiresFreshCalibration"
+      ],
+      "properties": {
+        "promote": { "const": false },
+        "acceptedForEnforcement": { "const": false },
+        "candidatePassGranted": { "const": false },
+        "blocking": { "const": false },
+        "reasonCodes": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "single-distinct-product-outcome",
+              "cross-task-generalization-unproven",
+              "forecast-false-alarms-observed",
+              "forecast-misses-observed"
+            ]
+          }
+        },
+        "futurePromotionRequiresFreshCalibration": { "const": true }
+      }
+    },
+    "preservedBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "simulatorMode",
+        "authoritativeHeuristicScore",
+        "architectureInvariantAdded",
+        "proofObligationAdded",
+        "roadmapRuleAdded",
+        "productRuntimeChanged",
+        "existingProofGatesChanged"
+      ],
+      "properties": {
+        "simulatorMode": { "const": "advisory" },
+        "authoritativeHeuristicScore": { "const": false },
+        "architectureInvariantAdded": { "const": false },
+        "proofObligationAdded": { "const": false },
+        "roadmapRuleAdded": { "const": false },
+        "productRuntimeChanged": { "const": false },
+        "existingProofGatesChanged": { "const": false }
+      }
+    }
+  }
+}

@@ -1,0 +1,113 @@
+name: EV-20 Roadmap Shadow Promotion Decision
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'agent/roadmap-shadow-promotion-policy.json'
+      - 'agent/roadmap-shadow-promotion-policy.schema.json'
+      - 'agent/tools/roadmap-shadow-promotion.mjs'
+      - 'agent/tests/roadmap-shadow-promotion.mjs'
+      - 'agent/roadmap-shadow-validation-corpus.json'
+      - 'agent/tools/roadmap-shadow-validation.mjs'
+      - 'agent/roadmap-shadow-simulator.json'
+      - 'agent/tools/roadmap-shadow-simulator.mjs'
+      - '.github/workflows/ev20-roadmap-shadow-promotion.yml'
+      - '.github/workflows/pr-candidate.yml'
+      - '.github/workflows/agent-orchestration.yml'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'docs/experimental-verification-archive.md'
+      - 'AGENTS.md'
+  push:
+    branches:
+      - main
+    paths:
+      - 'agent/roadmap-shadow-promotion-policy.json'
+      - 'agent/roadmap-shadow-promotion-policy.schema.json'
+      - 'agent/tools/roadmap-shadow-promotion.mjs'
+      - 'agent/tests/roadmap-shadow-promotion.mjs'
+      - 'agent/roadmap-shadow-validation-corpus.json'
+      - 'agent/tools/roadmap-shadow-validation.mjs'
+      - 'agent/roadmap-shadow-simulator.json'
+      - 'agent/tools/roadmap-shadow-simulator.mjs'
+      - '.github/workflows/ev20-roadmap-shadow-promotion.yml'
+      - '.github/workflows/pr-candidate.yml'
+      - '.github/workflows/agent-orchestration.yml'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'docs/experimental-verification-archive.md'
+      - 'AGENTS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  decide:
+    name: Exact Candidate Roadmap Shadow No-Promotion Decision
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Run EV-20 no-promotion regressions
+        run: node agent/tests/roadmap-shadow-promotion.mjs
+
+      - name: Generate exact-SHA EV-20 decision evidence
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          mkdir -p .agent-roadmap-shadow-promotion-ev20
+          node agent/tools/roadmap-shadow-promotion.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-roadmap-shadow-promotion-ev20/decision.json
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('.agent-roadmap-shadow-promotion-ev20/decision.json', 'utf8'));
+          const fail = message => { throw new Error(`EV20_EXACT_EVIDENCE_FAIL ${message}`); };
+
+          if (report.schema !== 'ironshade-roadmap-shadow-promotion-decision:v1' || report.schemaVersion !== 1) fail('report schema drifted');
+          if (report.taskId !== 'EV-20' || report.candidateSha !== process.env.CANDIDATE_SHA) fail('task/candidate binding mismatch');
+          if (report.mode !== 'no-promotion' || report.decision !== 'no-promotion') fail('decision drifted');
+          if (report.sourceCalibration.taskId !== 'EV-19' || report.sourceCalibration.corpusBlobSha !== 'd8203bcf55a9c9e3d365bea6aafb5053a1c1b824') fail('EV-19 source calibration drifted');
+          if (report.sourceCalibration.reviewedCandidateSha !== 'a71c963a3054143b1d722b50891a92a4f4ea52c3' || report.sourceCalibration.workflowRunId !== 39006773190 || report.sourceCalibration.artifactId !== 12090922600) fail('EV-19 exact evidence provenance drifted');
+          if (report.sourceCalibration.artifactDigest !== 'sha256:16d5f33f5e85d3eee84ab37062777d950bb4bbb34c8d402c5aff28ab0f4d84b2' || report.sourceCalibration.reportDigest !== '54bfc9bd741d78f048e5abfcdd8c3f0c6ff00e0fd642e3638678dddcc5aafc4c') fail('EV-19 evidence digest drifted');
+          if (report.reviewedSignal.id !== 'expected-surface:shared-backend-readiness' || report.reviewedSignal.normalizedOutcomePath !== 'src/game/combatGraphicsBackendCore.ts') fail('reviewed signal drifted');
+          if (report.forecastMeasurements.length !== 2) fail('forecast trial count drifted');
+          const [original, migrated] = report.forecastMeasurements;
+          if (original.surfacePrediction.usefulPredictionCount !== 1 || original.surfacePrediction.falseAlarmCount !== 1 || original.surfacePrediction.missedIntegrationPressureCount !== 3 || original.surfacePrediction.precision !== 0.5 || original.surfacePrediction.recall !== 0.25) fail('original forecast metrics drifted');
+          if (migrated.surfacePrediction.usefulPredictionCount !== 1 || migrated.surfacePrediction.falseAlarmCount !== 2 || migrated.surfacePrediction.missedIntegrationPressureCount !== 3 || migrated.surfacePrediction.precision !== 0.333333 || migrated.surfacePrediction.recall !== 0.25) fail('migrated forecast metrics drifted');
+          if (report.detectorCalibration.falsePositives !== 0 || report.detectorCalibration.falseNegatives !== 0 || report.detectorCalibration.falsePositiveBudget !== 0 || report.detectorCalibration.falseNegativeBudget !== 0) fail('EV-19 detector calibration drifted');
+          if (report.promotionBoundary.distinctPredictionSnapshots !== 2 || report.promotionBoundary.distinctProductOutcomes !== 1 || report.promotionBoundary.crossTaskGeneralizationEstablished !== false) fail('evidence scope drifted');
+          if (report.promotionBoundary.completeExpectedSurfaceSetValidated !== false || report.promotionBoundary.lowFrictionScoreValidated !== false) fail('unsupported forecast properties were promoted');
+          if (report.promotionBoundary.acceptedForEnforcement !== false || report.promotionBoundary.candidatePassGranted !== false || report.promotionBoundary.blocking !== false) fail('EV-20 may not enforce or grant acceptance');
+          if (report.rollback.simulatorMode !== 'advisory' || report.rollback.prCaptureContinueOnError !== true || report.rollback.orchestrationUse !== 'regression-only' || report.rollback.runtimeConsumerCount !== 0 || report.rollback.acceptanceConsumerCount !== 0 || report.rollback.simulatorDisableRestoresPreviousAcceptancePath !== true) fail('rollback/advisory boundary failed');
+          if (report.preservedBoundary.authoritativeHeuristicScore !== false || report.preservedBoundary.architectureInvariantAdded !== false || report.preservedBoundary.proofObligationAdded !== false || report.preservedBoundary.roadmapRuleAdded !== false || report.preservedBoundary.productRuntimeChanged !== false || report.preservedBoundary.existingProofGatesChanged !== false) fail('preserved boundary drifted');
+
+          console.log(`EV20_EXACT_EVIDENCE_PASS candidate=${report.candidateSha} decision=no-promotion original=1tp/1fp/3fn migrated=1tp/2fp/3fn detector=0fp/0fn outcomes=1 crossTask=false enforcement=false rollback=advisory-removable`);
+          NODE
+
+      - name: Upload exact-SHA EV-20 decision evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: roadmap-shadow-promotion-ev20-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-roadmap-shadow-promotion-ev20/decision.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
