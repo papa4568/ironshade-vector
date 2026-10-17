@@ -187,6 +187,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   private lastObservedRenderTier: string | null = null;
   private renderTierTransitionCount = 0;
   private readonly missionVisualGate: MissionVisualFrameGate;
+  private readonly backendLoadStartedAt = performance.now();
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -374,6 +375,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
         }
         const guardedRenderer = createBabylonMissionVisualReadinessBackend(renderer, this.canvas, this.missionVisualGate);
         this.delegate = guardedRenderer;
+        this.canvas.dataset.mapLoadBackendReadyMs ||= Math.max(0, performance.now() - this.backendLoadStartedAt).toFixed(2);
         this.canvas.dataset.graphicsPathLoaded = guardedRenderer.loadedId;
         this.canvas.dataset.graphicsPathFallback = '';
         this.canvas.dataset.babylonInit = 'ready';
@@ -438,6 +440,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
       }
       const guardedRenderer = createBabylonMissionVisualReadinessBackend(renderer, this.canvas, this.missionVisualGate);
       this.delegate = guardedRenderer;
+      this.canvas.dataset.mapLoadBackendReadyMs ||= Math.max(0, performance.now() - this.backendLoadStartedAt).toFixed(2);
       this.canvas.dataset.graphicsPathLoaded = guardedRenderer.loadedId;
       this.canvas.dataset.graphicsPathFallback = '';
       this.canvas.dataset.babylonInit = 'ready';

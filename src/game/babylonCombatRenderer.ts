@@ -2072,12 +2072,15 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const generation = ++this.refineryLoadGeneration;
     this.releaseMountedRefineryAssets();
 
+    this.canvas.dataset.babylonEnvironmentLoadGeneration = String(generation);
     this.canvas.dataset.environmentVisual = 'authored-loading-babylon';
     this.canvas.dataset.babylonEnvironmentState = 'loading';
     delete this.canvas.dataset.babylonEnvironmentError;
     delete this.canvas.dataset.babylonEnvironmentPremiumSurfaces;
     delete this.canvas.dataset.babylonEnvironmentMaterialDetail;
     delete this.canvas.dataset.babylonEnvironmentPlacementLoad;
+    delete this.canvas.dataset.mapLoadFamilyPreloadMs;
+    delete this.canvas.dataset.mapLoadPlacementInstantiationMs;
     void this.loadRefineryEnvironment(state, world.w, world.h, selected, generation);
   }
 
@@ -2120,8 +2123,10 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     generation: number,
   ) {
     const runtime = getBabylonGraphicsAssetRuntime(this.scene);
+    const preloadStartedAt = performance.now();
     const preload = await runtime.preload(selected.map(item => item.spec), 2);
     if (this.disposed || generation !== this.refineryLoadGeneration) return;
+    this.canvas.dataset.mapLoadFamilyPreloadMs = Math.max(0, performance.now() - preloadStartedAt).toFixed(2);
 
     if (preload.failed > 0) {
       this.canvas.dataset.environmentVisual = 'authored-fallback-babylon';
@@ -2130,6 +2135,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       return;
     }
 
+    const placementStartedAt = performance.now();
     const placements = refineryPlacements(state, worldW, worldH);
     const byKey = new Map(selected.map(item => [item.key, item.spec]));
     const placementTasks = (Object.keys(placements) as RefineryFamilyKey[]).flatMap(key => {
@@ -2223,6 +2229,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.babylonEnvironmentMaterialDetail = 'normal+roughness+metalness:shared-premium-pbr';
       this.canvas.dataset.environmentMachineDetail = `processor-functional:${placements.processor.length}+floor-grate:${placements.floorGrate.length}`;
       this.canvas.dataset.environmentComposition = 'clear-center-lane+processor-triangle+gantry-focal+perimeter-clutter';
+      this.canvas.dataset.mapLoadPlacementInstantiationMs = Math.max(0, performance.now() - placementStartedAt).toFixed(2);
       this.canvas.dataset.babylonEnvironmentState = 'ready';
       this.canvas.dataset.babylonEnvironmentAssets = String(selected.length);
       this.canvas.dataset.babylonEnvironmentPlacements = String(placementCount);
@@ -2246,6 +2253,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       loadRoot.dispose();
       if (this.disposed || generation !== this.refineryLoadGeneration) return;
       this.canvas.dataset.environmentVisual = 'authored-fallback-babylon';
+      this.canvas.dataset.mapLoadPlacementInstantiationMs = Math.max(0, performance.now() - placementStartedAt).toFixed(2);
       this.canvas.dataset.babylonEnvironmentState = 'error';
       this.canvas.dataset.babylonEnvironmentError = error instanceof Error ? error.message : String(error);
     }
@@ -2265,6 +2273,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     delete this.canvas.dataset.babylonEnvironmentPremiumSurfaces;
     delete this.canvas.dataset.babylonEnvironmentMaterialDetail;
     delete this.canvas.dataset.babylonEnvironmentPlacementLoad;
+    delete this.canvas.dataset.mapLoadFamilyPreloadMs;
+    delete this.canvas.dataset.mapLoadPlacementInstantiationMs;
     this.canvas.dataset.babylonEnvironmentState = 'released';
     this.canvas.dataset.babylonEnvironmentRelease = `${reason}:released-${released}`;
     const stats = getBabylonGraphicsAssetRuntime(this.scene).stats();

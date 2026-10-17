@@ -167,6 +167,10 @@ async function successfulColdLoadProfile(): Promise<RuntimeProfile> {
   const telemetry = dataset.babylonEnvironmentPlacementLoad;
   assert(telemetry, 'runtime refinery load must publish placement batching telemetry');
   const parsed = parsePlacementTelemetry(telemetry);
+  const preloadMs = Number(dataset.mapLoadFamilyPreloadMs);
+  const placementMs = Number(dataset.mapLoadPlacementInstantiationMs);
+  assert(Number.isFinite(preloadMs) && preloadMs >= 0, `P28-PLOAD2 runtime cold-load profile must publish family preload/decode timing, got ${dataset.mapLoadFamilyPreloadMs}`);
+  assert(Number.isFinite(placementMs) && placementMs >= 0, `P28-PLOAD2 runtime cold-load profile must publish placement-instantiation timing, got ${dataset.mapLoadPlacementInstantiationMs}`);
   assert(parsed.strategy === 'bounded-batches', `runtime refinery load must report bounded batches, got ${parsed.strategy}`);
   assert(parsed.batchSize === 4, `runtime refinery load must retain batch size 4, got ${parsed.batchSize}`);
   assert(parsed.placements === 73, `runtime cold-load profile must retain the established 73 refinery placements, got ${parsed.placements}`);

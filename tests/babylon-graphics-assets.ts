@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { readFile as readFileAsync } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import './p28-pload1-refinery-placement-runtime';
+import './p28-pload2-map-load-readiness';
 import { LoadAssetContainerAsync, SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
 import { KhronosTextureContainer2 } from '@babylonjs/core/Misc/khronosTextureContainer2';
 import { MeshoptCompression } from '@babylonjs/core/Meshes/Compression/meshoptCompression';
