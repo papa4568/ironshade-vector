@@ -1,0 +1,32 @@
+name: P28-D8 Runtime Diagnostics Maintenance
+
+on:
+  push:
+    branches:
+      - chatgpt/p28-d8-refinery-boss-lod0
+    paths:
+      - 'scripts/tmp-p28d8-diagnostics.mjs'
+      - '.github/workflows/tmp-p28d8-diagnostics.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: chatgpt/p28-d8-refinery-boss-lod0
+          fetch-depth: 0
+      - run: node scripts/tmp-p28d8-diagnostics.mjs
+      - run: |
+          set -euo pipefail
+          git diff --check
+          git add scripts/p28d8-boss-capture.mjs src/game/combatGraphicsBackendCore.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'test: report D8 boss runtime state on capture timeout'
+          git push origin HEAD:chatgpt/p28-d8-refinery-boss-lod0
