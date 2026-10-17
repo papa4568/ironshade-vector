@@ -101,8 +101,8 @@ export class BabylonAmbientParticles {
   release(reason: string) {
     if (this.disposed && this.pools.size === 0) return;
     for (const pool of this.pools.values()) {
-      pool.particles.forEach(particle => particle.dispose());
-      pool.source.dispose();
+      pool.particles.forEach(particle => this.disposeMesh(particle));
+      this.disposeMesh(pool.source);
       pool.material.dispose();
     }
     this.pools.clear();
@@ -121,6 +121,11 @@ export class BabylonAmbientParticles {
     this.disposed = true;
     this.canvas.dataset.babylonAmbientParticles = 'disposed';
     this.canvas.dataset.babylonAmbientParticleState = 'disposed';
+  }
+
+  private disposeMesh(mesh: Mesh | InstancedMesh) {
+    mesh.dispose();
+    if (this.scene.meshes.includes(mesh)) this.scene.removeMesh(mesh);
   }
 
   private ensurePools() {
