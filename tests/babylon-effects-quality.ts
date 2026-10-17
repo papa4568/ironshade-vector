@@ -143,6 +143,8 @@ assert.equal(measuredPressure.gameplayCueScale, 1, 'Ambient reduction must remai
     ambient.sync(high, 'asteroid-refinery');
     assert.equal(canvas.dataset.babylonAmbientParticlePoolSize, '240', 'Re-entry must rebuild a complete pool after deterministic teardown.');
   } finally {
+    // Production renderer teardown calls the refinery owner's release first, then dispose.
+    ambient.release('renderer-dispose');
     ambient.dispose();
     assert.equal(canvas.dataset.babylonAmbientParticleState, 'disposed');
     assert.equal(scene.meshes.some(mesh => mesh.name.startsWith('p28-e1-')), false, 'Renderer disposal must leave no ambient mesh resources behind.');
