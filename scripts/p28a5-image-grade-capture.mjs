@@ -51,7 +51,8 @@ async function evaluate(expression) {
 async function waitFor(expression, label, timeoutMs = 10_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (await evaluate(expression)) return;
+    const value = await evaluate(expression);
+    if (value) return value;
     await sleep(100);
   }
   throw new Error(`Timed out waiting for ${label}.`);
@@ -228,15 +229,14 @@ try {
   })()`);
   if (!enabled) throw new Error('Could not enable the P28-A5 low-visibility QA grade.');
 
-  await waitFor(`(() => {
-    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
-    return canvas?.dataset.environmentImageGradeMode === 'low-visibility'
-      && canvas?.dataset.environmentAtmosphere?.includes('near-14.0:far-32.0')
-      && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.080:contrast-0.965:grade-p28-a5-dark-separation-v1');
+  const lowVisibility = await waitFor(`(() => {
+    const state = ${readGradeStateExpression};
+    return state?.mode === 'low-visibility'
+      && state.atmosphere.includes('near-14.0:far-32.0')
+      && state.atmosphere.includes('exposure-1.080:contrast-0.965:grade-p28-a5-dark-separation-v1')
+      ? state
+      : false;
   })()`, 'low-visibility Flagship refinery grade');
-  await sleep(300);
-
-  const lowVisibility = await evaluate(readGradeStateExpression);
   if (!lowVisibility
     || lowVisibility.tier !== 'high'
     || lowVisibility.grade !== 'p28-a5-dark-separation-v1'
