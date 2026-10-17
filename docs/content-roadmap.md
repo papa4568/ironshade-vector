@@ -34,10 +34,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 ### P28 — Babylon flagship visual-quality overhaul
 
-#### D. Hero operators and enemy presentation
-
-- [ ] **P28-D8 — Ship refinery boss LOD0** — Add a boss-quality LOD0 with stronger phase-readable hard-surface detail and emissive anchors while keeping boss mechanics and cue timing unchanged. **Done when:** Flagship uses the boss LOD0, phase cues align with the authored model, visual quality is materially above the current asset, and standard build/APK gates pass.
-
 #### E. Refinery ambience and local visual richness
 
 - [ ] **P28-E1 — Add a shared flagship ambient-particle system** — Add a Babylon ambient-effects layer with pooled dust, sparks, vapor/steam, and drifting debris primitives. Art-direct density for the flagship target first; optional runtime reduction may react to real measured pressure rather than fixed pre-selected caps. **Done when:** the system supports rich ambience, never suppresses gameplay VFX/cues, releases resources on renderer/location teardown, and targeted resource/performance plus standard build/APK gates pass.
