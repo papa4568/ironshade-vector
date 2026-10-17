@@ -108,10 +108,11 @@ if [[ "$first_toolchain_tree" != "$second_toolchain_tree" ]]; then
 fi
 first_runtime_docker_id="$(jq -r '.runtimeDockerImageId' "$work_root/first-manifest.json")"
 second_runtime_docker_id="$(jq -r '.runtimeDockerImageId' "$work_root/second-manifest.json")"
-runtime_docker_ids_equal=false
 if [[ "$first_runtime_docker_id" == "$second_runtime_docker_id" ]]; then
-  runtime_docker_ids_equal=true
+  echo "EV28_PREPARED_IMAGE_STABILITY_FAIL fresh rebuild did not exercise raw runtime Docker ID divergence id=$first_runtime_docker_id" >&2
+  exit 1
 fi
+runtime_docker_ids_equal=false
 
 # Prove the canonical prepared identity remains sensitive to real toolchain drift
 # that the narrower npm CLI subtree digest would not detect.
