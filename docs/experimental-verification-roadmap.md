@@ -28,11 +28,6 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-19 — Validate EV-7 Roadmap Shadow Predictions**
-  - Compare prior shadow-friction predictions with actual implementation outcomes from later roadmap work and quantify useful predictions, false alarms, and missed integration pressure.
-  - Keep all roadmap-pressure scoring advisory in this item and confirm disposable probes remain outside product/runtime state.
-  - Done when the evidence identifies any signal with repeatable predictive value and records unsupported signals that must remain advisory.
-
 - [ ] **EV-20 — Graduate One Roadmap-Pressure Signal**
   - Using only EV-19 evidence, either convert one validated signal into a deterministic architecture invariant, proof obligation, or roadmap rule, or explicitly record that no signal is ready for enforcement.
   - Do not make a heuristic score authoritative; verify disabling the simulator restores the previous planning/verification path.
@@ -40,7 +35,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Intended dependency order
 
-EV-8 through EV-20 should normally execute in order. EV-8 and EV-9 establish stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/21/22/23/24/25/27/26/28/18, and EV-19/20 deliberately separate calibration, trust bootstrapping, governance, and enforcement so each ownership cycle has one primary verification closure. EV-21, EV-22, EV-23, EV-24, EV-25, EV-27, EV-26, and EV-28 are intentionally numbered after the original queue because they were split only after earlier EV work exposed concrete prerequisites; their executable positions before EV-18 were authoritative until that reviewed prerequisite work completed. EV-27, EV-26, and EV-28 completed their trusted-main closeouts, clearing the mechanism-governance availability, unchanged-roadmap review-selection, and prepared-image closure-identity blockers. EV-18 then completed the reviewed single-proof promotion and a live unchanged-SHA first-miss/second-hit reuse demonstration for `full-repository-build-closed`. EV-19 — Validate EV-7 Roadmap Shadow Predictions is therefore the next actionable experimental item; EV-20 remains dependent on EV-19 evidence.
+EV-8 through EV-20 should normally execute in order. EV-8 and EV-9 establish stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/21/22/23/24/25/27/26/28/18, and EV-19/20 deliberately separate calibration, trust bootstrapping, governance, and enforcement so each ownership cycle has one primary verification closure. EV-21, EV-22, EV-23, EV-24, EV-25, EV-27, EV-26, and EV-28 are intentionally numbered after the original queue because they were split only after earlier EV work exposed concrete prerequisites; their executable positions before EV-18 were authoritative until that reviewed prerequisite work completed. EV-27, EV-26, and EV-28 completed their trusted-main closeouts, clearing the mechanism-governance availability, unchanged-roadmap review-selection, and prepared-image closure-identity blockers. EV-18 then completed the reviewed single-proof promotion and a live unchanged-SHA first-miss/second-hit reuse demonstration for `full-repository-build-closed`. EV-19 has now completed its reviewed advisory calibration: only `expected-surface:shared-backend-readiness` showed repeatable same-task cross-snapshot predictive value, while cross-task generalization and the remaining signals stay unsupported. EV-20 — Graduate One Roadmap-Pressure Signal is therefore the next actionable experimental item and may use only that recorded EV-19 evidence.
 
 EV-1 through EV-7 remain verified prototype history in `docs/experimental-verification-archive.md`. Completing a promotion item does not rewrite that history; the promotion itself receives a new archived record.
 
