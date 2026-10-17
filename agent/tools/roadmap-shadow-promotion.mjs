@@ -147,7 +147,7 @@ function git(repoRoot, args) {
 
 function grepTracked(repoRoot, needle) {
   try {
-    const output = execFileSync('git', ['grep', '-l', '--', needle, 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+    const output = execFileSync('git', ['grep', '-l', needle, '--'], { cwd: repoRoot, encoding: 'utf8' }).trim();
     return output ? output.split('\n').filter(Boolean).sort((a, b) => a.localeCompare(b)) : [];
   } catch (error) {
     if (error.status === 1) return [];
