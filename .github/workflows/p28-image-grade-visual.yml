@@ -4,12 +4,15 @@ on:
   pull_request:
     paths:
       - 'src/game/babylonRefineryPostProcessing.ts'
+      - 'src/game/babylonAmbientParticles.ts'
       - 'src/game/refineryAtmosphere.ts'
       - 'src/game/babylonRefineryBossPresentation.ts'
       - 'tests/babylon-refinery-post-processing.ts'
+      - 'tests/babylon-effects-quality.ts'
       - 'tests/refinery-atmosphere.ts'
       - 'scripts/p28a5-image-grade-capture.mjs'
       - 'scripts/p28d8-boss-capture.mjs'
+      - 'scripts/p28e1-ambient-particles-capture.mjs'
       - '.github/workflows/p28-image-grade-visual.yml'
   workflow_dispatch:
 
@@ -45,10 +48,11 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Verify P28-A5 grade contracts
+      - name: Verify P28 visual contracts
         run: |
           npm run test:babylon-refinery-post-processing
           npm run test:refinery-atmosphere
+          npm run test:babylon-effects-quality
 
       - name: Build production client
         run: |
@@ -113,7 +117,7 @@ jobs:
           cat p28-image-grade-chrome.log
           exit 1
 
-      - name: Capture Flagship normal, low-visibility, and boss grades
+      - name: Capture Flagship normal, low-visibility, boss, and ambient grades
         env:
           CDP_ENDPOINT: http://127.0.0.1:9223
           BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
@@ -125,10 +129,13 @@ jobs:
           BROWSER_E2E_P28A5_REPORT: browser-p28a5-image-grade.json
           BROWSER_E2E_P28D8_BOSS_SCREENSHOT: browser-p28d8-boss.png
           BROWSER_E2E_P28D8_BOSS_REPORT: browser-p28d8-boss.json
+          BROWSER_E2E_P28E1_AMBIENT_SCREENSHOT: browser-p28e1-ambient.png
+          BROWSER_E2E_P28E1_AMBIENT_REPORT: browser-p28e1-ambient.json
         run: |
           node scripts/browser-runtime-smoke.mjs
           node scripts/p28a5-image-grade-capture.mjs
           node scripts/p28d8-boss-capture.mjs
+          node scripts/p28e1-ambient-particles-capture.mjs
 
       - name: Upload P28 visual evidence
         if: ${{ always() }}
@@ -141,6 +148,8 @@ jobs:
             browser-p28a5-image-grade.json
             browser-p28d8-boss.png
             browser-p28d8-boss.json
+            browser-p28e1-ambient.png
+            browser-p28e1-ambient.json
             p28-image-grade-preview.log
             p28-image-grade-chrome.log
           if-no-files-found: warn
