@@ -1,16 +1,18 @@
 name: P28-D8 Closeout Maintenance
 
 on:
-  push:
+  pull_request:
     branches:
-      - chatgpt/p28-d8-refinery-boss-lod0
+      - main
+    types:
+      - synchronize
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: github.event.head_commit.message == 'chore: run P28-D8 closeout maintenance'
+    if: github.event.pull_request.number == 338 && github.head_ref == 'chatgpt/p28-d8-refinery-boss-lod0'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
