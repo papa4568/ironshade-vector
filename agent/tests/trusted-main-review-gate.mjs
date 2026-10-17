@@ -74,13 +74,40 @@ const selectedPastStaleMalformed = await selectAuthoritativeReviewCommentWithPro
 });
 assert.equal(selectedPastStaleMalformed.commentId, 12, 'malformed trusted review for a conclusively different candidate must not poison the current exact-SHA gate');
 
+const olderMalformedCurrent = {
+  ...comment,
+  id: 14,
+  created_at: '2026-10-10T12:00:05Z',
+  updated_at: '2026-10-10T12:00:05Z',
+  body: malformedEnvelope(candidateSha),
+};
+const newerValidCurrent = {
+  ...comment,
+  id: 17,
+  created_at: '2026-10-10T12:00:20Z',
+  updated_at: '2026-10-10T12:00:20Z',
+};
+const selectedPastSupersededMalformed = await selectAuthoritativeReviewCommentWithProvenance(
+  packet,
+  [olderMalformedCurrent, newerValidCurrent],
+  {
+    prAuthor: 'papa4568',
+    verifyMachineRun: async () => ({ reviewer: 'github-actions[bot]', authorAssociation: 'TRUSTED_MAIN_ACTIONS' }),
+  },
+);
+assert.equal(
+  selectedPastSupersededMalformed.commentId,
+  17,
+  'a newer valid exact-SHA trusted-main review must supersede older malformed machine evidence',
+);
+
 await assert.rejects(
   () => selectAuthoritativeReviewCommentWithProvenance(packet, [{ ...staleMalformed, id: 14, body: malformedEnvelope(candidateSha) }, comment], {
     prAuthor: 'papa4568',
     verifyMachineRun: async () => ({ reviewer: 'github-actions[bot]', authorAssociation: 'TRUSTED_MAIN_ACTIONS' }),
   }),
   /trusted independent review comment 14 is malformed/,
-  'malformed trusted review that claims the current candidate must remain fail closed',
+  'malformed trusted review that is newest for the current candidate must remain fail closed',
 );
 
 await assert.rejects(

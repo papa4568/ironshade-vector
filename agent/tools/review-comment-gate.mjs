@@ -218,8 +218,11 @@ export async function selectAuthoritativeReviewCommentWithProvenance(packet, com
   assert(Array.isArray(comments), 'GitHub PR comments payload must be an array');
   const candidates = parseTrustedHumanCandidates(packet, comments, options);
   const verify = options.verifyMachineRun ?? verifyTrustedMainMachineRun;
+  const newestMachineComments = [...comments].sort(
+    (left, right) => timestamp(right) - timestamp(left) || Number(right?.id ?? 0) - Number(left?.id ?? 0),
+  );
 
-  for (const comment of comments) {
+  for (const comment of newestMachineComments) {
     if (!comment || typeof comment !== 'object' || comment.user?.login !== ACTIONS_LOGIN) continue;
     if (typeof comment.body !== 'string' || !comment.body.includes(TRUSTED_MAIN_MARKER)) continue;
     if (conclusivelyTargetsDifferentCandidate(packet, comment.body)) continue;
@@ -232,6 +235,7 @@ export async function selectAuthoritativeReviewCommentWithProvenance(packet, com
     if (!result || result.taskId !== packet.taskId || result.candidateSha !== packet.candidateSha) continue;
     const trust = await verify(comment, result, { ...options, comments });
     candidates.push({ comment, result, trust });
+    break;
   }
 
   return chooseLatestPass(packet, candidates);
