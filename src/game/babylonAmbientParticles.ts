@@ -1,11 +1,11 @@
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
-import { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
+import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import type { Scene } from '@babylonjs/core/scene';
 import type { RenderBudgetSnapshot } from './renderQuality';
-import { getWorldSize, type SimState } from './sim';
+import { getWorldSize } from './sim';
 
 const WORLD_SCALE = 0.02;
 
@@ -57,71 +57,57 @@ export function babylonAmbientParticleBudget(budget: RenderBudgetSnapshot): Baby
     (Object.keys(BABYLON_AMBIENT_FLAGSHIP_COUNTS) as BabylonAmbientParticleKind[])
       .map(kind => [kind, Math.max(1, Math.round(BABYLON_AMBIENT_FLAGSHIP_COUNTS[kind] * scale))]),
   ) as Record<BabylonAmbientParticleKind, number>;
-  return {
-    scale,
-    counts,
-    pooled: { ...BABYLON_AMBIENT_FLAGSHIP_COUNTS },
-  };
+  return { scale, counts, pooled: { ...BABYLON_AMBIENT_FLAGSHIP_COUNTS } };
 }
 
 export class BabylonAmbientParticles {
   private readonly pools = new Map<BabylonAmbientParticleKind, AmbientPool>();
   private locationKey = '';
+  private elapsedSeconds = 0;
   private disposed = false;
 
   constructor(
     private readonly scene: Scene,
     private readonly canvas: HTMLCanvasElement,
   ) {
-    this.canvas.dataset.babylonAmbientParticles = 'ready';
-    this.canvas.dataset.babylonAmbientParticleState = 'idle';
-    this.canvas.dataset.babylonAmbientParticleSimulationOwnership = 'read-only-presentation';
-    this.canvas.dataset.babylonAmbientGameplayCuePolicy = 'independent:1.00';
-    this.canvas.dataset.babylonAmbientParticleCounts = 'dust:0/128|sparks:0/48|vapor:0/24|debris:0/40';
+    canvas.dataset.babylonAmbientParticles = 'ready';
+    canvas.dataset.babylonAmbientParticleState = 'idle';
+    canvas.dataset.babylonAmbientParticleSimulationOwnership = 'read-only-presentation';
+    canvas.dataset.babylonAmbientGameplayCuePolicy = 'independent:1.00';
+    canvas.dataset.babylonAmbientParticleCounts = 'dust:0/128|sparks:0/48|vapor:0/24|debris:0/40';
   }
 
-  sync(state: SimState, budget: RenderBudgetSnapshot, locationKey: string) {
+  sync(budget: RenderBudgetSnapshot, locationKey: string) {
     if (this.disposed) return;
     if (this.locationKey && this.locationKey !== locationKey) this.release('location-switch');
     this.locationKey = locationKey;
     this.ensurePools();
 
+    const deltaMs = this.scene.getEngine().getDeltaTime();
+    this.elapsedSeconds += (Number.isFinite(deltaMs) && deltaMs > 0 ? Math.min(deltaMs, 50) : 1000 / 60) / 1000;
     const particleBudget = babylonAmbientParticleBudget(budget);
     const world = getWorldSize();
     const worldW = world.w * WORLD_SCALE;
     const worldH = world.h * WORLD_SCALE;
-    const time = state.time;
 
-    this.syncDust(this.pools.get('dust')!, particleBudget.counts.dust, worldW, worldH, time);
-    this.syncSparks(this.pools.get('sparks')!, particleBudget.counts.sparks, worldW, worldH, time);
-    this.syncVapor(this.pools.get('vapor')!, particleBudget.counts.vapor, worldW, worldH, time);
-    this.syncDebris(this.pools.get('debris')!, particleBudget.counts.debris, worldW, worldH, time);
+    this.syncDust(this.pools.get('dust')!, particleBudget.counts.dust, worldW, worldH);
+    this.syncSparks(this.pools.get('sparks')!, particleBudget.counts.sparks, worldW, worldH);
+    this.syncVapor(this.pools.get('vapor')!, particleBudget.counts.vapor, worldW, worldH);
+    this.syncDebris(this.pools.get('debris')!, particleBudget.counts.debris, worldW, worldH);
 
-    this.canvas.dataset.babylonAmbientParticles = 'pooled:dust+sparks+vapor+debris';
-    this.canvas.dataset.babylonAmbientParticleState = 'active';
-    this.canvas.dataset.babylonAmbientParticleLocation = locationKey;
-    this.canvas.dataset.babylonAmbientParticleRuntimeTier = budget.runtimeTierName;
-    this.canvas.dataset.babylonAmbientParticleHostTier = budget.tierName;
-    this.canvas.dataset.babylonAmbientParticleScale = particleBudget.scale.toFixed(2);
-    this.canvas.dataset.babylonAmbientParticleCounts = (Object.keys(particleBudget.counts) as BabylonAmbientParticleKind[])
-      .map(kind => `${kind}:${particleBudget.counts[kind]}/${particleBudget.pooled[kind]}`)
-      .join('|');
-    this.canvas.dataset.babylonAmbientParticlePoolSize = String(
-      Object.values(BABYLON_AMBIENT_FLAGSHIP_COUNTS).reduce((sum, count) => sum + count, 0),
-    );
-    this.canvas.dataset.babylonAmbientParticleDrawFamilies = String(this.pools.size);
-    this.canvas.dataset.babylonAmbientGameplayCuePolicy = `independent:${budget.gameplayCueScale.toFixed(2)}`;
+    canvasTelemetry(this.canvas, particleBudget, this.pools.size, locationKey, budget);
   }
 
   release(reason: string) {
     if (this.disposed && this.pools.size === 0) return;
     for (const pool of this.pools.values()) {
-      for (const particle of pool.particles) particle.dispose();
+      pool.particles.forEach(particle => particle.dispose());
       pool.source.dispose();
       pool.material.dispose();
     }
     this.pools.clear();
     this.locationKey = '';
+    this.elapsedSeconds = 0;
     this.canvas.dataset.babylonAmbientParticleState = 'released';
     this.canvas.dataset.babylonAmbientParticleCounts = 'dust:0/0|sparks:0/0|vapor:0/0|debris:0/0';
     this.canvas.dataset.babylonAmbientParticlePoolSize = '0';
@@ -139,10 +125,9 @@ export class BabylonAmbientParticles {
 
   private ensurePools() {
     if (this.pools.size > 0) return;
-    this.pools.set('dust', this.createPool('dust', BABYLON_AMBIENT_FLAGSHIP_COUNTS.dust));
-    this.pools.set('sparks', this.createPool('sparks', BABYLON_AMBIENT_FLAGSHIP_COUNTS.sparks));
-    this.pools.set('vapor', this.createPool('vapor', BABYLON_AMBIENT_FLAGSHIP_COUNTS.vapor));
-    this.pools.set('debris', this.createPool('debris', BABYLON_AMBIENT_FLAGSHIP_COUNTS.debris));
+    (Object.keys(BABYLON_AMBIENT_FLAGSHIP_COUNTS) as BabylonAmbientParticleKind[]).forEach(kind => {
+      this.pools.set(kind, this.createPool(kind, BABYLON_AMBIENT_FLAGSHIP_COUNTS[kind]));
+    });
   }
 
   private createPool(kind: BabylonAmbientParticleKind, count: number): AmbientPool {
@@ -188,19 +173,16 @@ export class BabylonAmbientParticles {
     return { source, particles, material };
   }
 
-  private syncDust(pool: AmbientPool, activeCount: number, worldW: number, worldH: number, time: number) {
+  private syncDust(pool: AmbientPool, activeCount: number, worldW: number, worldH: number) {
+    const time = this.elapsedSeconds;
     pool.particles.forEach((particle, index) => {
-      const active = index < activeCount;
-      particle.setEnabled(active);
-      if (!active) return;
-      const x0 = unitNoise(index, 1);
-      const z0 = unitNoise(index, 2);
+      particle.setEnabled(index < activeCount);
+      if (index >= activeCount) return;
       const y0 = unitNoise(index, 3);
-      const drift = 0.004 + unitNoise(index, 4) * 0.006;
       particle.position.set(
-        wrap01(x0 + time * drift) * worldW,
+        wrap01(unitNoise(index, 1) + time * (0.004 + unitNoise(index, 4) * 0.006)) * worldW,
         0.18 + y0 * 1.35 + Math.sin(time * (0.35 + y0 * 0.25) + index) * 0.055,
-        wrap01(z0 + Math.sin(time * 0.12 + index * 0.71) * 0.018) * worldH,
+        wrap01(unitNoise(index, 2) + Math.sin(time * 0.12 + index * 0.71) * 0.018) * worldH,
       );
       const scale = 0.62 + unitNoise(index, 5) * 1.3;
       particle.scaling.setAll(scale);
@@ -208,34 +190,28 @@ export class BabylonAmbientParticles {
     });
   }
 
-  private syncSparks(pool: AmbientPool, activeCount: number, worldW: number, worldH: number, time: number) {
+  private syncSparks(pool: AmbientPool, activeCount: number, worldW: number, worldH: number) {
+    const time = this.elapsedSeconds;
     pool.particles.forEach((particle, index) => {
-      const active = index < activeCount;
-      particle.setEnabled(active);
-      if (!active) return;
-      const x0 = unitNoise(index, 11);
-      const z0 = unitNoise(index, 12);
-      const speed = 0.16 + unitNoise(index, 13) * 0.18;
-      const cycle = wrap01(unitNoise(index, 14) + time * speed);
+      particle.setEnabled(index < activeCount);
+      if (index >= activeCount) return;
+      const cycle = wrap01(unitNoise(index, 14) + time * (0.16 + unitNoise(index, 13) * 0.18));
       particle.position.set(
-        wrap01(x0 + Math.sin(time * 0.65 + index) * 0.012) * worldW,
+        wrap01(unitNoise(index, 11) + Math.sin(time * 0.65 + index) * 0.012) * worldW,
         0.08 + cycle * 1.15,
-        wrap01(z0 + Math.cos(time * 0.52 + index * 0.43) * 0.012) * worldH,
+        wrap01(unitNoise(index, 12) + Math.cos(time * 0.52 + index * 0.43) * 0.012) * worldH,
       );
-      const stretch = 0.72 + unitNoise(index, 15) * 1.45;
-      particle.scaling.set(0.75, 0.75, stretch);
+      particle.scaling.set(0.75, 0.75, 0.72 + unitNoise(index, 15) * 1.45);
       particle.rotation.set(Math.PI * 0.5, time * (1.2 + unitNoise(index, 16) * 2.4), index * 0.37);
     });
   }
 
-  private syncVapor(pool: AmbientPool, activeCount: number, worldW: number, worldH: number, time: number) {
+  private syncVapor(pool: AmbientPool, activeCount: number, worldW: number, worldH: number) {
+    const time = this.elapsedSeconds;
     pool.particles.forEach((particle, index) => {
-      const active = index < activeCount;
-      particle.setEnabled(active);
-      if (!active) return;
-      const edge = unitNoise(index, 21) < 0.5
-        ? 0.06 + unitNoise(index, 22) * 0.18
-        : 0.76 + unitNoise(index, 22) * 0.18;
+      particle.setEnabled(index < activeCount);
+      if (index >= activeCount) return;
+      const edge = unitNoise(index, 21) < 0.5 ? 0.06 + unitNoise(index, 22) * 0.18 : 0.76 + unitNoise(index, 22) * 0.18;
       const cycle = wrap01(unitNoise(index, 23) + time * (0.025 + unitNoise(index, 24) * 0.022));
       particle.position.set(
         edge * worldW + Math.sin(time * 0.18 + index) * 0.12,
@@ -248,11 +224,11 @@ export class BabylonAmbientParticles {
     });
   }
 
-  private syncDebris(pool: AmbientPool, activeCount: number, worldW: number, worldH: number, time: number) {
+  private syncDebris(pool: AmbientPool, activeCount: number, worldW: number, worldH: number) {
+    const time = this.elapsedSeconds;
     pool.particles.forEach((particle, index) => {
-      const active = index < activeCount;
-      particle.setEnabled(active);
-      if (!active) return;
+      particle.setEnabled(index < activeCount);
+      if (index >= activeCount) return;
       const drift = 0.002 + unitNoise(index, 31) * 0.004;
       particle.position.set(
         wrap01(unitNoise(index, 32) + time * drift) * worldW,
@@ -268,4 +244,27 @@ export class BabylonAmbientParticles {
       );
     });
   }
+}
+
+function canvasTelemetry(
+  canvas: HTMLCanvasElement,
+  particleBudget: BabylonAmbientParticleBudget,
+  drawFamilies: number,
+  locationKey: string,
+  budget: RenderBudgetSnapshot,
+) {
+  canvas.dataset.babylonAmbientParticles = 'pooled:dust+sparks+vapor+debris';
+  canvas.dataset.babylonAmbientParticleState = 'active';
+  canvas.dataset.babylonAmbientParticleLocation = locationKey;
+  canvas.dataset.babylonAmbientParticleRuntimeTier = budget.runtimeTierName;
+  canvas.dataset.babylonAmbientParticleHostTier = budget.tierName;
+  canvas.dataset.babylonAmbientParticleScale = particleBudget.scale.toFixed(2);
+  canvas.dataset.babylonAmbientParticleCounts = (Object.keys(particleBudget.counts) as BabylonAmbientParticleKind[])
+    .map(kind => `${kind}:${particleBudget.counts[kind]}/${particleBudget.pooled[kind]}`)
+    .join('|');
+  canvas.dataset.babylonAmbientParticlePoolSize = String(
+    Object.values(BABYLON_AMBIENT_FLAGSHIP_COUNTS).reduce((sum, count) => sum + count, 0),
+  );
+  canvas.dataset.babylonAmbientParticleDrawFamilies = String(drawFamilies);
+  canvas.dataset.babylonAmbientGameplayCuePolicy = `independent:${budget.gameplayCueScale.toFixed(2)}`;
 }
