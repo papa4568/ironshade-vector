@@ -89,6 +89,10 @@ for (const image of gltf.images ?? []) {
   assert(!image.uri, `${image.name ?? 'boss texture'} must not depend on a network URI`);
 }
 
+const presentationSource = await readFile(resolve(process.cwd(), 'src/game/babylonRefineryBossPresentation.ts'), 'utf8');
+assert(presentationSource.includes('return qaPreview ? 1 : refineryBossDetailScale(qualityMode, runtimeTier);'), 'D8 visual QA must lock only the boss presentation asset to Flagship detail while production remains runtime-adaptive');
+assert(presentationSource.includes("babylonBossQaQuality = this.qaPreview ? 'flagship-asset-lock' : 'runtime-adaptive'"), 'D8 visual QA must expose the QA-only flagship asset lock separately from production adaptive recovery');
+
 const animationSource = await readFile(resolve(process.cwd(), 'src/game/enemyBossAnimation.ts'), 'utf8');
 assert(profileNumber(animationSource, 'phaseDuration') === contract.phaseCueTiming.phaseDuration, 'authored boss phase duration no longer aligns with enemyBossAnimation');
 assert(profileNumber(animationSource, 'phaseRise') === contract.phaseCueTiming.phaseRise, 'authored boss phase rise no longer aligns with enemyBossAnimation');
