@@ -1,8 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import { materializeRoadmapGraph, parseRoadmap } from './roadmap-adapter.mjs';
+import { sanitizeTrustedJsonValue } from './trusted-review-json-sanitizer.mjs';
 
 const ok = (value, message) => { if (!value) throw new Error(message); };
 const env = name => { const value = process.env[name]?.trim(); ok(value, `${name} is required`); return value; };
@@ -55,7 +56,7 @@ export function parseReview(text) {
     else if (ch === '}') {
       depth -= 1;
       ok(depth >= 0, 'model response has malformed JSON object boundaries');
-      if (depth === 0) return JSON.parse(repairJson(source.slice(start, index + 1)));
+      if (depth === 0) return sanitizeTrustedJsonValue(JSON.parse(repairJson(source.slice(start, index + 1))));
     }
   }
   throw new Error('model response has unterminated JSON object');
@@ -482,6 +483,38 @@ function selfTest() {
   ok(parsedInvalidEscapes.note === String.raw`regex \. and \s and \d and literal \uZZZZ`, 'invalid JSON escape repair failed');
   const parsedValidEscapes = parseReview(String.raw`{"note":"quote \" slash \\ newline \n unicode \u263A"}`);
   ok(parsedValidEscapes.note === 'quote " slash \\ newline \n unicode ☺', 'valid JSON escape preservation failed');
+  const terminalEscape = String.fromCharCode(0x1b);
+  const terminalBell = String.fromCharCode(0x07);
+  const visibleReference = 'VISIBLE_REFERENCE';
+  const parsedOsc8 = parseReview(`{"note":"reviewed ${terminalEscape}]8;;urn:ironshade:trusted-review:test${terminalBell}${visibleReference}${terminalEscape}]8;;${terminalBell}"}`);
+  ok(parsedOsc8.note.includes(visibleReference), 'raw OSC-8 parse must preserve visible review text');
+  ok(!/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(parsedOsc8.note), 'raw OSC-8 parse must remove ESC/BEL bytes after JSON decoding');
+  const parsedEscapedOsc8 = parseReview(String.raw`{"note":"reviewed \u001b]8;;urn:ironshade:trusted-review:test\u0007VISIBLE_REFERENCE\u001b]8;;\u0007"}`);
+  ok(parsedEscapedOsc8.note.includes(visibleReference), 'escaped OSC-8 parse must preserve visible review text');
+  ok(!/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(parsedEscapedOsc8.note), 'escaped OSC-8 parse must remove decoded ESC/BEL bytes');
+  let rejectedControlKey = false;
+  try {
+    parseReview(String.raw`{"status":"safe","sta\u001btus":"unsafe"}`);
+  } catch (error) {
+    rejectedControlKey = /JSON key/.test(String(error));
+  }
+  ok(rejectedControlKey, 'C0 controls in decoded JSON keys must fail closed before key normalization');
+
+  const persistedDirectory = '.trusted-review-self-test';
+  const persistedResult = { schemaVersion: 1, note: parsedOsc8.note };
+  const persistedBody = `<!-- ironshade-independent-review:trusted-main-actions:v1 -->\n<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify(persistedResult, null, 2)}\n\`\`\`\n`;
+  try {
+    persistReviewEvidence({ result: persistedResult, body: persistedBody, directory: persistedDirectory });
+    const persistedComment = readFileSync(`${persistedDirectory}/review-comment.md`, 'utf8');
+    const persistedJson = readFileSync(`${persistedDirectory}/review-result.json`, 'utf8');
+    ok(persistedComment.includes(visibleReference), 'persisted trusted review comment must preserve visible evidence text');
+    ok(!/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(persistedComment), 'persisted trusted review comment must contain no non-whitespace C0 bytes');
+    ok(!persistedComment.includes('\\u001b') && !persistedComment.includes('\\u0007'), 'trusted review controls must be removed before publication serialization');
+    const persistedRoundTrip = JSON.parse(persistedJson);
+    ok(persistedRoundTrip.note.includes(visibleReference), 'persisted trusted review JSON must remain strict JSON with visible evidence text');
+  } finally {
+    rmSync(persistedDirectory, { recursive: true, force: true });
+  }
   const wrappedProof = {
     schemaVersion: 1,
     taskId: 'AO-6',

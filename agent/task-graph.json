@@ -372,6 +372,48 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-10",
+      "title": "Harden trusted review publication against terminal controls",
+      "priority": 100,
+      "status": "verified",
+      "dependsOn": ["AO-9"],
+      "acceptance": [
+        "Trusted-main review parsing removes non-whitespace C0 terminal-control bytes from model JSON string content before a validated verdict is published, while preserving visible semantic text and legal newline, carriage-return, and tab escapes.",
+        "The fix does not weaken strict result validation, exact-SHA binding, trusted-main provenance checks, candidate-code isolation, or the product-roadmap fallback contract.",
+        "Deterministic self-tests reproduce OSC-8 ESC/BEL hyperlink bytes and prove the published review payload remains strict-JSON-safe without losing the visible evidence reference.",
+        "AO-10 uses the repository's introduced-verified closeout representation so the trusted reviewer targets this verifier-infrastructure prerequisite; it must not merge without exact-SHA technical proof and independent-review pass."
+      ],
+      "affectedDomains": ["agent-orchestration", "verification", "review", "ci"],
+      "proofs": [
+        {
+          "id": "trusted-review-parser-tests",
+          "kind": "test",
+          "required": true,
+          "description": "The trusted-review parser self-test covers OSC-8 terminal-control sanitization plus existing invalid/legal JSON escape behavior.",
+          "command": "node agent/tools/ao6-trusted-independent-review-v2.mjs self-test"
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Mechanical architecture and independent-review contracts continue to pass; the strict review consumer is not weakened."
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "A separate trusted verifier returns a validated pass for the exact AO-10 transport-hardening candidate SHA."
+        },
+        {
+          "id": "ao10-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Agent Orchestration and PR Candidate Verification pass on the exact AO-10 candidate; the final candidate job may be rerun after the trusted verdict is published."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }
