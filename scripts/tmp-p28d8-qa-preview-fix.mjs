@@ -45,12 +45,6 @@ capture = replaceOnce(
 );
 capture = replaceOnce(
   capture,
-  `  })()`, 'authored Flagship refinery boss LOD0 preview', 90_000);\n\n  const boss = await evaluate(readBossStateExpression);\n`,
-  `  })()`, 'authored Flagship refinery boss LOD0 preview', 90_000).catch(async error => {\n    const lastState = await evaluate(readBossStateExpression).catch(() => null);\n    throw new Error(\`${'${'}error instanceof Error ? error.message : String(error)} lastState=${'${'}JSON.stringify(lastState)}\`);\n  });\n\n  const boss = await evaluate(readBossStateExpression);\n`,
-  'capture timeout diagnostics',
-);
-capture = replaceOnce(
-  capture,
   `  if (!boss\n    || boss.tier !== 'high'\n    || !boss.qualityInput.includes('effective:1.00')\n`,
   `  if (!boss\n    || !['high', 'balanced', 'performance'].includes(boss.tier)\n    || !boss.qualityInput.includes('effective:1.00')\n`,
   'capture host tier validation',
