@@ -177,6 +177,11 @@ type BabylonRuntimeCostSource = {
   };
 };
 
+type BabylonRefineryBossPresentationHandle = {
+  sync(state: SimState, qualityMode: GraphicsQualityMode): void;
+  dispose(): void;
+};
+
 class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   readonly id = 'babylon' as const;
   private delegate: CombatGraphicsBackend | null = null;
@@ -188,6 +193,8 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   private renderTierTransitionCount = 0;
   private readonly missionVisualGate: MissionVisualFrameGate;
   private readonly backendLoadStartedAt = performance.now();
+  private bossPresentation: BabylonRefineryBossPresentationHandle | null = null;
+  private bossPresentationInitialization: Promise<void> | null = null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -235,6 +242,31 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     const effectiveQuality = normalizeProductionRenderQuality(args[3], qualityMode, reducedEffects);
     this.canvas.dataset.renderQualityInput = `requested:${args[3].toFixed(2)}+effective:${effectiveQuality.toFixed(2)}`;
     if (!this.delegate) return;
+    const state = args[0];
+    const mission = args[5];
+    const bossPresentationRequested = mission.location === 'asteroid-refinery'
+      && (state.enemies.some(enemy => enemy.role === 'boss' && enemy.active)
+        || (typeof location !== 'undefined' && new URLSearchParams(location.search).get('p28d8BossQa') === '1'));
+    this.canvas.dataset.babylonBossRequest = bossPresentationRequested
+      ? (state.enemies.some(enemy => enemy.role === 'boss' && enemy.active) ? 'active-boss' : 'qa-preview')
+      : 'inactive';
+    if (bossPresentationRequested || this.bossPresentation) {
+      if (bossPresentationRequested && !this.bossPresentation && !this.bossPresentationInitialization) {
+        const renderer = this.delegate;
+        const initialization = this.initializeBossPresentation(renderer)
+          .catch(error => {
+            if (this.disposed || this.delegate !== renderer) return;
+            this.canvas.dataset.babylonBossPresentation = 'error';
+            this.canvas.dataset.babylonBossFallbackReason = error instanceof Error ? error.message : String(error);
+            console.warn('P28-D8 refinery boss presentation initialization failed; retaining existing enemy rendering.', error);
+          })
+          .finally(() => {
+            if (this.bossPresentationInitialization === initialization) this.bossPresentationInitialization = null;
+          });
+        this.bossPresentationInitialization = initialization;
+      }
+      this.bossPresentation?.sync(state, qualityMode);
+    }
     const normalizedArgs: CombatGraphicsRenderArgs = [...args];
     normalizedArgs[3] = effectiveQuality;
     this.delegate.render(...normalizedArgs);
@@ -279,6 +311,9 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.bossPresentation?.dispose();
+    this.bossPresentation = null;
+    this.bossPresentationInitialization = null;
     this.delegate?.dispose();
     this.delegate = null;
     this.missionVisualGate.dispose();
@@ -338,6 +373,16 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
       assetInstances,
       cachedAssets,
     });
+  }
+
+  private async initializeBossPresentation(renderer: CombatGraphicsBackend) {
+    const { BabylonRefineryBossPresentation } = await import('./babylonRefineryBossPresentation');
+    if (this.disposed || this.delegate !== renderer) return;
+    const scene = (renderer as CombatGraphicsBackend & {
+      scene?: ConstructorParameters<typeof BabylonRefineryBossPresentation>[0];
+    }).scene;
+    if (!scene || scene.isDisposed) throw new Error('Babylon refinery boss presentation requires the exact active renderer scene.');
+    this.bossPresentation = new BabylonRefineryBossPresentation(scene, this.canvas);
   }
 
   private async initialize() {
@@ -415,6 +460,9 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     this.canvas.dataset.missionVisualShell = 'loading';
     this.canvas.dataset.missionVisualWorld = 'loading';
 
+    this.bossPresentation?.dispose();
+    this.bossPresentation = null;
+    this.bossPresentationInitialization = null;
     const failedRenderer = this.delegate;
     this.delegate = null;
     failedRenderer?.dispose();

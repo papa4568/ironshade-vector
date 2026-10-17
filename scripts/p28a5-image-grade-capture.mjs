@@ -51,7 +51,8 @@ async function evaluate(expression) {
 async function waitFor(expression, label, timeoutMs = 10_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (await evaluate(expression)) return;
+    const value = await evaluate(expression);
+    if (value) return value;
     await sleep(100);
   }
   throw new Error(`Timed out waiting for ${label}.`);
@@ -228,15 +229,14 @@ try {
   })()`);
   if (!enabled) throw new Error('Could not enable the P28-A5 low-visibility QA grade.');
 
-  await waitFor(`(() => {
-    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
-    return canvas?.dataset.environmentImageGradeMode === 'low-visibility'
-      && canvas?.dataset.environmentAtmosphere?.includes('near-14.0:far-32.0')
-      && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.080:contrast-0.965:grade-p28-a5-dark-separation-v1');
+  const lowVisibility = await waitFor(`(() => {
+    const state = ${readGradeStateExpression};
+    return state?.mode === 'low-visibility'
+      && state.atmosphere.includes('near-14.0:far-32.0')
+      && state.atmosphere.includes('exposure-1.080:contrast-0.965:grade-p28-a5-dark-separation-v1')
+      ? state
+      : false;
   })()`, 'low-visibility Flagship refinery grade');
-  await sleep(300);
-
-  const lowVisibility = await evaluate(readGradeStateExpression);
   if (!lowVisibility
     || lowVisibility.tier !== 'high'
     || lowVisibility.grade !== 'p28-a5-dark-separation-v1'
@@ -275,18 +275,21 @@ try {
     screenshotBytes: png.length,
   }, null, 2) + '\n');
 
-  const restored = await evaluate(`(() => {
+  const restoreState = await evaluate(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
-    if (!(canvas instanceof HTMLCanvasElement)) return false;
+    if (!(canvas instanceof HTMLCanvasElement)) return 'not-mounted';
     delete canvas.dataset.refineryImageGradeQa;
-    return true;
+    return 'cleared';
   })()`);
-  if (!restored) throw new Error('Could not clear the P28-A5 low-visibility QA grade.');
-  await waitFor(`(() => {
-    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
-    return canvas?.dataset.environmentImageGradeMode === 'normal'
-      && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1');
-  })()`, 'restored normal Flagship refinery grade');
+  if (restoreState === 'cleared') {
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
+      return canvas?.dataset.environmentImageGradeMode === 'normal'
+        && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1');
+    })()`, 'restored normal Flagship refinery grade');
+  } else if (restoreState !== 'not-mounted') {
+    throw new Error(`Could not clear the P28-A5 low-visibility QA grade: ${String(restoreState)}`);
+  }
 
   console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-d7-elite-enemy-lod0 catalog=${normal.enemyCatalogAssets} lods=${normal.enemyCatalogLod} telegraphs=${normal.enemyTelegraphs} protocol=${normal.protocolStatusVisuals} lifecycle=${normal.enemyLifecycleTracked} normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
