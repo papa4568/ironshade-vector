@@ -1,0 +1,150 @@
+name: EV-19 Roadmap Shadow Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'agent/roadmap-shadow-validation-corpus.json'
+      - 'agent/tools/roadmap-shadow-validation.mjs'
+      - 'agent/tests/roadmap-shadow-validation.mjs'
+      - 'agent/roadmap-shadow-simulator.json'
+      - 'agent/roadmap-shadow-simulator.schema.json'
+      - 'agent/tools/roadmap-shadow-simulator.mjs'
+      - 'agent/tests/roadmap-shadow-simulator.mjs'
+      - '.github/workflows/ev19-roadmap-shadow-validation.yml'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'docs/experimental-verification-archive.md'
+      - 'AGENTS.md'
+  push:
+    branches:
+      - main
+    paths:
+      - 'agent/roadmap-shadow-validation-corpus.json'
+      - 'agent/tools/roadmap-shadow-validation.mjs'
+      - 'agent/tests/roadmap-shadow-validation.mjs'
+      - 'agent/roadmap-shadow-simulator.json'
+      - 'agent/roadmap-shadow-simulator.schema.json'
+      - 'agent/tools/roadmap-shadow-simulator.mjs'
+      - 'agent/tests/roadmap-shadow-simulator.mjs'
+      - '.github/workflows/ev19-roadmap-shadow-validation.yml'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'docs/experimental-verification-archive.md'
+      - 'AGENTS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate:
+    name: Exact Candidate Roadmap Shadow Validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+          cache: npm
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Fetch pinned prediction and outcome commits
+        run: |
+          set -euo pipefail
+          for expected in \
+            d1ddb444ba86c9b23b97b0e1987486b6ebc6cca0 \
+            0d255886b39e65135ba9729773b82f7faeb0a859 \
+            48c3d9539d408875d8887777cc45c8c94e956347 \
+            87641dba570c1c389d4878a6996ad7bf872fbf67 \
+            2b3881a85a52bc0a23ba77febe1fadf66e7a03da \
+            2b1099df2a1869919683d3e2438217e09130ae88 \
+            8d97a4fcbf20dd540009388487fecd979ae3c265 \
+            a41aaaeb97df197664fb2f6f216c66768bb314fc \
+            452e91bd239a91441bd1dd8559833dd1edde2547
+          do
+            git fetch --no-tags origin "$expected"
+            git cat-file -e "$expected^{commit}"
+          done
+
+      - name: Run EV-7 isolation and EV-19 calibration regressions
+        run: |
+          node agent/tests/roadmap-shadow-simulator.mjs
+          node agent/tests/roadmap-shadow-validation.mjs
+
+      - name: Generate exact-SHA EV-19 validation evidence
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          mkdir -p .agent-roadmap-shadow-validation-ev19
+          node agent/tools/roadmap-shadow-validation.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-roadmap-shadow-validation-ev19/validation.json
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('.agent-roadmap-shadow-validation-ev19/validation.json', 'utf8'));
+          const currentSimulator = JSON.parse(readFileSync('agent/roadmap-shadow-simulator.json', 'utf8'));
+          const fail = message => { throw new Error(`EV19_EXACT_EVIDENCE_FAIL ${message}`); };
+
+          if (report.schema !== 'ironshade-roadmap-shadow-validation-report:v5' || report.schemaVersion !== 5) fail('report schema drifted');
+          if (report.taskId !== 'EV-19' || report.candidateSha !== process.env.CANDIDATE_SHA) fail('task/candidate binding mismatch');
+          if (report.mode !== 'advisory' || report.acceptedForEnforcement !== false || report.candidatePassGranted !== false || report.blocking !== false) fail('EV-19 must remain advisory and grant no acceptance');
+          if (currentSimulator.mode !== 'advisory' || JSON.stringify(currentSimulator.scenarios.map(entry => entry.taskId)) !== JSON.stringify(['P28-F6','P28-G1'])) fail('live EV-7 simulator was changed by calibration');
+
+          if (report.actualOutcome.pullRequest !== 366 || report.actualOutcome.baseSha !== '2b1099df2a1869919683d3e2438217e09130ae88' || report.actualOutcome.implementationHeadSha !== '8d97a4fcbf20dd540009388487fecd979ae3c265' || report.actualOutcome.finalHeadSha !== 'a41aaaeb97df197664fb2f6f216c66768bb314fc' || report.actualOutcome.mergeCommitSha !== '452e91bd239a91441bd1dd8559833dd1edde2547') fail('merged P28-PLOAD2 outcome binding drifted');
+          if (JSON.stringify(report.actualOutcome.productionSurfaces) !== JSON.stringify(['src/game/babylonCombatRenderer.ts','src/game/babylonRefineryMissionReadiness.ts','src/game/combatGraphicsBackendCore.ts','src/game/mapLoadReadinessTelemetry.ts'])) fail('merged P28-PLOAD2 production surface truth drifted');
+
+          if (report.predictionTrials.length !== 2) fail('prediction trial count drifted');
+          const original = report.predictionTrials[0];
+          const migrated = report.predictionTrials[1];
+          if (original.candidateSha !== 'd1ddb444ba86c9b23b97b0e1987486b6ebc6cca0' || original.configBlobSha !== '522efd6e86b0dfde647b3fbfc981c995c216e165' || original.predeclared !== true || original.directOutcomeHit !== true) fail('original EV-7 trial provenance/hit drifted');
+          if (migrated.candidateSha !== '87641dba570c1c389d4878a6996ad7bf872fbf67' || migrated.configBlobSha !== '387167310ae177441d9d28a1903fdab4354c7f99' || migrated.predeclared !== true || migrated.directOutcomeHit !== true) fail('AO-6 trial provenance/hit drifted');
+          if (original.lineage?.migrationCommit !== '48c3d9539d408875d8887777cc45c8c94e956347' || original.lineage?.resolvedPath !== 'src/game/combatGraphicsBackendCore.ts' || original.lineage?.predatesOutcome !== true) fail('pre-outcome lineage drifted');
+          if (report.trialRetirement.commit !== '2b3881a85a52bc0a23ba77febe1fadf66e7a03da' || report.trialRetirement.parent !== '87641dba570c1c389d4878a6996ad7bf872fbf67' || report.trialRetirement.beforeTaskId !== 'P28-PLOAD2' || report.trialRetirement.afterTaskId !== 'P28-F6' || report.trialRetirement.predatesOutcome !== true) fail('pre-outcome trial retirement drifted');
+
+          const o = original.surfacePrediction;
+          if (o.usefulPredictionCount !== 1 || o.falseAlarmCount !== 1 || o.missedIntegrationPressureCount !== 3 || o.precision !== 0.5 || o.recall !== 0.25) fail('original trial confusion matrix drifted');
+          if (JSON.stringify(o.truePositiveSurfaces) !== JSON.stringify(['src/game/combatGraphicsBackendCore.ts']) || JSON.stringify(o.falsePositiveSurfaces) !== JSON.stringify(['src/game/missionVisualReadinessGate.ts'])) fail('original trial surface classification drifted');
+          const m = migrated.surfacePrediction;
+          if (m.usefulPredictionCount !== 1 || m.falseAlarmCount !== 2 || m.missedIntegrationPressureCount !== 3 || m.precision !== 0.333333 || m.recall !== 0.25) fail('AO-6 trial confusion matrix drifted');
+          if (JSON.stringify(m.truePositiveSurfaces) !== JSON.stringify(['src/game/combatGraphicsBackendCore.ts']) || JSON.stringify(m.falsePositiveSurfaces) !== JSON.stringify(['src/game/combatGraphicsBackend.ts','src/game/missionVisualReadinessGate.ts'])) fail('AO-6 trial surface classification drifted');
+
+          if (report.supportedSignals.length !== 1 || report.supportedSignals[0].id !== 'expected-surface:shared-backend-readiness') fail('supported signal scope drifted');
+          if (report.repeatability.established !== true || report.repeatability.hitCount !== 2 || report.repeatability.distinctPredictionCandidateCount !== 2 || report.repeatability.distinctConfigBlobCount !== 2 || report.repeatability.distinctOutcomeCount !== 1 || report.repeatability.crossTaskGeneralizationEstablished !== false) fail('repeatability boundary drifted');
+          if (report.detectorCalibration.pass !== true || report.detectorCalibration.falsePositives !== 0 || report.detectorCalibration.falseNegatives !== 0 || report.detectorCalibration.falsePositiveBudget !== 0 || report.detectorCalibration.falseNegativeBudget !== 0) fail('detector calibration budget failed');
+          if (!report.detectorCalibration.controls.find(control => control.name === 'duplicate-prediction-rejected' && control.actual === false)) fail('duplicate snapshot negative control missing');
+          if (!report.detectorCalibration.controls.find(control => control.name === 'post-hoc-trial-rejected' && control.actual === false)) fail('post-hoc negative control missing');
+          if (!report.detectorCalibration.controls.find(control => control.name === 'non-hit-trial-rejected' && control.actual === false)) fail('non-hit negative control missing');
+
+          const unsupported = report.unsupportedSignals.map(signal => signal.id);
+          if (JSON.stringify(unsupported) !== JSON.stringify(['extension-point:missionVisualReadiness-observer','forbidden-dependency:public-backend-no-static-babylon-import','low-friction:surface-count'])) fail('unsupported signal boundary drifted');
+          if (report.unsupportedScenarios.length !== 1 || report.unsupportedScenarios[0].taskId !== 'P28-G1') fail('P28-G1 unsupported scope drifted');
+          if (report.conclusion.repeatablePredictiveValueFound !== true || report.conclusion.validatedSignalCount !== 1 || report.conclusion.lowFrictionScoreValidated !== false || report.conclusion.completeExpectedSurfaceSetValidated !== false || report.conclusion.crossTaskGeneralizationEstablished !== false || report.conclusion.enforcementEligible !== false || report.conclusion.ev20MayReviewOnlySupportedSignals !== true) fail('EV-19 conclusion boundary drifted');
+          if (report.isolation.productRuntimeMutated !== false || report.isolation.temporaryProbesPersisted !== false || report.isolation.simulatorScoringChanged !== false) fail('EV-19 isolation/rollback boundary failed');
+
+          console.log(`EV19_EXACT_EVIDENCE_PASS candidate=${report.candidateSha} signal=shared-backend-readiness trials=2 outcome=1 detector=0fp/0fn original=1tp/1fp/3fn migrated=1tp/2fp/3fn crossTask=false enforcement=false`);
+          NODE
+
+      - name: Upload exact-SHA EV-19 validation evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: roadmap-shadow-validation-ev19-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-roadmap-shadow-validation-ev19/validation.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
