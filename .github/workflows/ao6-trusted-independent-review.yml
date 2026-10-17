@@ -7,6 +7,7 @@ on:
       - '.github/workflows/ao6-trusted-independent-review.yml'
       - 'agent/tools/ao6-trusted-independent-review.mjs'
       - 'agent/tools/ao6-trusted-independent-review-v2.mjs'
+      - 'agent/tools/trusted-review-json-sanitizer.mjs'
       - 'agent/tools/trusted-independent-review-v3.mjs'
       - 'agent/tools/trusted-independent-review-v4.mjs'
       - 'agent/tools/trusted-independent-review-fetch-compat.mjs'
@@ -49,6 +50,7 @@ jobs:
         run: |
           node agent/tools/ao6-trusted-independent-review.mjs self-test
           node agent/tools/ao6-trusted-independent-review-v2.mjs self-test
+          node agent/tools/trusted-review-json-sanitizer.mjs self-test
           node agent/tools/trusted-independent-review-v3.mjs self-test
           node agent/tools/trusted-independent-review-v4.mjs self-test
           node agent/tools/trusted-independent-review-fetch-compat.mjs self-test
@@ -103,6 +105,7 @@ jobs:
         run: |
           node agent/tools/ao6-trusted-independent-review.mjs self-test
           node agent/tools/ao6-trusted-independent-review-v2.mjs self-test
+          node agent/tools/trusted-review-json-sanitizer.mjs self-test
           node agent/tools/trusted-independent-review-v3.mjs self-test
           node agent/tools/trusted-independent-review-v4.mjs self-test
           node agent/tools/trusted-independent-review-fetch-compat.mjs self-test
@@ -111,7 +114,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MODEL: auto
-        run: node --import ./agent/tools/trusted-independent-review-fetch-compat.mjs agent/tools/trusted-independent-review-v4.mjs run
+        run: node --import ./agent/tools/trusted-review-json-sanitizer.mjs --import ./agent/tools/trusted-independent-review-fetch-compat.mjs agent/tools/trusted-independent-review-v4.mjs run
       - name: Retain validated trusted-review result
         if: always()
         uses: actions/upload-artifact@v7
