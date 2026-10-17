@@ -160,8 +160,8 @@ export function selectOrchestrationReviewTask(currentGraph, { baseGraph = null }
 }
 
 export function selectProductReviewTask(currentGraph, { baseGraph = null } = {}) {
-  validateTaskGraph(currentGraph);
   if (!baseGraph) {
+    validateTaskGraph(currentGraph);
     const task = selectNextRoadmapTask(currentGraph);
     return task ? { task, mode: 'product' } : null;
   }
@@ -176,9 +176,11 @@ export function selectProductReviewTask(currentGraph, { baseGraph = null } = {})
       JSON.stringify(currentIds) === JSON.stringify(expectedIds),
       `product closeout for ${baseFirst.id} must remove only the first executable roadmap item without reordering or combining roadmap changes`,
     );
+    validateTaskGraph(currentGraph);
     return { task: baseFirst, mode: 'product-closeout' };
   }
 
+  validateTaskGraph(currentGraph);
   const removed = baseIds.filter(id => !currentIds.includes(id));
   assert(removed.length === 0, `product roadmap removed non-current task(s): ${removed.join(', ')}`);
   const task = selectNextRoadmapTask(currentGraph);
