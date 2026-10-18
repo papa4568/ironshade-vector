@@ -214,7 +214,7 @@ function validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha) {
     const base = JSON.parse(gitText(trustedBaseSha, metadataPath));
     const candidate = JSON.parse(gitText(candidateSha, metadataPath));
     const active = Array.isArray(base.roadmapIds) ? base.roadmapIds : [];
-    if (active.length < 2 || !active.every(id => typeof id === 'string')) return false;
+    if (active.length < 1 || !active.every(id => typeof id === 'string')) return false;
     const finishedId = active[0];
     const baseRoadmap = gitText(trustedBaseSha, 'docs/content-roadmap.md');
     const candidateRoadmap = gitText(candidateSha, 'docs/content-roadmap.md');
@@ -222,6 +222,8 @@ function validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha) {
     const candidateArchive = gitText(candidateSha, 'docs/content-roadmap-archive.md');
     const firstTask = baseRoadmap.split('\n').find(line => line.startsWith('- [ ] **'));
     if (!firstTask || !firstTask.startsWith('- [ ] **' + finishedId + ' —')) return false;
+    const title = firstTask.match(/^- \[ \] \*\*(.+?)\*\*/)?.[1];
+    if (!title) return false;
     const removedTask = firstTask + '\n\n';
     if (baseRoadmap.split(removedTask).length !== 2
         || candidateRoadmap !== baseRoadmap.replace(removedTask, '')) return false;
@@ -234,7 +236,7 @@ function validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha) {
     const archivedRest = baseArchive.slice(archivePrefix.length);
     if (!candidateArchive.endsWith(archivedRest)) return false;
     const inserted = candidateArchive.slice(archivePrefix.length, candidateArchive.length - archivedRest.length);
-    if (!inserted.startsWith('- [x] **' + finishedId + ' —')
+    if (!inserted.startsWith('- [x] **' + title + '**')
         || !inserted.includes('\n  - ')
         || !inserted.endsWith('\n\n')
         || inserted.split('\n').filter(line => line.startsWith('- [x] **')).length !== 1) return false;
@@ -419,8 +421,8 @@ function createSyntheticCandidate({ id, path, content = undefined, mode = undefi
 
 // Multi-file calibration uses separate immutable synthetic commits. The
 // established EV-24 single-path helper is kept unchanged as a control.
-function createSyntheticRoadmapCandidate({ id, changes }) {
-  let parent = EV18_REFERENCE_SHA;
+function createSyntheticRoadmapCandidate({ id, changes, baseSha = EV18_REFERENCE_SHA }) {
+  let parent = baseSha;
   for (const [index, { path, content }] of changes.entries()) {
     syntheticCommitCounter += 1;
     const indexPath = '/tmp/ironshade-product-closeout-' + process.pid + '-' + syntheticCommitCounter;
@@ -502,8 +504,10 @@ function roadmapCloseoutBoundaryCalibration() {
   assert.notEqual(roadmap, expectedRoadmap, 'closeout calibration must change the active roadmap');
   const archive = gitText(base, archivePath);
   const heading = '## P28 — Babylon flagship visual-quality overhaul\n\n';
+  const exactTaskTitle = taskLine.match(/^- \[ \] \*\*(.+?)\*\*/)?.[1];
+  assert(exactTaskTitle, 'synthetic fixture must retain the complete trusted task title');
   const expectedArchive = archive.replace(heading, heading
-    + '- [x] **' + firstId + ' — Synthetic closed item** — Completed in read-only calibration.\n  - Verified candidate proof evidence.\n\n');
+    + '- [x] **' + exactTaskTitle + '** — Completed in read-only calibration.\n  - Verified candidate proof evidence.\n\n');
   const expectedMetadata = structuredClone(metadata);
   expectedMetadata.roadmapIds.shift();
   const remaining = new Set(expectedMetadata.roadmapIds);
@@ -524,6 +528,9 @@ function roadmapCloseoutBoundaryCalibration() {
     'trusted first-item closeout and mechanically synchronized sidecar must pass');
 
   const attacks = [
+    { id: 'mismatched-archive-title', changes: [changes[0], {
+      path: archivePath, content: expectedArchive.replace('- [x] **' + exactTaskTitle + '**', '- [x] **' + firstId + ' — Impostor title**'),
+    }, changes[2]] },
     { id: 'metadata-without-roadmap', changes: [{ path: metadataPath, content: JSON.stringify(expectedMetadata) }] },
     { id: 'archive-missing', changes: [changes[0], changes[2]] },
     { id: 'wrong-dependency-pruning', changes: [changes[0], changes[1], {
@@ -541,7 +548,36 @@ function roadmapCloseoutBoundaryCalibration() {
     assert.equal(validProductRoadmapCloseoutMetadata(base, candidate), false,
       'roadmap-closeout protected-metadata boundary missed attack ' + attack.id);
   }
-  return { accepted: true, attacks: attacks.length, falsePositives: 0, falseNegatives: 0 };
+  // A completed final roadmap item must be archival-eligible too.
+  const loneMetadata = structuredClone(metadata);
+  loneMetadata.roadmapIds = [firstId];
+  for (const id of Object.keys(loneMetadata.overrides ?? {})) {
+    if (id !== firstId) delete loneMetadata.overrides[id];
+    else if (Array.isArray(loneMetadata.overrides[id].dependsOn)) delete loneMetadata.overrides[id].dependsOn;
+  }
+  const loneRoadmap = roadmap.split('\n').filter(line => line === taskLine || !line.startsWith('- [ ] **')).join('\n');
+  const loneBase = createSyntheticRoadmapCandidate({
+    id: 'last-active-item-baseline',
+    changes: [
+      { path: roadmapPath, content: loneRoadmap },
+      { path: metadataPath, content: JSON.stringify(loneMetadata, null, 2) + '\n' },
+    ],
+  });
+  const emptyMetadata = structuredClone(loneMetadata);
+  emptyMetadata.roadmapIds = [];
+  delete emptyMetadata.overrides[firstId];
+  const loneCandidate = createSyntheticRoadmapCandidate({
+    id: 'last-active-item-closeout',
+    baseSha: loneBase,
+    changes: [
+      { path: roadmapPath, content: loneRoadmap.replace(taskLine + '\n\n', '') },
+      { path: archivePath, content: expectedArchive },
+      { path: metadataPath, content: JSON.stringify(emptyMetadata, null, 2) + '\n' },
+    ],
+  });
+  assert.equal(validProductRoadmapCloseoutMetadata(loneBase, loneCandidate), true,
+    'closing the final active roadmap item must retain its validated archive and synchronized empty metadata');
+  return { accepted: true, attacks: attacks.length, lastItemAccepted: true, falsePositives: 0, falseNegatives: 0 };
 }
 
 function selfTest() {
