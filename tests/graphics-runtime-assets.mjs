@@ -62,3 +62,28 @@ if (!existsSync(deliveredManifest)) {
   await copyFile(generatedManifest, deliveredManifest);
 }
 await runHeavyAssetManifest('verify-dist');
+
+// The F1 packed-source acceptance is a shipped-art invariant, not a source-file
+// assertion. Inspect the exact delivered manifest after the normal ZIP/GLB
+// inventory verifies public-to-dist byte identity.
+const deliveredArt = JSON.parse(await readFile(deliveredManifest, 'utf8'));
+const highResolutionRefineryMaps = deliveredArt.assets.filter(asset =>
+  asset.type === 'ktx2' && asset.path.startsWith('assets/materials/premium-pbr/p28f1/'));
+assert(highResolutionRefineryMaps.length === 16, `P28-F1 must package sixteen authored refinery maps, got ${highResolutionRefineryMaps.length}`);
+let deliveredArtBytes = 0;
+for (const asset of highResolutionRefineryMaps) {
+  assert(asset.runtimeReferenced && asset.premiumQualified, `P28-F1 delivered map is not a qualified runtime material: ${asset.path}`);
+  assert(asset.qualityFlags.length === 0, `P28-F1 delivered map has art quality flags: ${asset.path}: ${asset.qualityFlags.join(',')}`);
+  assert(asset.texture?.width === 2048 && asset.texture?.height === 2048
+    && asset.texture?.mipLevels === 12 && asset.texture?.fullChain === true,
+    `P28-F1 delivered map lost 2K source resolution or its full mip pyramid: ${asset.path}`);
+  deliveredArtBytes += asset.onDiskBytes;
+}
+assert(deliveredArtBytes >= 90_000_000, `P28-F1 packaged texture payload is unexpectedly small: ${deliveredArtBytes}`);
+const oldRefineryMaps = deliveredArt.assets.filter(asset =>
+  asset.type === 'ktx2'
+    && asset.path.startsWith('assets/materials/premium-pbr/')
+    && !asset.path.includes('/p28f1/'));
+assert(oldRefineryMaps.every(asset => !asset.runtimeReferenced), 'P28-F1 live materials must not fall back to the old 512px maps');
+console.log(`P28_F1_PACKAGED_REFINERY_ART_PASS runtimeMaps=${highResolutionRefineryMaps.length} resolution=2048 shippedBytes=${deliveredArtBytes} legacyRuntimeBindings=0`);
+
