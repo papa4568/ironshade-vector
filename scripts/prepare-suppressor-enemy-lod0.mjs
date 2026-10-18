@@ -1,3 +1,4 @@
+import { upgradeHeroLod0 } from './lib/heavy-hero-lod0.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,7 +77,7 @@ function setScale(gltf, name, scale) {
 }
 
 export function buildSuppressorEnemyLod0Glb() {
-  const source = buildVanguardOperatorLod0Glb();
+  const source = buildVanguardOperatorLod0Glb({ premium: false });
   const { gltf, binary } = parseGlb(source);
 
   gltf.asset.generator = 'Ironshade Vector P28-D5 Suppressor Enemy LOD0 deterministic generator';
@@ -193,7 +194,8 @@ export function buildSuppressorEnemyLod0Glb() {
     },
   };
 
-  return encodeGlb(gltf, binary);
+  const built = encodeGlb(gltf, binary);
+  return upgradeHeroLod0(built, 'suppressor');
 }
 
 export async function writeSuppressorEnemyLod0() {
