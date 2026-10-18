@@ -139,8 +139,9 @@ async function loadLocalGlb(spec: { url: string; id: string }, targetScene: Scen
     const gltfPlugin = plugin as typeof plugin & { preprocessUrlAsync: (url: string) => Promise<string> };
     const originalPreprocessUrlAsync = gltfPlugin.preprocessUrlAsync.bind(gltfPlugin);
     gltfPlugin.preprocessUrlAsync = async url => {
-      if (!url.endsWith('refinery-decal-atlas.png')) return originalPreprocessUrlAsync(url);
-      const atlas = await readFileAsync(resolve(dirname(filePath), 'refinery-decal-atlas.png'));
+      if (!url.endsWith('refinery-decal-atlas-f5.png') && !url.endsWith('refinery-decal-atlas.png')) return originalPreprocessUrlAsync(url);
+      const atlasName = url.endsWith('refinery-decal-atlas-f5.png') ? 'refinery-decal-atlas-f5.png' : 'refinery-decal-atlas.png';
+      const atlas = await readFileAsync(resolve(dirname(filePath), atlasName));
       externalAtlasLoads += 1;
       return `data:image/png;base64,${atlas.toString('base64')}`;
     };
