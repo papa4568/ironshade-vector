@@ -8,6 +8,7 @@ import {
   createRefineryF5DecalPng,
   createRefineryF5EffectPixels,
   createRefineryF5DecalPixels,
+  REFINERY_F5_LIVE_MODEL_PATHS,
 } from '../tools/prepare-refinery-f5-atlases.mjs';
 import { REFINERY_DECAL_TARGETS } from '../scripts/prepare-refinery-decal-atlas.mjs';
 import { REFINERY_ROUTE_DECAL_TARGETS } from '../scripts/prepare-refinery-route-decals.mjs';
@@ -71,8 +72,10 @@ for (let row = 0; row < 2; row += 1) {
 }
 assert.equal(new Set(hashes).size, 4, 'P28-F5 particle families must not reuse duplicate atlas imagery');
 
-const targets = [...new Set([...REFINERY_DECAL_TARGETS, ...REFINERY_ROUTE_DECAL_TARGETS].map(target => target.relativePath))];
-assert(targets.length >= 15, 'P28-F5 must reach machinery and route decal LODs, not one showpiece');
+const targets = REFINERY_F5_LIVE_MODEL_PATHS;
+assert(targets.length >= 7 && targets.some(path => path.endsWith('-lod0.glb'))
+  && targets.some(path => path.endsWith('-lod1.glb')),
+  'P28-F5 must reach multiple premium route and machinery LODs, not one showpiece');
 for (const target of targets) {
   const glb = await readFile(at('public/assets/models/' + target));
   assert(glb.subarray(0, 4).toString() === 'glTF');
