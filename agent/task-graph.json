@@ -483,7 +483,7 @@
       "id": "AO-11",
       "title": "Permit only trusted, mechanically validated product-roadmap metadata closeouts",
       "priority": 110,
-      "status": "verifying",
+      "status": "verified",
       "dependsOn": [
         "AO-10"
       ],
