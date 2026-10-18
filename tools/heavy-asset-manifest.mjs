@@ -176,6 +176,13 @@ function flagsFor(record) {
 export async function createHeavyManifest({ root = ROOT, assetRoot = resolve(root, 'public/assets') } = {}) {
   const registry = await readFile(resolve(root, 'src/game/graphicsAssetManifest.ts'), 'utf8');
   const referenced = new Set([...registry.matchAll(/['"](\/assets\/models\/[^'"]+\.glb)['"]/g)].map(m => m[1].slice(1)).filter(inHeavyScope));
+  // A generated KTX2 file is not proof of a shipped material being used:
+  // only literal surface bindings in the runtime material catalog count.
+  let materialSource = '';
+  try { materialSource = await readFile(resolve(root, 'src/game/babylonPremiumPbrSurfaceLibrary.ts'), 'utf8'); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  const boundTextures = new Set([...materialSource.matchAll(/(?:baseColorUrl|normalUrl|ormUrl|emissiveUrl):\s*`\$\{ROOT\}\/([^`]+\.ktx2)`/g)]
+    .map(match => 'assets/materials/premium-pbr/' + match[1]));
   const files = (await allFiles(assetRoot)).filter(file => inHeavyScope('assets/' + relative(assetRoot, file).replaceAll('\\', '/')));
   const assets = [];
   for (const file of files) {
@@ -187,7 +194,9 @@ export async function createHeavyManifest({ root = ROOT, assetRoot = resolve(roo
     const lod = /-lod([012])\.glb$/.exec(path)?.[1];
     const geometry = type === 'glb' ? measureGlb(bytes, path) : null;
     const texture = type === 'ktx2' ? measureKtx2(bytes, path) : type === 'png' ? pngInfo(bytes, path) : null;
-    const runtimeReferenced = type !== 'glb' || referenced.has(assetPath);
+    const runtimeReferenced = type === 'glb' ? referenced.has(assetPath)
+      : type === 'ktx2' ? boundTextures.has(assetPath)
+      : false;
     const record = {
       path: assetPath, category: categoryFor(assetPath), type, lod: lod === undefined ? null : Number(lod),
       runtimeReferenced, fileSha256: SHA(bytes), onDiskBytes: bytes.length,
@@ -201,6 +210,15 @@ export async function createHeavyManifest({ root = ROOT, assetRoot = resolve(roo
     record.qualityFlags = flagsFor(record);
     record.premiumQualified = record.runtimeReferenced && record.qualityFlags.length === 0 && (record.lod === 0 || record.type === 'ktx2');
     assets.push(record);
+  }
+  // External PNG atlases have to be referenced by a registered GLB, not just
+  // present on disk. Do not promote unbound decorative/padding files.
+  const referencedImages = new Set(assets.filter(a => a.type === 'glb' && a.runtimeReferenced)
+    .flatMap(a => a.geometry.embeddedTextures.filter(img => img.external)
+      .map(img => dirname(a.path) + '/' + img.uri)));
+  for (const asset of assets.filter(a => a.type === 'png')) {
+    asset.runtimeReferenced = referencedImages.has(asset.path);
+    asset.qualityFlags = flagsFor(asset);
   }
   const missing = sort([...referenced].filter(p => !assets.some(a => a.path === p)));
   check(missing.length === 0, 'registered runtime assets missing: ' + missing.join(', '));
