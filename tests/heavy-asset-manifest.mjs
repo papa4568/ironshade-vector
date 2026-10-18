@@ -27,12 +27,14 @@ assert(base.materialChannels.includes('baseColor') && base.materialChannels.incl
 assert(base.embeddedTextures.length === 4, 'must measure embedded reference texture maps');
 assert(base.embeddedTextures.every(t => t.dimensions[0] === 4 && t.dimensions[1] === 4), 'must report source image dimensions');
 assert(base.meaningfulBytes > 0, 'actual geometry/image payload must be counted');
+assert(base.sourceBounds?.size.every(Number.isFinite) && base.sourceBounds.size.some(value => value > 0), 'GLB source dimensions must report geometric bounds');
 
 const inflated = mutateGlbJson(premium, gltf => { gltf.extras = { syntheticPadding: 'x'.repeat(4096) }; });
 const padded = measureGlb(inflated, 'padded');
 assert(inflated.length > premium.length + 4000, 'padding fixture must increase shipped file bytes');
 assert(padded.meaningfulBytes === base.meaningfulBytes, 'synthetic JSON padding must never inflate premium source bytes');
 assert.deepEqual(padded.geometryHashes, base.geometryHashes, 'metadata padding must not change geometry content identity');
+assert.deepEqual(padded.sourceBounds, base.sourceBounds, 'metadata padding must not influence measured geometry dimensions');
 
 const oversizedView = mutateGlbJson(premium, gltf => {
   gltf.bufferViews[0].byteLength += 16; // Unused trailing view bytes overlap neighboring live payload, never accessed by this accessor.
