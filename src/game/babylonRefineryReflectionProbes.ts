@@ -45,7 +45,6 @@ export class BabylonRefineryReflectionProbes {
 
   configure(anchors: readonly RefineryReflectionAnchor[], refineryRoot: TransformNode) {
     this.release();
-    const generation = ++this.generation;
     // The actual authored environment is captured, never actors, telegraphs, HUD
     // markers or a reflected copy of the hero itself (which would recurse).
     const heroMeshes = new Set<AbstractMesh>(anchors.flatMap(anchor => anchor.root.getChildMeshes(false)));
@@ -75,15 +74,7 @@ export class BabylonRefineryReflectionProbes {
         probe.dispose();
         continue;
       }
-      const record: LocalProbe = { probe, bindings, captured: false };
-      probe.cubeTexture.onAfterUnbindObservable.addOnce(() => {
-        if (this.generation !== generation || !this.probes.includes(record)) return;
-        record.captured = true;
-        this.completedCaptures += 1;
-        this.applyMaterials();
-        this.publishTelemetry();
-      });
-      this.probes.push(record);
+      this.probes.push({ probe, bindings, captured: false });
     }
     this.publishTelemetry();
   }
@@ -102,6 +93,16 @@ export class BabylonRefineryReflectionProbes {
     if (active && this.nextCapture < this.probes.length) {
       const record = this.probes[this.nextCapture++];
       record.probe.renderList?.push(...this.captureMeshes);
+      // An RTT may be visited once with an empty render list before its
+      // assigned frame. Count only captures armed with actual refinery geometry.
+      const generation = this.generation;
+      record.probe.cubeTexture.onAfterUnbindObservable.addOnce(() => {
+        if (this.generation !== generation || !this.probes.includes(record)) return;
+        record.captured = true;
+        this.completedCaptures += 1;
+        this.applyMaterials();
+        this.publishTelemetry();
+      });
       record.probe.cubeTexture.resetRefreshCounter();
     }
     this.publishTelemetry();
