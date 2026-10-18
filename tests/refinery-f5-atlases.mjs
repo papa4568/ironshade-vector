@@ -7,6 +7,7 @@ import {
   REFINERY_F5_EFFECT_ATLAS,
   createRefineryF5DecalPng,
   createRefineryF5EffectPixels,
+  createRefineryF5DecalPixels,
 } from '../tools/prepare-refinery-f5-atlases.mjs';
 import { REFINERY_DECAL_TARGETS } from '../scripts/prepare-refinery-decal-atlas.mjs';
 import { REFINERY_ROUTE_DECAL_TARGETS } from '../scripts/prepare-refinery-route-decals.mjs';
@@ -18,6 +19,32 @@ assert(sourcePng.length > 100_000, 'P28-F5 decal artwork must not be an empty/fl
 assert(sourcePng.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])));
 assert.equal(sourcePng.readUInt32BE(16), 1024);
 assert.equal(sourcePng.readUInt32BE(20), 1024);
+
+// Compare actual source alpha * shipped floor-decal opacity against the
+// Babylon attack-ring minimum rather than trusting GLB metadata markers.
+const telegraphSource = await readFile(at('src/game/babylonEnemyTelegraphs.ts'), 'utf8');
+assert(telegraphSource.includes('material.emissiveColor = signal;')
+  && telegraphSource.includes('0.66 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.1'),
+  'P28-F5 ground-cue comparison must be recalibrated if the real attack-ring opacity changes');
+const cueMinimumAlpha = 0.66 - 0.10;
+const pixels = createRefineryF5DecalPixels();
+let maxAlpha = 0;
+for (let i = 3; i < pixels.length; i += 4) maxAlpha = Math.max(maxAlpha, pixels[i]);
+const maxAtlasAlpha = maxAlpha / 255;
+let minGroundCueMargin = 1;
+for (const target of REFINERY_ROUTE_DECAL_TARGETS.filter(t => t.cards.some(card => card.plane === 'xz'))) {
+  const glb = await readFile(at('public/assets/models/' + target.relativePath));
+  const json = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8').trim());
+  const ground = json.materials.find(material => material.name === 'refinery-route-detail-atlas');
+  assert(ground?.alphaMode === 'BLEND' && ground.emissiveFactor === undefined && ground.emissiveTexture === undefined,
+    target.relativePath + ': ground decoration must not emit over gameplay attacks');
+  const effectiveGroundAlpha = ground.pbrMetallicRoughness.baseColorFactor[3] * maxAtlasAlpha;
+  const margin = cueMinimumAlpha - effectiveGroundAlpha;
+  assert(margin >= 0.10, target.relativePath + ': measured ground decal may obscure attack: margin=' + margin);
+  minGroundCueMargin = Math.min(minGroundCueMargin, margin);
+}
+console.log('P28_F5_TELEGRAPH_MARGIN_PASS min=' + minGroundCueMargin.toFixed(3)
+  + ' cueMin=' + cueMinimumAlpha.toFixed(2) + ' groundMax=' + (cueMinimumAlpha - minGroundCueMargin).toFixed(3));
 
 const effect = await readFile(at(REFINERY_F5_EFFECT_ATLAS.path));
 assert(effect.subarray(0, 12).equals(Buffer.from([0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a])));
