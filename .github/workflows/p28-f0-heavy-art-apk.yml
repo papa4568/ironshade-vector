@@ -1,0 +1,106 @@
+name: P28-F0 Heavy Art APK Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/heavy-asset-manifest.mjs'
+      - 'tests/heavy-asset-manifest.mjs'
+      - 'tests/graphics-content-assets.mjs'
+      - 'tests/graphics-runtime-assets.mjs'
+      - '.github/workflows/p28-f0-heavy-art-apk.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: p28-f0-heavy-art-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  read-only-apk-audit:
+    name: Exact Candidate Heavy Art ZIP Audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    steps:
+      - name: Check out immutable PR candidate
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Find trusted candidate bundle and built APK
+        id: producer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          web_name="ironshade-vector-pr-candidate-web-$CANDIDATE_SHA"
+          for attempt in $(seq 1 180); do
+            run_id="$(gh api "/repos/$REPO/actions/runs?event=pull_request&head_sha=$CANDIDATE_SHA&per_page=100" --jq ".workflow_runs | map(select(.name == \"PR Candidate Verification\" and .head_sha == \"$CANDIDATE_SHA\")) | first | .id // empty")"
+            if [[ -n "$run_id" ]]; then
+              artifacts="$(gh api "/repos/$REPO/actions/runs/$run_id/artifacts?per_page=100" --jq '.artifacts[].name')"
+              if grep -Fxq "$web_name" <<< "$artifacts" && grep -Fxq 'ironshade-vector-pr-android-apk' <<< "$artifacts"; then
+                echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+                echo "web_name=$web_name" >> "$GITHUB_OUTPUT"
+                echo "P28_F0_TRUSTED_ARTIFACTS_READY head=$CANDIDATE_SHA run=$run_id"
+                exit 0
+              fi
+              status="$(gh api "/repos/$REPO/actions/runs/$run_id" --jq '.status')"
+              if [[ "$status" == 'completed' ]]; then
+                echo "Trusted producer completed without both required exact-candidate artifacts" >&2
+                exit 1
+              fi
+            fi
+            sleep 20
+          done
+          echo "Timed out locating exact candidate APK and web bundle" >&2
+          exit 1
+
+      - name: Download trusted candidate web bundle
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.producer.outputs.web_name }}
+          run-id: ${{ steps.producer.outputs.run_id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+
+      - name: Download trusted candidate Android APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-pr-android-apk
+          run-id: ${{ steps.producer.outputs.run_id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+
+      - name: Verify measured artwork in exact packaged APK
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -s dist/assets/heavy-asset-manifest.json
+          test -s Ironshade-Vector-Android-Debug.apk
+          test -s Ironshade-Vector-Android-Debug.sha256
+          sha256sum -c Ironshade-Vector-Android-Debug.sha256
+          node tools/heavy-asset-manifest.mjs apk
+          node -e 'const r=require("./p28-f0-heavy-asset-apk.json"); if(r.assets.length < 20) process.exit(1); for(const v of Object.values(r.categories)) if(!Number.isFinite(v.compressedBytes)) process.exit(1);'
+          echo "P28_F0_EXACT_APK_AUDIT_PASS candidate=$CANDIDATE_SHA"
+
+      - name: Publish per-family APK art evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: p28-f0-heavy-art-apk-${{ github.event.pull_request.head.sha }}
+          path: p28-f0-heavy-asset-apk.json
+          if-no-files-found: error
+          retention-days: 30
