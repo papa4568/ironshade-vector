@@ -150,6 +150,22 @@ try {
   assert(duplicate.assets[1].duplicateOf === duplicate.assets[0].path, 'identical files cannot be credited twice');
   assert(duplicate.assets[1].uniqueMeaningfulBytes === 0, 'duplicate geometry cannot increase premium source bytes');
   assert(duplicate.categories.refinery.assetCount === 2 && duplicate.categories.refinery.shippedBytes === premium.length * 2, 'shipped and qualified bytes must be separate');
+  // Unbound texture payloads must remain visible as shipped bytes without
+  // purchasing fake qualified premium bytes.
+  const textureRoot = resolve(temp, 'public/assets/materials/premium-pbr');
+  await mkdir(textureRoot, { recursive: true });
+  await writeFile(resolve(textureRoot, 'orphan-base-color.ktx2'), ktx);
+  const unbound = await createHeavyManifest({ root: temp });
+  const orphan = unbound.assets.find(a => a.path.endsWith('orphan-base-color.ktx2'));
+  assert(orphan && !orphan.runtimeReferenced && !orphan.premiumQualified && orphan.uniqueMeaningfulBytes === 0,
+    'unbound generated texture must contribute zero qualified premium bytes');
+  assert(orphan.qualityFlags.includes('not-runtime-manifest-referenced'), 'unbound map must be explicitly flagged');
+  // Only the actual dynamic ROOT reference used by runtime material definitions binds it.
+  await writeFile(resolve(src, 'babylonPremiumPbrSurfaceLibrary.ts'),
+    'const ROOT = \'/assets/materials/premium-pbr\';\nconst material = { baseColorUrl: `${ROOT}/orphan-base-color.ktx2` };\n');
+  const bound = await createHeavyManifest({ root: temp });
+  const eligible = bound.assets.find(a => a.path === orphan.path);
+  assert(eligible?.runtimeReferenced && eligible.premiumQualified, 'runtime-bound KTX2 must become eligible for qualified source accounting');
   await rm(resolve(model, 'refinery-duplicate-lod0.glb'));
   await assert.rejects(createHeavyManifest({ root: temp }), /registered runtime assets missing/, 'missing registered asset must fail');
 } finally { await rm(temp, { recursive: true, force: true }); }
