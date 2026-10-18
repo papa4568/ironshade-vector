@@ -97,7 +97,7 @@ export function measureGlb(bytes, name = 'GLB') {
     check(Number.isInteger(count) && count > 0 && count % 3 === 0, name + ': invalid index count');
     triangles += count / 3;
     primitiveCount++;
-    if (pos.count <= 8 && count === 36 && JSON.stringify(pos.min) === '[-0.5,-0.5,-0.5]' && JSON.stringify(pos.max) === '[0.5,0.5,0.5]') unitCubePrimitives++;
+    if (pos.count <= 24 && count === 36 && JSON.stringify(pos.min) === '[-0.5,-0.5,-0.5]' && JSON.stringify(pos.max) === '[0.5,0.5,0.5]') unitCubePrimitives++;
     for (const accessorId of [...Object.values(primitive.attributes ?? {}), primitive.indices].filter(Number.isInteger)) {
       const accessor = accessors[accessorId];
       check(accessor && Number.isInteger(accessor.bufferView), name + ': accessor lacks buffer view');
@@ -183,7 +183,7 @@ function flagsFor(record) {
   const flags = [];
   if (record.lod === 0 && record.type === 'glb') {
     if (record.geometry.legacyCube) flags.push('box-derived-lod0');
-    if (record.geometry.vertices < 24 || record.geometry.triangles < 12) flags.push('placeholder-scale-geometry');
+    if (record.geometry.vertices <= 24 || record.geometry.triangles <= 12) flags.push('placeholder-scale-geometry');
     for (const channel of ['baseColor', 'normal', 'orm']) if (!record.materialChannels.includes(channel)) flags.push('missing-' + channel + '-map');
   }
   if (record.type === 'ktx2') {
