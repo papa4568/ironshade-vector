@@ -129,8 +129,11 @@ for (const kind of refineryKinds) {
     assert.equal(canvas.dataset.babylonAmbientParticles, 'pooled:dust+sparks+vapor+debris');
     assert.equal(canvas.dataset.babylonAmbientParticleCounts, 'dust:128/128|sparks:48/48|vapor:24/24|debris:40/40');
     assert.equal(canvas.dataset.babylonAmbientParticlePoolSize, '240');
+    assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 0,
+      'P28-F5 must defer decorative KTX2 decode until the combat frame bootstrap completes.');
+    for (let warmup = 0; warmup < 240; warmup += 1) ambient.sync(high, 'asteroid-refinery');
     assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 1,
-      'P28-F5 four ambient pools must share one KTX2 GPU texture/decode.');
+      'P28-F5 four ambient pools must share one GPU texture after staged warmup.');
     assert.equal(canvas.dataset.babylonAmbientParticleDrawFamilies, '4');
     assert.equal(canvas.dataset.babylonAmbientGameplayCuePolicy, 'independent:1.00');
     assert.equal(canvas.dataset.babylonAmbientParticleSimulationOwnership, 'read-only-presentation');
