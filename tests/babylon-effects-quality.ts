@@ -131,7 +131,9 @@ for (const kind of refineryKinds) {
     assert.equal(canvas.dataset.babylonAmbientParticlePoolSize, '240');
     assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 0,
       'P28-F5 must defer decorative KTX2 decode until the combat frame bootstrap completes.');
-    for (let warmup = 0; warmup < 240; warmup += 1) ambient.sync(high, 'asteroid-refinery');
+    // Trigger the exact staged-attach boundary without depending on NullEngine wall-clock deltas.
+    (ambient as unknown as { elapsedSeconds: number }).elapsedSeconds = 3;
+    ambient.sync(high, 'asteroid-refinery');
     assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 1,
       'P28-F5 four ambient pools must share one GPU texture after staged warmup.');
     assert.equal(canvas.dataset.babylonAmbientParticleDrawFamilies, '4');
