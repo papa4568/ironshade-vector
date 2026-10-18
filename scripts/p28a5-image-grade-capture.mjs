@@ -231,7 +231,7 @@ try {
   if (!probeQaEnabled) throw new Error('P28-E4 probe capture QA requires an explicitly selected Babylon graphics path.');
   console.log('P28_E4_QA_BEGIN ' + await evaluate("document.querySelector('canvas')?.dataset.refineryReflectionProbes ?? ''"));
 
-  await waitFor(`(() => {
+  const reflectionEvidence = await waitFor(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
     const value = canvas?.dataset.refineryReflectionProbes ?? '';
     if (!value.startsWith('p28-e4-local-machinery-v1|')) return false;
@@ -248,11 +248,10 @@ try {
       && Number(fields.scheduled) >= 1
       && Number(fields.completed) >= 1
       && Number(fields['active-materials']) >= 1
-      && Number(fields.faces) === probes * 6;
+      && Number(fields.faces) === probes * 6 ? value : false;
   })()`, 'P28-E4 explicitly captured real localized PBR reflections', 45_000);
-  const reflectionEvidence = await evaluate(readGradeStateExpression);
-  normal.refineryReflections = reflectionEvidence.refineryReflections;
-  console.log('P28_E4_FLAGSHIP_REFLECTION_PROBES_PASS ' + reflectionEvidence.refineryReflections);
+  normal.refineryReflections = reflectionEvidence;
+  console.log('P28_E4_FLAGSHIP_REFLECTION_PROBES_PASS ' + reflectionEvidence);
 
   const enabled = await evaluate(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
