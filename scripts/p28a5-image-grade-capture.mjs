@@ -89,6 +89,7 @@ const readGradeStateExpression = `(() => {
     priority: canvas.dataset.effectPriority ?? '',
     stack: canvas.dataset.babylonPostStack ?? '',
     refineryWorldVisual: canvas.dataset.refineryWorldVisual ?? '',
+    refineryReflections: canvas.dataset.refineryReflectionProbes ?? '',
     refineryWorldMappedCount: Number(canvas.dataset.refineryWorldMappedCount ?? 0),
     refineryWorldAuthoredCount: Number(canvas.dataset.refineryWorldAuthoredCount ?? 0),
     refineryWorldFallbackCount: Number(canvas.dataset.refineryWorldFallbackCount ?? 0),
@@ -220,6 +221,26 @@ try {
     || !normal.sceneTelemetry.includes('materials:')) {
     throw new Error(`P28-D7 normal Flagship elite LOD0 proof is not deterministic: ${JSON.stringify(normal)}`);
   }
+
+  await waitFor(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
+    const value = canvas?.dataset.refineryReflectionProbes ?? '';
+    if (!value.startsWith('p28-e4-local-machinery-v1|')) return false;
+    const fields = Object.fromEntries(value.split('|').slice(1).map(field => {
+      const split = field.indexOf(':');
+      return [field.slice(0, split), field.slice(split + 1)];
+    }));
+    const probes = Number(fields.probes);
+    return fields.state === 'local' && probes >= 4
+      && Number(fields.materials) >= probes
+      && Number(fields['active-materials']) > 0
+      && Number(fields['capture-geometry']) > 0
+      && Number(fields.scheduled) === probes
+      && Number(fields.completed) === probes
+      && Number(fields.faces) === probes * 6;
+  })()`, 'P28-E4 completed local PBR cubemap captures', 90_000);
+  const reflectionEvidence = await evaluate(readGradeStateExpression);
+  console.log('P28_E4_FLAGSHIP_REFLECTION_PROBES_PASS ' + reflectionEvidence.refineryReflections);
 
   const enabled = await evaluate(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');

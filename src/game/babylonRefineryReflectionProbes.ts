@@ -91,7 +91,9 @@ export class BabylonRefineryReflectionProbes {
   sync(budget: RenderBudgetSnapshot) {
     // Explicit performance mode or measured adaptive pressure returns to the
     // existing global IBL without destroying already captured GPU resources.
-    const active = budget.tierName !== 'performance' && budget.refineryIblScale > 0;
+    const qaIblDisabled = this.canvas.dataset.graphicsPathSelection === 'qa-explicit'
+      && this.canvas.dataset.refineryIblQa === 'off';
+    const active = budget.tierName !== 'performance' && budget.refineryIblScale > 0 && !qaIblDisabled;
     if (active !== this.active) {
       this.active = active;
       this.applyMaterials();
@@ -121,6 +123,8 @@ export class BabylonRefineryReflectionProbes {
 
   private publishTelemetry() {
     const bound = this.probes.reduce((total, record) => total + record.bindings.length, 0);
+    const activeMaterials = this.probes.reduce((total, record) => total + record.bindings.filter(binding =>
+      !binding.mesh.isDisposed() && binding.mesh.material === binding.local).length, 0);
     // RGBA8 six-face allocation with a full mip pyramid; conservative byte estimate.
     const faceBytes = REFINERY_REFLECTION_PROFILE.faceSize ** 2 * 4;
     const estimatedBytes = Math.ceil(this.probes.length * 6 * faceBytes * 4 / 3);
@@ -129,6 +133,7 @@ export class BabylonRefineryReflectionProbes {
       'state:' + (this.active ? 'local' : 'global-ibl'),
       'probes:' + this.probes.length,
       'materials:' + bound,
+      'active-materials:' + activeMaterials,
       'capture-geometry:' + this.captureMeshes.length,
       'faces:' + this.probes.length * 6,
       'scheduled:' + this.nextCapture,

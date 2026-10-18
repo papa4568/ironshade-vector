@@ -246,9 +246,16 @@ const localReflections = new BabylonRefineryReflectionProbes(reflectionScene, re
 localReflections.configure([{ id: 'processor-0', family: 'processor', root: heroRoot }], environmentRoot);
 assert.equal(localReflections.probeCount, 1, 'Focal machinery must own a localized probe.');
 assert.equal(localReflections.materialCount, 1, 'Every eligible focal PBR surface must get a local binding.');
-assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /probes:1\|materials:1\|capture-geometry:1\|faces:6\|scheduled:0\|completed:0/);
+assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /probes:1\|materials:1\|active-materials:0\|capture-geometry:1\|faces:6\|scheduled:0\|completed:0/);
 localReflections.sync(highSnapshot);
 assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /scheduled:1\|completed:0/, 'Static probes schedule one six-face capture per frame.');
+reflectionCanvas.dataset.graphicsPathSelection = 'qa-explicit';
+reflectionCanvas.dataset.refineryIblQa = 'off';
+localReflections.sync(highSnapshot);
+assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /state:global-ibl/, 'QA IBL-off screenshots must disable local probes alongside global IBL.');
+reflectionCanvas.dataset.refineryIblQa = 'on';
+localReflections.sync(highSnapshot);
+assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /state:local/, 'QA IBL-on restores local probes.');
 localReflections.sync(highSnapshot);
 assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /scheduled:1\|completed:0/, 'Stable frames must not recapture probes.');
 localReflections.sync(performanceSnapshot);
