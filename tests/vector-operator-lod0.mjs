@@ -104,7 +104,7 @@ for (const mesh of gltf.meshes ?? []) {
   }
 }
 
-assert((gltf.materials?.length ?? 0) === 4, 'Vector LOD0 must provide suit, armor, equipment, and emissive materials');
+assert((gltf.materials?.length ?? 0) === 5, 'Vector LOD0 must retain suit, armor, equipment, and emissive plus a new authored detail material');
 for (const material of gltf.materials) {
   const pbr = material.pbrMetallicRoughness;
   assert(Number.isInteger(pbr?.baseColorTexture?.index), `${material.name} is missing base color`);
