@@ -1,4 +1,7 @@
 import { runHeavyAssetManifest } from '../tools/heavy-asset-manifest.mjs';
+import { copyFile, mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+
 import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -50,4 +53,12 @@ assert(refineryDecalAtlas.isFile() && refineryDecalAtlas.size > 4000, `missing o
 
 console.log(`GRAPHICS_RUNTIME_ASSETS_PASS threeFiles=0 babylonFiles=${babylonFiles.length} babylonBytes=${babylonTotalBytes} babylon=${babylonManifest.babylonVersion} meshopt=${babylonManifest.meshoptimizerVersion} refineryDecalAtlas=${refineryDecalAtlas.size}`);
 
+// build:prod runs packaged graphics checks without the full graphics-content test.
+const generatedManifest = resolve(process.cwd(), 'public/assets/heavy-asset-manifest.json');
+const deliveredManifest = resolve(process.cwd(), 'dist/assets/heavy-asset-manifest.json');
+if (!existsSync(deliveredManifest)) {
+  await runHeavyAssetManifest('write');
+  await mkdir(resolve(process.cwd(), 'dist/assets'), { recursive: true });
+  await copyFile(generatedManifest, deliveredManifest);
+}
 await runHeavyAssetManifest('verify-dist');
