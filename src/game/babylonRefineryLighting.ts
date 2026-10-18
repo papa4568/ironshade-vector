@@ -17,6 +17,7 @@ import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import type { Scene } from '@babylonjs/core/scene';
 import { createRefineryContactDepthAlphaData } from './refineryContactDepth';
+import { BabylonRefineryPracticalFixtures, REFINERY_PRACTICAL_FIXTURE_PROFILE } from './babylonRefineryPracticalFixtures';
 import {
   REFINERY_BABYLON_LIGHTING_PROFILE,
   REFINERY_IBL_PANELS,
@@ -198,7 +199,7 @@ function isShadowReceiver(mesh: AbstractMesh) {
   if (mesh.getTotalVertices() <= 0) return false;
   const alpha = mesh.material?.alpha ?? 1;
   if (alpha < 0.82) return false;
-  return !/(ring|glyph|beam|marker|telegraph|protocol|status|lifecycle|muzzle|flash|signal|cue|objective-guide|hazard|grounding)/i.test(mesh.name);
+  return !/(ring|glyph|beam|marker|telegraph|protocol|status|lifecycle|muzzle|flash|signal|cue|objective-guide|hazard|p28-e3-refinery|grounding)/i.test(mesh.name);
 }
 
 function enableShadowReceiver(mesh: AbstractMesh) {
@@ -228,6 +229,7 @@ export class BabylonRefineryLighting {
   private readonly emergencyLight: PointLight;
   private readonly readabilityLight: PointLight;
   private readonly practicalLights: readonly [PointLight, PointLight];
+  private readonly practicalFixtures: BabylonRefineryPracticalFixtures;
   private readonly actorGroundingTexture: RawTexture;
   private readonly actorGroundingCoreMaterial: StandardMaterial;
   private readonly actorGroundingPenumbraMaterial: StandardMaterial;
@@ -294,6 +296,7 @@ export class BabylonRefineryLighting {
       light.range = practical.range;
       return light;
     }) as unknown as readonly [PointLight, PointLight];
+    this.practicalFixtures = new BabylonRefineryPracticalFixtures(scene);
 
     const groundingAlpha = createRefineryContactDepthAlphaData(REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize);
     this.actorGroundingTexture = RawTexture.CreateRGBATexture(
@@ -385,6 +388,7 @@ export class BabylonRefineryLighting {
     this.emergencyLight.setEnabled(enabled);
     this.readabilityLight.setEnabled(enabled);
     this.practicalLights.forEach(light => light.setEnabled(enabled));
+    this.practicalFixtures.setEnabled(enabled);
     if (enabled) return;
     this.actorGroundingCoreSource.setEnabled(false);
     this.actorGroundingPenumbraSource.setEnabled(false);
@@ -392,7 +396,7 @@ export class BabylonRefineryLighting {
       visual.core.setEnabled(false);
       visual.penumbra.setEnabled(false);
     }
-    for (const key of ['actorGrounding', 'actorGroundingActors', 'actorGroundingCuePriority', 'environmentShadowAnchor'] as const) {
+    for (const key of ['actorGrounding', 'actorGroundingActors', 'actorGroundingCuePriority', 'environmentShadowAnchor', 'refineryPracticalFixtures'] as const) {
       delete this.canvas.dataset[key];
     }
     this.shadowGenerator?.dispose();
@@ -451,6 +455,7 @@ export class BabylonRefineryLighting {
       light.position.set(scaled(world.w * spec.normalizedX), spec.height, scaled(world.h * spec.normalizedZ));
       light.intensity = enabled ? spec.intensity * tierScale * bossPulse : 0;
     });
+    this.practicalFixtures.sync(this.practicalLights, budget.practicalLightCount);
 
     const qaExplicit = this.canvas.dataset.graphicsPathSelection === 'qa-explicit';
     const qaIblDisabled = qaExplicit && this.canvas.dataset.refineryIblQa === 'off';
@@ -493,6 +498,11 @@ export class BabylonRefineryLighting {
       'shadow:' + (budget.shadowMapSize || 'off'),
       'actor-grounding:key-linked',
     ].join('+');
+    this.canvas.dataset.refineryPracticalFixtures = REFINERY_PRACTICAL_FIXTURE_PROFILE.id
+      + ':anchors-' + this.practicalLights.length
+      + ':emitters-' + this.practicalFixtures.sourceCount
+      + ':lit-' + budget.practicalLightCount
+      + ':no-extra-lights';
     this.canvas.dataset.environmentShadowAnchor = shadowAnchor.x.toFixed(2) + ',' + shadowAnchor.z.toFixed(2);
     this.canvas.dataset.environmentShadowBudget = budget.shadowMapSize
       ? 'key:' + budget.shadowMapSize
@@ -728,6 +738,7 @@ export class BabylonRefineryLighting {
     this.rimLight.dispose();
     this.emergencyLight.dispose();
     this.readabilityLight.dispose();
+    this.practicalFixtures.dispose();
     this.practicalLights.forEach(light => light.dispose());
     this.authoredIblTexture?.dispose();
     this.fallbackIblTexture?.dispose();

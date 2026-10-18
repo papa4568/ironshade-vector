@@ -2328,6 +2328,7 @@ async function p27A2BabylonBackendAudit() {
       renderDowngradeReason: canvas?.dataset.renderDowngradeReason ?? '',
       lightingProfile: canvas?.dataset.babylonLightingProfile ?? '',
       lightingBudget: canvas?.dataset.babylonLightingBudget ?? '',
+      refineryFixtures: canvas?.dataset.refineryPracticalFixtures ?? '',
       environmentIbl: canvas?.dataset.environmentIbl ?? '',
       environmentLighting: canvas?.dataset.environmentLighting ?? '',
       environmentShadowBudget: canvas?.dataset.environmentShadowBudget ?? '',
@@ -2680,6 +2681,7 @@ async function p27A2BabylonBackendAudit() {
     || !pbrMatch
     || Number(pbrMatch[1]) < 1
     || !lightingBudgetMatch
+    || !/^p28-e3-light-linked-emissive-v1:anchors-2:emitters-6:lit-(1|2):no-extra-lights$/.test(state.refineryFixtures)
     || !['high', 'balanced', 'performance'].includes(state.renderTier)
     || !['adaptive', 'flagship', 'performance'].includes(state.graphicsQuality)
     || !/^raw-cube:furnace-amber\+service-cyan:intensity-\d+\.\d{2}$/.test(state.environmentIbl)
@@ -2724,6 +2726,7 @@ async function p27A2BabylonBackendAudit() {
     throw new Error('P27-B11 Babylon stack-on capture telemetry invalid: ' + JSON.stringify(b11StackOn));
   }
 
+  console.log(`BROWSER_P28E3_REFINERY_PRACTICAL_FIXTURES_PASS viewport=${viewportMode} fixtures=${state.refineryFixtures} selectiveBloom=${state.environmentBloom} flagshipCapture=${p27b11IblOnScreenshotPath}`);
   console.log(`BROWSER_P27B11_BABYLON_PBR_LIGHTING_PASS viewport=${viewportMode} budget=${b11StackOn.budget} ibl=${b11StackOn.ibl} shadows=${b11StackOn.shadows} tone=${b11StackOn.tone} pbr=${b11StackOn.pbr} screenshots=${p27b11IblOffScreenshotPath}+${p27b11IblOnScreenshotPath}`);
   console.log(`BROWSER_P27D3_BABYLON_RESOURCE_QUALITY_PASS viewport=${viewportMode} tier=${state.renderTier} budget=${state.resourceBudget} geometry=${state.geometryStats} animation=${state.animationLod} reuse=${state.assetReusePolicy}`);
   console.log(`BROWSER_P27D4_BABYLON_EFFECTS_QUALITY_PASS viewport=${viewportMode} tier=${state.renderTier} frameMs=${state.renderFrameMs.toFixed(2)} budget=${state.effectsBudget} critical=${state.criticalCueBudget} weaponTransparency=${state.weaponTransparencyScale} abilityTransparency=${state.abilityTransparencyScale}`);
