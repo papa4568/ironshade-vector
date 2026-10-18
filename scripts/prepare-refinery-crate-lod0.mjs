@@ -1,3 +1,4 @@
+import { appendRefineryHeroDetails } from './lib/refinery-hero-geometry.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -194,6 +195,8 @@ function crateDefinition() {
     { name: 'refinery-crate-marker', mesh: 9, translation: [0.555, 0.54, 0], rotation: ROTATE_Y_90 },
     { name: 'refinery-crate-latch', mesh: 10, translation: [0.56, 0.27, 0] },
   ];
+
+  appendRefineryHeroDetails(geometries, nodes, 'crate');
 
   return {
     sceneName: 'refinery-crate-lod0',
