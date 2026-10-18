@@ -82,6 +82,9 @@ function color4FromHex(hex: number) {
 }
 
 export function isBabylonRefineryBloomSourceName(name: string) {
+  // P28-F2 flange/vent steel shares refinery family prefixes with emissive fixtures;
+  // exclude this authored non-emissive hardware before the legacy family matcher.
+  if (name.includes('-p28f2-')) return false;
   // Refinery fixture metal is intentionally excluded even when its name contains 'terminal'.
   if (name.startsWith('p28-e3-refinery-')) {
     return /p28-e3-refinery-(furnace-port|terminal-bank|warning-beacon|machinery-indicator)-emitter-/.test(name);
