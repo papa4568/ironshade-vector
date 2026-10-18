@@ -1,3 +1,4 @@
+import { upgradeHeroLod0 } from './lib/heavy-hero-lod0.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -125,7 +126,7 @@ function encodeGlb(gltf, binary) {
   return output;
 }
 
-export function buildVectorOperatorLod0Glb() {
+export function buildVectorOperatorLod0Glb({ premium = true } = {}) {
   const textureBuffers = buildTextures();
   const geometries = [
     ['vector-torso-shell', createChamferedBoxGeometry({ width: 0.54, height: 0.70, depth: 0.40, chamfer: 0.055 }), 0],
@@ -294,7 +295,8 @@ export function buildVectorOperatorLod0Glb() {
       },
     },
   };
-  return encodeGlb(gltf, binary);
+  const built = encodeGlb(gltf, binary);
+  return premium ? upgradeHeroLod0(built, 'vector') : built;
 }
 
 export async function writeVectorOperatorLod0() {
