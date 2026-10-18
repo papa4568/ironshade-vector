@@ -87,6 +87,7 @@ try {
   await assert.rejects(createHeavyManifest({ root: temp }), /registered runtime assets missing/, 'missing registered asset must fail');
 } finally { await rm(temp, { recursive: true, force: true }); }
 
+await runHeavyAssetManifest('write');
 const first = await runHeavyAssetManifest('verify');
 const second = await runHeavyAssetManifest('verify');
 assert.deepEqual(first, second, 'heavy-art report must be deterministic');
