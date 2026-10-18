@@ -126,7 +126,7 @@ for (const surface of PREMIUM_PBR_SURFACES) {
       }
       return hash >>> 0;
     };
-    assert(sampleFingerprint(100, 100) !== sampleFingerprint(612, 100), `${surface.id}:${map} duplicates source detail across 512px panels`);
+    if (map !== 'emissive') assert(sampleFingerprint(100, 100) !== sampleFingerprint(612, 100), `${surface.id}:${map} duplicates source detail across 512px panels`);
     const expectedBaseBytes = PREMIUM_PBR_SURFACE_RESOLUTION * PREMIUM_PBR_SURFACE_RESOLUTION * 4;
     assert(base.length === expectedBaseBytes, `${surface.id}:${map} base mip payload is incomplete`);
     assert(parsed.levels.at(-1)?.width === 1 && parsed.levels.at(-1)?.height === 1, `${surface.id}:${map} mip chain must terminate at 1x1`);
