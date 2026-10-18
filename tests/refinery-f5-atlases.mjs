@@ -7,7 +7,7 @@ import {
   REFINERY_F5_EFFECT_ATLAS,
   createRefineryF5DecalPng,
   createRefineryF5EffectPixels,
-} from '../scripts/prepare-refinery-f5-atlases.mjs';
+} from '../tools/prepare-refinery-f5-atlases.mjs';
 import { REFINERY_DECAL_TARGETS } from '../scripts/prepare-refinery-decal-atlas.mjs';
 import { REFINERY_ROUTE_DECAL_TARGETS } from '../scripts/prepare-refinery-route-decals.mjs';
 
