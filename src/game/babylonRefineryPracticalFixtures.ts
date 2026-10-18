@@ -41,7 +41,7 @@ export class BabylonRefineryPracticalFixtures {
   private readonly materials: PBRMaterial[] = [];
   private enabled = false;
 
-  constructor(private readonly scene: Scene) {
+  constructor(scene: Scene) {
     for (const assembly of REFINERY_PRACTICAL_FIXTURE_PROFILE.assemblies) {
       const root = new TransformNode('p28-e3-refinery-' + assembly.id + '-fixture-root', scene);
       const body = new PBRMaterial('p28-e3-refinery-' + assembly.id + '-housing-material', scene);
