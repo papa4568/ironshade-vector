@@ -107,7 +107,24 @@ export function measureGlb(bytes, name = 'GLB') {
       geometry.add(digest);
     }
   }
-  for (const img of json.images ?? []) {
+  // Only image data reachable from a material bound to a renderable primitive
+  // can contribute source bytes; extra images must not inflate art telemetry.
+  const renderedMaterialIds = new Set((json.meshes ?? []).flatMap(mesh =>
+    (mesh.primitives ?? []).map(primitive => primitive.material).filter(Number.isInteger)));
+  const boundImageIds = new Set();
+  for (const materialId of renderedMaterialIds) {
+    const material = json.materials?.[materialId];
+    if (!material) continue;
+    const pbr = material.pbrMetallicRoughness ?? {};
+    for (const slot of [pbr.baseColorTexture, pbr.metallicRoughnessTexture,
+      material.occlusionTexture, material.normalTexture, material.emissiveTexture]) {
+      const texture = Number.isInteger(slot?.index) ? json.textures?.[slot.index] : undefined;
+      const source = texture?.extensions?.KHR_texture_basisu?.source ?? texture?.source;
+      if (Number.isInteger(source) && json.images?.[source]) boundImageIds.add(source);
+    }
+  }
+  for (const [imageIndex, img] of (json.images ?? []).entries()) {
+    if (!boundImageIds.has(imageIndex)) continue;
     if (Number.isInteger(img.bufferView)) {
       const payload = readView(img.bufferView, 'texture');
       usedViewEnd.set(img.bufferView, payload.length);
@@ -119,8 +136,7 @@ export function measureGlb(bytes, name = 'GLB') {
   const channelSet = new Set();
   // Only materials actually bound to renderable primitives may supply required maps.
   // Unused material declarations and dangling texture indices cannot certify LOD0 art.
-  const renderedMaterialIds = new Set((json.meshes ?? []).flatMap(mesh =>
-    (mesh.primitives ?? []).map(primitive => primitive.material).filter(Number.isInteger)));
+
   const validMap = slot => {
     if (!Number.isInteger(slot?.index)) return false;
     const tex = json.textures?.[slot.index];
