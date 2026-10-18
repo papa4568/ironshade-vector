@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const ATLAS_NAME = 'refinery-decal-atlas.png';
-const ATLAS_PATH = resolve(process.cwd(), 'public/assets/models/environments', ATLAS_NAME);
+const ATLAS_NAMES = ['refinery-decal-atlas.png', 'refinery-decal-atlas-f5.png'];
+const ATLAS_DIR = resolve(process.cwd(), 'public/assets/models/environments');
 
 class NodeGlbXMLHttpRequest {
   constructor() {
@@ -57,10 +57,9 @@ class NodeGlbXMLHttpRequest {
 
   async send() {
     try {
-      if (!this._url.endsWith(ATLAS_NAME)) {
-        throw new Error(`Unexpected Node GLB external request: ${this._url}`);
-      }
-      const data = await readFile(ATLAS_PATH);
+      const atlasName = ATLAS_NAMES.find(name => this._url.endsWith(name));
+      if (!atlasName) throw new Error(`Unexpected Node GLB external request: ${this._url}`);
+      const data = await readFile(resolve(ATLAS_DIR, atlasName));
       this.status = 200;
       this.statusText = 'OK';
       this.readyState = 4;
