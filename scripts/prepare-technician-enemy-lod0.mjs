@@ -1,3 +1,4 @@
+import { upgradeHeroLod0 } from './lib/heavy-hero-lod0.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -82,7 +83,7 @@ function renameNode(gltf, from, to) {
 }
 
 export function buildTechnicianEnemyLod0Glb() {
-  const source = buildVanguardOperatorLod0Glb();
+  const source = buildVanguardOperatorLod0Glb({ premium: false });
   const { gltf, binary } = parseGlb(source);
 
   gltf.asset.generator = 'Ironshade Vector P28-D6 Technician Enemy LOD0 deterministic generator';
@@ -218,7 +219,8 @@ export function buildTechnicianEnemyLod0Glb() {
     },
   };
 
-  return encodeGlb(gltf, binary);
+  const built = encodeGlb(gltf, binary);
+  return upgradeHeroLod0(built, 'technician');
 }
 
 export async function writeTechnicianEnemyLod0() {

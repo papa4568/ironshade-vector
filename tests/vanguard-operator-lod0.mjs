@@ -105,7 +105,7 @@ for (const mesh of gltf.meshes ?? []) {
   }
 }
 
-assert((gltf.materials?.length ?? 0) === 4, 'Vanguard LOD0 must provide suit, armor, equipment, and emissive materials');
+assert((gltf.materials?.length ?? 0) === 5, 'Vanguard LOD0 must retain suit, armor, equipment, and emissive plus a new authored detail material');
 for (const material of gltf.materials) {
   const pbr = material.pbrMetallicRoughness;
   assert(Number.isInteger(pbr?.baseColorTexture?.index), `${material.name} is missing base color`);
@@ -116,7 +116,7 @@ for (const material of gltf.materials) {
 const emissiveMaterial = gltf.materials.find(material => material.name === 'vanguard-emissive');
 assert(Number.isInteger(emissiveMaterial?.emissiveTexture?.index), 'Vanguard LOD0 emissive material is missing its emissive texture');
 assert((emissiveMaterial?.emissiveFactor ?? []).some(value => value > 0), 'Vanguard LOD0 emissive response is disabled');
-assert((gltf.images?.length ?? 0) === 4, 'Vanguard LOD0 must embed four deterministic texture payloads');
+assert((gltf.images?.length ?? 0) === 8, 'Vanguard LOD0 must embed original four plus four new authored detail textures');
 for (const image of gltf.images) {
   assert(Number.isInteger(image.bufferView), `${image.name ?? 'Vanguard texture'} must be embedded in the GLB`);
   assert(image.mimeType === 'image/png' && !image.uri, `${image.name ?? 'Vanguard texture'} must use deterministic embedded PNG data`);

@@ -1,3 +1,4 @@
+import { upgradeHeroLod0 } from './lib/heavy-hero-lod0.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -57,7 +58,7 @@ function replacePrefix(name) {
 }
 
 export function buildSystemsOperatorLod0Glb() {
-  const { gltf, binary } = decodeGlb(buildVectorOperatorLod0Glb());
+  const { gltf, binary } = decodeGlb(buildVectorOperatorLod0Glb({ premium: false }));
 
   gltf.asset.generator = 'Ironshade Vector P28-D3 Systems LOD0 deterministic generator';
   gltf.scenes[0].name = 'systems-operator-lod0';
@@ -183,7 +184,8 @@ export function buildSystemsOperatorLod0Glb() {
     },
   };
 
-  return encodeGlb(gltf, binary);
+  const built = encodeGlb(gltf, binary);
+  return upgradeHeroLod0(built, 'systems');
 }
 
 export async function writeSystemsOperatorLod0() {

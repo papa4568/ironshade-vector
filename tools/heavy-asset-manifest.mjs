@@ -234,7 +234,14 @@ function flagsFor(record) {
 
 export async function createHeavyManifest({ root = ROOT, assetRoot = resolve(root, 'public/assets') } = {}) {
   const registry = await readFile(resolve(root, 'src/game/graphicsAssetManifest.ts'), 'utf8');
-  const referenced = new Set([...registry.matchAll(/['"](\/assets\/models\/[^'"]+\.glb)['"]/g)].map(m => m[1].slice(1)).filter(inHeavyScope));
+  // The refinery boss has a local, presentation-owned LOD0 selector rather than
+  // an entry in the shared graphics registry. Require a real literal source
+  // binding before the audited boss payload can qualify as runtime-used art.
+  let refineryBossSource = '';
+  try { refineryBossSource = await readFile(resolve(root, 'src/game/babylonRefineryBossPresentation.ts'), 'utf8'); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  const referenced = new Set([...('' + registry + '\n' + refineryBossSource).matchAll(/['"](\/assets\/models\/[^'"]+\.glb)['"]/g)]
+    .map(match => match[1].slice(1)).filter(inHeavyScope));
   // A generated KTX2 file is not proof of a shipped material being used:
   // only literal surface bindings in the runtime material catalog count.
   let materialSource = '';

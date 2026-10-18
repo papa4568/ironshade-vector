@@ -1,3 +1,4 @@
+import { upgradeHeroLod0 } from './lib/heavy-hero-lod0.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -140,7 +141,7 @@ function encodeGlb(gltf, binary) {
   return output;
 }
 
-export function buildVanguardOperatorLod0Glb() {
+export function buildVanguardOperatorLod0Glb({ premium = true } = {}) {
   const textureBuffers = buildTextures();
   const geometries = [
     ['vanguard-torso-shell', createChamferedBoxGeometry({ width: 0.66, height: 0.74, depth: 0.48, chamfer: 0.075 }), 0],
@@ -334,7 +335,8 @@ export function buildVanguardOperatorLod0Glb() {
       },
     },
   };
-  return encodeGlb(gltf, binary);
+  const built = encodeGlb(gltf, binary);
+  return premium ? upgradeHeroLod0(built, 'vanguard') : built;
 }
 
 export async function writeVanguardOperatorLod0() {
