@@ -220,7 +220,7 @@ function flagsFor(record) {
   const flags = [];
   if (record.lod === 0 && record.type === 'glb') {
     if (record.geometry.legacyCube) flags.push('box-derived-lod0');
-    if (record.geometry.vertices <= 24 || record.geometry.triangles <= 12) flags.push('placeholder-scale-geometry');
+    if (record.vertices <= 24 || record.triangles <= 12) flags.push('placeholder-scale-geometry');
     for (const channel of ['baseColor', 'normal', 'orm']) if (!record.materialChannels.includes(channel)) flags.push('missing-' + channel + '-map');
   }
   if (record.type === 'ktx2') {
