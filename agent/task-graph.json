@@ -3,7 +3,9 @@
   "schemaVersion": 1,
   "scope": "agent-orchestration-migration",
   "authority": {
-    "authoritativeForPatterns": ["AO-*"],
+    "authoritativeForPatterns": [
+      "AO-*"
+    ],
     "fallbackQueue": "docs/content-roadmap.md",
     "notes": "Compatibility mode: this graph governs only AO-* migration work. Product/game work remains selected from docs/content-roadmap.md until an explicit cutover phase is verified."
   },
@@ -21,7 +23,10 @@
         "A focused CI workflow validates the orchestration foundation when its files change.",
         "AGENTS.md documents the compatibility boundary so P28 selection behavior is unchanged."
       ],
-      "affectedDomains": ["agent-orchestration", "repository-governance"],
+      "affectedDomains": [
+        "agent-orchestration",
+        "repository-governance"
+      ],
       "proofs": [
         {
           "id": "graph-tests",
@@ -57,13 +62,18 @@
       "title": "Add roadmap compatibility adapter and sidecar task metadata",
       "priority": 20,
       "status": "verified",
-      "dependsOn": ["AO-1"],
+      "dependsOn": [
+        "AO-1"
+      ],
       "acceptance": [
         "Active roadmap items can be represented in the graph without manually duplicating their acceptance text.",
         "Roadmap order remains authoritative while dependency and proof metadata become machine-readable.",
         "Drift between roadmap IDs and graph metadata fails validation."
       ],
-      "affectedDomains": ["agent-orchestration", "roadmap"],
+      "affectedDomains": [
+        "agent-orchestration",
+        "roadmap"
+      ],
       "proofs": [
         {
           "id": "roadmap-adapter-tests",
@@ -93,13 +103,19 @@
       "title": "Add change-impact and affected-verification selection",
       "priority": 30,
       "status": "verified",
-      "dependsOn": ["AO-2"],
+      "dependsOn": [
+        "AO-2"
+      ],
       "acceptance": [
         "Changed files map to affected domains and focused verification commands.",
         "Unknown or high-risk impact expands verification rather than silently under-testing.",
         "Selection output is deterministic and machine-readable."
       ],
-      "affectedDomains": ["agent-orchestration", "verification", "testing"],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "testing"
+      ],
       "proofs": [
         {
           "id": "impact-tests",
@@ -129,13 +145,19 @@
       "title": "Add exact-candidate manifest and verification ledger",
       "priority": 40,
       "status": "verified",
-      "dependsOn": ["AO-3"],
+      "dependsOn": [
+        "AO-3"
+      ],
       "acceptance": [
         "Final candidates record task ID, base/head SHA, changed files, required proofs, CI evidence, artifact identity, and unresolved external QA.",
         "Verification evidence cannot be credited to a different candidate SHA.",
         "Future agents can read compact proof records instead of reconstructing completion from PR history."
       ],
-      "affectedDomains": ["agent-orchestration", "verification", "artifacts"],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "artifacts"
+      ],
       "proofs": [
         {
           "id": "candidate-evidence-tests",
@@ -165,13 +187,20 @@
       "title": "Deduplicate final verification and reuse candidate artifacts",
       "priority": 50,
       "status": "verified",
-      "dependsOn": ["AO-4"],
+      "dependsOn": [
+        "AO-4"
+      ],
       "acceptance": [
         "Expensive full-repository verification runs once for the exact final candidate unless evidence requires a rerun.",
         "Browser and Android validation consume reusable outputs from the same candidate where technically safe.",
         "Focused iteration remains fast while final release confidence is preserved."
       ],
-      "affectedDomains": ["ci", "verification", "android", "browser-e2e"],
+      "affectedDomains": [
+        "ci",
+        "verification",
+        "android",
+        "browser-e2e"
+      ],
       "proofs": [
         {
           "id": "candidate-artifact-tests",
@@ -206,14 +235,21 @@
       "title": "Add mandatory independent review and mechanical architecture proofs",
       "priority": 60,
       "status": "verified",
-      "dependsOn": ["AO-5"],
+      "dependsOn": [
+        "AO-5"
+      ],
       "acceptance": [
         "Final candidates support a separate read-only verifier context that attempts to disprove completion without creating a competing implementation.",
         "Final PR verification requires an actual trusted independent-review pass result bound to the exact current candidate SHA; missing, stale, malformed, or failed review evidence blocks completion.",
         "When no orchestration migration task is active, the independent-review packet automatically targets the first executable product-roadmap task so the gate remains useful after AO-6 is complete.",
         "Stable architectural invariants are mechanically checked where practical, and recurring deterministic failure classes can be promoted into reusable repository checks or telemetry."
       ],
-      "affectedDomains": ["agent-orchestration", "architecture", "review", "ci"],
+      "affectedDomains": [
+        "agent-orchestration",
+        "architecture",
+        "review",
+        "ci"
+      ],
       "proofs": [
         {
           "id": "architecture-invariants",
@@ -249,14 +285,21 @@
       "title": "Extend trusted independent review to experimental promotions",
       "priority": 70,
       "status": "verified",
-      "dependsOn": ["AO-6"],
+      "dependsOn": [
+        "AO-6"
+      ],
       "acceptance": [
         "Trusted-main review request parsing and exact-candidate packet resolution support EV-* promotion tasks without executing candidate-authored verifier code.",
         "When no AO task is active or closing, ordinary candidates still fall back to the first executable product-roadmap task exactly as AO-6 requires.",
         "Experimental task resolution derives the first EV promotion or a single-item closeout from the exact head/base experimental roadmap and fails closed on combined or reordered removals.",
         "Trusted-review self-tests cover EV request namespaces, experimental active/closeout selection, unsupported task namespaces, and fail-closed combined closeout behavior."
       ],
-      "affectedDomains": ["agent-orchestration", "verification", "review", "ci"],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "review",
+        "ci"
+      ],
       "proofs": [
         {
           "id": "trusted-ev-review-tests",
@@ -292,7 +335,9 @@
       "title": "Bootstrap trusted EV-9 exact-head observer",
       "priority": 80,
       "status": "verified",
-      "dependsOn": ["AO-7"],
+      "dependsOn": [
+        "AO-7"
+      ],
       "acceptance": [
         "A pull_request_target observer executes only exact-base checked-out trusted code while reading the PR head's PR Candidate workflow as untrusted Git data; it never checks out or executes candidate code.",
         "The trusted observer directly verifies the PR Candidate exact-head producer, runtime candidate output, exact-SHA review/browser/Android consumers, final evidence checkout, and rejects synthetic checkout refs.",
@@ -300,7 +345,12 @@
         "This prerequisite only lands the base-controlled trust mechanism and its proof. EV-9's live enforcement integration remains on PR #368 and begins only after this bootstrap is merged to trusted main.",
         "AO-8 uses the repository's introduced-verified closeout representation so the trusted reviewer targets this bootstrap; the final candidate gate remains authoritative and the bootstrap must not merge without its exact-SHA review pass."
       ],
-      "affectedDomains": ["agent-orchestration", "verification", "review", "ci"],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "review",
+        "ci"
+      ],
       "proofs": [
         {
           "id": "trusted-observer-tests",
@@ -335,7 +385,9 @@
       "title": "Permit trusted EV-9 live integration boundary",
       "priority": 90,
       "status": "verified",
-      "dependsOn": ["AO-8"],
+      "dependsOn": [
+        "AO-8"
+      ],
       "acceptance": [
         "The trusted exact-head observer permits candidate changes only to the fixed EV-9 evidence-independence implementation file set while continuing to pin unrelated agent helpers to trusted base objects.",
         "If any permitted EV-9 implementation file changes, PR Candidate Verification must contain the exact three-step EV-9 regression, enforcement, and evidence-upload block immediately after the source-bound candidate web artifact is published.",
@@ -343,7 +395,12 @@
         "This compatibility bootstrap changes only the trusted observer boundary; EV-9 policy, graph, enforcement implementation, archive transition, and live workflow integration remain exclusively on PR #368.",
         "AO-9 uses the repository's introduced-verified closeout representation so the trusted reviewer targets this prerequisite; it must not merge without exact-SHA technical proof and independent-review pass."
       ],
-      "affectedDomains": ["agent-orchestration", "verification", "review", "ci"],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "review",
+        "ci"
+      ],
       "proofs": [
         {
           "id": "trusted-observer-compat-tests",
@@ -378,14 +435,21 @@
       "title": "Harden trusted review publication against terminal controls",
       "priority": 100,
       "status": "verified",
-      "dependsOn": ["AO-9"],
+      "dependsOn": [
+        "AO-9"
+      ],
       "acceptance": [
         "Trusted-main review parsing removes non-whitespace C0 terminal-control bytes from model JSON string content before a validated verdict is published, while preserving visible semantic text and legal newline, carriage-return, and tab escapes.",
         "The fix does not weaken strict result validation, exact-SHA binding, trusted-main provenance checks, candidate-code isolation, or the product-roadmap fallback contract.",
         "Deterministic self-tests reproduce OSC-8 ESC/BEL hyperlink bytes and prove the published review payload remains strict-JSON-safe without losing the visible evidence reference.",
         "AO-10 uses the repository's introduced-verified closeout representation so the trusted reviewer targets this verifier-infrastructure prerequisite; it must not merge without exact-SHA technical proof and independent-review pass."
       ],
-      "affectedDomains": ["agent-orchestration", "verification", "review", "ci"],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "review",
+        "ci"
+      ],
       "proofs": [
         {
           "id": "trusted-review-parser-tests",
@@ -411,6 +475,54 @@
           "kind": "ci",
           "required": true,
           "description": "Agent Orchestration and PR Candidate Verification pass on the exact AO-10 candidate; the final candidate job may be rerun after the trusted verdict is published."
+        }
+      ],
+      "externalDependencies": []
+    },
+    {
+      "id": "AO-11",
+      "title": "Permit only trusted, mechanically validated product-roadmap metadata closeouts",
+      "priority": 110,
+      "status": "verifying",
+      "dependsOn": [
+        "AO-10"
+      ],
+      "acceptance": [
+        "The trusted-base EV-9 observer continues to reject all unrelated agent and workflow mutations, but accepts a changed agent/roadmap-metadata.json only when the Git diff removes exactly the first active product task, prepends one matching archive entry, and reproduces the exact sidecar synchronization with no other changes.",
+        "The observer self-test proves a legitimate closeout is accepted and rejects standalone metadata edits, missing archive evidence, dependency-pruning violations, unrelated metadata mutation, and changed roadmap order; the existing EV-18 production attack calibration and legacy compatibility remain green.",
+        "The separate user-authorized policy PR is independently reviewed against AO-11 rather than misidentified as the P28-F4 game-content implementation; product-roadmap fallback is unchanged for all ordinary PRs and exact-candidate build, Android, governance, independent review, and architecture gates must pass before merger."
+      ],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "roadmap",
+        "ci"
+      ],
+      "proofs": [
+        {
+          "id": "ev9-closeout-boundary-regression",
+          "kind": "test",
+          "required": true,
+          "description": "Trusted observer v11 self-test runs positive and adversarial closeout metadata calibration while retaining preexisting EV-18/EV-24 attacks.",
+          "command": "node agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs self-test"
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Architecture, exact-head trusted observer and protected consumer checks remain intact."
+        },
+        {
+          "id": "ao11-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Exact-SHA PR Candidate, Agent Orchestration, and Android gates pass for the reviewed verifier-policy candidate."
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "Trusted read-only reviewer assesses AO-11 policy scope and self-tests, rather than assuming P28-F4 art was changed in this separate prerequisite PR."
         }
       ],
       "externalDependencies": []
