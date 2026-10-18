@@ -160,7 +160,7 @@ assert.match(lightingSource, /needsShadowListRebuild\(workKey\)/, 'P28-P1 must g
 assert.match(lightingSource, /resolveRefineryTopologyToken\(this\.scene\.materials\)/, 'P28-P1 material-light rebuild decisions must use O(1) topology identity.');
 assert.match(lightingSource, /needsMaterialLightRebuild\(workKey\)/, 'P28-P1 must gate full material traversal behind topology/tier changes.');
 assert.match(lightingSource, /refineryPracticalFixtures/, 'P28-E3 must expose deterministic light-linked fixture telemetry.');
-assert.match(lightingSource, /this\\.practicalFixtures\\.sync\\(this\\.practicalLights, budget\\.practicalLightCount\\)/, 'P28-E3 fixture visibility must follow the existing adaptive practical-light budget.');
+assert(lightingSource.includes('this.practicalFixtures.sync(this.practicalLights, budget.practicalLightCount)'), 'P28-E3 fixture visibility must follow the existing adaptive practical-light budget.');
 assert.match(lightingSource, /refineryLightingWork/, 'P28-P1 must publish deterministic frame-to-rebuild telemetry for runtime profiling.');
 assert.match(lightingSource, /material-rebuilds:/, 'P28-P1 browser-visible telemetry must expose material-light rebuild counts.');
 assert.match(worldSource, /new PBRMaterial\('p27-b5-object-material-'/, 'Babylon refinery world fallback materials must use Babylon PBR.');
@@ -194,7 +194,7 @@ fixtures.sync(practicals, high.practicalLightCount);
 assert(emitterMeshes.every(mesh => mesh.isEnabled()), 'Flagship must show all six light-linked emissive optics.');
 for (const mesh of emitterMeshes) {
   assert(isBabylonRefineryBloomSourceName(mesh.name), 'Only explicit fixture emitter meshes should enter selective bloom.');
-  assert(mesh.material instanceof PBRMaterial && mesh.material.emissiveColor.length() > 0.5, 'Authored PBR lens needs real emissive radiance.');
+  assert(mesh.material instanceof PBRMaterial && mesh.material.emissiveColor.r + mesh.material.emissiveColor.g + mesh.material.emissiveColor.b > 0.5, 'Authored PBR lens needs real emissive radiance.');
   assert.equal(mesh.isPickable, false, 'Fixture lenses must not interfere with combat picking.');
   const anchor = mesh.name.endsWith('-furnace') ? practicals[0] : practicals[1];
   assert(mesh.getAbsolutePosition().subtract(anchor.position).length() < 2, 'Emission must be physically linked to its practical light.');
