@@ -102,12 +102,12 @@ assert(f5Decal.size > 100_000, 'P28-F5 heavyweight live decal PNG not packaged')
 const f5Effect = deliveredArt.assets.find(asset => asset.path === 'assets/effects/refinery-local-effects-f5.ktx2');
 assert(f5Effect?.runtimeReferenced && f5Effect.premiumQualified,
   'P28-F5 locally shipped effect atlas must be bound by the live Babylon particle renderer');
-assert(f5Effect.texture?.width === 1024 && f5Effect.texture?.height === 1024
-  && f5Effect.texture?.mipLevels === 11 && f5Effect.texture?.fullChain,
+assert(f5Effect.texture?.width === 512 && f5Effect.texture?.height === 512
+  && f5Effect.texture?.mipLevels === 10 && f5Effect.texture?.fullChain,
   'P28-F5 delivered KTX2 effect atlas lost its full mip chain');
 const f5DecalAsset = deliveredArt.assets.find(asset => asset.path === 'assets/models/environments/refinery-decal-atlas-f5.png');
 assert(f5DecalAsset?.runtimeReferenced, 'P28-F5 heavyweight route decal must be referenced by a shipped GLB');
 console.log('P28_F5_PACKAGED_ATLASES_PASS decalBytes=' + f5Decal.size
-  + ' effectBytes=' + f5Effect.onDiskBytes + ' effectMips=11');
+  + ' effectBytes=' + f5Effect.onDiskBytes + ' effectMips=10');
 
 
