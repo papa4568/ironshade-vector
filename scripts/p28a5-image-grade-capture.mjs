@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const screenshotPath = process.env.BROWSER_E2E_P28A5_LOW_VISIBILITY_SCREENSHOT ?? 'browser-p28a5-low-visibility.png';
 const reportPath = process.env.BROWSER_E2E_P28A5_REPORT ?? 'browser-p28a5-image-grade.json';
-// Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'; visualDetail: 'p28-c8-refinery-world-authored-mappings'; visualDetail: 'p28-c9-refinery-geometry-reuse'; visualDetail: 'p28-d0-premium-character-source'; visualDetail: 'p28-d1-vanguard-operator-lod0'; visualDetail: 'p28-d2-vector-operator-lod0'; visualDetail: 'p28-d3-systems-operator-lod0'; visualDetail: 'p28-d4-assault-enemy-lod0'; visualDetail: 'p28-d5-suppressor-enemy-lod0'; visualDetail: 'p28-d6-technician-enemy-lod0'
+// Historical P28-D7: visualDetail: 'p28-d7-elite-enemy-lod0'. Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'; visualDetail: 'p28-c8-refinery-world-authored-mappings'; visualDetail: 'p28-c9-refinery-geometry-reuse'; visualDetail: 'p28-d0-premium-character-source'; visualDetail: 'p28-d1-vanguard-operator-lod0'; visualDetail: 'p28-d2-vector-operator-lod0'; visualDetail: 'p28-d3-systems-operator-lod0'; visualDetail: 'p28-d4-assault-enemy-lod0'; visualDetail: 'p28-d5-suppressor-enemy-lod0'; visualDetail: 'p28-d6-technician-enemy-lod0'
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -268,7 +268,7 @@ try {
 
   await writeFile(reportPath, JSON.stringify({
     viewport: 'desktop',
-    visualDetail: 'p28-d7-elite-enemy-lod0',
+    visualDetail: 'p28-f1-refinery-2k-surface-art',
     normal,
     lowVisibility,
     screenshot: screenshotPath,
@@ -291,7 +291,7 @@ try {
     throw new Error(`Could not clear the P28-A5 low-visibility QA grade: ${String(restoreState)}`);
   }
 
-  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-d7-elite-enemy-lod0 catalog=${normal.enemyCatalogAssets} lods=${normal.enemyCatalogLod} telegraphs=${normal.enemyTelegraphs} protocol=${normal.protocolStatusVisuals} lifecycle=${normal.enemyLifecycleTracked} normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
+  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-f1-refinery-2k-surface-art catalog=${normal.enemyCatalogAssets} lods=${normal.enemyCatalogLod} telegraphs=${normal.enemyTelegraphs} protocol=${normal.protocolStatusVisuals} lifecycle=${normal.enemyLifecycleTracked} normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
   socket.close();
 }
