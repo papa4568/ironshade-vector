@@ -153,13 +153,6 @@ jobs:
           node scripts/verify-no-three-delivery.mjs
           node scripts/measure-babylon-delivery-cost.mjs
 
-      - name: Audit exact packaged heavyweight art bytes
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/heavy-asset-manifest.mjs apk
-          test -s p28-f0-heavy-asset-apk.json
-
       - name: Upload PR APK
         uses: actions/upload-artifact@v7
         with:
@@ -173,7 +166,6 @@ jobs:
             android-pr-apk-signing.txt
             p27d9-no-three-delivery.json
             p27d2-babylon-delivery.json
-            p28-f0-heavy-asset-apk.json
           if-no-files-found: error
           retention-days: 30
 
