@@ -98,13 +98,25 @@ export function measureGlb(bytes, name = 'GLB') {
     } else if (img.uri) embedded.push({ name: img.name ?? '', uri: img.uri, mimeType: img.mimeType ?? null, external: true });
   }
   const channelSet = new Set();
-  for (const material of json.materials ?? []) {
+  // Only materials actually bound to renderable primitives may supply required maps.
+  // Unused material declarations and dangling texture indices cannot certify LOD0 art.
+  const renderedMaterialIds = new Set((json.meshes ?? []).flatMap(mesh =>
+    (mesh.primitives ?? []).map(primitive => primitive.material).filter(Number.isInteger)));
+  const validMap = slot => {
+    if (!Number.isInteger(slot?.index)) return false;
+    const tex = json.textures?.[slot.index];
+    const imageId = tex?.extensions?.KHR_texture_basisu?.source ?? tex?.source;
+    return Number.isInteger(imageId) && !!json.images?.[imageId];
+  };
+  for (const materialId of renderedMaterialIds) {
+    const material = json.materials?.[materialId];
+    check(material, name + ': renderable primitive has invalid material index');
     const pbr = material.pbrMetallicRoughness ?? {};
-    if (pbr.baseColorTexture) channelSet.add('baseColor');
-    if (pbr.metallicRoughnessTexture) channelSet.add('orm');
-    if (material.occlusionTexture) channelSet.add('occlusion');
-    if (material.normalTexture) channelSet.add('normal');
-    if (material.emissiveTexture) channelSet.add('emissive');
+    if (validMap(pbr.baseColorTexture)) channelSet.add('baseColor');
+    if (validMap(pbr.metallicRoughnessTexture)) channelSet.add('orm');
+    if (validMap(material.occlusionTexture)) channelSet.add('occlusion');
+    if (validMap(material.normalTexture)) channelSet.add('normal');
+    if (validMap(material.emissiveTexture)) channelSet.add('emissive');
   }
   const channels = sort(channelSet);
   const legacyCube = primitiveCount > 0 && unitCubePrimitives === primitiveCount;
