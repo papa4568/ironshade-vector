@@ -143,16 +143,16 @@ const HERO_DETAILS = Object.freeze({
   floor: {
     label: 'refinery-floor-panel',
     flange: [0.095, 0.052, 0.018, 48],
-    ringPlaces: [[-1.63, 0.16, -1.63], [1.63, 0.16, -1.63], [-1.63, 0.16, 1.63], [1.63, 0.16, 1.63]],
+    ringPlaces: [[-1.63, 0.08, -1.63], [1.63, 0.08, -1.63], [-1.63, 0.08, 1.63], [1.63, 0.08, 1.63]],
     vent: [1.18, 0.58, 0.030, 17],
-    ventPlaces: [[[0, 0.16, -0.83], ROTATE_X_90]],
+    ventPlaces: [[[0, 0.08, -0.83], ROTATE_X_90]],
   },
   floorGrate: {
     label: 'refinery-floor-service-grate',
     flange: [0.10, 0.055, 0.018, 48],
-    ringPlaces: [[-1.60, 0.16, -1.60], [1.60, 0.16, 1.60]],
+    ringPlaces: [[-1.60, 0.12, -1.60], [1.60, 0.12, 1.60]],
     vent: [1.18, 0.68, 0.035, 17],
-    ventPlaces: [[[0, 0.16, 0.80], ROTATE_X_90]],
+    ventPlaces: [[[0, 0.12, 0.80], ROTATE_X_90]],
   },
   bulkhead: {
     label: 'refinery-bulkhead',
@@ -192,14 +192,14 @@ const HERO_DETAILS = Object.freeze({
     ringPlaces: [[0.295, 0.38, 0.23], [0.295, 0.38, -0.23]],
     ringRotation: ROTATE_Y_90,
     vent: [0.40, 0.40, 0.030, 11],
-    ventPlaces: [[[-0.28, 0.83, 0], ROTATE_Y_90]],
+    ventPlaces: [[[-0.26, 0.83, 0], ROTATE_Y_90]],
   },
   crate: {
     label: 'refinery-crate',
     flange: [0.063, 0.031, 0.023, 48],
-    ringPlaces: [[0.47, 0.70, 0.31], [0.47, 0.70, -0.31], [-0.47, 0.70, 0.31], [-0.47, 0.70, -0.31]],
+    ringPlaces: [[0.47, 0.70, 0.31], [0.47, 0.70, -0.31], [-0.45, 0.70, 0.31], [-0.45, 0.70, -0.31]],
     vent: [0.38, 0.24, 0.032, 9],
-    ventPlaces: [[[0.535, 0.30, 0], ROTATE_Y_90], [[-0.51, 0.30, 0], ROTATE_Y_90]],
+    ventPlaces: [[[0.535, 0.30, 0], ROTATE_Y_90], [[-0.49, 0.30, 0], ROTATE_Y_90]],
   },
 });
 
