@@ -2183,7 +2183,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       if (!mesh) continue;
       // Keep both source meshes and Babylon's independently pickable instances
       // out of gameplay hit-testing and pointer selection.
-      node.isPickable = false;
+      if (node instanceof InstancedMesh || node instanceof Mesh) node.isPickable = false;
       const materialName = mesh.material?.name ?? '';
       const surface = REFINERY_DRESSING_SURFACES[materialName]
         ?? (materialName.startsWith('premium-pbr:') ? materialName.slice('premium-pbr:'.length) as PremiumPbrSurfaceId : undefined);
