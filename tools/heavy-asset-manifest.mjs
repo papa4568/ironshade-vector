@@ -126,6 +126,10 @@ function categoryFor(path) {
 function mapChannel(path) {
   return path.includes('-base-color.') ? 'baseColor' : path.includes('-normal.') ? 'normal' : path.includes('-orm.') ? 'orm' : path.includes('-emissive.') ? 'emissive' : null;
 }
+function inHeavyScope(path) {
+  // Inventory the P28 heavyweight production families, not unrelated UI or campaign art.
+  return /^assets\/(?:models\/(?:operators|enemies|bosses)\/|models\/environments\/refinery-|materials\/premium-pbr\/|(?:vfx|effects)\/)/.test(path);
+}
 async function allFiles(root) {
   const found = [];
   async function walk(path) {
@@ -159,8 +163,8 @@ function flagsFor(record) {
 
 export async function createHeavyManifest({ root = ROOT, assetRoot = resolve(root, 'public/assets') } = {}) {
   const registry = await readFile(resolve(root, 'src/game/graphicsAssetManifest.ts'), 'utf8');
-  const referenced = new Set([...registry.matchAll(/['"](\/assets\/models\/[^'"]+\.glb)['"]/g)].map(m => m[1].slice(1)));
-  const files = await allFiles(assetRoot);
+  const referenced = new Set([...registry.matchAll(/['"](\/assets\/models\/[^'"]+\.glb)['"]/g)].map(m => m[1].slice(1)).filter(inHeavyScope));
+  const files = (await allFiles(assetRoot)).filter(file => inHeavyScope('assets/' + relative(assetRoot, file).replaceAll('\\', '/')));
   const assets = [];
   for (const file of files) {
     const path = relative(assetRoot, file).replaceAll('\\', '/');
