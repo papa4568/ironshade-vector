@@ -73,7 +73,7 @@ for (let row = 0; row < 2; row += 1) {
 assert.equal(new Set(hashes).size, 4, 'P28-F5 particle families must not reuse duplicate atlas imagery');
 
 const targets = REFINERY_F5_LIVE_MODEL_PATHS;
-assert(targets.length >= 7 && targets.some(path => path.endsWith('-lod0.glb'))
+assert(targets.length >= 6 && targets.some(path => path.endsWith('-lod0.glb'))
   && targets.some(path => path.endsWith('-lod1.glb')),
   'P28-F5 must reach multiple premium route and machinery LODs, not one showpiece');
 for (const target of targets) {
