@@ -146,7 +146,7 @@ for (const target of REFINERY_ROUTE_DECAL_TARGETS) {
   assert(material?.pbrMetallicRoughness?.baseColorFactor?.[3] === target.opacity, `${target.relativePath}: P28-B6 route material opacity changed`);
   const texture = gltf.textures?.[material.pbrMetallicRoughness.baseColorTexture.index];
   const image = gltf.images?.[texture?.source];
-  assert(image?.uri === (target.relativePath.endsWith('-lod0.glb') ? 'refinery-decal-atlas-f5.png' : 'refinery-decal-atlas.png'), `${target.relativePath}: P28-B6 LOD atlas assignment changed`);
+  assert(image?.uri === (target.relativePath.endsWith('-lod0.glb') && target.family !== 'floor' ? 'refinery-decal-atlas-f5.png' : 'refinery-decal-atlas.png'), `${target.relativePath}: P28-B6 LOD atlas assignment changed`);
 
   const sceneIndex = Number.isInteger(gltf.scene) ? gltf.scene : 0;
   const detailNode = (gltf.nodes ?? []).findIndex(node => node.mesh === detailMeshIndex);
@@ -163,7 +163,8 @@ for (const target of REFINERY_FLOOR_LOD0_TARGETS) {
   const path = resolve(process.cwd(), 'public/assets/models', target.relativePath);
   const bytes = await readFile(path);
   const raw = buildRefineryFloorLod0Glb(target);
-  const rebuilt = patchRefineryF5AtlasGlb(upgradeRefineryRouteDecalGlb(raw, routeTarget), target.relativePath);
+  const upgraded = upgradeRefineryRouteDecalGlb(raw, routeTarget);
+  const rebuilt = target.family === 'floor' ? upgraded : patchRefineryF5AtlasGlb(upgraded, target.relativePath);
   assert(bytes.equals(rebuilt), `${target.relativePath}: P28-C1 authored LOD0 output is not deterministic`);
   assert(bytes.length < 1_200_000, `${target.relativePath}: P28-C1 asset exceeds the environment-module compressed-byte budget`);
 
@@ -227,7 +228,8 @@ for (const target of REFINERY_WALL_LOD0_TARGETS) {
   const path = resolve(process.cwd(), 'public/assets/models', target.relativePath);
   const bytes = await readFile(path);
   const raw = buildRefineryWallLod0Glb(target);
-  const rebuilt = patchRefineryF5AtlasGlb(upgradeRefineryRouteDecalGlb(raw, routeTarget), target.relativePath);
+  const upgraded = upgradeRefineryRouteDecalGlb(raw, routeTarget);
+  const rebuilt = target.family === 'floor' ? upgraded : patchRefineryF5AtlasGlb(upgraded, target.relativePath);
   assert(bytes.equals(rebuilt), `${target.relativePath}: P28-C2 authored LOD0 output is not deterministic`);
   assert(bytes.length < 1_200_000, `${target.relativePath}: P28-C2 asset exceeds the environment-module compressed-byte budget`);
 
