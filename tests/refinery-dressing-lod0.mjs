@@ -49,6 +49,9 @@ assert(renderer.includes('this.applyRefineryDressingSurfaces(instance)'), 'dress
 assert(renderer.includes('mesh.isPickable = false'), 'dressing must remain non-interactive');
 assert(renderer.includes('this.refineryAssetInstances.push(...mountedInstances)'), 'dressing must release with existing environment owner');
 assert(renderer.includes('this.canvas.dataset.refineryDressingInstances'), 'dressing instance telemetry missing');
+assert(renderer.includes('void this.loadRefineryDressing(placements, dressingSelected, generation)'), 'secondary prop loading must not block the mandatory field');
+assert(renderer.includes('root.parent = this.refineryMountRoot') && renderer.includes("this.canvas.dataset.refineryDressingState = 'ready'"), 'secondary props must mount atomically under the existing disposal owner');
+assert(renderer.includes("this.canvas.dataset.refineryDressingState = 'error'"), 'prop failures must remain isolated from combat readiness');
 assert(renderer.includes('loadRoot.setEnabled(true)'), 'dressing must obey existing atomic world readiness');
 assert(!renderer.includes('state.objects.push('), 'dressing may not mutate collision/simulation data');
 console.log('P28_F4_REFINERY_DRESSING_PASS families=8 distinctMeshes=8 triangles=' + totalTriangles);
