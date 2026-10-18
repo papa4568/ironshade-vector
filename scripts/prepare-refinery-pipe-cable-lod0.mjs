@@ -1,3 +1,4 @@
+import { appendRefineryHeroDetails } from './lib/refinery-hero-geometry.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -177,6 +178,8 @@ function pipeRackDefinition() {
     { name: 'refinery-pipe-valve-wheel', mesh: 6, translation: [0.34, 1.72, -0.63], rotation: ROTATE_Y_90 },
   );
 
+  appendRefineryHeroDetails(geometries, nodes, 'pipeRack');
+
   return {
     family: 'pipeRack',
     sceneName: 'refinery-pipe-rack-lod0',
@@ -248,6 +251,8 @@ function cableTrayDefinition() {
   for (const [index, z] of [-1.35, -0.90, -0.45, 0, 0.45, 0.90, 1.35].entries()) {
     nodes.push({ name: `refinery-cable-tray-rung-${index + 1}`, mesh: 2, translation: [0, 1.25, z] });
   }
+
+  appendRefineryHeroDetails(geometries, nodes, 'cableTray');
 
   return {
     family: 'cableTray',

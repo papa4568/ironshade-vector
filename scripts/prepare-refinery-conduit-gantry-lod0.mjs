@@ -1,3 +1,4 @@
+import { appendRefineryHeroDetails } from './lib/refinery-hero-geometry.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -173,6 +174,8 @@ function serviceConduitDefinition() {
     { name: 'refinery-service-conduit-valve-wheel', mesh: 6, translation: [0.695, 0.72, 0], rotation: ROTATE_Z_NEG_90 },
   );
 
+  appendRefineryHeroDetails(geometries, nodes, 'serviceConduit');
+
   return {
     family: 'serviceConduit',
     sceneName: 'refinery-service-conduit-lod0',
@@ -262,6 +265,8 @@ function gantryDefinition() {
     { name: 'refinery-smelter-gantry-roller-left', mesh: 5, translation: [0.46, 2.92, -0.22], rotation: ROTATE_X_90 },
     { name: 'refinery-smelter-gantry-roller-right', mesh: 5, translation: [0.98, 2.92, -0.22], rotation: ROTATE_X_90 },
   ];
+
+  appendRefineryHeroDetails(geometries, nodes, 'gantry');
 
   return {
     family: 'gantry',

@@ -1,3 +1,4 @@
+import { appendRefineryHeroDetails } from './lib/refinery-hero-geometry.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -202,6 +203,8 @@ function processorDefinition() {
     { name: 'refinery-processor-warning-fixture-right', mesh: 13, translation: [0.99, 2.28, -0.48], rotation: ROTATE_Y_90 },
     { name: 'refinery-processor-top-cap', mesh: 14, translation: [0, 2.62, 0] },
   ];
+
+  appendRefineryHeroDetails(geometries, nodes, 'processor');
 
   return {
     sceneName: 'refinery-processor-lod0',

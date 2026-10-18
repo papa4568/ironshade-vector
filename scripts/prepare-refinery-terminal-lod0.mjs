@@ -1,3 +1,4 @@
+import { appendRefineryHeroDetails } from './lib/refinery-hero-geometry.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -193,6 +194,8 @@ function terminalDefinition() {
     { name: 'refinery-terminal-foot-right', mesh: 10, translation: [0, 0.04, -0.25] },
     { name: 'refinery-terminal-screen-shroud', mesh: 11, translation: [0.50, 1.42, 0] },
   ];
+
+  appendRefineryHeroDetails(geometries, nodes, 'terminal');
 
   return {
     sceneName: 'refinery-terminal-lod0',

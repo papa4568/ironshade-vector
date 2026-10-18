@@ -1,3 +1,4 @@
+import { appendRefineryHeroDetails } from './lib/refinery-hero-geometry.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -148,6 +149,8 @@ function bulkheadDefinition() {
   for (const [index, z] of [-1.45, -0.72, 0, 0.72, 1.45].entries()) {
     nodes.push({ name: `refinery-bulkhead-cap-rib-${index + 1}`, mesh: 5, translation: [0.18, 2.64, z] });
   }
+  appendRefineryHeroDetails(geometries, nodes, 'bulkhead');
+
   return {
     family: 'bulkhead',
     sceneName: 'refinery-bulkhead-lod0',
@@ -226,6 +229,8 @@ function wallPanelDefinition() {
       rotation: ROTATE_Z_NEG_90,
     });
   }
+  appendRefineryHeroDetails(geometries, nodes, 'wallPanel');
+
   return {
     family: 'wallPanel',
     sceneName: 'refinery-wall-service-panel-lod0',

@@ -60,6 +60,12 @@ for (const source of [
 ]) {
   assert.equal(isBabylonRefineryBloomSourceName(source), true, 'Expected selective Babylon bloom source: ' + source);
 }
+// New physical flanges and louver steel are PBR environment detail, never glow sources.
+for (const family of ['processor', 'service-conduit', 'smelter-gantry', 'pipe-rack', 'cable-tray', 'terminal']) {
+  for (const hardware of ['machined-flange-1', 'open-louver-1']) {
+    assert.equal(isBabylonRefineryBloomSourceName(`refinery-${family}-p28f2-${hardware}`), false, 'P28-F2 non-emissive hero geometry leaked into selective bloom');
+  }
+}
 for (const protectedName of [
   'enemy-assault-lod1:head',
   'p27-b8-enemy-telegraph-ring',
