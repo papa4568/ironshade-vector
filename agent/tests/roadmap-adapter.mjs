@@ -94,3 +94,48 @@ unknownRuleMetadata.roadmapIds[0] = 'P29-X1';
 assert.throws(() => materializeRoadmapGraph(unknownRuleTasks, unknownRuleMetadata), /has no matching roadmap metadata rule/);
 
 console.log(`ROADMAP_ADAPTER_TEST_PASS tasks=${graph.tasks.length} first=${graph.tasks[0].id} last=${graph.tasks.at(-1).id} profiles=${Object.keys(metadata.proofProfiles).length}`);
+
+// Ensure every production campaign location has a named P28 rollout, even after tasks move to the archive.
+// This independent location inventory catches newly added zones omitted from future visual planning.
+const campaignSource = await readFile(resolve('src/game/campaign.ts'), 'utf8');
+const locationType = campaignSource.match(/export type LocationId = ([^;]+);/)?.[1];
+assert(locationType, 'campaign LocationId type must remain discoverable for graphics rollout coverage');
+const campaignLocationIds = [...locationType.matchAll(/'([^']+)'/g)].map(match => match[1]);
+
+const plannedLocationRefreshes = {
+  'asteroid-refinery': ['P28-F7', 'Pass the P28 heavy-asset acceptance gate before broad rollout'],
+  'orbital-station': ['P28-G1', 'Refresh Orbital Station visuals'],
+  'damaged-vessel': ['P28-G2', 'Refresh Damaged Vessel visuals'],
+  'spin-habitat': ['P28-G3', 'Refresh Spin Habitat visuals'],
+  'jovian-harvester': ['P28-G4', 'Refresh Jovian Harvester visuals'],
+  'ice-mine': ['P28-G5', 'Refresh Ice Mine visuals'],
+  'solar-yard': ['P28-G10', 'Refresh Solar Fabrication Yard visuals'],
+  'lattice-annex': ['P28-G6', 'Refresh Lattice Annex visuals'],
+  'momentum-exchange': ['P28-G7', 'Refresh Momentum Exchange visuals'],
+  'cryo-reserve': ['P28-G8', 'Refresh Cryo Reserve visuals'],
+  'parallax-array': ['P28-G9', 'Refresh Parallax Array visuals'],
+};
+assert.deepEqual(
+  [...campaignLocationIds].sort(),
+  Object.keys(plannedLocationRefreshes).sort(),
+  'every playable campaign location must be assigned to an explicit flagship-art rollout task',
+);
+
+const roadmapArchive = await readFile(resolve('docs/content-roadmap-archive.md'), 'utf8');
+const rolloutTaskText = roadmap + '\n' + roadmapArchive;
+for (const [location, [taskId, title]] of Object.entries(plannedLocationRefreshes)) {
+  assert(
+    rolloutTaskText.includes('**' + taskId + ' — ' + title + '**'),
+    location + ' must have an explicit current or archived P28 flagship-art rollout task',
+  );
+}
+for (const [taskId, title] of [
+  ['P28-H1', 'Refresh Perseid capstone visuals'],
+  ['P28-H2', 'Refresh K-91 capstone visuals'],
+  ['P28-H3', 'Refresh Orpheline capstone visuals'],
+  ['P28-H4', 'Refresh Hecate capstone visuals'],
+]) {
+  assert(rolloutTaskText.includes('**' + taskId + ' — ' + title + '**'),
+    taskId + ' capstone must have a current or archived flagship-art rollout task');
+}
+console.log('P28_ROLLOUT_COVERAGE_PASS campaignLocations=' + campaignLocationIds.length + ' capstones=4');
