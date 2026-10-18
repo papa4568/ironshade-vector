@@ -21,7 +21,8 @@
     "P28-H1",
     "P28-H2",
     "P28-H3",
-    "P28-H4"
+    "P28-H4",
+    "P28-I1"
   ],
   "proofProfiles": {
     "p28-visual-standard": [
@@ -156,6 +157,17 @@
         "capstone-presentation"
       ],
       "proofProfile": "p28-visual-standard"
+    },
+    {
+      "prefix": "P28-I",
+      "affectedDomains": [
+        "graphics",
+        "assets",
+        "location-presentation",
+        "capstone-presentation",
+        "packaging"
+      ],
+      "proofProfile": "p28-visual-standard"
     }
   ],
   "overrides": {
@@ -239,6 +251,24 @@
     "P28-G10": {
       "dependsOn": [
         "P28-F7"
+      ]
+    },
+    "P28-I1": {
+      "dependsOn": [
+        "P28-G1",
+        "P28-G2",
+        "P28-G3",
+        "P28-G4",
+        "P28-G5",
+        "P28-G6",
+        "P28-G7",
+        "P28-G8",
+        "P28-G9",
+        "P28-G10",
+        "P28-H1",
+        "P28-H2",
+        "P28-H3",
+        "P28-H4"
       ]
     }
   }
