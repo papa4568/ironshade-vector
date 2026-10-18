@@ -137,9 +137,27 @@ assert.equal(runtimeCanvas.dataset.environmentImageGradeMode, 'low-visibility');
 
 delete runtimeCanvas.dataset.refineryImageGradeQa;
 runtimePost.sync(true, highSnapshot);
-assert.equal(runtimeScene.imageProcessingConfiguration.exposure, lowVisibilityExposure, 'Real low-visibility contracts must match the deterministic QA capture grade.');
-assert.equal(runtimeScene.imageProcessingConfiguration.contrast, lowVisibilityContrast, 'Real low-visibility contracts must match the deterministic QA capture contrast.');
+assert.equal(runtimeCanvas.dataset.environmentImageGradeMode, 'normal',
+  'Clearing the low-visibility QA flag must restore the normal Flagship grade even if mission weather remains dark.');
+assert.equal(runtimeScene.imageProcessingConfiguration.exposure, normalExposure,
+  'Explicit QA grade restoration must be independent of mission conditions.');
+runtimeCanvas.dataset.graphicsPathSelection = 'adaptive';
+runtimePost.sync(true, highSnapshot);
+assert.equal(runtimeScene.imageProcessingConfiguration.exposure, lowVisibilityExposure,
+  'Outside explicit QA, real low-visibility missions must retain the richer dark-detail exposure.');
+assert.equal(runtimeScene.imageProcessingConfiguration.contrast, lowVisibilityContrast,
+  'Outside explicit QA, real low-visibility missions must retain dark-value separation.');
+runtimeCanvas.dataset.graphicsPathSelection = 'qa-explicit';
+runtimePost.sync(true, highSnapshot);
+assert.equal(runtimeCanvas.dataset.environmentImageGradeMode, 'normal',
+  'Returning to normal explicit QA must not inherit real-mission low-visibility grading.');
 
+// Even explicit visual QA must not create an SSAO pipeline with the zero
+// samples configured by the adaptive Performance tier.
+runtimePost.sync(false, performanceSnapshot);
+assert.equal(runtimeCanvas.dataset.environmentSsao2, 'off:adaptive-budget+fallback-contact');
+assert.match(runtimeCanvas.dataset.environmentContactDepth ?? '', /^grounding:refinery-contact-grounding-v1:/);
+runtimePost.sync(true, highSnapshot);
 assert.match(runtimeCanvas.dataset.environmentSsao2 ?? '', /^(primary:refinery-ssao2-v1:|off:unsupported\+fallback-contact$)/);
 if (runtimeCanvas.dataset.environmentSsao2?.startsWith('primary:')) {
   assert.match(runtimeCanvas.dataset.environmentContactDepth ?? '', /^grounding:refinery-contact-grounding-v1:instances-0:.*:fallback-idle:ssao2-primary$/);

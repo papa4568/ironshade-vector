@@ -265,6 +265,22 @@ assert(reflectionRendererSource.includes('this.refineryReflectionProbes.sync(bud
   && reflectionRendererSource.includes('this.refineryReflectionProbes.release()'),
   'P28-E4 must connect static refinery capture, frame budgets and teardown to the real renderer.');
 
+// P28-F4 visual regression: make the image-grade workflow exercise the actual
+// refinery prop content, not only the ambience that happens to surround it.
+const dressingManifest = readFileSync('src/game/graphicsAssetManifest.ts', 'utf8');
+const dressingFamilies = ['valveSkid', 'junctionBox', 'ventBank', 'toolCart', 'canisterRack', 'guardRail', 'hoseReel', 'serviceCabinet'];
+const dressingIds = ['valve-skid', 'junction-box', 'vent-bank', 'tool-cart', 'canister-rack', 'guard-rail', 'hose-reel', 'service-cabinet'];
+assert.equal(new Set(dressingIds).size, 8, 'P28-F4 must supply eight different authored visual prop assets.');
+for (const [index, family] of dressingFamilies.entries()) {
+  const id = dressingIds[index];
+  assert(dressingManifest.includes("'/assets/models/environments/refinery-dressing-" + id + "-lod0.glb'"), family + ' must be packaged in the Flagship refinery presentation.');
+  assert(reflectionRendererSource.includes(family + ': ['), family + ' must have a deterministic Deep Salvage placement.');
+}
+assert(reflectionRendererSource.includes('this.canvas.dataset.refineryDressingInstances')
+  && reflectionRendererSource.includes('this.applyRefineryDressingSurfaces(instance)')
+  && reflectionRendererSource.includes('node.isPickable = false'),
+  'P28-F4 must expose concrete model placements and non-pickable premium PBR presentation without taking combat cues.');
+
 console.log(
   'P27_D4_BABYLON_EFFECTS_QUALITY_PASS phoneDefault=high tiers=high>balanced>performance shadows=1024>512>off transparency=1.00>0.68>0.40 reflection=1.00>0.70>0.38 vfx=1.00>0.72>0.45 secondary=1.00>0.68>0.42 critical=1.00 degrade=performance recover=high ambient=240-pooled measured-pressure=101 refinery-art-direction=21-zones contexts=machinery+vents+damaged-service+open-industrial center-clearance=x38-62+z38-62 gameplay-independent=1.00 teardown=clean frame-evidence=browser-runtime',
 );

@@ -218,13 +218,20 @@ export class BabylonRefineryPostProcessing {
     this.captureUpstreamImageProcessing();
     const qaExplicit = this.canvas.dataset.graphicsPathSelection === 'qa-explicit';
     const qaLowVisibility = qaExplicit && this.canvas.dataset.refineryImageGradeQa === 'low-visibility';
-    const effectiveLowVisibility = qaLowVisibility || lowVisibility;
+    // An explicit visual-QA session must be able to restore its normal grade
+    // even while the live mission still has a low-visibility condition.
+    // Outside QA, mission visibility remains authoritative.
+    const effectiveLowVisibility = qaExplicit ? qaLowVisibility : lowVisibility;
     const budget = resolveBabylonRefineryPostProcessingBudget(renderBudget, effectiveLowVisibility);
     const qaStackDisabled = qaExplicit && this.canvas.dataset.refineryPostStackQa === 'off';
     const stackEnabled = !qaStackDisabled;
     const sourceCount = this.syncBloomSources();
 
-    const ssaoRequested = stackEnabled && (qaExplicit || budget.ssaoEnabled);
+    // QA may force the visual stack only when a nonzero sampling budget exists.
+    // Performance intentionally has zero SSAO samples; requesting the pipeline
+    // anyway can monopolize constrained WebGL renderers during gameplay startup.
+    const ssaoRequested = stackEnabled && budget.ssaoSamples > 0
+      && (qaExplicit || budget.ssaoEnabled);
     const ssaoEnabled = this.syncSsao(ssaoRequested, budget);
 
     const bloomEnabled = stackEnabled && sourceCount > 0 && (qaExplicit || budget.bloomEnabled);

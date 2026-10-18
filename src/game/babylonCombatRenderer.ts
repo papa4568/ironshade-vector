@@ -52,6 +52,7 @@ import {
   OPERATOR_ASSET_FAMILY,
   OPERATOR_CLASS_ASSET_FAMILIES,
   REFINERY_ASSET_FAMILIES,
+  REFINERY_DRESSING_ASSET_FAMILIES,
   WEAPON_ASSET_FAMILIES,
 } from './graphicsAssetManifest';
 import { selectGraphicsAssetSpec, type GraphicsAssetSpec } from './graphicsAssets';
@@ -95,6 +96,8 @@ const enemyRoleColors: Record<BabylonEnemyRole, number> = {
 };
 
 type RefineryFamilyKey = keyof typeof REFINERY_ASSET_FAMILIES;
+type RefineryDressingFamilyKey = keyof typeof REFINERY_DRESSING_ASSET_FAMILIES;
+type RefineryPlacementKey = RefineryFamilyKey | RefineryDressingFamilyKey;
 
 const REFINERY_PREMIUM_SURFACE_ASSIGNMENTS: Partial<Record<RefineryFamilyKey, Readonly<Record<string, PremiumPbrSurfaceId>>>> = {
   floor: {
@@ -155,6 +158,14 @@ const REFINERY_PREMIUM_SURFACE_ASSIGNMENTS: Partial<Record<RefineryFamilyKey, Re
     'refinery-screen-emissive': 'emissive-fixture',
   },
 };
+// Dressing uses the same locally packaged premium PBR maps, but is deliberately
+// separate from the required primary refinery surface-coverage invariant.
+const REFINERY_DRESSING_SURFACES: Readonly<Record<string, PremiumPbrSurfaceId>> = {
+  'refinery-structural': 'bare-metal',
+  'refinery-shell': 'painted-metal',
+  'refinery-hazard-emissive': 'emissive-fixture',
+  'refinery-screen-emissive': 'emissive-fixture',
+};
 const REFINERY_PREMIUM_SURFACE_ORDER: readonly RefineryFamilyKey[] = [
   'floor',
   'floorGrate',
@@ -197,7 +208,7 @@ type RefineryPlacement = {
   scale?: number;
 };
 
-type RefineryPlacementGroups = Record<RefineryFamilyKey, RefineryPlacement[]>;
+type RefineryPlacementGroups = Record<RefineryPlacementKey, RefineryPlacement[]>;
 
 type BabylonRigRest = {
   position: Vector3;
@@ -390,6 +401,40 @@ function refineryPlacements(state: SimState, worldW: number, worldH: number): Re
         rotationY: Math.PI / 4,
         scale: 0.9,
       })),
+    // Non-interactive dressing hugs the outer walls so its silhouettes do not
+    // occupy the playable center lane or obscure combat telegraphs.
+    valveSkid: [
+      { x: width * 0.055, z: height * 0.120, rotationY: Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.890, rotationY: -Math.PI / 2 },
+    ],
+    junctionBox: [
+      { x: width * 0.945, z: height * 0.780, rotationY: -Math.PI / 2 },
+      { x: width * 0.055, z: height * 0.230, rotationY: Math.PI / 2 },
+    ],
+    ventBank: [
+      { x: width * 0.055, z: height * 0.340, rotationY: Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.670, rotationY: -Math.PI / 2 },
+    ],
+    toolCart: [
+      { x: width * 0.945, z: height * 0.560, rotationY: -Math.PI / 2 },
+      { x: width * 0.055, z: height * 0.450, rotationY: Math.PI / 2 },
+    ],
+    canisterRack: [
+      { x: width * 0.055, z: height * 0.560, rotationY: Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.450, rotationY: -Math.PI / 2 },
+    ],
+    guardRail: [
+      { x: width * 0.945, z: height * 0.340, rotationY: -Math.PI / 2 },
+      { x: width * 0.055, z: height * 0.670, rotationY: Math.PI / 2 },
+    ],
+    hoseReel: [
+      { x: width * 0.055, z: height * 0.780, rotationY: Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.230, rotationY: -Math.PI / 2 },
+    ],
+    serviceCabinet: [
+      { x: width * 0.945, z: height * 0.120, rotationY: -Math.PI / 2 },
+      { x: width * 0.055, z: height * 0.890, rotationY: Math.PI / 2 },
+    ],
   };
 }
 
@@ -2061,11 +2106,19 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private ensureRefineryEnvironment(state: SimState, detailScale: number) {
     const world = getWorldSize();
     const familyKeys = Object.keys(REFINERY_ASSET_FAMILIES) as RefineryFamilyKey[];
-    const selected = familyKeys.map(key => {
-      const spec = selectGraphicsAssetSpec(REFINERY_ASSET_FAMILIES[key], detailScale);
-      if (!spec) throw new Error(`No authored refinery asset available for ${key}`);
-      return { key, spec };
-    });
+    const dressingKeys = Object.keys(REFINERY_DRESSING_ASSET_FAMILIES) as RefineryDressingFamilyKey[];
+    const selected: Array<{ key: RefineryPlacementKey; spec: GraphicsAssetSpec }> = [
+      ...familyKeys.map(key => {
+        const spec = selectGraphicsAssetSpec(REFINERY_ASSET_FAMILIES[key], detailScale);
+        if (!spec) throw new Error(`No authored refinery asset available for ${key}`);
+        return { key, spec };
+      }),
+      ...dressingKeys.map(key => {
+        const spec = selectGraphicsAssetSpec(REFINERY_DRESSING_ASSET_FAMILIES[key], detailScale);
+        if (!spec) throw new Error(`No authored refinery dressing asset available for ${key}`);
+        return { key, spec };
+      }),
+    ];
     const signature = [
       world.w,
       world.h,
@@ -2084,6 +2137,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     delete this.canvas.dataset.babylonEnvironmentPremiumSurfaces;
     delete this.canvas.dataset.babylonEnvironmentMaterialDetail;
     delete this.canvas.dataset.babylonEnvironmentPlacementLoad;
+    delete this.canvas.dataset.refineryDressingFamilies;
+    delete this.canvas.dataset.refineryDressingInstances;
+    delete this.canvas.dataset.refineryDressingAssets;
+    this.canvas.dataset.refineryDressingState = 'waiting-for-primary';
+    delete this.canvas.dataset.refineryDressingError;
     delete this.canvas.dataset.mapLoadFamilyPreloadMs;
     delete this.canvas.dataset.mapLoadPlacementInstantiationMs;
     void this.loadRefineryEnvironment(state, world.w, world.h, selected, generation);
@@ -2120,16 +2178,35 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     }
   }
 
+  private applyRefineryDressingSurfaces(instance: BabylonGraphicsAssetInstance) {
+    const library = this.getRefineryPremiumSurfaceLibrary();
+    for (const node of instanceNodes(instance)) {
+      const mesh = node instanceof InstancedMesh ? node.sourceMesh : node instanceof Mesh ? node : null;
+      if (!mesh) continue;
+      // Keep both source meshes and Babylon's independently pickable instances
+      // out of gameplay hit-testing and pointer selection.
+      if (node instanceof InstancedMesh || node instanceof Mesh) node.isPickable = false;
+      const materialName = mesh.material?.name ?? '';
+      const surface = REFINERY_DRESSING_SURFACES[materialName]
+        ?? (materialName.startsWith('premium-pbr:') ? materialName.slice('premium-pbr:'.length) as PremiumPbrSurfaceId : undefined);
+      if (surface) mesh.material = library.get(surface);
+      mesh.isPickable = false;
+    }
+  }
+
   private async loadRefineryEnvironment(
     state: SimState,
     worldW: number,
     worldH: number,
-    selected: Array<{ key: RefineryFamilyKey; spec: GraphicsAssetSpec }>,
+    selected: Array<{ key: RefineryPlacementKey; spec: GraphicsAssetSpec }>,
     generation: number,
   ) {
     const runtime = getBabylonGraphicsAssetRuntime(this.scene);
     const preloadStartedAt = performance.now();
-    const preload = await runtime.preload(selected.map(item => item.spec), 2);
+    // Only the established authored shell gates the playable visual readiness.
+    const primarySelected = selected.filter(item => item.key in REFINERY_ASSET_FAMILIES);
+    const dressingSelected = selected.filter(item => item.key in REFINERY_DRESSING_ASSET_FAMILIES);
+    const preload = await runtime.preload(primarySelected.map(item => item.spec), 2);
     if (this.disposed || generation !== this.refineryLoadGeneration) return;
     this.canvas.dataset.mapLoadFamilyPreloadMs = Math.max(0, performance.now() - preloadStartedAt).toFixed(2);
 
@@ -2143,8 +2220,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const placementStartedAt = performance.now();
     const placements = refineryPlacements(state, worldW, worldH);
     const byKey = new Map(selected.map(item => [item.key, item.spec]));
-    const placementTasks = (Object.keys(placements) as RefineryFamilyKey[]).flatMap(key => {
+    const placementTasks = (Object.keys(placements) as RefineryPlacementKey[]).flatMap(key => {
+      if (key in REFINERY_DRESSING_ASSET_FAMILIES) return [];
       const spec = byKey.get(key);
+      // Older visual-runtime probes supply only the mandatory primary kit.
+      // Decorative dressing is optional to those narrower preloaded sets.
+      if (!spec && key in REFINERY_DRESSING_ASSET_FAMILIES) return [];
       if (!spec) throw new Error(`Missing selected authored refinery asset for ${key}`);
       return placements[key].map((placement, index) => ({ key, index, placement, spec }));
     });
@@ -2154,6 +2235,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const reflectionAnchors: RefineryReflectionAnchor[] = [];
     const premiumSurfaceUsage = new Map<RefineryFamilyKey, Set<PremiumPbrSurfaceId>>();
     let placementCount = 0;
+    let primaryPlacementCount = 0;
     let placementBatchCount = 0;
     let placementPeakConcurrency = 0;
 
@@ -2195,13 +2277,15 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
             instance.rootNodes.forEach(root => {
               root.parent = placementRoot;
             });
-            this.applyRefineryPremiumSurfaces(key, instance, premiumSurfaceUsage);
+            if (key in REFINERY_DRESSING_ASSET_FAMILIES) this.applyRefineryDressingSurfaces(instance);
+            else this.applyRefineryPremiumSurfaces(key as RefineryFamilyKey, instance, premiumSurfaceUsage);
             if (isRefineryReflectionFamily(key)) {
               reflectionAnchors.push({ id: key + '-' + task.index, family: key, root: placementRoot });
             }
             mountedInstances.push(instance);
             unmountedBatchInstances.delete(instance);
             placementCount += 1;
+            if (key in REFINERY_ASSET_FAMILIES) primaryPlacementCount += 1;
           }
         } catch (error) {
           unmountedBatchInstances.forEach(instance => instance.release());
@@ -2230,7 +2314,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.environmentVisual = 'authored-refinery-babylon';
       this.canvas.dataset.environmentLod = lods.join(',');
       this.canvas.dataset.environmentKit = REFINERY_ENVIRONMENT_KIT;
-      this.canvas.dataset.environmentInstances = String(placementCount);
+      // P27 authored-kit parity counters describe the original mandatory 11
+      // families only. New P28-F4 dressing reports through separate fields.
+      this.canvas.dataset.environmentInstances = String(primaryPlacementCount);
       this.canvas.dataset.environmentTerminals = String(placements.terminal.length);
       this.canvas.dataset.environmentLandmark = 'ore-smelter-gantry';
       this.canvas.dataset.environmentServiceDetails = `service-conduit:${placements.serviceConduit.length}`;
@@ -2241,8 +2327,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.environmentComposition = 'clear-center-lane+processor-triangle+gantry-focal+perimeter-clutter';
       this.canvas.dataset.mapLoadPlacementInstantiationMs = Math.max(0, performance.now() - placementStartedAt).toFixed(2);
       this.canvas.dataset.babylonEnvironmentState = 'ready';
-      this.canvas.dataset.babylonEnvironmentAssets = String(selected.length);
-      this.canvas.dataset.babylonEnvironmentPlacements = String(placementCount);
+      this.canvas.dataset.refineryDressingFamilies = (Object.keys(REFINERY_DRESSING_ASSET_FAMILIES) as RefineryDressingFamilyKey[]).join(',');
+      this.canvas.dataset.refineryDressingInstances = '0';
+      this.canvas.dataset.refineryDressingAssets = selected.filter(item => item.key in REFINERY_DRESSING_ASSET_FAMILIES)
+        .map(item => item.spec.id).join(',');
+      this.canvas.dataset.babylonEnvironmentAssets = String(selected.filter(item => item.key in REFINERY_ASSET_FAMILIES).length);
+      this.canvas.dataset.babylonEnvironmentPlacements = String(primaryPlacementCount);
       this.canvas.dataset.babylonEnvironmentLod = lods.join(',');
       this.canvas.dataset.babylonEnvironmentReuse = 'cache-shared+geometry-shared+material-shared';
       this.canvas.dataset.babylonEnvironmentPlacementLoad = [
@@ -2258,6 +2348,10 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         `bytes:${stats.estimatedCachedCompressedBytes}`,
       ].join('|');
       this.updateSceneTelemetry();
+      // Secondary non-gameplay dressing streams and mounts under its own disabled
+      // root; slow artistic assets must not block the established player/cue field.
+      if (dressingSelected.length) void this.loadRefineryDressing(placements, dressingSelected, generation);
+      else this.canvas.dataset.refineryDressingState = 'skipped';
     } catch (error) {
       mountedInstances.forEach(item => item.release());
       loadRoot.dispose();
@@ -2266,6 +2360,123 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.mapLoadPlacementInstantiationMs = Math.max(0, performance.now() - placementStartedAt).toFixed(2);
       this.canvas.dataset.babylonEnvironmentState = 'error';
       this.canvas.dataset.babylonEnvironmentError = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+
+  private async loadRefineryDressing(
+    placements: RefineryPlacementGroups,
+    selected: Array<{ key: RefineryPlacementKey; spec: GraphicsAssetSpec }>,
+    generation: number,
+  ) {
+    // Decorative streaming never competes with first-playable operator, enemy,
+    // or world assets. A bounded wait preserves decoration if one system fails
+    // to report readiness, while generation checks keep disposals safe.
+    this.canvas.dataset.refineryDressingState = 'waiting-for-gameplay';
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      if (this.disposed || generation !== this.refineryLoadGeneration) return;
+      const data = this.canvas.dataset;
+      if (data.babylonPlayerState === 'ready'
+        && data.babylonEnemyState === 'ready'
+        && data.babylonWorldState === 'ready') break;
+      await new Promise<void>(resolve => setTimeout(resolve, 50));
+    }
+    // Yield an additional browser task so gameplay/CDP input can complete
+    // before the optional GLB decode and shader preparation begins.
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
+    if (this.disposed || generation !== this.refineryLoadGeneration) return;
+    const runtime = getBabylonGraphicsAssetRuntime(this.scene);
+    this.canvas.dataset.refineryDressingState = 'loading';
+    // GLB decode and shader setup can each monopolize a slow GPU frame even
+    // with a single preload worker. Yield between *assets*, not just after
+    // completing the entire eight-asset queue.
+    let failedPreloads = 0;
+    for (const item of selected) {
+      if (this.disposed || generation !== this.refineryLoadGeneration) return;
+      await new Promise<void>(resolve => setTimeout(resolve, 80));
+      if (this.disposed || generation !== this.refineryLoadGeneration) return;
+      const preload = await runtime.preload([item.spec], 1);
+      failedPreloads += preload.failed;
+    }
+    if (this.disposed || generation !== this.refineryLoadGeneration) return;
+    if (failedPreloads > 0) {
+      this.canvas.dataset.refineryDressingState = 'error';
+      this.canvas.dataset.refineryDressingError = `preload-failed:${failedPreloads}`;
+      return;
+    }
+    const root = new TransformNode(`p28-f4-dressing-${generation}`, this.scene);
+    root.setEnabled(false);
+    const mounted: BabylonGraphicsAssetInstance[] = [];
+    const specs = new Map(selected.map(item => [item.key, item.spec]));
+    const tasks = (Object.keys(REFINERY_DRESSING_ASSET_FAMILIES) as RefineryDressingFamilyKey[])
+      .flatMap(key => (specs.has(key) ? placements[key].map((placement, index) => ({
+        key, placement, index, spec: specs.get(key)!,
+      })) : []));
+    try {
+      // Optional props are presentation-only: one placement per frame avoids
+      // native-instance bursts while player/enemy/world and QA CDP controls run.
+      const dressingBatchSize = 1;
+      for (let offset = 0; offset < tasks.length; offset += dressingBatchSize) {
+        const batch = tasks.slice(offset, offset + dressingBatchSize);
+        const results = await Promise.allSettled(batch.map(item => runtime.instantiate(item.spec)));
+        const fulfilled = results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
+        if (this.disposed || generation !== this.refineryLoadGeneration) {
+          fulfilled.forEach(instance => instance.release());
+          mounted.forEach(instance => instance.release());
+          root.dispose();
+          return;
+        }
+        const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+        if (rejected) {
+          fulfilled.forEach(instance => instance.release());
+          throw rejected.reason;
+        }
+        const pending = new Set(fulfilled);
+        try {
+          for (const [index, task] of batch.entries()) {
+            const result = results[index];
+            if (!task || result?.status !== 'fulfilled') throw new Error('Incomplete refinery dressing batch');
+            const instance = result.value;
+            const placementRoot = new TransformNode(`p28-f4-${task.key}-${task.index}`, this.scene);
+            placementRoot.parent = root;
+            placementRoot.position.set(task.placement.x, 0, task.placement.z);
+            placementRoot.rotation.y = task.placement.rotationY ?? 0;
+            const scale = task.placement.scale ?? 1;
+            placementRoot.scaling.set(scale, scale, scale);
+            instance.rootNodes.forEach(node => { node.parent = placementRoot; });
+            this.applyRefineryDressingSurfaces(instance);
+            mounted.push(instance);
+            pending.delete(instance);
+          }
+        } catch (error) {
+          pending.forEach(instance => instance.release());
+          throw error;
+        }
+        // Two authored placements of each family reuse geometry; explicit
+        // task yields avoid monopolizing the main thread during the first
+        // interactive frames on software and constrained GPUs.
+        if (offset + batch.length < tasks.length) {
+          await new Promise<void>(resolve => setTimeout(resolve, 16));
+        }
+      }
+      if (this.disposed || generation !== this.refineryLoadGeneration || !this.refineryMountRoot) {
+        mounted.forEach(instance => instance.release());
+        root.dispose();
+        return;
+      }
+      root.parent = this.refineryMountRoot;
+      this.refineryAssetInstances.push(...mounted);
+      root.setEnabled(true);
+      this.canvas.dataset.refineryDressingState = 'ready';
+      this.canvas.dataset.refineryDressingInstances = String(mounted.length);
+      this.updateSceneTelemetry();
+    } catch (error) {
+      mounted.forEach(instance => instance.release());
+      root.dispose();
+      if (this.disposed || generation !== this.refineryLoadGeneration) return;
+      this.canvas.dataset.refineryDressingState = 'error';
+      this.canvas.dataset.refineryDressingError = error instanceof Error ? error.message : String(error);
+      this.updateSceneTelemetry();
     }
   }
 
@@ -2283,6 +2494,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     delete this.canvas.dataset.babylonEnvironmentPremiumSurfaces;
     delete this.canvas.dataset.babylonEnvironmentMaterialDetail;
     delete this.canvas.dataset.babylonEnvironmentPlacementLoad;
+    delete this.canvas.dataset.refineryDressingFamilies;
+    delete this.canvas.dataset.refineryDressingInstances;
+    delete this.canvas.dataset.refineryDressingAssets;
+    delete this.canvas.dataset.refineryDressingState;
+    delete this.canvas.dataset.refineryDressingError;
     delete this.canvas.dataset.mapLoadFamilyPreloadMs;
     delete this.canvas.dataset.mapLoadPlacementInstantiationMs;
     this.canvas.dataset.babylonEnvironmentState = 'released';

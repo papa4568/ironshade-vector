@@ -286,7 +286,26 @@ for (const path of glbs) {
                             : filename.includes('crate')
                               ? 'refinery-crate-shell'
                               : 'refinery-terminal-screen';
+    if (filename.startsWith('refinery-dressing-')) {
+      // Every secondary refinery family has its own named silhouette.
+      // Primary-module marker checks remain unmodified for all original assets.
+      const dressingMarkers = new Map([
+        ['valve-skid', 'valve-handwheel'],
+        ['junction-box', 'junction-chassis'],
+        ['vent-bank', 'vent-blades'],
+        ['tool-cart', 'cart-push-handle'],
+        ['canister-rack', 'canister-pressure-tank'],
+        ['guard-rail', 'guard-top'],
+        ['hose-reel', 'reel-coil'],
+        ['service-cabinet', 'cabinet-door'],
+      ]);
+      const id = filename.replace(/^refinery-dressing-/, '').replace(/-lod0\.glb$/, '');
+      const authoredMarker = dressingMarkers.get(id);
+      assert(authoredMarker && nodeNames.has(authoredMarker),
+        `${relativePath}: secondary refinery silhouette marker ${authoredMarker || id} is missing`);
+    } else {
     assert(nodeNames.has(marker), `${relativePath}: environment silhouette marker ${marker} is missing`);
+    }
     if (filename.includes('damaged-vessel-breach-frame') && filename.endsWith('-lod1.glb')) {
       assert(nodeNames.has('damaged-vessel-breach-frame-cable-a'), `${relativePath}: breach landmark is missing exposed cable detail`);
       assert(nodeNames.has('damaged-vessel-breach-frame-scar-cap'), `${relativePath}: breach landmark is missing scar-cap detail`);
@@ -729,3 +748,5 @@ await import('./heavy-asset-manifest.mjs');
 
 // P28-F2: audit the actual built refinery LOD0 pack and its authored detail.
 await import('./refinery-heavy-geometry.mjs');
+// P28-F4: verify the actual shipped authored dressing models in the mandatory graphics-content gate.
+await import('./refinery-dressing-lod0.mjs');
