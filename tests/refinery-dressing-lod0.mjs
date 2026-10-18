@@ -45,6 +45,30 @@ for (const target of REFINERY_DRESSING_TARGETS) {
   assert(registry.includes("'/assets/models/" + target.relativePath + "'"), 'art missing runtime manifest: ' + target.family);
   assert(renderer.includes(target.family + ': ['), 'family missing from deterministic placement map: ' + target.family);
 }
+
+const leftDressingZ = [], rightDressingZ = [];
+for (const target of REFINERY_DRESSING_TARGETS) {
+  const match = renderer.match(new RegExp('^    ' + target.family + ': \\[\\n([\\s\\S]*?)^    \\],', 'm'));
+  assert(match, target.family + ' is missing a deterministic placement group');
+  const locations = [...match[1].matchAll(/x: width \\* (0\\.\\d+), z: height \\* (0\\.\\d+)/g)];
+  assert.equal(locations.length, 2, target.family + ' must ship two visible wall-side instances');
+  for (const location of locations) {
+    const x = Number(location[1]), z = Number(location[2]);
+    assert(z >= 0.10 && z <= 0.90, target.family + ' dressing must stay inside the peripheral route');
+    if (x === 0.055) leftDressingZ.push(z);
+    else if (x === 0.945) rightDressingZ.push(z);
+    else assert.fail(target.family + ' must not obstruct center combat paths');
+  }
+}
+for (const [wall, positions] of [['left', leftDressingZ], ['right', rightDressingZ]]) {
+  assert.equal(positions.length, 8, wall + ' wall must contain eight distinct dressing families');
+  positions.sort((a, b) => a - b);
+  for (let index = 1; index < positions.length; index++) {
+    assert(positions[index] - positions[index - 1] >= 0.09,
+      wall + ' wall dressing silhouettes overlap: ' + positions[index - 1] + '/' + positions[index]);
+  }
+}
+
 assert(renderer.includes('this.applyRefineryDressingSurfaces(instance)'), 'dressing must bind local premium PBR maps');
 assert(renderer.includes('mesh.isPickable = false'), 'dressing must remain non-interactive');
 assert(renderer.includes('this.refineryAssetInstances.push(...mountedInstances)'), 'dressing must release with existing environment owner');

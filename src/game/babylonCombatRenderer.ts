@@ -405,35 +405,35 @@ function refineryPlacements(state: SimState, worldW: number, worldH: number): Re
     // occupy the playable center lane or obscure combat telegraphs.
     valveSkid: [
       { x: width * 0.055, z: height * 0.120, rotationY: Math.PI / 2 },
-      { x: width * 0.945, z: height * 0.900, rotationY: -Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.890, rotationY: -Math.PI / 2 },
     ],
     junctionBox: [
-      { x: width * 0.945, z: height * 0.210, rotationY: -Math.PI / 2 },
-      { x: width * 0.055, z: height * 0.820, rotationY: Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.780, rotationY: -Math.PI / 2 },
+      { x: width * 0.055, z: height * 0.230, rotationY: Math.PI / 2 },
     ],
     ventBank: [
-      { x: width * 0.055, z: height * 0.300, rotationY: Math.PI / 2 },
-      { x: width * 0.945, z: height * 0.740, rotationY: -Math.PI / 2 },
+      { x: width * 0.055, z: height * 0.340, rotationY: Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.670, rotationY: -Math.PI / 2 },
     ],
     toolCart: [
-      { x: width * 0.945, z: height * 0.390, rotationY: -Math.PI / 2 },
-      { x: width * 0.055, z: height * 0.660, rotationY: Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.560, rotationY: -Math.PI / 2 },
+      { x: width * 0.055, z: height * 0.450, rotationY: Math.PI / 2 },
     ],
     canisterRack: [
-      { x: width * 0.055, z: height * 0.480, rotationY: Math.PI / 2 },
-      { x: width * 0.945, z: height * 0.580, rotationY: -Math.PI / 2 },
+      { x: width * 0.055, z: height * 0.560, rotationY: Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.450, rotationY: -Math.PI / 2 },
     ],
     guardRail: [
-      { x: width * 0.945, z: height * 0.570, rotationY: -Math.PI / 2 },
-      { x: width * 0.055, z: height * 0.500, rotationY: Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.340, rotationY: -Math.PI / 2 },
+      { x: width * 0.055, z: height * 0.670, rotationY: Math.PI / 2 },
     ],
     hoseReel: [
-      { x: width * 0.055, z: height * 0.660, rotationY: Math.PI / 2 },
-      { x: width * 0.945, z: height * 0.420, rotationY: -Math.PI / 2 },
+      { x: width * 0.055, z: height * 0.780, rotationY: Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.230, rotationY: -Math.PI / 2 },
     ],
     serviceCabinet: [
-      { x: width * 0.945, z: height * 0.750, rotationY: -Math.PI / 2 },
-      { x: width * 0.055, z: height * 0.340, rotationY: Math.PI / 2 },
+      { x: width * 0.945, z: height * 0.120, rotationY: -Math.PI / 2 },
+      { x: width * 0.055, z: height * 0.890, rotationY: Math.PI / 2 },
     ],
   };
 }
