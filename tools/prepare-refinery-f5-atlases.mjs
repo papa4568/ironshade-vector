@@ -14,7 +14,7 @@ export const REFINERY_F5_DECAL_ATLAS = Object.freeze({
   path: 'public/assets/models/environments/refinery-decal-atlas-f5.png',
 });
 export const REFINERY_F5_EFFECT_ATLAS = Object.freeze({
-  size: 1024,
+  size: 512,
   file: 'refinery-local-effects-f5.ktx2',
   path: 'public/assets/effects/refinery-local-effects-f5.ktx2',
   kinds: Object.freeze(['dust', 'sparks', 'vapor', 'debris']),
@@ -156,12 +156,13 @@ export function createRefineryF5DecalPng() {
 export function createRefineryF5EffectPixels() {
   const size = REFINERY_F5_EFFECT_ATLAS.size;
   const pixels = new Uint8Array(size * size * 4);
+  const cell = size / 2;
   for (let y = 0; y < size; y += 1) {
-    const row = Math.floor(y / 512);
-    const v = (y % 512) / 512;
+    const row = Math.floor(y / cell);
+    const v = (y % cell) / cell;
     for (let x = 0; x < size; x += 1) {
-      const col = Math.floor(x / 512);
-      const u = (x % 512) / 512;
+      const col = Math.floor(x / cell);
+      const u = (x % cell) / cell;
       const tile = row * 2 + col;
       const h = hash(x, y, tile + 91);
       const n = hash(Math.floor(x / 9), Math.floor(y / 13), tile + 87);
@@ -217,7 +218,7 @@ export function patchRefineryF5AtlasGlb(bytes, path) {
 
 export async function writeRefineryF5Atlases() {
   const decal = createRefineryF5DecalPng();
-  const effect = buildKtx2RgbaZstd(createRefineryF5EffectPixels(), 1024, 1024, true);
+  const effect = buildKtx2RgbaZstd(createRefineryF5EffectPixels(), REFINERY_F5_EFFECT_ATLAS.size, REFINERY_F5_EFFECT_ATLAS.size, true);
   for (const [file, bytes] of [[REFINERY_F5_DECAL_ATLAS.path, decal], [REFINERY_F5_EFFECT_ATLAS.path, effect]]) {
     const output = resolve(process.cwd(), file);
     await mkdir(dirname(output), { recursive: true });
