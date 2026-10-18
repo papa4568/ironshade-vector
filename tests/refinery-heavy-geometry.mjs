@@ -58,7 +58,26 @@ let totalBytes = 0, totalTriangles = 0, totalVertices = 0;
 for (const [target, build] of families) {
   const built = build(target);
   const disk = await readFile(resolve(process.cwd(), 'public/assets/models', target.relativePath));
-  assert(built.equals(disk), target.family + ': deterministic shipped geometry differs from build output');
+  // P28-B6 owns the final route-decal augmentation for floor/wall. That
+  // pipeline regenerates the authored base LOD0 first, then appends one live
+  // atlas-bound card mesh. Requiring byte equality with the unlayered source
+  // would incorrectly reject the very route markings that must ship.
+  if (['floor', 'floorGrate', 'bulkhead', 'wallPanel'].includes(target.family)) {
+    const authored = parseGlb(built);
+    const shipped = parseGlb(disk);
+    assert.equal(shipped.extras?.ironshadeP28B6RouteDecals?.version, 1, target.family + ': shipped route atlas layer is missing');
+    assert.deepEqual(shipped.meshes.slice(0, authored.meshes.length), authored.meshes, target.family + ': base authored meshes were mutated by route-atlas layering');
+    assert.deepEqual(shipped.nodes.slice(0, authored.nodes.length - 1), authored.nodes.slice(0, -1), target.family + ': authored mechanical node transforms changed during decal layering');
+    const binary = source => {
+      const start = 20 + source.readUInt32LE(12);
+      const size = source.readUInt32LE(start);
+      return source.subarray(start + 8, start + 8 + size);
+    };
+    const baseBytes = binary(built);
+    assert(binary(disk).subarray(0, baseBytes.length).equals(baseBytes), target.family + ': route atlas overlay replaced real mechanical source buffers');
+  } else {
+    assert(built.equals(disk), target.family + ': deterministic shipped geometry differs from build output');
+  }
   assert(built.length >= 170_000, target.family + ': LOD0 must ship substantial real mesh payload, not legacy cube assembly');
   const gltf = parseGlb(built);
   const measured = measureGlb(built, target.relativePath);
