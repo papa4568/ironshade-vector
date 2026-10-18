@@ -527,7 +527,7 @@ function roadmapCloseoutBoundaryCalibration() {
     { id: 'metadata-without-roadmap', changes: [{ path: metadataPath, content: JSON.stringify(expectedMetadata) }] },
     { id: 'archive-missing', changes: [changes[0], changes[2]] },
     { id: 'wrong-dependency-pruning', changes: [changes[0], changes[1], {
-      path: metadataPath, content: JSON.stringify({ ...expectedMetadata, overrides: metadata.overrides }),
+      path: metadataPath, content: JSON.stringify({ ...expectedMetadata, overrides: { ...expectedMetadata.overrides, [expectedMetadata.roadmapIds[1]]: { ...expectedMetadata.overrides?.[expectedMetadata.roadmapIds[1]], dependsOn: [firstId] } } }),
     }] },
     { id: 'unrelated-proof-profile-change', changes: [changes[0], changes[1], {
       path: metadataPath, content: JSON.stringify({ ...expectedMetadata, schemaVersion: 999 }),
