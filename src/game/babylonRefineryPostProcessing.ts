@@ -35,7 +35,7 @@ const REFINERY_BASELINE_FOG = 0x0b0805;
 const REFINERY_SSAO_PIPELINE_NAME = 'p28-a3-refinery-ssao2';
 const REFINERY_SSAO_RATIO = Object.freeze({ ssaoRatio: 0.72, blurRatio: 1 });
 const PROTECTED_BLOOM_NAME = /(enemy|telegraph|phase-cue|hazard|objective|loot|interactable|protocol|status|lifecycle|target|health|armor|guide)/i;
-const REFINERY_BLOOM_SOURCE_NAME = /(refinery-(terminal|processor|pipe|cable-tray|service-conduit|smelter-gantry)|p27-b6-muzzle-(flash|core))/i;
+const REFINERY_BLOOM_SOURCE_NAME = /(refinery-(terminal|processor|pipe|cable-tray|service-conduit|smelter-gantry)|p28-e3-refinery-(furnace-port|terminal-bank|warning-beacon|machinery-indicator)-emitter|p27-b6-muzzle-(flash|core))/i;
 const CONTACT_POINTS = Object.freeze([
   [0.29, 0.67, 1.00, 0.72],
   [0.50, 0.26, 1.16, 0.84],
@@ -82,6 +82,10 @@ function color4FromHex(hex: number) {
 }
 
 export function isBabylonRefineryBloomSourceName(name: string) {
+  // Refinery fixture metal is intentionally excluded even when its name contains 'terminal'.
+  if (name.startsWith('p28-e3-refinery-')) {
+    return /p28-e3-refinery-(furnace-port|terminal-bank|warning-beacon|machinery-indicator)-emitter-/.test(name);
+  }
   return !PROTECTED_BLOOM_NAME.test(name) && REFINERY_BLOOM_SOURCE_NAME.test(name);
 }
 
