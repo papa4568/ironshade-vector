@@ -1,4 +1,9 @@
 import assert from 'node:assert/strict';
+import { NullEngine } from '@babylonjs/core/Engines/nullEngine';
+import { PointLight } from '@babylonjs/core/Lights/pointLight';
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { Scene } from '@babylonjs/core/scene';
 import { readFileSync } from 'node:fs';
 import {
   REFINERY_ACTOR_GROUNDING_PROFILE,
@@ -11,6 +16,8 @@ import {
   resolveRefineryTopologyToken,
 } from '../src/game/babylonRefineryLighting';
 import { REFINERY_BABYLON_LIGHTING_PROFILE } from '../src/game/refineryLightingProfile';
+import { BabylonRefineryPracticalFixtures, REFINERY_PRACTICAL_FIXTURE_PROFILE } from '../src/game/babylonRefineryPracticalFixtures';
+import { isBabylonRefineryBloomSourceName } from '../src/game/babylonRefineryPostProcessing';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 
 const highSnapshot = new AdaptiveRenderBudget(false).sample(1000 / 60, 1, 'flagship');
@@ -152,6 +159,8 @@ assert.match(lightingSource, /resolveRefineryTopologyToken\(this\.scene\.meshes\
 assert.match(lightingSource, /needsShadowListRebuild\(workKey\)/, 'P28-P1 must gate receiver filtering, caster admission, and sorting behind a stable work key.');
 assert.match(lightingSource, /resolveRefineryTopologyToken\(this\.scene\.materials\)/, 'P28-P1 material-light rebuild decisions must use O(1) topology identity.');
 assert.match(lightingSource, /needsMaterialLightRebuild\(workKey\)/, 'P28-P1 must gate full material traversal behind topology/tier changes.');
+assert.match(lightingSource, /refineryPracticalFixtures/, 'P28-E3 must expose deterministic light-linked fixture telemetry.');
+assert.match(lightingSource, /this\\.practicalFixtures\\.sync\\(this\\.practicalLights, budget\\.practicalLightCount\\)/, 'P28-E3 fixture visibility must follow the existing adaptive practical-light budget.');
 assert.match(lightingSource, /refineryLightingWork/, 'P28-P1 must publish deterministic frame-to-rebuild telemetry for runtime profiling.');
 assert.match(lightingSource, /material-rebuilds:/, 'P28-P1 browser-visible telemetry must expose material-light rebuild counts.');
 assert.match(worldSource, /new PBRMaterial\('p27-b5-object-material-'/, 'Babylon refinery world fallback materials must use Babylon PBR.');
@@ -164,5 +173,47 @@ assert(browserSource.includes('pcf-high:bias-0'), 'Browser QA must validate the 
 assert.match(browserSource, /p27b11-ibl-off/, 'Browser QA must retain the refinery IBL-off comparison capture.');
 assert.match(browserSource, /p27b11-ibl-on/, 'Browser QA must retain the refinery IBL-on comparison capture.');
 assert.match(packageSource, /test:babylon-refinery-lighting/, 'Production build must execute the refinery lighting regression.');
+
+
+const fixtureEngine = new NullEngine();
+const fixtureScene = new Scene(fixtureEngine);
+const practicals = [
+  new PointLight('test-furnace-practical', new Vector3(18, 3.25, 8), fixtureScene),
+  new PointLight('test-service-practical', new Vector3(28, 2.9, 22), fixtureScene),
+];
+const fixtureCountBefore = fixtureScene.meshes.length;
+const fixtures = new BabylonRefineryPracticalFixtures(fixtureScene);
+assert.equal(REFINERY_PRACTICAL_FIXTURE_PROFILE.assemblies.length, practicals.length);
+assert.equal(fixtures.sourceCount, 6, 'Furnace, terminal, warning and machinery optics need distinct authored surfaces.');
+assert.equal(fixtureScene.lights.length, 2, 'Practical fixture geometry must not add light sources.');
+const emitterMeshes = fixtureScene.meshes.filter(mesh => /^p28-e3-refinery-.*-emitter-/.test(mesh.name));
+assert.equal(emitterMeshes.length, 6);
+assert(emitterMeshes.every(mesh => !mesh.isEnabled()), 'Fixture geometry must begin disabled outside the refinery.');
+fixtures.setEnabled(true);
+fixtures.sync(practicals, high.practicalLightCount);
+assert(emitterMeshes.every(mesh => mesh.isEnabled()), 'Flagship must show all six light-linked emissive optics.');
+for (const mesh of emitterMeshes) {
+  assert(isBabylonRefineryBloomSourceName(mesh.name), 'Only explicit fixture emitter meshes should enter selective bloom.');
+  assert(mesh.material instanceof PBRMaterial && mesh.material.emissiveColor.length() > 0.5, 'Authored PBR lens needs real emissive radiance.');
+  assert.equal(mesh.isPickable, false, 'Fixture lenses must not interfere with combat picking.');
+  const anchor = mesh.name.endsWith('-furnace') ? practicals[0] : practicals[1];
+  assert(mesh.getAbsolutePosition().subtract(anchor.position).length() < 2, 'Emission must be physically linked to its practical light.');
+}
+assert(fixtureScene.meshes.filter(mesh => mesh.name.includes('p28-e3-refinery-') && mesh.name.includes('-housing-')).every(mesh => !isBabylonRefineryBloomSourceName(mesh.name)), 'Metal surrounds must not bloom as whole bright boxes.');
+practicals[1].setEnabled(false);
+fixtures.sync(practicals, performance.practicalLightCount);
+assert(emitterMeshes.filter(mesh => mesh.name.endsWith('-service')).every(mesh => !mesh.isEnabled()), 'Performance must extinguish the secondary practical optical surfaces.');
+assert(emitterMeshes.filter(mesh => mesh.name.endsWith('-furnace')).every(mesh => mesh.isEnabled()), 'Performance must retain furnace practical navigation.');
+practicals[1].setEnabled(true);
+fixtures.sync(practicals, high.practicalLightCount);
+assert(emitterMeshes.every(mesh => mesh.isEnabled()), 'Recovered Flagship tier must restore service lighting.');
+fixtures.setEnabled(false);
+assert(emitterMeshes.every(mesh => !mesh.isEnabled()), 'Scenario exit must hide all refinery-specific emissives.');
+fixtures.dispose();
+assert.equal(fixtureScene.meshes.length, fixtureCountBefore, 'Fixture teardown must reclaim all authored geometry.');
+assert.equal(fixtureScene.materials.filter(material => material.name.startsWith('p28-e3-')).length, 0, 'Fixture teardown must reclaim all local PBR materials.');
+practicals.forEach(light => light.dispose());
+fixtureScene.dispose();
+fixtureEngine.dispose();
 
 console.log('P28_P1_REFINERY_LIGHTING_WORK_PASS frames=180 stable-shadow-rebuilds=1 stable-material-rebuilds=1 invalidation=topology+anchor+tier high-shadow=2048 adaptive=1024>off cues=preserved');
