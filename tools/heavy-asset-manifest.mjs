@@ -62,12 +62,30 @@ export function measureGlb(bytes, name = 'GLB') {
   }
   check(json?.asset?.version === '2.0' && binary, name + ': missing glTF JSON/BIN');
   const views = json.bufferViews ?? [], accessors = json.accessors ?? [];
-  const used = new Set(), content = new Map(), geometry = new Set(), embedded = [];
+  const used = new Set(), usedViewEnd = new Map(), content = new Map(), geometry = new Set(), embedded = [];
   const readView = (index, label) => {
     const v = views[index];
     check(v && v.buffer === 0, name + ': invalid ' + label + ' buffer view');
     used.add(index);
     return checkedRange(binary, v.byteOffset ?? 0, v.byteLength, name + ' ' + label);
+  };
+  const accessorPayload = (accessor, label) => {
+    const elementComponents = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16 }[accessor.type];
+    const componentBytes = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 }[accessor.componentType];
+    check(elementComponents && componentBytes && Number.isInteger(accessor.count) && accessor.count > 0, name + ': unsupported ' + label + ' accessor');
+    const elementBytes = elementComponents * componentBytes;
+    const view = views[accessor.bufferView];
+    const stride = view?.byteStride ?? elementBytes;
+    const start = accessor.byteOffset ?? 0;
+    const end = start + (accessor.count - 1) * stride + elementBytes;
+    const raw = readView(accessor.bufferView, label);
+    check(Number.isSafeInteger(start) && start >= 0 && Number.isSafeInteger(end) && stride >= elementBytes && end <= raw.length, name + ': invalid ' + label + ' accessor range');
+    usedViewEnd.set(accessor.bufferView, Math.max(end, usedViewEnd.get(accessor.bufferView) ?? 0));
+    if (stride === elementBytes) return raw.subarray(start, end);
+    // Interleaved attributes are hashed by their actual elements, not stride gaps.
+    const unpacked = Buffer.allocUnsafe(accessor.count * elementBytes);
+    for (let i = 0; i < accessor.count; i++) raw.copy(unpacked, i * elementBytes, start + i * stride, start + i * stride + elementBytes);
+    return unpacked;
   };
   let vertices = 0, triangles = 0, primitiveCount = 0, unitCubePrimitives = 0;
   for (const mesh of json.meshes ?? []) for (const primitive of mesh.primitives ?? []) {
@@ -83,7 +101,7 @@ export function measureGlb(bytes, name = 'GLB') {
     for (const accessorId of [...Object.values(primitive.attributes ?? {}), primitive.indices].filter(Number.isInteger)) {
       const accessor = accessors[accessorId];
       check(accessor && Number.isInteger(accessor.bufferView), name + ': accessor lacks buffer view');
-      const payload = readView(accessor.bufferView, 'geometry');
+      const payload = accessorPayload(accessor, 'geometry');
       const digest = SHA(payload);
       if (!content.has(digest)) content.set(digest, payload.length);
       geometry.add(digest);
@@ -92,6 +110,7 @@ export function measureGlb(bytes, name = 'GLB') {
   for (const img of json.images ?? []) {
     if (Number.isInteger(img.bufferView)) {
       const payload = readView(img.bufferView, 'texture');
+      usedViewEnd.set(img.bufferView, payload.length);
       const info = img.mimeType === 'image/png' ? pngInfo(payload, name + ' embedded ' + (img.name ?? 'image')) : null;
       embedded.push({ name: img.name ?? '', mimeType: img.mimeType, dimensions: info ? [info.width, info.height] : null, mipLevels: info?.mipLevels ?? null, compressedBytes: payload.length, uncompressedBytes: info?.decodedBytes ?? null, contentHash: SHA(payload) });
       if (!content.has(SHA(payload))) content.set(SHA(payload), payload.length);
@@ -120,7 +139,10 @@ export function measureGlb(bytes, name = 'GLB') {
   }
   const channels = sort(channelSet);
   const legacyCube = primitiveCount > 0 && unitCubePrimitives === primitiveCount;
-  const allocated = views.reduce((n, view, index) => n + (used.has(index) ? 0 : view.byteLength), 0);
+  // Allow the three-byte alignment tail mandated by GLB without crediting extra binary padding.
+  const allocated = views.reduce((n, view, index) => n + (used.has(index)
+    ? Math.max(0, view.byteLength - (usedViewEnd.get(index) ?? 0) - 3)
+    : view.byteLength), 0);
   const meaningfulBytes = [...content.values()].reduce((n, bytes) => n + bytes, 0);
   return { vertices, triangles, primitiveCount, legacyCube, geometryHashes: sort(geometry), materialChannels: channels, embeddedTextures: embedded, meaningfulBytes, unusedBufferViewBytes: allocated, uncompressedBytes: binary.length + embedded.reduce((n, t) => n + (t.uncompressedBytes ?? 0), 0) };
 }
