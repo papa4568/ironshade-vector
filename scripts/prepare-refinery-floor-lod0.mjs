@@ -1,3 +1,4 @@
+import { appendRefineryHeroDetails } from './lib/refinery-hero-geometry.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -126,6 +127,8 @@ function floorPanelDefinition() {
   ].entries()) {
     nodes.push({ name: `refinery-floor-fastener-${index + 1}`, mesh: 4, translation: [x, 0.075, z] });
   }
+  appendRefineryHeroDetails(geometries, nodes, 'floor');
+
   return {
     family: 'floor',
     sceneName: 'refinery-floor-panel-lod0',
@@ -190,6 +193,8 @@ function floorGrateDefinition() {
   ].entries()) {
     nodes.push({ name: `refinery-floor-service-grate-fastener-${index + 1}`, mesh: 5, translation: [x, 0.122, z] });
   }
+  appendRefineryHeroDetails(geometries, nodes, 'floorGrate');
+
   return {
     family: 'floorGrate',
     sceneName: 'refinery-floor-service-grate-lod0',
