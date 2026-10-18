@@ -116,7 +116,7 @@ for (const material of gltf.materials) {
 const emissiveMaterial = gltf.materials.find(material => material.name === 'assault-emissive');
 assert(Number.isInteger(emissiveMaterial?.emissiveTexture?.index), 'Assault enemy LOD0 emissive material is missing its emissive texture');
 assert((emissiveMaterial?.emissiveFactor ?? []).some(value => value > 0), 'Assault enemy LOD0 emissive response is disabled');
-assert((gltf.images?.length ?? 0) === 4, 'Assault enemy LOD0 must embed four deterministic texture payloads');
+assert((gltf.images?.length ?? 0) === 8, 'Assault enemy LOD0 must embed original four plus four new authored detail textures');
 for (const image of gltf.images) {
   assert(Number.isInteger(image.bufferView), `${image.name ?? 'Assault texture'} must be embedded in the GLB`);
   assert(image.mimeType === 'image/png' && !image.uri, `${image.name ?? 'Assault texture'} must use deterministic embedded PNG data`);
