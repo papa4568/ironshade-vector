@@ -84,7 +84,10 @@ export class BabylonRefineryReflectionProbes {
     // existing global IBL without destroying already captured GPU resources.
     const qaIblDisabled = this.canvas.dataset.graphicsPathSelection === 'qa-explicit'
       && this.canvas.dataset.refineryIblQa === 'off';
-    const active = budget.tierName !== 'performance' && budget.refineryIblScale > 0 && !qaIblDisabled;
+    const qaCaptureRequested = this.canvas.dataset.graphicsPathSelection === 'qa-explicit'
+      && this.canvas.dataset.refineryReflectionQa === 'capture';
+    const active = (budget.tierName !== 'performance' || qaCaptureRequested)
+      && budget.refineryIblScale > 0 && !qaIblDisabled;
     if (active !== this.active) {
       this.active = active;
       this.applyMaterials();
@@ -140,6 +143,7 @@ export class BabylonRefineryReflectionProbes {
       'scheduled:' + this.nextCapture,
       'completed:' + this.completedCaptures,
       'resident-estimate-bytes:' + estimatedBytes,
+      'qa:' + (this.canvas.dataset.graphicsPathSelection === 'qa-explicit' && this.canvas.dataset.refineryReflectionQa === 'capture' ? 'explicit-capture' : 'normal'),
       'update:' + REFINERY_REFLECTION_PROFILE.captureMode,
     ].join('|');
   }

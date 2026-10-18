@@ -222,6 +222,15 @@ try {
     throw new Error(`P28-D7 normal Flagship elite LOD0 proof is not deterministic: ${JSON.stringify(normal)}`);
   }
 
+  const probeQaEnabled = await evaluate(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
+    if (!(canvas instanceof HTMLCanvasElement) || canvas.dataset.graphicsPathSelection !== 'qa-explicit') return false;
+    canvas.dataset.refineryReflectionQa = 'capture';
+    return true;
+  })()`);
+  if (!probeQaEnabled) throw new Error('P28-E4 probe capture QA requires an explicitly selected Babylon graphics path.');
+  console.log('P28_E4_QA_BEGIN ' + await evaluate("document.querySelector('canvas')?.dataset.refineryReflectionProbes ?? ''"));
+
   await waitFor(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
     const value = canvas?.dataset.refineryReflectionProbes ?? '';
@@ -231,21 +240,18 @@ try {
       return [field.slice(0, split), field.slice(split + 1)];
     }));
     const probes = Number(fields.probes);
-    // CI's SwiftShader software renderer can legitimately trigger the
-    // measured-frame Performance recovery before all spatial probes capture.
-    // Demand a real completed local capture plus correct recovery semantics.
-    const completed = Number(fields.completed);
-    const active = Number(fields['active-materials']);
-    const lifecycleValid = fields.state === 'local'
-      ? active > 0
-      : fields.state === 'global-ibl' && active === 0;
-    return probes >= 4 && Number(fields.materials) >= probes
+    // QA explicitly captures the real Babylon cubemap even if the software
+    // renderer cannot sustain the target phone's normal Performance fallback.
+    return fields.state === 'local' && fields.qa === 'explicit-capture'
+      && probes >= 4 && Number(fields.materials) >= probes
       && Number(fields['capture-geometry']) > 0
       && Number(fields.scheduled) >= 1
-      && completed >= 1 && completed <= Number(fields.scheduled)
-      && Number(fields.faces) === probes * 6 && lifecycleValid;
-  })()`, 'P28-E4 completed local PBR capture or measured-pressure fallback', 90_000);
+      && Number(fields.completed) >= 1
+      && Number(fields['active-materials']) >= 1
+      && Number(fields.faces) === probes * 6;
+  })()`, 'P28-E4 explicitly captured real localized PBR reflections', 45_000);
   const reflectionEvidence = await evaluate(readGradeStateExpression);
+  normal.refineryReflections = reflectionEvidence.refineryReflections;
   console.log('P28_E4_FLAGSHIP_REFLECTION_PROBES_PASS ' + reflectionEvidence.refineryReflections);
 
   const enabled = await evaluate(`(() => {
@@ -306,6 +312,7 @@ try {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
     if (!(canvas instanceof HTMLCanvasElement)) return 'not-mounted';
     delete canvas.dataset.refineryImageGradeQa;
+    delete canvas.dataset.refineryReflectionQa;
     return 'cleared';
   })()`);
   if (restoreState === 'cleared') {

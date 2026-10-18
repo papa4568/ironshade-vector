@@ -52,7 +52,7 @@ assert(rendererSource.includes('const animationStride = runtimeAnimationStride({
 assert(rendererSource.includes('this.engine._drawCalls.current') && rendererSource.includes('this.scene.getActiveIndices() / 3'), 'Babylon performance diagnostics must report measured draw calls and rendered triangles');
 assert(rendererSource.includes('budget.pixelRatioScale') && rendererSource.includes('setHardwareScalingLevel'), 'Babylon hardware scaling must remain tied to the adaptive pixel ratio');
 assert(rendererSource.includes('maxCachedAssets: budget.assetCacheEntryBudget'), 'Babylon runtime must receive the tiered cached-resource count budget');
-assert(assetRuntimeSource.includes('{ doNotInstantiate: false }'), 'Babylon runtime must allow native instancing for reusable static meshes');
+assert(assetRuntimeSource.includes('{ doNotInstantiate: options.uniqueMeshes ?? false }'), 'Babylon runtime must allow native instancing for reusable static meshes');
 assert(assetRuntimeSource.includes('this.cache.size <= this.budget.maxCachedAssets'), 'Babylon runtime must evict idle assets when the tiered entry budget is exceeded');
 assert(browserSmokeSource.includes('BROWSER_P27D3_BABYLON_RESOURCE_QUALITY_PASS'), 'browser QA must record P27-D3 geometry/resource evidence');
 
