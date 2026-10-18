@@ -193,6 +193,42 @@ try {
     throw new Error(`P28-D8 Flagship boss proof is not deterministic: ${JSON.stringify(boss)}`);
   }
 
+  // Read the same local GLB URL consumed by Babylon. A valid screenshot
+  // without the authored heavy hero mesh/maps is not P28-F3 visual evidence.
+  const heavyHeroAsset = await evaluate(`(async () => {
+    const response = await fetch('/assets/models/bosses/enemy-boss-lod0.glb', { cache: 'force-cache' });
+    if (!response.ok) return { error: 'asset HTTP ' + response.status };
+    const bytes = await response.arrayBuffer();
+    const view = new DataView(bytes);
+    if (bytes.byteLength < 28 || view.getUint32(0, true) !== 0x46546c67 ||
+        view.getUint32(4, true) !== 2 || view.getUint32(8, true) !== bytes.byteLength) {
+      return { error: 'invalid delivered GLB' };
+    }
+    const length = view.getUint32(12, true);
+    const json = JSON.parse(new TextDecoder().decode(new Uint8Array(bytes, 20, length)).trim());
+    const payload = json.extras?.ironshadeP28F3HeavyHero;
+    const detailNodes = (json.nodes ?? []).filter(node => node.name?.startsWith('boss-p28f3-detail-'));
+    const detailMeshes = (json.meshes ?? []).filter(mesh => mesh.name?.startsWith('boss-p28f3-'));
+    const maps = (json.images ?? []).filter(image => image.name?.startsWith('boss-f3-'));
+    return {
+      bytes: bytes.byteLength,
+      family: payload?.family ?? null,
+      dimensions: payload?.authoredTextureDimensions ?? null,
+      visualOnly: payload?.visualOnly ?? null,
+      detailNodes: detailNodes.length,
+      detailMeshes: detailMeshes.length,
+      maps: maps.map(image => image.name),
+      weaponSocketPresent: (json.nodes ?? []).some(node => node.name === 'weapon-socket'),
+    };
+  })()`);
+  if (!heavyHeroAsset || heavyHeroAsset.bytes < 150_000 ||
+      heavyHeroAsset.family !== 'boss' || heavyHeroAsset.visualOnly !== true ||
+      JSON.stringify(heavyHeroAsset.dimensions) !== '[256,256]' ||
+      heavyHeroAsset.detailNodes !== 4 || heavyHeroAsset.detailMeshes !== 2 ||
+      heavyHeroAsset.maps.length !== 4 || !heavyHeroAsset.weaponSocketPresent) {
+    throw new Error('P28-F3 browser-served Flagship boss art is missing: ' + JSON.stringify(heavyHeroAsset));
+  }
+
   const capture = await call('Page.captureScreenshot', { format: 'png', fromSurface: true });
   const png = Buffer.from(capture.data, 'base64');
   if (png.length < 20_000) throw new Error(`P28-D8 boss screenshot is unexpectedly small: ${png.length} bytes`);
@@ -202,10 +238,11 @@ try {
     visualDetail: 'p28-d8-refinery-boss-lod0',
     captureMode: 'flagship-boss-asset-lock-with-host-adaptive-tier',
     boss,
+    heavyHeroAsset,
     screenshot: screenshotPath,
   }, null, 2));
 
-  console.log(`BROWSER_P28D8_BOSS_PASS hostTier=${boss.tier} qaQuality=${boss.bossQaQuality} asset=${boss.bossAsset} rig=${boss.bossRig} phase=${boss.bossPresentationPhaseCue} timing=${boss.bossCueTiming} detail=${boss.bossDetailScale} screenshot=${screenshotPath} bytes=${png.length}`);
+  console.log(`BROWSER_P28D8_BOSS_PASS hostTier=${boss.tier} qaQuality=${boss.bossQaQuality} asset=${boss.bossAsset} rig=${boss.bossRig} phase=${boss.bossPresentationPhaseCue} timing=${boss.bossCueTiming} detail=${boss.bossDetailScale} heavyArt=${heavyHeroAsset.bytes} screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
   socket.close();
 }
