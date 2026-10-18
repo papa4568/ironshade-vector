@@ -96,8 +96,13 @@ export class BabylonRefineryReflectionProbes {
     if (active && this.nextCapture < this.probes.length) {
       const record = this.probes[this.nextCapture++];
       record.probe.renderList?.push(...this.captureMeshes);
-      // An RTT may be visited once with an empty render list before its
-      // assigned frame. Count only captures armed with actual refinery geometry.
+      // An unbound cube texture is not necessarily in the scene's active
+      // render-target set. Register it explicitly until refinery teardown;
+      // refreshRate=0 prevents repeated captures of static geometry.
+      if (!this.scene.customRenderTargets.includes(record.probe.cubeTexture)) {
+        this.scene.customRenderTargets.push(record.probe.cubeTexture);
+      }
+      // Count only captures armed with actual refinery geometry.
       const generation = this.generation;
       record.probe.cubeTexture.onAfterUnbindObservable.addOnce(() => {
         if (this.generation !== generation || !this.probes.includes(record)) return;
@@ -160,6 +165,8 @@ export class BabylonRefineryReflectionProbes {
         if (!binding.mesh.isDisposed()) binding.mesh.material = binding.original;
         binding.local.dispose();
       }
+      const targetIndex = this.scene.customRenderTargets.indexOf(record.probe.cubeTexture);
+      if (targetIndex !== -1) this.scene.customRenderTargets.splice(targetIndex, 1);
       record.probe.dispose();
     }
     this.probes = [];
