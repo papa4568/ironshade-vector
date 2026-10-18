@@ -385,7 +385,7 @@ function existingMode(revision, path) {
   return match[1];
 }
 
-function createSyntheticCandidate({ id, path, content = undefined, mode = undefined, changes = undefined }) {
+function createSyntheticCandidate({ id, path, content = undefined, mode = undefined }) {
   syntheticCommitCounter += 1;
   const indexPath = `/tmp/ironshade-ev24-index-${process.pid}-${syntheticCommitCounter}`;
   const env = {
@@ -399,23 +399,51 @@ function createSyntheticCandidate({ id, path, content = undefined, mode = undefi
   };
   try {
     gitWithEnv(['read-tree', EV18_REFERENCE_SHA], env);
-    for (const edit of changes ?? [{ path, content, mode }]) {
-      const referenceBlob = git(['rev-parse', `${EV18_REFERENCE_SHA}:${edit.path}`], { allowFailure: true });
-      const blob = edit.content === undefined
-        ? (() => {
-            ok(referenceBlob.status === 0, `${id} mode-only mutation requires an existing reference blob`);
-            return referenceBlob.stdout.trim();
-          })()
-        : gitWithEnv(['hash-object', '-w', '--stdin'], env, { input: edit.content });
-      const targetMode = edit.mode ?? existingMode(EV18_REFERENCE_SHA, edit.path);
-      gitWithEnv(['update-index', '--add', '--cacheinfo', targetMode, blob, edit.path]);
-    }
+    const referenceBlob = git(['rev-parse', `${EV18_REFERENCE_SHA}:${path}`], { allowFailure: true });
+    const blob = content === undefined
+      ? (() => {
+          ok(referenceBlob.status === 0, `${id} mode-only mutation requires an existing reference blob`);
+          return referenceBlob.stdout.trim();
+        })()
+      : gitWithEnv(['hash-object', '-w', '--stdin'], env, { input: content });
+    const targetMode = mode ?? existingMode(EV18_REFERENCE_SHA, path);
+    gitWithEnv(['update-index', '--add', '--cacheinfo', targetMode, blob, path], env);
     const tree = gitWithEnv(['write-tree'], env);
     const commit = gitWithEnv(['commit-tree', tree, '-p', EV18_REFERENCE_SHA, '-m', `EV-24 production calibration ${id}`], env);
+    if (referenceBlob.status === 0) ok(gitEntry(commit, path) !== gitEntry(EV18_REFERENCE_SHA, path), `${id} must change the target Git tree entry`);
     return commit;
   } finally {
     rmSync(indexPath, { force: true });
   }
+}
+
+// Multi-file calibration uses separate immutable synthetic commits. The
+// established EV-24 single-path helper is kept unchanged as a control.
+function createSyntheticRoadmapCandidate({ id, changes }) {
+  let parent = EV18_REFERENCE_SHA;
+  for (const [index, { path, content }] of changes.entries()) {
+    syntheticCommitCounter += 1;
+    const indexPath = '/tmp/ironshade-product-closeout-' + process.pid + '-' + syntheticCommitCounter;
+    const env = {
+      GIT_INDEX_FILE: indexPath,
+      GIT_AUTHOR_NAME: 'Product Closeout Calibration',
+      GIT_AUTHOR_EMAIL: 'closeout@example.invalid',
+      GIT_COMMITTER_NAME: 'Product Closeout Calibration',
+      GIT_COMMITTER_EMAIL: 'closeout@example.invalid',
+      GIT_AUTHOR_DATE: '2000-01-01T00:00:00Z',
+      GIT_COMMITTER_DATE: '2000-01-01T00:00:00Z',
+    };
+    try {
+      gitWithEnv(['read-tree', parent], env);
+      const blob = gitWithEnv(['hash-object', '-w', '--stdin'], env, { input: content });
+      gitWithEnv(['update-index', '--add', '--cacheinfo', existingMode(parent, path), blob, path], env);
+      const tree = gitWithEnv(['write-tree'], env);
+      parent = gitWithEnv(['commit-tree', tree, '-p', parent, '-m', id + '-' + index], env);
+    } finally {
+      rmSync(indexPath, { force: true });
+    }
+  }
+  return parent;
 }
 
 function evaluateTransition(candidateSha) {
@@ -491,7 +519,7 @@ function roadmapCloseoutBoundaryCalibration() {
     { path: archivePath, content: expectedArchive },
     { path: metadataPath, content: JSON.stringify(expectedMetadata, null, 2) + '\n' },
   ];
-  const accepted = createSyntheticCandidate({ id: 'valid-first-item-closeout', changes });
+  const accepted = createSyntheticRoadmapCandidate({ id: 'valid-first-item-closeout', changes });
   assert.equal(validProductRoadmapCloseoutMetadata(base, accepted), true,
     'trusted first-item closeout and mechanically synchronized sidecar must pass');
 
@@ -509,7 +537,7 @@ function roadmapCloseoutBoundaryCalibration() {
     }, changes[1], changes[2]] },
   ];
   for (const attack of attacks) {
-    const candidate = createSyntheticCandidate(attack);
+    const candidate = createSyntheticRoadmapCandidate(attack);
     assert.equal(validProductRoadmapCloseoutMetadata(base, candidate), false,
       'roadmap-closeout protected-metadata boundary missed attack ' + attack.id);
   }
