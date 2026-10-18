@@ -37,6 +37,20 @@ assert.deepEqual(padded.geometryHashes, base.geometryHashes, 'metadata padding m
 const missingTexture = mutateGlbJson(premium, gltf => { delete gltf.materials[0].normalTexture; });
 const missing = measureGlb(missingTexture, 'missing-normal');
 assert(!missing.materialChannels.includes('normal'), 'cannot credit a map merely because an unused image remains in GLB');
+
+const extraUnusedMap = mutateGlbJson(missingTexture, gltf => {
+  gltf.materials.push({
+    name: 'fake-unused-premium-material',
+    pbrMetallicRoughness: { baseColorTexture: { index: 0 }, metallicRoughnessTexture: { index: 2 } },
+    normalTexture: { index: 1 },
+  });
+});
+assert(!measureGlb(extraUnusedMap, 'fake-unused').materialChannels.includes('normal'), 'unused premium materials must not satisfy the required channel gate');
+const danglingMap = mutateGlbJson(missingTexture, gltf => {
+  gltf.materials[0].normalTexture = { index: 999999 };
+});
+assert(!measureGlb(danglingMap, 'dangling-map').materialChannels.includes('normal'), 'nonexistent texture data must not satisfy required map channels');
+
 assert.throws(() => measureGlb(Buffer.concat([premium, Buffer.from([0])])), /invalid GLB header/, 'trailing padding should violate length integrity');
 assert.throws(() => measureGlb(premium.subarray(0, premium.length - 8)), /invalid GLB header/, 'truncation must fail');
 
