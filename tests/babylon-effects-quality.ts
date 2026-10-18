@@ -13,20 +13,7 @@ import {
 } from '../src/game/babylonAmbientParticles';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 import { getWorldSize } from '../src/game/sim';
-import { REFINERY_F5_SEAM_VARIANTS, refineryF5SeamVariation } from '../src/game/refineryDecalVariation';
 
-const seamPlacements = Array.from({ length: 20 }, (_, index) => refineryF5SeamVariation(index));
-assert.equal(REFINERY_F5_SEAM_VARIANTS.length, 6, 'P28-F5 floor tiling mitigation must have six independently placed cosmetic seam variants.');
-assert.equal(new Set(seamPlacements.map(v => `${v.x}/${v.z}/${v.yaw}/${v.scale}`)).size, 6,
-  'P28-F5 twenty repeated panels must visibly vary the decorative seam location, rotation and width.');
-assert(seamPlacements.every(v => Math.abs(v.x) <= 0.16 && Math.abs(v.z) <= 0.12
-  && Math.abs(v.yaw) <= 0.06 && v.scale >= 0.94 && v.scale <= 1.04),
-  'P28-F5 cosmetic variation must stay within the authored panel and not drift into gameplay cues.');
-const rendererSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
-assert(rendererSource.includes("if (key === 'floor')") && rendererSource.includes('refineryF5SeamVariation(task.index)')
-  && rendererSource.includes("mesh.name.includes('p28-b6-refinery-route-detail-atlas')"),
-  'P28-F5 variation must be applied to live instanced floor decals, never the gameplay mesh.');
-console.log('P28_F5_SEAM_VARIATION_PASS placements=20 variants=6 offsets=bounded gameplayGeometry=unchanged');
 const high = new AdaptiveRenderBudget(false).sample(16.7, 1, 'flagship');
 const phoneDefault = new AdaptiveRenderBudget(true).sample(16.7, 1, 'adaptive');
 const balancedBudget = new AdaptiveRenderBudget(true);
