@@ -101,6 +101,29 @@ Meshopt remains the geometry-compression target where it preserves asset fidelit
 P27 initially kept the existing Three.js renderer as a rollback path while Babylon reached gameplay, visual, lifecycle, performance, and Android parity. After the P27-D7/D8 cutover and verification, the Three production/rollback renderer, its WebGPU comparison renderer, loader/cache implementation, codec bundle, and renderer-only helpers were retired. Historical P21 measurements remain useful evidence in the engine-decision record, but they no longer describe shipped runtime ownership.
 
 
+## P28-F1 refinery texture source and delivered maps
+
+The generated refinery PBR library now authors its five *runtime-bound* families at
+2048×2048 pixels, with RGBA8 source data for albedo, tangent-space normal,
+packed ORM (R=occlusion, G=roughness, B=metallic), and emissive maps where
+appropriate. Directional abrasion, panel-seam accumulation, etched service
+labels, oil-drip trails, granular relief, and localized heat oxidation modify
+physical channels together instead of merely enlarging the prior 512px map
+or adding unreferenced texture padding. The refinery materials remain locally
+bound through `babylonPremiumPbrSurfaceLibrary.ts` and use full-mip
+Zstandard-compressed KTX2 files; low-tier geometry recovery still shares the
+same material source.
+
+Use `npm run test:graphics:content` to rebuild and inspect the authored texture
+channels, deterministic KTX2 mip chains and between-panel variation. Run
+`npm run build:prod` and inspect `dist/assets/heavy-asset-manifest.json` for
+actual shipped per-map sizes, independently decoded source mips, unique content
+digests, and premium-source qualification. The APK ZIP audit reports exact
+compressed/uncompressed bytes for these files. The P28 Image Grade Visual
+workflow records the P28-F1 Flagship refinery capture for an actual gameplay-zoom
+comparison with the pre-F1 baseline; nominal resolution alone is not visual
+acceptance, and external target-phone observations remain separate.
+
 ## P28-F0 heavy-art accounting and anti-placeholder baseline
 
 The existing graphics-content test (`npm run test:graphics:content`) now creates a deterministic `public/assets/heavy-asset-manifest.json` from the actual generated premium GLB, refinery decal PNG, and KTX2 files. The content gate runs falsification fixtures for forged mip indexes, missing material channels, duplicate content, GLB metadata padding, missing runtime-registered assets, and corrupted APK entry identities. The packaged graphics gate (`npm run test:graphics:dist`) verifies the manifest against the delivered `dist/` assets and materializes it for production-only builds. These tests do not change the trusted EV-18 proof-producer scripts, package manifest, or Android consumer workflow.
