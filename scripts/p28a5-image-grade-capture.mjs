@@ -286,7 +286,10 @@ try {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
       return canvas?.dataset.environmentImageGradeMode === 'normal'
         && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1');
-    })()`, 'restored normal Flagship refinery grade');
+    })()`, 'restored normal Flagship refinery grade', 45_000).catch(async error => {
+      const state = await evaluate(readGradeStateExpression).catch(() => 'unavailable');
+      throw new Error(`${error.message} Last rendered grade: ${JSON.stringify(state)}`);
+    });
   } else if (restoreState !== 'not-mounted') {
     throw new Error(`Could not clear the P28-A5 low-visibility QA grade: ${String(restoreState)}`);
   }
