@@ -130,7 +130,7 @@ function allowedAgentMutation(path) {
     || EV9_LIVE_AGENT_PATHS.has(path);
 }
 
-function gitAgentRefs(revision, { transition = false } = {}) {
+function gitAgentRefs(revision, { transition = false, productCloseout = false } = {}) {
   const tree = execFileSync('/usr/bin/git', ['ls-tree', '-r', '-z', revision, '--', 'agent'], {
     encoding: 'buffer',
     env: baseGitEnv(),
@@ -142,6 +142,7 @@ function gitAgentRefs(revision, { transition = false } = {}) {
     ok(match, `unexpected git ls-tree entry: ${entry}`);
     const [, mode, type, objectSha, path] = match;
     if (allowedAgentMutation(path)) continue;
+    if (productCloseout && path === 'agent/roadmap-metadata.json') continue;
     if (transition && EV18_AGENT_TRANSITION_PATHS.has(path)) continue;
     refs[path] = `${mode} ${type} ${objectSha}`;
   }
@@ -201,6 +202,63 @@ function legacySteadyChecks({ trustedBaseSha, candidateSha }) {
   };
 }
 
+
+// Metadata is protected unless it is *exactly* the mechanical sidecar sync
+// caused by closing the first checked product-roadmap item. This exception is
+// evaluated by the trusted main checkout against immutable Git tree contents;
+// no candidate JS or candidate-provided verifier rule is ever executed.
+function validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha) {
+  const metadataPath = 'agent/roadmap-metadata.json';
+  if (gitEntry(candidateSha, metadataPath) === gitEntry(trustedBaseSha, metadataPath)) return true;
+  try {
+    const base = JSON.parse(gitText(trustedBaseSha, metadataPath));
+    const candidate = JSON.parse(gitText(candidateSha, metadataPath));
+    const active = Array.isArray(base.roadmapIds) ? base.roadmapIds : [];
+    if (active.length < 2 || !active.every(id => typeof id === 'string')) return false;
+    const finishedId = active[0];
+    const baseRoadmap = gitText(trustedBaseSha, 'docs/content-roadmap.md');
+    const candidateRoadmap = gitText(candidateSha, 'docs/content-roadmap.md');
+    const baseArchive = gitText(trustedBaseSha, 'docs/content-roadmap-archive.md');
+    const candidateArchive = gitText(candidateSha, 'docs/content-roadmap-archive.md');
+    const firstTask = baseRoadmap.split('\n').find(line => line.startsWith('- [ ] **'));
+    if (!firstTask || !firstTask.startsWith('- [ ] **' + finishedId + ' —')) return false;
+    const removedTask = firstTask + '\n\n';
+    if (baseRoadmap.split(removedTask).length !== 2
+        || candidateRoadmap !== baseRoadmap.replace(removedTask, '')) return false;
+
+    const heading = '## P28 — Babylon flagship visual-quality overhaul\n\n';
+    if (!baseArchive.startsWith('# Ironshade Vector')
+        || !baseArchive.includes(heading)
+        || !candidateArchive.startsWith(baseArchive.split(heading)[0] + heading)) return false;
+    const archivePrefix = baseArchive.split(heading)[0] + heading;
+    const archivedRest = baseArchive.slice(archivePrefix.length);
+    if (!candidateArchive.endsWith(archivedRest)) return false;
+    const inserted = candidateArchive.slice(archivePrefix.length, candidateArchive.length - archivedRest.length);
+    if (!inserted.startsWith('- [x] **' + finishedId + ' —')
+        || !inserted.includes('\n  - ')
+        || !inserted.endsWith('\n\n')
+        || inserted.split('\n').filter(line => line.startsWith('- [x] **')).length !== 1) return false;
+
+    const expected = structuredClone(base);
+    expected.roadmapIds = active.slice(1);
+    const remaining = new Set(expected.roadmapIds);
+    for (const taskId of Object.keys(expected.overrides ?? {})) {
+      if (!remaining.has(taskId)) {
+        delete expected.overrides[taskId];
+        continue;
+      }
+      const override = expected.overrides[taskId];
+      if (Array.isArray(override.dependsOn)) {
+        override.dependsOn = override.dependsOn.filter(id => remaining.has(id));
+        if (!override.dependsOn.length) delete override.dependsOn;
+      }
+    }
+    return sameJson(expected, candidate);
+  } catch {
+    return false;
+  }
+}
+
 function steadyChecks({ trustedBaseSha, candidateSha }) {
   const expectedWorkflowEntry = gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH);
   const baseDeps = gitPathRefs(trustedBaseSha, TRUSTED_CONSUMER_DEPENDENCIES);
@@ -214,7 +272,8 @@ function steadyChecks({ trustedBaseSha, candidateSha }) {
       check('ev18-steady-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser workflow must remain trusted-base identical'),
       check('ev18-steady-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH), 'Android workflow must remain trusted-base identical'),
       check('ev18-steady-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps), 'source-bound consumer dependencies must remain trusted-base identical'),
-      check('ev18-steady-protected-agent-boundary-unchanged', sameJson(gitAgentRefs(candidateSha), gitAgentRefs(trustedBaseSha)), 'protected agent entries must remain trusted-base identical outside the established allowlist'),
+      check('ev18-steady-protected-agent-boundary-unchanged', sameJson(gitAgentRefs(candidateSha, { productCloseout: true }), gitAgentRefs(trustedBaseSha, { productCloseout: true })), 'protected agent entries must remain trusted-base identical outside the established allowlist and separately validated product closeout'),
+      check('ev18-steady-roadmap-closeout-metadata-bound', validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha), 'metadata mutation must exactly match one first-item roadmap archival, dependency pruning and no other sidecar changes'),
       check('ev18-steady-ev9-live-paths-unchanged', ev9Changed.length === 0, `EV-9 live implementation changes require a new trusted observer bootstrap after EV-18; changed=${ev9Changed.join(',')}`),
     ],
   };
@@ -326,7 +385,7 @@ function existingMode(revision, path) {
   return match[1];
 }
 
-function createSyntheticCandidate({ id, path, content = undefined, mode = undefined }) {
+function createSyntheticCandidate({ id, path, content = undefined, mode = undefined, changes = undefined }) {
   syntheticCommitCounter += 1;
   const indexPath = `/tmp/ironshade-ev24-index-${process.pid}-${syntheticCommitCounter}`;
   const env = {
@@ -340,18 +399,21 @@ function createSyntheticCandidate({ id, path, content = undefined, mode = undefi
   };
   try {
     gitWithEnv(['read-tree', EV18_REFERENCE_SHA], env);
-    const referenceBlob = git(['rev-parse', `${EV18_REFERENCE_SHA}:${path}`], { allowFailure: true });
-    const blob = content === undefined
-      ? (() => {
-          ok(referenceBlob.status === 0, `${id} mode-only mutation requires an existing reference blob`);
-          return referenceBlob.stdout.trim();
-        })()
-      : gitWithEnv(['hash-object', '-w', '--stdin'], env, { input: content });
-    const targetMode = mode ?? existingMode(EV18_REFERENCE_SHA, path);
-    gitWithEnv(['update-index', '--add', '--cacheinfo', targetMode, blob, path], env);
+    for (const edit of changes ?? [{ path, content, mode }]) {
+      const referenceBlob = git(['rev-parse', `${EV18_REFERENCE_SHA}:${edit.path}`], { allowFailure: true });
+      const blob = edit.content === undefined
+        ? (() => {
+            ok(referenceBlob.status === 0, `${id} mode-only mutation requires an existing reference blob`);
+            return referenceBlob.stdout.trim();
+          })()
+        : gitWithEnv(['hash-object', '-w', '--stdin'], env, { input: edit.content });
+      const targetMode = edit.mode ?? existingMode(EV18_REFERENCE_SHA, edit.path);
+      gitWithEnv(['update-index', '--add', '--cacheinfo', targetMode, blob, edit.path]);
+    }
     const tree = gitWithEnv(['write-tree'], env);
     const commit = gitWithEnv(['commit-tree', tree, '-p', EV18_REFERENCE_SHA, '-m', `EV-24 production calibration ${id}`], env);
-    if (referenceBlob.status === 0) ok(gitEntry(commit, path) !== gitEntry(EV18_REFERENCE_SHA, path), `${id} must change the target Git tree entry`);
+    const edits = changes ?? [{ path }];
+    ok(edits.some(edit => gitEntry(commit, edit.path) !== gitEntry(EV18_REFERENCE_SHA, edit.path)), `${id} must change an intended Git tree entry`);
     return commit;
   } finally {
     rmSync(indexPath, { force: true });
@@ -399,12 +461,70 @@ function productionTransitionCalibration() {
   return { baseline, rows, falsePositives, falseNegatives };
 }
 
+
+function roadmapCloseoutBoundaryCalibration() {
+  const base = EV18_REFERENCE_SHA;
+  const metadataPath = 'agent/roadmap-metadata.json';
+  const roadmapPath = 'docs/content-roadmap.md';
+  const archivePath = 'docs/content-roadmap-archive.md';
+  const metadata = JSON.parse(gitText(base, metadataPath));
+  const [firstId] = metadata.roadmapIds;
+  const roadmap = gitText(base, roadmapPath);
+  const taskLine = roadmap.split('\n').find(line => line.startsWith('- [ ] **'));
+  assert(taskLine?.startsWith('- [ ] **' + firstId + ' —'), 'closeout calibration baseline must select the trusted first task');
+  const expectedRoadmap = roadmap.replace(taskLine + '\n\n', '');
+  assert.notEqual(roadmap, expectedRoadmap, 'closeout calibration must change the active roadmap');
+  const archive = gitText(base, archivePath);
+  const heading = '## P28 — Babylon flagship visual-quality overhaul\n\n';
+  const expectedArchive = archive.replace(heading, heading
+    + '- [x] **' + firstId + ' — Synthetic closed item** — Completed in read-only calibration.\n  - Verified candidate proof evidence.\n\n');
+  const expectedMetadata = structuredClone(metadata);
+  expectedMetadata.roadmapIds.shift();
+  const remaining = new Set(expectedMetadata.roadmapIds);
+  for (const id of Object.keys(expectedMetadata.overrides ?? {})) {
+    if (!remaining.has(id)) delete expectedMetadata.overrides[id];
+    else if (Array.isArray(expectedMetadata.overrides[id].dependsOn)) {
+      expectedMetadata.overrides[id].dependsOn = expectedMetadata.overrides[id].dependsOn.filter(dep => remaining.has(dep));
+      if (!expectedMetadata.overrides[id].dependsOn.length) delete expectedMetadata.overrides[id].dependsOn;
+    }
+  }
+  const changes = [
+    { path: roadmapPath, content: expectedRoadmap },
+    { path: archivePath, content: expectedArchive },
+    { path: metadataPath, content: JSON.stringify(expectedMetadata, null, 2) + '\n' },
+  ];
+  const accepted = createSyntheticCandidate({ id: 'valid-first-item-closeout', changes });
+  assert.equal(validProductRoadmapCloseoutMetadata(base, accepted), true,
+    'trusted first-item closeout and mechanically synchronized sidecar must pass');
+
+  const attacks = [
+    { id: 'metadata-without-roadmap', changes: [{ path: metadataPath, content: JSON.stringify(expectedMetadata) }] },
+    { id: 'archive-missing', changes: [changes[0], changes[2]] },
+    { id: 'wrong-dependency-pruning', changes: [changes[0], changes[1], {
+      path: metadataPath, content: JSON.stringify({ ...expectedMetadata, overrides: metadata.overrides }),
+    }] },
+    { id: 'unrelated-proof-profile-change', changes: [changes[0], changes[1], {
+      path: metadataPath, content: JSON.stringify({ ...expectedMetadata, schemaVersion: 999 }),
+    }] },
+    { id: 'roadmap-order-mutation', changes: [{
+      path: roadmapPath, content: expectedRoadmap.replace('- [ ] **', '- [ ] **UNAUTHORIZED-'),
+    }, changes[1], changes[2]] },
+  ];
+  for (const attack of attacks) {
+    const candidate = createSyntheticCandidate(attack);
+    assert.equal(validProductRoadmapCloseoutMetadata(base, candidate), false,
+      'roadmap-closeout protected-metadata boundary missed attack ' + attack.id);
+  }
+  return { accepted: true, attacks: attacks.length, falsePositives: 0, falseNegatives: 0 };
+}
+
 function selfTest() {
   assert.deepEqual([...new Set(EV18_TRANSITION_PATHS)], EV18_TRANSITION_PATHS, 'EV-18 transition paths must be sorted and unique');
   assert.equal(EV18_TRANSITION_PATHS.includes(ROADMAP_PATH), false, 'roadmap state must remain base-owned');
   const calibration = productionTransitionCalibration();
   const compatibility = v10CompatibilityCalibration();
-  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
+  const roadmapCloseout = roadmapCloseoutBoundaryCalibration();
+  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
 }
 
 function verify() {
