@@ -9,7 +9,7 @@ import { buildKtx2RgbaZstd } from './p28f1-refinery-surface-source.mjs';
 // Preserve the existing 4x2 atlas UV cell layout: presentation detail may
 // change, but route-card geometry, physical bounds, and telegraphs may not.
 export const REFINERY_F5_DECAL_ATLAS = Object.freeze({
-  size: 2048,
+  size: 1024,
   file: 'refinery-decal-atlas-f5.png',
   path: 'public/assets/models/environments/refinery-decal-atlas-f5.png',
 });
@@ -45,13 +45,15 @@ export function createRefineryF5DecalPixels() {
   const size = REFINERY_F5_DECAL_ATLAS.size;
   const pixels = Buffer.alloc(size * size * 4);
   for (let y = 0; y < size; y += 1) {
-    const row = Math.floor(y / 1024);
-    const localY = y % 1024;
-    const v = localY / 1024;
+    const cellHeight = size / 2;
+    const row = Math.floor(y / cellHeight);
+    const localY = y % cellHeight;
+    const v = localY / cellHeight;
     for (let x = 0; x < size; x += 1) {
-      const column = Math.floor(x / 512);
-      const localX = x % 512;
-      const u = localX / 512;
+      const cellWidth = size / 4;
+      const column = Math.floor(x / cellWidth);
+      const localX = x % cellWidth;
+      const u = localX / cellWidth;
       const tile = row * 4 + column;
       const grain = hash(x, y, 13) - 0.5;
       const pit = hash(Math.floor(x / 5), Math.floor(y / 7), 37);
@@ -193,7 +195,7 @@ export function patchRefineryF5AtlasGlb(bytes, path) {
   if (targets.length === 0) throw new Error(path + ': no live refinery decal atlas binding');
   targets.forEach(image => { image.uri = REFINERY_F5_DECAL_ATLAS.file; });
   gltf.extras = { ...(gltf.extras ?? {}), ironshadeP28F5Atlases: {
-    resolution: 2048, atlas: REFINERY_F5_DECAL_ATLAS.file, placed: true,
+    resolution: REFINERY_F5_DECAL_ATLAS.size, atlas: REFINERY_F5_DECAL_ATLAS.file, placed: true,
     originalUvLayoutPreserved: true, gameplayBoundsChanged: false, telegraphOpacityUnchanged: true,
   } };
   const json = Buffer.from(JSON.stringify(gltf));
