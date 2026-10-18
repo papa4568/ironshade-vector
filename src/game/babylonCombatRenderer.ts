@@ -2369,9 +2369,25 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     selected: Array<{ key: RefineryPlacementKey; spec: GraphicsAssetSpec }>,
     generation: number,
   ) {
+    // Decorative streaming never competes with first-playable operator, enemy,
+    // or world assets. A bounded wait preserves decoration if one system fails
+    // to report readiness, while generation checks keep disposals safe.
+    this.canvas.dataset.refineryDressingState = 'waiting-for-gameplay';
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      if (this.disposed || generation !== this.refineryLoadGeneration) return;
+      const data = this.canvas.dataset;
+      if (data.babylonPlayerState === 'ready'
+        && data.babylonEnemyState === 'ready'
+        && data.babylonWorldState === 'ready') break;
+      await new Promise<void>(resolve => setTimeout(resolve, 50));
+    }
+    // Yield an additional browser task so gameplay/CDP input can complete
+    // before the optional GLB decode and shader preparation begins.
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
+    if (this.disposed || generation !== this.refineryLoadGeneration) return;
     const runtime = getBabylonGraphicsAssetRuntime(this.scene);
     this.canvas.dataset.refineryDressingState = 'loading';
-    const preload = await runtime.preload(selected.map(item => item.spec), 2);
+    const preload = await runtime.preload(selected.map(item => item.spec), 1);
     if (this.disposed || generation !== this.refineryLoadGeneration) return;
     if (preload.failed > 0) {
       this.canvas.dataset.refineryDressingState = 'error';
@@ -2422,6 +2438,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         } catch (error) {
           pending.forEach(instance => instance.release());
           throw error;
+        }
+        // Two authored placements of each family reuse geometry; explicit
+        // task yields avoid monopolizing the main thread during the first
+        // interactive frames on software and constrained GPUs.
+        if (offset + batch.length < tasks.length) {
+          await new Promise<void>(resolve => setTimeout(resolve, 16));
         }
       }
       if (this.disposed || generation !== this.refineryLoadGeneration || !this.refineryMountRoot) {

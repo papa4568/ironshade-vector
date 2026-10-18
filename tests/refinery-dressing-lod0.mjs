@@ -74,6 +74,13 @@ assert(renderer.includes('mesh.isPickable = false'), 'dressing must remain non-i
 assert(renderer.includes('this.refineryAssetInstances.push(...mountedInstances)'), 'dressing must release with existing environment owner');
 assert(renderer.includes('this.canvas.dataset.refineryDressingInstances'), 'dressing instance telemetry missing');
 assert(renderer.includes('void this.loadRefineryDressing(placements, dressingSelected, generation)'), 'secondary prop loading must not block the mandatory field');
+assert(renderer.includes("this.canvas.dataset.refineryDressingState = 'waiting-for-gameplay'") &&
+  renderer.includes("data.babylonPlayerState === 'ready'") &&
+  renderer.includes("data.babylonEnemyState === 'ready'") &&
+  renderer.includes("data.babylonWorldState === 'ready'"),
+  'optional prop decoding must yield first priority to authored gameplay systems');
+assert(renderer.includes('await new Promise<void>(resolve => setTimeout(resolve, 16))'),
+  'decorative placement instantiation must cooperate with initial input and rendering tasks');
 assert(renderer.includes('root.parent = this.refineryMountRoot') && renderer.includes("this.canvas.dataset.refineryDressingState = 'ready'"), 'secondary props must mount atomically under the existing disposal owner');
 assert(renderer.includes("this.canvas.dataset.refineryDressingState = 'error'"), 'prop failures must remain isolated from combat readiness');
 assert(renderer.includes('loadRoot.setEnabled(true)'), 'dressing must obey existing atomic world readiness');
