@@ -5,6 +5,7 @@ import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh';
 import '@babylonjs/core/Meshes/instancedMesh';
 import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { VertexBuffer } from '@babylonjs/core/Buffers/buffer';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import type { Scene } from '@babylonjs/core/scene';
 import type { RenderBudgetSnapshot } from './renderQuality';
@@ -147,6 +148,7 @@ export function babylonAmbientParticleBudget(budget: RenderBudgetSnapshot): Baby
 
 export class BabylonAmbientParticles {
   private readonly pools = new Map<BabylonAmbientParticleKind, AmbientPool>();
+  private localFxAtlas: Texture | null = null;
   private locationKey = '';
   private elapsedSeconds = 0;
   private disposed = false;
@@ -190,10 +192,11 @@ export class BabylonAmbientParticles {
     for (const pool of this.pools.values()) {
       pool.particles.forEach(particle => this.disposeMesh(particle));
       this.disposeMesh(pool.source);
-      pool.material.diffuseTexture?.dispose();
       pool.material.dispose();
     }
     this.pools.clear();
+    this.localFxAtlas?.dispose();
+    this.localFxAtlas = null;
     this.releaseOwnedSceneRegistrations();
     this.locationKey = '';
     this.elapsedSeconds = 0;
@@ -232,6 +235,14 @@ export class BabylonAmbientParticles {
 
   private ensurePools() {
     if (this.pools.size > 0) return;
+    // Create one shared GPU decode for all four decorative families. Individual
+    // pool source UVs select each quadrant; textures must never be cloned.
+    if (this.locationKey === 'asteroid-refinery') {
+      this.localFxAtlas = new Texture(REFINERY_LOCAL_FX_ATLAS_URL, this.scene);
+      this.localFxAtlas.wrapU = Texture.CLAMP_ADDRESSMODE;
+      this.localFxAtlas.wrapV = Texture.CLAMP_ADDRESSMODE;
+      this.localFxAtlas.hasAlpha = true;
+    }
     (Object.keys(BABYLON_AMBIENT_FLAGSHIP_COUNTS) as BabylonAmbientParticleKind[]).forEach(kind => {
       this.pools.set(kind, this.createPool(kind, BABYLON_AMBIENT_FLAGSHIP_COUNTS[kind]));
     });
@@ -242,17 +253,10 @@ export class BabylonAmbientParticles {
     material.specularColor = Color3.Black();
     material.disableLighting = true;
     material.backFaceCulling = false;
-    const atlas = new Texture(REFINERY_LOCAL_FX_ATLAS_URL, this.scene);
-    const cell = { dust: [0, 0], sparks: [1, 0], vapor: [0, 1], debris: [1, 1] }[kind];
-    atlas.uScale = 0.5;
-    atlas.vScale = 0.5;
-    atlas.uOffset = cell[0] * 0.5;
-    atlas.vOffset = cell[1] * 0.5;
-    atlas.wrapU = Texture.CLAMP_ADDRESSMODE;
-    atlas.wrapV = Texture.CLAMP_ADDRESSMODE;
-    atlas.hasAlpha = true;
-    material.diffuseTexture = atlas;
-    material.useAlphaFromDiffuseTexture = true;
+    if (this.localFxAtlas) {
+      material.diffuseTexture = this.localFxAtlas;
+      material.useAlphaFromDiffuseTexture = true;
+    }
 
     let source: Mesh;
     if (kind === 'dust') {
@@ -275,6 +279,16 @@ export class BabylonAmbientParticles {
       material.diffuseColor = colorFromHex(0x5d554b).scale(0.28);
       material.emissiveColor = colorFromHex(0x2d2925).scale(0.04);
       material.alpha = 0.82;
+    }
+    if (this.localFxAtlas) {
+      const cell = { dust: [0, 0], sparks: [1, 0], vapor: [0, 1], debris: [1, 1] }[kind];
+      const uv = source.getVerticesData(VertexBuffer.UVKind);
+      if (!uv) throw new Error(`Missing authored ambient ${kind} UVs`);
+      for (let i = 0; i < uv.length; i += 2) {
+        uv[i] = uv[i] * 0.5 + cell[0] * 0.5;
+        uv[i + 1] = uv[i + 1] * 0.5 + cell[1] * 0.5;
+      }
+      source.setVerticesData(VertexBuffer.UVKind, uv);
     }
     source.material = material;
     source.isPickable = false;
