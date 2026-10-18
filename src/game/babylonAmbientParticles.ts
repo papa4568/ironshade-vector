@@ -149,7 +149,8 @@ export function babylonAmbientParticleBudget(budget: RenderBudgetSnapshot): Baby
 export class BabylonAmbientParticles {
   private readonly pools = new Map<BabylonAmbientParticleKind, AmbientPool>();
   private localFxAtlas: Texture | null = null;
-  private readonly localFxWarmupSeconds = 3;
+  // Diagnostic: isolate KTX2 activation from first refinery gameplay capture.
+  private readonly localFxWarmupSeconds = 180;
   private locationKey = '';
   private elapsedSeconds = 0;
   private disposed = false;
