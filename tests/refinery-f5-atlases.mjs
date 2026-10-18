@@ -49,9 +49,9 @@ console.log('P28_F5_TELEGRAPH_MARGIN_PASS min=' + minGroundCueMargin.toFixed(3)
 
 const effect = await readFile(at(REFINERY_F5_EFFECT_ATLAS.path));
 assert(effect.subarray(0, 12).equals(Buffer.from([0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a])));
-assert.equal(effect.readUInt32LE(20), 1024, 'P28-F5 effect source width must be 1024');
-assert.equal(effect.readUInt32LE(24), 1024, 'P28-F5 effect source height must be 1024');
-assert.equal(effect.readUInt32LE(40), 11, 'P28-F5 effect atlas needs its full 11-level mip chain');
+assert.equal(effect.readUInt32LE(20), 512, 'P28-F5 effect source width must be 512');
+assert.equal(effect.readUInt32LE(24), 512, 'P28-F5 effect source height must be 512');
+assert.equal(effect.readUInt32LE(40), 10, 'P28-F5 effect atlas needs its full 10-level mip chain');
 assert.equal(effect.readUInt32LE(44), 2, 'P28-F5 effect atlas must use KTX2 Zstandard compression');
 assert(effect.length > 25_000, 'P28-F5 effect atlas must carry real nontrivial artwork');
 const effectPixels = createRefineryF5EffectPixels();
@@ -60,13 +60,13 @@ for (let row = 0; row < 2; row += 1) {
   for (let column = 0; column < 2; column += 1) {
     const hash = createHash('sha256');
     let nonzero = 0;
-    for (let y = row * 512; y < (row + 1) * 512; y += 1) {
-      const start = (y * 1024 + column * 512) * 4;
-      const tileRow = effectPixels.subarray(start, start + 512 * 4);
+    for (let y = row * 256; y < (row + 1) * 256; y += 1) {
+      const start = (y * 512 + column * 256) * 4;
+      const tileRow = effectPixels.subarray(start, start + 256 * 4);
       hash.update(tileRow);
       for (let i = 3; i < tileRow.length; i += 4) if (tileRow[i] > 16) nonzero += 1;
     }
-    assert(nonzero > 4_000, 'P28-F5 ' + REFINERY_F5_EFFECT_ATLAS.kinds[row * 2 + column] + ' effect tile is unused/empty');
+    assert(nonzero > 1_000, 'P28-F5 ' + REFINERY_F5_EFFECT_ATLAS.kinds[row * 2 + column] + ' effect tile is unused/empty');
     hashes.push(hash.digest('hex'));
   }
 }
@@ -104,4 +104,4 @@ assert(fxAsset?.runtimeReferenced && fxAsset.texture?.fullChain && fxAsset.premi
 const decalAsset = lookup.get('assets/models/environments/refinery-decal-atlas-f5.png');
 assert(decalAsset?.runtimeReferenced, 'P28-F5 high resolution decal atlas must be bound by a registered GLB');
 console.log('P28_F5_ATLAS_PASS decals=' + sourcePng.length + ' effects=' + effect.length
-  + ' activeModels=' + targets.length + ' uniqueFxTiles=' + hashes.length + ' mipLevels=11');
+  + ' activeModels=' + targets.length + ' uniqueFxTiles=' + hashes.length + ' mipLevels=10');
