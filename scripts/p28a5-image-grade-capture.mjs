@@ -270,6 +270,23 @@ try {
   if (png.length < 10_000) throw new Error(`P28-A5 low-visibility screenshot is unexpectedly small: ${png.length} bytes.`);
   await writeFile(screenshotPath, png);
 
+  const restoreState = await evaluate(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
+    if (!(canvas instanceof HTMLCanvasElement)) return 'not-mounted';
+    delete canvas.dataset.refineryImageGradeQa;
+    return 'cleared';
+  })()`);
+  if (restoreState === 'cleared') {
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
+      return canvas?.dataset.environmentImageGradeMode === 'normal'
+        && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1');
+    })()`, 'restored normal Flagship refinery grade');
+  } else if (restoreState !== 'not-mounted') {
+    throw new Error(`Could not clear the P28-A5 low-visibility QA grade: ${String(restoreState)}`);
+  }
+
+
   // The low-visibility screenshot is preserved before the additional GPU-heavy
   // cubemap proof. Both are observed on the same real Babylon refinery scene.
   const reflectionEvidence = await waitFor(`(() => {
@@ -293,6 +310,11 @@ try {
   })()`, 'P28-E4 explicitly captured real localized PBR reflections', 45_000);
   normal.refineryReflections = reflectionEvidence;
   console.log('P28_E4_FLAGSHIP_REFLECTION_PROBES_PASS ' + reflectionEvidence);
+  await evaluate(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
+    if (canvas instanceof HTMLCanvasElement) delete canvas.dataset.refineryReflectionQa;
+    return true;
+  })()`);
 
 
   await writeFile(reportPath, JSON.stringify({
@@ -304,22 +326,6 @@ try {
     screenshotBytes: png.length,
   }, null, 2) + '\n');
 
-  const restoreState = await evaluate(`(() => {
-    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
-    if (!(canvas instanceof HTMLCanvasElement)) return 'not-mounted';
-    delete canvas.dataset.refineryImageGradeQa;
-    delete canvas.dataset.refineryReflectionQa;
-    return 'cleared';
-  })()`);
-  if (restoreState === 'cleared') {
-    await waitFor(`(() => {
-      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
-      return canvas?.dataset.environmentImageGradeMode === 'normal'
-        && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1');
-    })()`, 'restored normal Flagship refinery grade');
-  } else if (restoreState !== 'not-mounted') {
-    throw new Error(`Could not clear the P28-A5 low-visibility QA grade: ${String(restoreState)}`);
-  }
 
   console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-d7-elite-enemy-lod0 catalog=${normal.enemyCatalogAssets} lods=${normal.enemyCatalogLod} telegraphs=${normal.enemyTelegraphs} protocol=${normal.protocolStatusVisuals} lifecycle=${normal.enemyLifecycleTracked} normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
