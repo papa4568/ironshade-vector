@@ -729,3 +729,5 @@ await import('./heavy-asset-manifest.mjs');
 
 // P28-F2: audit the actual built refinery LOD0 pack and its authored detail.
 await import('./refinery-heavy-geometry.mjs');
+// P28-F4: verify the actual shipped authored dressing models in the mandatory graphics-content gate.
+await import('./refinery-dressing-lod0.mjs');

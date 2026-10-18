@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createChamferedBoxGeometry, createCylinderGeometry, createInsetPanelGeometry } from './lib/hard-surface-geometry.mjs';
-import { createMachinedFlangeGeometry, createRecessedLouverGeometry } from './lib/refinery-hero-geometry.mjs';
+import { createChamferedBoxGeometry, createCylinderGeometry, createInsetPanelGeometry } from '../scripts/lib/hard-surface-geometry.mjs';
+import { createMachinedFlangeGeometry, createRecessedLouverGeometry } from '../scripts/lib/refinery-hero-geometry.mjs';
 
 // Presentation-only props. Every rendered node references real PBR-ready geometry;
 // repeated placements share the Babylon asset cache and native mesh instances.

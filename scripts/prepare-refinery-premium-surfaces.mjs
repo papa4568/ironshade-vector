@@ -206,8 +206,6 @@ export async function writeRefineryPremiumSurfaceGeometry() {
   await writeRefineryTerminalLod0Asset();
   const { writeRefineryCrateLod0Asset } = await import('./prepare-refinery-crate-lod0.mjs');
   await writeRefineryCrateLod0Asset();
-  const { writeRefineryDressingAssets } = await import('./prepare-refinery-dressing-lod0.mjs');
-  await writeRefineryDressingAssets();
   const { writeRefineryHardSurfaceReference } = await import('./prepare-refinery-hard-surface-reference.mjs');
   await writeRefineryHardSurfaceReference();
   console.log('[graphics] P28-B2/B4 premium refinery surface geometry ' + results.map(item => `${item.relativePath}=${item.bytes}b`).join(' '));

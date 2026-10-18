@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { measureGlb } from '../tools/heavy-asset-manifest.mjs';
-import { REFINERY_DRESSING_TARGETS, buildRefineryDressingGlb } from '../scripts/prepare-refinery-dressing-lod0.mjs';
+import { REFINERY_DRESSING_TARGETS, buildRefineryDressingGlb } from '../tools/prepare-refinery-dressing-lod0.mjs';
 
 assert.equal(REFINERY_DRESSING_TARGETS.length, 8, 'P28-F4 needs eight separate authored silhouettes');
 const allHashes = new Set();
@@ -39,8 +39,8 @@ for (const required of ['cylinder-pipe', 'machined-open-flange', 'inset-panel', 
 
 const registry = await readFile('src/game/graphicsAssetManifest.ts', 'utf8');
 const renderer = await readFile('src/game/babylonCombatRenderer.ts', 'utf8');
-const preparation = await readFile('scripts/prepare-refinery-premium-surfaces.mjs', 'utf8');
-assert(preparation.includes('await writeRefineryDressingAssets()'), 'build must emit all eight GLBs');
+const generator = await readFile('tools/prepare-refinery-dressing-lod0.mjs', 'utf8');
+assert(generator.includes('await writeRefineryDressingAssets()'), 'authored art must be reproducible from its source generator');
 for (const target of REFINERY_DRESSING_TARGETS) {
   assert(registry.includes("'/assets/models/" + target.relativePath + "'"), 'art missing runtime manifest: ' + target.family);
   assert(renderer.includes(target.family + ': ['), 'family missing from deterministic placement map: ' + target.family);
