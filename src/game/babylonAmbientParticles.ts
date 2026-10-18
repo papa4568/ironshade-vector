@@ -149,6 +149,7 @@ export function babylonAmbientParticleBudget(budget: RenderBudgetSnapshot): Baby
 export class BabylonAmbientParticles {
   private readonly pools = new Map<BabylonAmbientParticleKind, AmbientPool>();
   private localFxAtlas: Texture | null = null;
+  private readonly localFxWarmupSeconds = 3;
   private locationKey = '';
   private elapsedSeconds = 0;
   private disposed = false;
@@ -174,6 +175,19 @@ export class BabylonAmbientParticles {
 
     const deltaMs = this.scene.getEngine().getDeltaTime();
     this.elapsedSeconds += (Number.isFinite(deltaMs) && deltaMs > 0 ? Math.min(deltaMs, 50) : 1000 / 60) / 1000;
+    // Keep first-frame combat input responsive: decorative KTX2 decode starts
+    // only after the initial gameplay bootstrap.
+    if (this.locationKey === 'asteroid-refinery' && !this.localFxAtlas && this.elapsedSeconds >= this.localFxWarmupSeconds) {
+      const atlas = new Texture(REFINERY_LOCAL_FX_ATLAS_URL, this.scene);
+      atlas.wrapU = Texture.CLAMP_ADDRESSMODE;
+      atlas.wrapV = Texture.CLAMP_ADDRESSMODE;
+      atlas.hasAlpha = true;
+      this.localFxAtlas = atlas;
+      for (const pool of this.pools.values()) {
+        pool.material.diffuseTexture = atlas;
+        pool.material.useAlphaFromDiffuseTexture = true;
+      }
+    }
     const particleBudget = babylonAmbientParticleBudget(budget);
     const world = getWorldSize();
     const worldW = world.w * BABYLON_AMBIENT_WORLD_SCALE;
@@ -235,14 +249,7 @@ export class BabylonAmbientParticles {
 
   private ensurePools() {
     if (this.pools.size > 0) return;
-    // Create one shared GPU decode for all four decorative families. Individual
-    // pool source UVs select each quadrant; textures must never be cloned.
-    if (this.locationKey === 'asteroid-refinery') {
-      this.localFxAtlas = new Texture(REFINERY_LOCAL_FX_ATLAS_URL, this.scene);
-      this.localFxAtlas.wrapU = Texture.CLAMP_ADDRESSMODE;
-      this.localFxAtlas.wrapV = Texture.CLAMP_ADDRESSMODE;
-      this.localFxAtlas.hasAlpha = true;
-    }
+    // Quad UVs are pre-baked and the shared texture is attached after warmup.
     (Object.keys(BABYLON_AMBIENT_FLAGSHIP_COUNTS) as BabylonAmbientParticleKind[]).forEach(kind => {
       this.pools.set(kind, this.createPool(kind, BABYLON_AMBIENT_FLAGSHIP_COUNTS[kind]));
     });
@@ -253,11 +260,6 @@ export class BabylonAmbientParticles {
     material.specularColor = Color3.Black();
     material.disableLighting = true;
     material.backFaceCulling = false;
-    if (this.localFxAtlas) {
-      material.diffuseTexture = this.localFxAtlas;
-      material.useAlphaFromDiffuseTexture = true;
-    }
-
     let source: Mesh;
     if (kind === 'dust') {
       source = MeshBuilder.CreateSphere(`${AMBIENT_RESOURCE_PREFIX}dust-source`, { diameter: 0.026, segments: 3 }, this.scene);
@@ -280,7 +282,7 @@ export class BabylonAmbientParticles {
       material.emissiveColor = colorFromHex(0x2d2925).scale(0.04);
       material.alpha = 0.82;
     }
-    if (this.localFxAtlas) {
+    if (this.locationKey === 'asteroid-refinery') {
       const cell = { dust: [0, 0], sparks: [1, 0], vapor: [0, 1], debris: [1, 1] }[kind];
       const uv = source.getVerticesData(VertexBuffer.UVKind);
       if (!uv) throw new Error(`Missing authored ambient ${kind} UVs`);
