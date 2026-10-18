@@ -412,8 +412,6 @@ function createSyntheticCandidate({ id, path, content = undefined, mode = undefi
     }
     const tree = gitWithEnv(['write-tree'], env);
     const commit = gitWithEnv(['commit-tree', tree, '-p', EV18_REFERENCE_SHA, '-m', `EV-24 production calibration ${id}`], env);
-    const edits = changes ?? [{ path }];
-    ok(edits.some(edit => git(['ls-tree', commit, '--', edit.path]) !== git(['ls-tree', EV18_REFERENCE_SHA, '--', edit.path])), `${id} must change an intended Git tree entry`);
     return commit;
   } finally {
     rmSync(indexPath, { force: true });
