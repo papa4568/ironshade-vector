@@ -1,3 +1,4 @@
+import { runHeavyAssetManifest } from '../tools/heavy-asset-manifest.mjs';
 import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -48,3 +49,5 @@ const refineryDecalAtlas = await stat(resolve(process.cwd(), 'dist/assets/models
 assert(refineryDecalAtlas.isFile() && refineryDecalAtlas.size > 4000, `missing or empty P28-B5 refinery decal atlas: ${refineryDecalAtlas.size} bytes`);
 
 console.log(`GRAPHICS_RUNTIME_ASSETS_PASS threeFiles=0 babylonFiles=${babylonFiles.length} babylonBytes=${babylonTotalBytes} babylon=${babylonManifest.babylonVersion} meshopt=${babylonManifest.meshoptimizerVersion} refineryDecalAtlas=${refineryDecalAtlas.size}`);
+
+await runHeavyAssetManifest('verify-dist');
