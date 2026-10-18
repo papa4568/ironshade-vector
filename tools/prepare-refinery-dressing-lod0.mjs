@@ -182,6 +182,21 @@ export function buildRefineryDressingGlb(target) {
   if (!REFINERY_DRESSING_TARGETS.some(item => item.family === target?.family && item.relativePath === target.relativePath))
     throw new Error('Unknown P28-F4 dressing target');
   const { geometries, nodes } = dressingDefinition(target.family);
+  // The art builder is deterministic even across Node and the standalone authoring
+  // runtime: floating-point libm implementations can differ by one Float32 ULP
+  // on a machined cylinder's sin/cos vertices. Snap below visible precision so
+  // exact shipped GLBs always reproduce from this canonical authoring source.
+  for (const { geometry } of geometries) {
+    for (const name of ['positions', 'normals', 'tangents', 'uvs']) {
+      const values = geometry[name];
+      for (let index = 0; index < values.length; index += 1) {
+        const snapped = Math.round(values[index] * 100_000) / 100_000;
+        values[index] = snapped === 0 ? 0 : snapped;
+      }
+    }
+    geometry.min = [0, 1, 2].map(axis => Math.min(...Array.from({ length: geometry.positions.length / 3 }, (_, index) => geometry.positions[index * 3 + axis])));
+    geometry.max = [0, 1, 2].map(axis => Math.max(...Array.from({ length: geometry.positions.length / 3 }, (_, index) => geometry.positions[index * 3 + axis])));
+  }
   const binParts = [], views = [], accessors = [], meshes = [];
   let cursor = 0, triangleCount = 0;
   for (const item of geometries) {
