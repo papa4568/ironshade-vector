@@ -138,4 +138,14 @@ for (const [taskId, title] of [
   assert(rolloutTaskText.includes('**' + taskId + ' — ' + title + '**'),
     taskId + ' capstone must have a current or archived flagship-art rollout task');
 }
-console.log('P28_ROLLOUT_COVERAGE_PASS campaignLocations=' + campaignLocationIds.length + ' capstones=4');
+const currentOrArchived = rolloutTaskText;
+assert(
+  currentOrArchived.includes('**P28-I1 — Verify complete P28 asset adoption in every playable location and capstone**'),
+  'campaign-wide premium asset coverage needs a final verification gate',
+);
+const productConstraints = await readFile(resolve('docs/product-constraints.md'), 'utf8');
+assert(
+  productConstraints.includes('**Cross-location premium asset propagation:**'),
+  'future shared asset creation must carry a permanent all-route propagation policy',
+);
+console.log('P28_ROLLOUT_COVERAGE_PASS campaignLocations=' + campaignLocationIds.length + ' capstones=4 assetAudit=P28-I1');
