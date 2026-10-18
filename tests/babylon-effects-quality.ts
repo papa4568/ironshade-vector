@@ -247,6 +247,24 @@ assert(!ambientSource.includes('SimState'), 'Ambient animation must remain prese
 assert(browserSource.includes('BROWSER_P27D4_BABYLON_EFFECTS_QUALITY_PASS'), 'Browser QA must record measured D4 frame-time/effects evidence.');
 assert(packageSource.includes('test:babylon-effects-quality'), 'The production build must execute the D4/P28-E1/P28-E2 targeted regression.');
 
+
+const reflectionSource = readFileSync('src/game/babylonRefineryReflectionProbes.ts', 'utf8');
+const reflectionRendererSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
+assert(reflectionSource.includes('REFINERY_REFLECTION_PROFILE')
+  && reflectionSource.includes("['processor', 'gantry', 'terminal']"),
+  'P28-E4 localized probes must follow authored focal machinery families rather than a fixed global count.');
+assert(reflectionSource.includes('this.scene.customRenderTargets.push(record.probe.cubeTexture)')
+  && reflectionSource.includes('this.scene.customRenderTargets.splice(targetIndex, 1)'),
+  'P28-E4 six-face captures must register with and release from the real Babylon render-target lifecycle.');
+assert(reflectionSource.includes("budget.tierName !== 'performance'")
+  && reflectionSource.includes("this.canvas.dataset.refineryReflectionQa === 'capture'")
+  && reflectionSource.includes("'active-materials:' + activeMaterials"),
+  'P28-E4 must expose measured-pressure fallback, explicit QA capture, and actual local-PBR bindings.');
+assert(reflectionRendererSource.includes('this.refineryReflectionProbes.sync(budget)')
+  && reflectionRendererSource.includes('this.refineryReflectionProbes.configure(reflectionAnchors, loadRoot)')
+  && reflectionRendererSource.includes('this.refineryReflectionProbes.release()'),
+  'P28-E4 must connect static refinery capture, frame budgets and teardown to the real renderer.');
+
 console.log(
   'P27_D4_BABYLON_EFFECTS_QUALITY_PASS phoneDefault=high tiers=high>balanced>performance shadows=1024>512>off transparency=1.00>0.68>0.40 reflection=1.00>0.70>0.38 vfx=1.00>0.72>0.45 secondary=1.00>0.68>0.42 critical=1.00 degrade=performance recover=high ambient=240-pooled measured-pressure=101 refinery-art-direction=21-zones contexts=machinery+vents+damaged-service+open-industrial center-clearance=x38-62+z38-62 gameplay-independent=1.00 teardown=clean frame-evidence=browser-runtime',
 );

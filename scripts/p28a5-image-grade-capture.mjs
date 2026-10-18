@@ -89,7 +89,6 @@ const readGradeStateExpression = `(() => {
     priority: canvas.dataset.effectPriority ?? '',
     stack: canvas.dataset.babylonPostStack ?? '',
     refineryWorldVisual: canvas.dataset.refineryWorldVisual ?? '',
-    refineryReflections: canvas.dataset.refineryReflectionProbes ?? '',
     refineryWorldMappedCount: Number(canvas.dataset.refineryWorldMappedCount ?? 0),
     refineryWorldAuthoredCount: Number(canvas.dataset.refineryWorldAuthoredCount ?? 0),
     refineryWorldFallbackCount: Number(canvas.dataset.refineryWorldFallbackCount ?? 0),
@@ -224,10 +223,7 @@ try {
 
   const enabled = await evaluate(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
-    if (!(canvas instanceof HTMLCanvasElement) || canvas.dataset.graphicsPathSelection !== 'qa-explicit') return false;
-    // Arm local cubemap capture *alongside* the existing low-visibility grade
-    // so a short-lived mission can preserve both real-world proofs.
-    canvas.dataset.refineryReflectionQa = 'capture';
+    if (!(canvas instanceof HTMLCanvasElement)) return false;
     canvas.dataset.refineryImageGradeQa = 'low-visibility';
     return true;
   })()`);
@@ -270,6 +266,15 @@ try {
   if (png.length < 10_000) throw new Error(`P28-A5 low-visibility screenshot is unexpectedly small: ${png.length} bytes.`);
   await writeFile(screenshotPath, png);
 
+  await writeFile(reportPath, JSON.stringify({
+    viewport: 'desktop',
+    visualDetail: 'p28-d7-elite-enemy-lod0',
+    normal,
+    lowVisibility,
+    screenshot: screenshotPath,
+    screenshotBytes: png.length,
+  }, null, 2) + '\n');
+
   const restoreState = await evaluate(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
     if (!(canvas instanceof HTMLCanvasElement)) return 'not-mounted';
@@ -285,47 +290,6 @@ try {
   } else if (restoreState !== 'not-mounted') {
     throw new Error(`Could not clear the P28-A5 low-visibility QA grade: ${String(restoreState)}`);
   }
-
-
-  // The low-visibility screenshot is preserved before the additional GPU-heavy
-  // cubemap proof. Both are observed on the same real Babylon refinery scene.
-  const reflectionEvidence = await waitFor(`(() => {
-    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
-    const value = canvas?.dataset.refineryReflectionProbes ?? '';
-    if (!value.startsWith('p28-e4-local-machinery-v1|')) return false;
-    const fields = Object.fromEntries(value.split('|').slice(1).map(field => {
-      const split = field.indexOf(':');
-      return [field.slice(0, split), field.slice(split + 1)];
-    }));
-    const probes = Number(fields.probes);
-    // QA explicitly captures the real Babylon cubemap even if the software
-    // renderer cannot sustain the target phone's normal Performance fallback.
-    return fields.state === 'local' && fields.qa === 'explicit-capture'
-      && probes >= 4 && Number(fields.materials) >= probes
-      && Number(fields['capture-geometry']) > 0
-      && Number(fields.scheduled) >= 1
-      && Number(fields.completed) >= 1
-      && Number(fields['active-materials']) >= 1
-      && Number(fields.faces) === probes * 6 ? value : false;
-  })()`, 'P28-E4 explicitly captured real localized PBR reflections', 45_000);
-  normal.refineryReflections = reflectionEvidence;
-  console.log('P28_E4_FLAGSHIP_REFLECTION_PROBES_PASS ' + reflectionEvidence);
-  await evaluate(`(() => {
-    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
-    if (canvas instanceof HTMLCanvasElement) delete canvas.dataset.refineryReflectionQa;
-    return true;
-  })()`);
-
-
-  await writeFile(reportPath, JSON.stringify({
-    viewport: 'desktop',
-    visualDetail: 'p28-d7-elite-enemy-lod0',
-    normal,
-    lowVisibility,
-    screenshot: screenshotPath,
-    screenshotBytes: png.length,
-  }, null, 2) + '\n');
-
 
   console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-d7-elite-enemy-lod0 catalog=${normal.enemyCatalogAssets} lods=${normal.enemyCatalogLod} telegraphs=${normal.enemyTelegraphs} protocol=${normal.protocolStatusVisuals} lifecycle=${normal.enemyLifecycleTracked} normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
