@@ -45,6 +45,7 @@ assert(ignoredView.unusedBufferViewBytes > base.unusedBufferViewBytes, 'oversize
 const missingTexture = mutateGlbJson(premium, gltf => { delete gltf.materials[0].normalTexture; });
 const missing = measureGlb(missingTexture, 'missing-normal');
 assert(!missing.materialChannels.includes('normal'), 'cannot credit a map merely because an unused image remains in GLB');
+assert(missing.meaningfulBytes < base.meaningfulBytes, 'unbound image data must not inflate qualified GLB bytes');
 
 const extraUnusedMap = mutateGlbJson(missingTexture, gltf => {
   gltf.materials.push({
