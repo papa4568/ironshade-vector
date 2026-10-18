@@ -1,4 +1,5 @@
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
+import { Texture } from '@babylonjs/core/Materials/Textures/texture';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh';
 import '@babylonjs/core/Meshes/instancedMesh';
@@ -12,6 +13,8 @@ import { getWorldSize } from './sim';
 export const BABYLON_AMBIENT_WORLD_SCALE = 0.02;
 const AMBIENT_RESOURCE_PREFIX = 'p28-e1-';
 const REFINERY_ART_DIRECTION_ID = 'refinery-industrial-v1';
+// A single locally packaged and mipmapped KTX2 atlas for decorative particles.
+export const REFINERY_LOCAL_FX_ATLAS_URL = '/assets/effects/refinery-local-effects-f5.ktx2';
 
 export type BabylonAmbientParticleKind = 'dust' | 'sparks' | 'vapor' | 'debris';
 export type BabylonAmbientParticleContext = 'machinery' | 'vents' | 'damaged-service' | 'open-industrial';
@@ -187,6 +190,7 @@ export class BabylonAmbientParticles {
     for (const pool of this.pools.values()) {
       pool.particles.forEach(particle => this.disposeMesh(particle));
       this.disposeMesh(pool.source);
+      pool.material.diffuseTexture?.dispose();
       pool.material.dispose();
     }
     this.pools.clear();
@@ -238,6 +242,17 @@ export class BabylonAmbientParticles {
     material.specularColor = Color3.Black();
     material.disableLighting = true;
     material.backFaceCulling = false;
+    const atlas = new Texture(REFINERY_LOCAL_FX_ATLAS_URL, this.scene);
+    const cell = { dust: [0, 0], sparks: [1, 0], vapor: [0, 1], debris: [1, 1] }[kind];
+    atlas.uScale = 0.5;
+    atlas.vScale = 0.5;
+    atlas.uOffset = cell[0] * 0.5;
+    atlas.vOffset = cell[1] * 0.5;
+    atlas.wrapU = Texture.CLAMP_ADDRESSMODE;
+    atlas.wrapV = Texture.CLAMP_ADDRESSMODE;
+    atlas.hasAlpha = true;
+    material.diffuseTexture = atlas;
+    material.useAlphaFromDiffuseTexture = true;
 
     let source: Mesh;
     if (kind === 'dust') {
