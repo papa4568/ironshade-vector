@@ -2214,6 +2214,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const byKey = new Map(selected.map(item => [item.key, item.spec]));
     const placementTasks = (Object.keys(placements) as RefineryPlacementKey[]).flatMap(key => {
       const spec = byKey.get(key);
+      // Older visual-runtime probes supply only the mandatory primary kit.
+      // Decorative dressing is optional to those narrower preloaded sets.
+      if (!spec && key in REFINERY_DRESSING_ASSET_FAMILIES) return [];
       if (!spec) throw new Error(`Missing selected authored refinery asset for ${key}`);
       return placements[key].map((placement, index) => ({ key, index, placement, spec }));
     });
