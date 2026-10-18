@@ -498,6 +498,7 @@ export const ENEMY_ASSET_FAMILIES = {
   boss: {
     id: 'enemy-boss',
     lods: {
+      0: createGraphicsAssetSpec('enemy-boss-lod0', 'boss', '/assets/models/bosses/enemy-boss-lod0.glb', 0),
       1: createGraphicsAssetSpec('enemy-boss-lod1', 'boss', '/assets/models/bosses/enemy-boss-lod1.glb', 1),
       2: createGraphicsAssetSpec('enemy-boss-lod2', 'boss', '/assets/models/bosses/enemy-boss-lod2.glb', 2),
     },
