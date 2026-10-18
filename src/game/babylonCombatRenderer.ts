@@ -64,6 +64,7 @@ import { BabylonEnemyTelegraphs } from './babylonEnemyTelegraphs';
 import { BabylonEnemyLifecycleVisuals } from './babylonEnemyLifecycleVisuals';
 import { BabylonProtocolStatusVisuals } from './babylonProtocolStatusVisuals';
 import { BabylonRefineryWorldPresentation } from './babylonWorldPresentation';
+import { refineryF5SeamVariation } from './refineryDecalVariation';
 import { BabylonWeaponVfx } from './babylonWeaponVfx';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { runtimeAnimationStride, runtimeScalabilityProfile } from './runtimeScalability';
@@ -2277,6 +2278,21 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
             instance.rootNodes.forEach(root => {
               root.parent = placementRoot;
             });
+            // Only the decorative floor seam varies across twenty repeated panels.
+            // Native instanced geometry, collisions and telegraphs stay untouched.
+            if (key === 'floor') {
+              const variant = refineryF5SeamVariation(task.index);
+              for (const root of instance.rootNodes) {
+                for (const mesh of root.getChildMeshes(false)) {
+                  if (!mesh.name.includes('p28-b6-refinery-route-detail-atlas')) continue;
+                  mesh.position.x += variant.x;
+                  mesh.position.z += variant.z;
+                  mesh.rotation.y += variant.yaw;
+                  mesh.scaling.x *= variant.scale;
+                  mesh.isPickable = false;
+                }
+              }
+            }
             if (key in REFINERY_DRESSING_ASSET_FAMILIES) this.applyRefineryDressingSurfaces(instance);
             else this.applyRefineryPremiumSurfaces(key as RefineryFamilyKey, instance, premiumSurfaceUsage);
             if (isRefineryReflectionFamily(key)) {
