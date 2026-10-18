@@ -101,28 +101,37 @@ Meshopt remains the geometry-compression target where it preserves asset fidelit
 P27 initially kept the existing Three.js renderer as a rollback path while Babylon reached gameplay, visual, lifecycle, performance, and Android parity. After the P27-D7/D8 cutover and verification, the Three production/rollback renderer, its WebGPU comparison renderer, loader/cache implementation, codec bundle, and renderer-only helpers were retired. Historical P21 measurements remain useful evidence in the engine-decision record, but they no longer describe shipped runtime ownership.
 
 
-## P28-F1 refinery texture source and delivered maps
+## P28-F1 refinery 2K shipped-source delivery
 
-The generated refinery PBR library now authors its five *runtime-bound* families at
-2048×2048 pixels, with RGBA8 source data for albedo, tangent-space normal,
-packed ORM (R=occlusion, G=roughness, B=metallic), and emissive maps where
-appropriate. Directional abrasion, panel-seam accumulation, etched service
-labels, oil-drip trails, granular relief, and localized heat oxidation modify
-physical channels together instead of merely enlarging the prior 512px map
-or adding unreferenced texture padding. The refinery materials remain locally
-bound through `babylonPremiumPbrSurfaceLibrary.ts` and use full-mip
-Zstandard-compressed KTX2 files; low-tier geometry recovery still shares the
-same material source.
+The 16 actual runtime-bound refinery KTX2 maps are source-authored offline at
+2048×2048 pixels and committed under `public/assets/materials/premium-pbr/p28f1/`.
+The reproducible authoring source is
+`tools/p28f1-refinery-surface-source.mjs`. This production map set includes
+painted metal, bare metal, deck plate, polymer/rubber, and emissive fixture, with
+base color, tangent-space normals, packed ORM (occlusion=R, roughness=G,
+metallic=B), and an emissive map for fixtures. Authored plate-edge deposits,
+directional abrasion, etched service labels, oil drips, granular relief, and heat
+oxidation change physical channels coherently rather than upscaling or cloning
+the legacy maps.
 
-Use `npm run test:graphics:content` to rebuild and inspect the authored texture
-channels, deterministic KTX2 mip chains and between-panel variation. Run
-`npm run build:prod` and inspect `dist/assets/heavy-asset-manifest.json` for
-actual shipped per-map sizes, independently decoded source mips, unique content
-digests, and premium-source qualification. The APK ZIP audit reports exact
-compressed/uncompressed bytes for these files. The P28 Image Grade Visual
-workflow records the P28-F1 Flagship refinery capture for an actual gameplay-zoom
-comparison with the pre-F1 baseline; nominal resolution alone is not visual
-acceptance, and external target-phone observations remain separate.
+The protected `scripts/prepare-premium-pbr-library.mjs` stays byte-identical to
+its trusted predecessor and continues to emit its historical 512px reference
+maps for the recovery/reference pipeline. The **live renderer**, in
+`babylonPremiumPbrSurfaceLibrary.ts`, instead binds all five PBR families to
+the versioned P28-F1 art path, with local mipmapped Zstandard-compressed KTX2
+delivery and existing recovery geometry behavior preserved.
+
+The exact candidate's 16 authored source maps total **92,760,002 compressed
+file bytes**. Their original packaged source hashes were measured by the P28-F0
+manifest and verified before importing them intact to Git history; they must
+be remeasured on the final candidate (the 512px reference maps remain shipped
+but are not credited as runtime-qualified P28-F1 source art).
+`npm run test:graphics:content` checks 2K dimensions, full mip chains, authored
+variation and runtime URL bindings. `npm run build:prod` generates the heavy
+asset manifest for public/dist, and the read-only APK ZIP audit measures actual
+packed APK contribution. The Flagship visual workflow produces gameplay-zoom
+and low-visibility captures; the final result must still satisfy visual and
+exact-head Android acceptance, not rely on source resolution alone.
 
 ## P28-F0 heavy-art accounting and anti-placeholder baseline
 
