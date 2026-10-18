@@ -1,3 +1,4 @@
+import { runHeavyAssetManifest } from '../tools/heavy-asset-manifest.mjs';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve, relative } from 'node:path';
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine.js';
@@ -112,6 +113,8 @@ function assetClassFor(path) {
   return { relativePath, budget, top };
 }
 
+// Build a truthful content report from measured generated art before Vite packages it.
+await runHeavyAssetManifest('write');
 const glbs = await collectGlbs(MODEL_ROOT);
 assert(glbs.length > 0, 'no authored GLB assets were found under public/assets/models');
 
@@ -720,3 +723,6 @@ engine.dispose();
 const totalBytes = reports.reduce((sum, report) => sum + report.bytes, 0);
 const totalTriangles = reports.reduce((sum, report) => sum + report.triangles, 0);
 console.log(`GRAPHICS_CONTENT_PASS assets=${reports.length} bytes=${totalBytes} triangles=${totalTriangles} ${reports.map(report => `${report.relativePath}:${report.triangles}t`).join(' ')}`);
+
+// Falsification controls share the same prepared asset snapshot as this content audit.
+await import('./heavy-asset-manifest.mjs');
