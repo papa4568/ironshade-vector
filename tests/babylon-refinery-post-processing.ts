@@ -233,6 +233,7 @@ const p28f1Materials = readFileSync('src/game/babylonPremiumPbrSurfaceLibrary.ts
 const p28f1Source = readFileSync('tools/p28f1-refinery-surface-source.mjs', 'utf8');
 assert(p28f1Materials.includes('${ROOT}/p28f1/deck-plate-base-color.ktx2'), 'Flagship deck material must bind delivered 2K art');
 assert(p28f1Materials.includes('${ROOT}/p28f1/painted-metal-normal.ktx2'), 'Flagship wall material must bind delivered 2K tangent-space relief');
+assert(p28f1Materials.includes('${ROOT}/p28f1/bare-metal-orm.ktx2'), 'Flagship bare-metal must bind delivered 2K AO/roughness/metallic packing');
 assert(p28f1Materials.includes('${ROOT}/p28f1/emissive-fixture-emissive.ktx2'), 'Flagship emissive fixture must bind delivered 2K art');
 assert.match(p28f1Source, /PREMIUM_PBR_SURFACE_RESOLUTION = 2048/, 'P28-F1 source fidelity must be 2K');
 
