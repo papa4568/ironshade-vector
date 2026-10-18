@@ -44,8 +44,9 @@ Record target-phone telemetry for the finalized shared-runtime/native-instancing
 
 ### P28-E4 — Measure refinery reflection probes on target phone hardware
 
-**Status:** WAITING_FOR_IMPLEMENTATION  
-**Depends on:** P28-E4 implementation
+**Status:** WAITING_FOR_HARDWARE  
+**Depends on:** completed P28-E4 repository implementation (PR #413)  
+**Does not block:** P28-F0 or later independent implementation work
 
 Measure the finalized reflection-probe configuration on a target high-performance phone and confirm that the visual improvement does not introduce unacceptable frame pacing, resource churn, or thermal behavior.
 
