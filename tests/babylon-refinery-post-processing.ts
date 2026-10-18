@@ -231,9 +231,9 @@ assert.match(gradeWorkflowSource, /name: P28 Image Grade Visual/);
 assert.match(gradeWorkflowSource, /browser-p28a5-low-visibility\.png/);
 const p28f1Materials = readFileSync('src/game/babylonPremiumPbrSurfaceLibrary.ts', 'utf8');
 const p28f1Source = readFileSync('tools/p28f1-refinery-surface-source.mjs', 'utf8');
-assert.match(p28f1Materials, /\\$\\{ROOT\\}\\/p28f1\\/deck-plate-base-color\\.ktx2/, 'Flagship deck material must bind delivered 2K art');
-assert.match(p28f1Materials, /\\$\\{ROOT\\}\\/p28f1\\/painted-metal-normal\\.ktx2/, 'Flagship wall material must bind delivered 2K tangent-space relief');
-assert.match(p28f1Materials, /\\$\\{ROOT\\}\\/p28f1\\/emissive-fixture-emissive\\.ktx2/, 'Flagship emissive fixture must bind delivered 2K art');
+assert(p28f1Materials.includes('${ROOT}/p28f1/deck-plate-base-color.ktx2'), 'Flagship deck material must bind delivered 2K art');
+assert(p28f1Materials.includes('${ROOT}/p28f1/painted-metal-normal.ktx2'), 'Flagship wall material must bind delivered 2K tangent-space relief');
+assert(p28f1Materials.includes('${ROOT}/p28f1/emissive-fixture-emissive.ktx2'), 'Flagship emissive fixture must bind delivered 2K art');
 assert.match(p28f1Source, /PREMIUM_PBR_SURFACE_RESOLUTION = 2048/, 'P28-F1 source fidelity must be 2K');
 
 assert.match(packageSource, /test:babylon-refinery-post-processing/);
