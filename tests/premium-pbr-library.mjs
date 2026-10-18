@@ -8,6 +8,13 @@ import {
   writePremiumPbrSurfaceLibrary,
 } from '../scripts/prepare-premium-pbr-library.mjs';
 
+import {
+  PREMIUM_PBR_SURFACE_ROOT as P28_F1_SURFACE_ROOT,
+  PREMIUM_PBR_SURFACE_RESOLUTION as P28_F1_SURFACE_RESOLUTION,
+  PREMIUM_PBR_SURFACES as P28_F1_SURFACES,
+  PREMIUM_PBR_AUTHORING_PHASE,
+} from '../tools/p28f1-refinery-surface-source.mjs';
+
 const KTX2_IDENTIFIER = Buffer.from([0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function assert(condition, message) {
@@ -24,7 +31,7 @@ function byteRange(buffer, channel) {
   return { min, max, span: max - min };
 }
 
-function parseKtx2(buffer, label) {
+function parseKtx2(buffer, label, expectedResolution = PREMIUM_PBR_SURFACE_RESOLUTION) {
   assert(buffer.subarray(0, 12).equals(KTX2_IDENTIFIER), `${label}: invalid KTX2 identifier`);
   const vkFormat = buffer.readUInt32LE(12);
   const width = buffer.readUInt32LE(20);
@@ -37,9 +44,9 @@ function parseKtx2(buffer, label) {
   const kvdOffset = buffer.readUInt32LE(56);
   const kvdLength = buffer.readUInt32LE(60);
   assert(vkFormat === 37 || vkFormat === 43, `${label}: expected RGBA8 UNORM/SRGB vkFormat, got ${vkFormat}`);
-  assert(width === PREMIUM_PBR_SURFACE_RESOLUTION && height === PREMIUM_PBR_SURFACE_RESOLUTION, `${label}: unexpected base resolution ${width}x${height}`);
+  assert(width === expectedResolution && height === expectedResolution, `${label}: unexpected base resolution ${width}x${height}`);
   assert(faceCount === 1, `${label}: expected a 2D texture`);
-  assert(levelCount === Math.log2(PREMIUM_PBR_SURFACE_RESOLUTION) + 1, `${label}: missing full mip chain`);
+  assert(levelCount === Math.log2(expectedResolution) + 1, `${label}: missing full mip chain`);
   assert(supercompression === 2, `${label}: expected KTX2 Zstandard supercompression`);
   assert(dfdLength === 92, `${label}: unexpected RGBA8 DFD length ${dfdLength}`);
   assert(kvdOffset === dfdOffset + dfdLength, `${label}: DFD/KVD layout must be contiguous`);
@@ -146,3 +153,43 @@ for (const surface of PREMIUM_PBR_SURFACES) {
 
 assert(compressedBytes < uncompressedBytes, `premium PBR KTX2 payload should benefit from Zstd compression (${compressedBytes} >= ${uncompressedBytes})`);
 console.log(`premium PBR surface library checks passed (${second.totalBytes} bytes across ${second.manifest.surfaces.length} surfaces)`);
+
+
+// P28-F1 source art is authored offline and versioned as actual runtime-bound
+// binary assets. The protected 512px recovery generator is intentionally intact.
+assert(PREMIUM_PBR_SURFACE_RESOLUTION === 512, 'legacy texture recovery producer must remain unchanged');
+assert(P28_F1_SURFACE_RESOLUTION === 2048 && PREMIUM_PBR_AUTHORING_PHASE === 'P28-F1', 'P28-F1 source must be authored at true 2K');
+const authoredSource = await readFile(resolve(process.cwd(), 'tools/p28f1-refinery-surface-source.mjs'), 'utf8');
+for (const token of ['seamDirt', 'angledScuff', 'etchedLabel', 'dripColumn', 'thermalZone', 'granulation']) {
+  assert(authoredSource.includes(token), `P28-F1 source art is missing ${token} layer`);
+}
+const runtimeLibrary = await readFile(resolve(process.cwd(), 'src/game/babylonPremiumPbrSurfaceLibrary.ts'), 'utf8');
+let shippedMaps = 0;
+let shippedBytes = 0;
+for (const surface of P28_F1_SURFACES) {
+  for (const map of surface.maps) {
+    const filename = `${surface.id}-${map}.ktx2`;
+    const path = resolve(process.cwd(), P28_F1_SURFACE_ROOT, filename);
+    const bytes = await readFile(path);
+    const parsed = parseKtx2(bytes, `P28-F1:${filename}`, P28_F1_SURFACE_RESOLUTION);
+    assert(runtimeLibrary.includes('${ROOT}/p28f1/' + filename), `P28-F1:${filename} is not runtime-bound`);
+    assert(parsed.levels.length === 12, `P28-F1:${filename} is missing the 2K-to-1px mip pyramid`);
+    assert(parsed.levels[0].pixels.length === 2048 * 2048 * 4, `P28-F1:${filename} base source is incomplete`);
+    if (map !== 'emissive') {
+      const pixels = parsed.levels[0].pixels;
+      const fingerprint = (sx, sy) => {
+        let hash = 2166136261;
+        for (let dy = 0; dy < 32; dy += 4) for (let dx = 0; dx < 32; dx += 4) {
+          const o = ((sy + dy) * 2048 + sx + dx) * 4;
+          for (let c = 0; c < 3; c++) hash = Math.imul(hash ^ pixels[o + c], 16777619);
+        }
+        return hash >>> 0;
+      };
+      assert(fingerprint(100, 100) !== fingerprint(612, 100), `P28-F1:${filename} repeats a 512px tile rather than authored detail`);
+    }
+    shippedMaps++;
+    shippedBytes += bytes.length;
+  }
+}
+assert(shippedMaps === 16 && shippedBytes > 50_000_000, `P28-F1 shipped asset payload is missing/substantial data was removed: ${shippedMaps} maps, ${shippedBytes} bytes`);
+console.log(`P28_F1_REFINERY_TEXTURE_PAYLOAD_PASS maps=${shippedMaps} resolution=2048 bytes=${shippedBytes} runtime=bound provenance=offline-source recovery=512px`);

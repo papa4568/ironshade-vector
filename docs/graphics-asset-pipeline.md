@@ -101,6 +101,38 @@ Meshopt remains the geometry-compression target where it preserves asset fidelit
 P27 initially kept the existing Three.js renderer as a rollback path while Babylon reached gameplay, visual, lifecycle, performance, and Android parity. After the P27-D7/D8 cutover and verification, the Three production/rollback renderer, its WebGPU comparison renderer, loader/cache implementation, codec bundle, and renderer-only helpers were retired. Historical P21 measurements remain useful evidence in the engine-decision record, but they no longer describe shipped runtime ownership.
 
 
+## P28-F1 refinery 2K shipped-source delivery
+
+The 16 actual runtime-bound refinery KTX2 maps are source-authored offline at
+2048×2048 pixels and committed under `public/assets/materials/premium-pbr/p28f1/`.
+The reproducible authoring source is
+`tools/p28f1-refinery-surface-source.mjs`. This production map set includes
+painted metal, bare metal, deck plate, polymer/rubber, and emissive fixture, with
+base color, tangent-space normals, packed ORM (occlusion=R, roughness=G,
+metallic=B), and an emissive map for fixtures. Authored plate-edge deposits,
+directional abrasion, etched service labels, oil drips, granular relief, and heat
+oxidation change physical channels coherently rather than upscaling or cloning
+the legacy maps.
+
+The protected `scripts/prepare-premium-pbr-library.mjs` stays byte-identical to
+its trusted predecessor and continues to emit its historical 512px reference
+maps for the recovery/reference pipeline. The **live renderer**, in
+`babylonPremiumPbrSurfaceLibrary.ts`, instead binds all five PBR families to
+the versioned P28-F1 art path, with local mipmapped Zstandard-compressed KTX2
+delivery and existing recovery geometry behavior preserved.
+
+The exact candidate's 16 authored source maps total **92,760,002 compressed
+file bytes**. Their original packaged source hashes were measured by the P28-F0
+manifest and verified before importing them intact to Git history; they must
+be remeasured on the final candidate (the 512px reference maps remain shipped
+but are not credited as runtime-qualified P28-F1 source art).
+`npm run test:graphics:content` checks 2K dimensions, full mip chains, authored
+variation and runtime URL bindings. `npm run build:prod` generates the heavy
+asset manifest for public/dist, and the read-only APK ZIP audit measures actual
+packed APK contribution. The Flagship visual workflow produces gameplay-zoom
+and low-visibility captures; the final result must still satisfy visual and
+exact-head Android acceptance, not rely on source resolution alone.
+
 ## P28-F0 heavy-art accounting and anti-placeholder baseline
 
 The existing graphics-content test (`npm run test:graphics:content`) now creates a deterministic `public/assets/heavy-asset-manifest.json` from the actual generated premium GLB, refinery decal PNG, and KTX2 files. The content gate runs falsification fixtures for forged mip indexes, missing material channels, duplicate content, GLB metadata padding, missing runtime-registered assets, and corrupted APK entry identities. The packaged graphics gate (`npm run test:graphics:dist`) verifies the manifest against the delivered `dist/` assets and materializes it for production-only builds. These tests do not change the trusted EV-18 proof-producer scripts, package manifest, or Android consumer workflow.
