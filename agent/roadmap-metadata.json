@@ -3,7 +3,6 @@
   "schemaVersion": 1,
   "roadmap": "docs/content-roadmap.md",
   "roadmapIds": [
-    "P28-F0",
     "P28-F1",
     "P28-F2",
     "P28-F3",
@@ -161,31 +160,11 @@
     }
   ],
   "overrides": {
-    "P28-F1": {
-      "dependsOn": [
-        "P28-F0"
-      ]
-    },
-    "P28-F2": {
-      "dependsOn": [
-        "P28-F0"
-      ]
-    },
-    "P28-F3": {
-      "dependsOn": [
-        "P28-F0"
-      ]
-    },
-    "P28-F4": {
-      "dependsOn": [
-        "P28-F0"
-      ]
-    },
-    "P28-F5": {
-      "dependsOn": [
-        "P28-F0"
-      ]
-    },
+    "P28-F1": {},
+    "P28-F2": {},
+    "P28-F3": {},
+    "P28-F4": {},
+    "P28-F5": {},
     "P28-F6": {
       "dependsOn": [
         "P28-F1",
