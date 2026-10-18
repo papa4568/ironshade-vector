@@ -228,6 +228,20 @@ export function upgradeHeroLod0(source, family) {
   if (padding) chunks.push(Buffer.alloc(padding));
   const outputBinary = Buffer.concat(chunks);
   gltf.buffers[0].byteLength = outputBinary.length;
+  // Existing D1-D8 contracts are used by the animation/hero regressions.
+  // Regenerate their actual totals after attaching new renderable geometry.
+  // A stale pre-upgrade count would misrepresent source art contribution.
+  const meshTriangles = mesh => (mesh.primitives ?? []).reduce((total, primitive) =>
+    total + ((gltf.accessors[primitive.indices]?.count ?? gltf.accessors[primitive.attributes?.POSITION]?.count ?? 0) / 3), 0);
+  const sourceTriangles = gltf.meshes.reduce((total, mesh) => total + meshTriangles(mesh), 0);
+  const meshNodeTriangles = gltf.nodes.reduce((total, node) =>
+    total + (Number.isInteger(node.mesh) ? meshTriangles(gltf.meshes[node.mesh]) : 0), 0);
+  for (const contract of Object.values(gltf.extras ?? {})) {
+    if (contract && Number.isInteger(contract.sourceTriangles) && Number.isInteger(contract.meshNodeTriangles)) {
+      contract.sourceTriangles = sourceTriangles;
+      contract.meshNodeTriangles = meshNodeTriangles;
+    }
+  }
   gltf.extras ??= {};
   gltf.extras.ironshadeP28F3HeavyHero = {
     family, version: 1, lodTier: 0, production: true,
