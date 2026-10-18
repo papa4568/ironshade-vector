@@ -82,6 +82,10 @@ function color4FromHex(hex: number) {
 }
 
 export function isBabylonRefineryBloomSourceName(name: string) {
+  // Refinery fixture metal is intentionally excluded even when its name contains 'terminal'.
+  if (name.startsWith('p28-e3-refinery-')) {
+    return /p28-e3-refinery-(furnace-port|terminal-bank|warning-beacon|machinery-indicator)-emitter-/.test(name);
+  }
   return !PROTECTED_BLOOM_NAME.test(name) && REFINERY_BLOOM_SOURCE_NAME.test(name);
 }
 
