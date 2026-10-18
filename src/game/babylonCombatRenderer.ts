@@ -2387,11 +2387,21 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     if (this.disposed || generation !== this.refineryLoadGeneration) return;
     const runtime = getBabylonGraphicsAssetRuntime(this.scene);
     this.canvas.dataset.refineryDressingState = 'loading';
-    const preload = await runtime.preload(selected.map(item => item.spec), 1);
+    // GLB decode and shader setup can each monopolize a slow GPU frame even
+    // with a single preload worker. Yield between *assets*, not just after
+    // completing the entire eight-asset queue.
+    let failedPreloads = 0;
+    for (const item of selected) {
+      if (this.disposed || generation !== this.refineryLoadGeneration) return;
+      await new Promise<void>(resolve => setTimeout(resolve, 80));
+      if (this.disposed || generation !== this.refineryLoadGeneration) return;
+      const preload = await runtime.preload([item.spec], 1);
+      failedPreloads += preload.failed;
+    }
     if (this.disposed || generation !== this.refineryLoadGeneration) return;
-    if (preload.failed > 0) {
+    if (failedPreloads > 0) {
       this.canvas.dataset.refineryDressingState = 'error';
-      this.canvas.dataset.refineryDressingError = `preload-failed:${preload.failed}`;
+      this.canvas.dataset.refineryDressingError = `preload-failed:${failedPreloads}`;
       return;
     }
     const root = new TransformNode(`p28-f4-dressing-${generation}`, this.scene);
@@ -2403,8 +2413,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         key, placement, index, spec: specs.get(key)!,
       })) : []));
     try {
-      for (let offset = 0; offset < tasks.length; offset += REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE) {
-        const batch = tasks.slice(offset, offset + REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE);
+      // Optional props are presentation-only: one placement per frame avoids
+      // native-instance bursts while player/enemy/world and QA CDP controls run.
+      const dressingBatchSize = 1;
+      for (let offset = 0; offset < tasks.length; offset += dressingBatchSize) {
+        const batch = tasks.slice(offset, offset + dressingBatchSize);
         const results = await Promise.allSettled(batch.map(item => runtime.instantiate(item.spec)));
         const fulfilled = results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
         if (this.disposed || generation !== this.refineryLoadGeneration) {

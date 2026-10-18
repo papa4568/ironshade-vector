@@ -79,6 +79,8 @@ assert(renderer.includes("this.canvas.dataset.refineryDressingState = 'waiting-f
   renderer.includes("data.babylonEnemyState === 'ready'") &&
   renderer.includes("data.babylonWorldState === 'ready'"),
   'optional prop decoding must yield first priority to authored gameplay systems');
+assert(renderer.includes('await runtime.preload([item.spec], 1)') && renderer.includes('const dressingBatchSize = 1'),
+  'decorative preloads and native instances must remain individually scheduled instead of blocking input');
 assert(renderer.includes('await new Promise<void>(resolve => setTimeout(resolve, 16))'),
   'decorative placement instantiation must cooperate with initial input and rendering tasks');
 assert(renderer.includes('root.parent = this.refineryMountRoot') && renderer.includes("this.canvas.dataset.refineryDressingState = 'ready'"), 'secondary props must mount atomically under the existing disposal owner');
