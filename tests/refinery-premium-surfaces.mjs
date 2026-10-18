@@ -146,7 +146,7 @@ for (const target of REFINERY_ROUTE_DECAL_TARGETS) {
   assert(material?.pbrMetallicRoughness?.baseColorFactor?.[3] === target.opacity, `${target.relativePath}: P28-B6 route material opacity changed`);
   const texture = gltf.textures?.[material.pbrMetallicRoughness.baseColorTexture.index];
   const image = gltf.images?.[texture?.source];
-  assert(image?.uri === 'refinery-decal-atlas-f5.png', `${target.relativePath}: P28-B6 no longer uses the shared refinery atlas`);
+  assert(image?.uri === (target.relativePath.endsWith('-lod0.glb') ? 'refinery-decal-atlas-f5.png' : 'refinery-decal-atlas.png'), `${target.relativePath}: P28-B6 LOD atlas assignment changed`);
 
   const sceneIndex = Number.isInteger(gltf.scene) ? gltf.scene : 0;
   const detailNode = (gltf.nodes ?? []).findIndex(node => node.mesh === detailMeshIndex);
