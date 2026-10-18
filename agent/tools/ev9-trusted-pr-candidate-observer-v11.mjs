@@ -210,6 +210,11 @@ function legacySteadyChecks({ trustedBaseSha, candidateSha }) {
 function validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha) {
   const metadataPath = 'agent/roadmap-metadata.json';
   if (gitEntry(candidateSha, metadataPath) === gitEntry(trustedBaseSha, metadataPath)) return true;
+  // Content-only JSON equivalence cannot authorize chmod, symlinks, or Git
+  // object-type changes in a file otherwise protected by the observer.
+  const [baseMode, baseType] = gitEntry(trustedBaseSha, metadataPath).split(' ');
+  const [candidateMode, candidateType] = gitEntry(candidateSha, metadataPath).split(' ');
+  if (baseMode !== candidateMode || baseType !== candidateType) return false;
   try {
     const base = JSON.parse(gitText(trustedBaseSha, metadataPath));
     const candidate = JSON.parse(gitText(candidateSha, metadataPath));
@@ -423,7 +428,7 @@ function createSyntheticCandidate({ id, path, content = undefined, mode = undefi
 // established EV-24 single-path helper is kept unchanged as a control.
 function createSyntheticRoadmapCandidate({ id, changes, baseSha = EV18_REFERENCE_SHA }) {
   let parent = baseSha;
-  for (const [index, { path, content }] of changes.entries()) {
+  for (const [index, { path, content, mode }] of changes.entries()) {
     syntheticCommitCounter += 1;
     const indexPath = '/tmp/ironshade-product-closeout-' + process.pid + '-' + syntheticCommitCounter;
     const env = {
@@ -438,7 +443,7 @@ function createSyntheticRoadmapCandidate({ id, changes, baseSha = EV18_REFERENCE
     try {
       gitWithEnv(['read-tree', parent], env);
       const blob = gitWithEnv(['hash-object', '-w', '--stdin'], env, { input: content });
-      gitWithEnv(['update-index', '--add', '--cacheinfo', existingMode(parent, path), blob, path], env);
+      gitWithEnv(['update-index', '--add', '--cacheinfo', mode ?? existingMode(parent, path), blob, path], env);
       const tree = gitWithEnv(['write-tree'], env);
       parent = gitWithEnv(['commit-tree', tree, '-p', parent, '-m', id + '-' + index], env);
     } finally {
@@ -526,6 +531,15 @@ function roadmapCloseoutBoundaryCalibration() {
   const accepted = createSyntheticRoadmapCandidate({ id: 'valid-first-item-closeout', changes });
   assert.equal(validProductRoadmapCloseoutMetadata(base, accepted), true,
     'trusted first-item closeout and mechanically synchronized sidecar must pass');
+  const modeAttack = createSyntheticRoadmapCandidate({
+    id: 'metadata-chmod-during-valid-closeout',
+    baseSha: accepted,
+    changes: [{ path: metadataPath, content: JSON.stringify(expectedMetadata, null, 2) + '\n', mode: '100755' }],
+  });
+  assert.notEqual(gitEntry(accepted, metadataPath), gitEntry(modeAttack, metadataPath),
+    'metadata chmod attack must actually alter the Git tree entry');
+  assert.equal(validProductRoadmapCloseoutMetadata(base, modeAttack), false,
+    'valid closeout must not authorize a metadata file-mode or type mutation');
 
   const attacks = [
     { id: 'mismatched-archive-title', changes: [changes[0], {
@@ -577,7 +591,7 @@ function roadmapCloseoutBoundaryCalibration() {
   });
   assert.equal(validProductRoadmapCloseoutMetadata(loneBase, loneCandidate), true,
     'closing the final active roadmap item must retain its validated archive and synchronized empty metadata');
-  return { accepted: true, attacks: attacks.length, lastItemAccepted: true, falsePositives: 0, falseNegatives: 0 };
+  return { accepted: true, attacks: attacks.length + 1, lastItemAccepted: true, fileModeAttackRejected: true, falsePositives: 0, falseNegatives: 0 };
 }
 
 function selfTest() {
