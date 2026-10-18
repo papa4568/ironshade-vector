@@ -88,10 +88,30 @@ export function measureGlb(bytes, name = 'GLB') {
     return unpacked;
   };
   let vertices = 0, triangles = 0, primitiveCount = 0, unitCubePrimitives = 0;
+  const boundsMin = [Infinity, Infinity, Infinity], boundsMax = [-Infinity, -Infinity, -Infinity];
+
   for (const mesh of json.meshes ?? []) for (const primitive of mesh.primitives ?? []) {
     check((primitive.mode ?? 4) === 4, name + ': non-triangle mesh');
     const pos = accessors[primitive.attributes?.POSITION];
     check(pos && Number.isInteger(pos.count) && pos.count > 0, name + ': missing POSITION accessor');
+    if (pos.type === 'VEC3' && pos.componentType === 5126) {
+      let minimum = pos.min, maximum = pos.max;
+      if (!Array.isArray(minimum) || minimum.length !== 3 || !Array.isArray(maximum) || maximum.length !== 3) {
+        const source = accessorPayload(pos, 'position-bounds');
+        minimum = [Infinity, Infinity, Infinity];
+        maximum = [-Infinity, -Infinity, -Infinity];
+        for (let offset = 0; offset + 12 <= source.length; offset += 12) for (let axis = 0; axis < 3; axis++) {
+          const value = source.readFloatLE(offset + axis * 4);
+          if (value < minimum[axis]) minimum[axis] = value;
+          if (value > maximum[axis]) maximum[axis] = value;
+        }
+      }
+      for (let axis = 0; axis < 3; axis++) {
+        check(Number.isFinite(minimum[axis]) && Number.isFinite(maximum[axis]) && maximum[axis] >= minimum[axis], name + ': invalid POSITION geometry bounds');
+        boundsMin[axis] = Math.min(boundsMin[axis], minimum[axis]);
+        boundsMax[axis] = Math.max(boundsMax[axis], maximum[axis]);
+      }
+    }
     vertices += pos.count;
     const count = primitive.indices === undefined ? pos.count : accessors[primitive.indices]?.count;
     check(Number.isInteger(count) && count > 0 && count % 3 === 0, name + ': invalid index count');
@@ -160,7 +180,8 @@ export function measureGlb(bytes, name = 'GLB') {
     ? Math.max(0, view.byteLength - (usedViewEnd.get(index) ?? 0) - 3)
     : view.byteLength), 0);
   const meaningfulBytes = [...content.values()].reduce((n, bytes) => n + bytes, 0);
-  return { vertices, triangles, primitiveCount, legacyCube, geometryHashes: sort(geometry), materialChannels: channels, embeddedTextures: embedded, meaningfulBytes, unusedBufferViewBytes: allocated, uncompressedBytes: binary.length + embedded.reduce((n, t) => n + (t.uncompressedBytes ?? 0), 0) };
+  const sourceBounds = boundsMin.every(Number.isFinite) ? { min: boundsMin, max: boundsMax, size: boundsMax.map((value, axis) => value - boundsMin[axis]) } : null;
+  return { sourceBounds, vertices, triangles, primitiveCount, legacyCube, geometryHashes: sort(geometry), materialChannels: channels, embeddedTextures: embedded, meaningfulBytes, unusedBufferViewBytes: allocated, uncompressedBytes: binary.length + embedded.reduce((n, t) => n + (t.uncompressedBytes ?? 0), 0) };
 }
 
 function categoryFor(path) {
@@ -240,6 +261,7 @@ export async function createHeavyManifest({ root = ROOT, assetRoot = resolve(roo
       runtimeReferenced, fileSha256: SHA(bytes), onDiskBytes: bytes.length,
       uncompressedSourceBytes: geometry?.uncompressedBytes ?? texture?.uncompressedBytes ?? texture?.decodedBytes ?? null,
       meaningfulBytes: geometry?.meaningfulBytes ?? (texture?.mips?.reduce((n, m) => n + m.uncompressedBytes, 0) ?? texture?.decodedBytes ?? 0),
+      sourceDimensions: geometry?.sourceBounds?.size ?? (texture ? [texture.width, texture.height] : null),
       vertices: geometry?.vertices ?? 0, triangles: geometry?.triangles ?? 0,
       geometry: geometry ? { legacyCube: geometry.legacyCube, primitiveCount: geometry.primitiveCount, unusedBufferViewBytes: geometry.unusedBufferViewBytes, geometryHashes: geometry.geometryHashes, embeddedTextures: geometry.embeddedTextures } : null,
       materialChannels: geometry?.materialChannels ?? (mapChannel(assetPath) ? [mapChannel(assetPath)] : []),
