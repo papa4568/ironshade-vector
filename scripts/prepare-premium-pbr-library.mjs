@@ -3,8 +3,7 @@ import { resolve } from 'node:path';
 import { constants, zstdCompressSync } from 'node:zlib';
 
 export const PREMIUM_PBR_SURFACE_ROOT = 'public/assets/materials/premium-pbr';
-export const PREMIUM_PBR_SURFACE_RESOLUTION = 2048;
-export const PREMIUM_PBR_AUTHORING_PHASE = 'P28-F1';
+export const PREMIUM_PBR_SURFACE_RESOLUTION = 512;
 
 const KTX2_IDENTIFIER = Buffer.from([0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a]);
 const VK_FORMAT_R8G8B8A8_UNORM = 37;
@@ -159,74 +158,6 @@ function materialSignals(surfaceId, x, y, size) {
   };
 }
 
-// Directional industrial wear authored at source resolution, not upscaled from the
-// 512px recovery library. Masks deliberately break repetition between adjacent
-// modules: plate-edge deposits, etched labels, abrasion, heat bloom, and oil
-// drips all affect albedo, relief and roughness coherently.
-function refineryFinishLayers(id, x, y, size) {
-  const fine = hash01(x, y, 103);
-  const mid = hash01(Math.floor(x / 9), Math.floor(y / 9), 151);
-  const broad = hash01(Math.floor(x / 97), Math.floor(y / 131), 197);
-  const panelX = x % 512;
-  const panelY = y % 512;
-  const seamDist = Math.min(panelX, 511 - panelX, panelY, 511 - panelY);
-  const seamDirt = (1 - smoothstep(3, 35, seamDist)) * (0.55 + broad * 0.45);
-  const cornerDirt = (1 - smoothstep(0, 104, Math.hypot(panelX - 24, panelY - 24))) * 0.7;
-  const angledScuff = Math.abs(((x * 3 + y * 11) % 233) - 116) < 3 && mid > 0.56 ? 1 : 0;
-  const metalChip = mid > 0.945 && fine > 0.36 ? 1 : 0;
-  const dripColumn = hash01(Math.floor(x / 19), 0, 211) > 0.89;
-  const dripHead = 20 + hash01(Math.floor(x / 19), 0, 223) * 310;
-  const drip = dripColumn && panelY > dripHead && panelY < dripHead + 95 &&
-    Math.abs((x % 19) - 9) < 2 ? (1 - (panelY - dripHead) / 95) : 0;
-  const labelField = panelX > 336 && panelX < 465 && panelY > 75 && panelY < 125;
-  const etchedLabel = labelField && (
-    (panelY < 79 || panelY > 120) ||
-    (panelX > 350 && panelX < 453 && (Math.floor((panelX - 350) / 9) % 4 === 0) && panelY > 89 && panelY < 109)
-  ) ? 1 : 0;
-  const thermalZone = Math.max(0, 1 - Math.hypot((panelX - 250) / 350, (panelY - 490) / 175));
-  const granulation = (fine - 0.5) * 7 + (mid - 0.5) * 9;
-
-  if (id === 'painted-metal') return {
-    tint: [-seamDirt * 29 + metalChip * 47 + granulation, -seamDirt * 24 + metalChip * 38 + granulation,
-      -seamDirt * 19 + metalChip * 26 + granulation],
-    height: -seamDirt * 0.033 - angledScuff * 0.044 - metalChip * 0.035 + etchedLabel * 0.009,
-    ao: -seamDirt * 0.14 - cornerDirt * 0.06,
-    rough: seamDirt * 0.19 + angledScuff * 0.17 + drip * 0.16,
-    metallic: metalChip ? 0.95 : null,
-  };
-  if (id === 'bare-metal') return {
-    tint: [thermalZone * 24 + granulation - drip * 19, thermalZone * 2 + granulation - drip * 22,
-      -thermalZone * 21 + granulation - drip * 24],
-    height: -angledScuff * 0.028 - drip * 0.018 + etchedLabel * 0.006,
-    ao: -seamDirt * 0.10 - drip * 0.09,
-    rough: thermalZone * 0.31 + drip * 0.27 + angledScuff * 0.09,
-    metallic: null,
-  };
-  if (id === 'deck-plate') return {
-    tint: [-seamDirt * 34 - cornerDirt * 22 + granulation + angledScuff * 14,
-      -seamDirt * 30 - cornerDirt * 18 + granulation + angledScuff * 12,
-      -seamDirt * 27 - cornerDirt * 16 + granulation + angledScuff * 9],
-    height: -seamDirt * 0.023 - angledScuff * 0.029,
-    ao: -seamDirt * 0.2 - cornerDirt * 0.1,
-    rough: seamDirt * 0.16 + drip * 0.23,
-    metallic: null,
-  };
-  if (id === 'polymer-rubber') return {
-    tint: [granulation - angledScuff * 11, granulation - angledScuff * 10, granulation - angledScuff * 10],
-    height: (fine - 0.5) * 0.024 - angledScuff * 0.016,
-    ao: -seamDirt * 0.12,
-    rough: (mid - 0.5) * 0.11 + angledScuff * 0.09,
-    metallic: null,
-  };
-  return {
-    tint: [granulation - thermalZone * 12, granulation - thermalZone * 9, granulation - thermalZone * 5],
-    height: -seamDirt * 0.025 - etchedLabel * 0.014,
-    ao: -seamDirt * 0.16,
-    rough: thermalZone * 0.22 + seamDirt * 0.12,
-    metallic: null,
-  };
-}
-
 function buildSurfaceMaps(surface, size) {
   const count = size * size;
   const base = new Uint8Array(count * 4);
@@ -234,21 +165,22 @@ function buildSurfaceMaps(surface, size) {
   const orm = new Uint8Array(count * 4);
   const emissive = new Uint8Array(count * 4);
   const heights = new Float32Array(count);
+  const signals = new Array(count);
 
   for (let y = 0; y < size; y += 1) {
     for (let x = 0; x < size; x += 1) {
       const index = y * size + x;
       const signal = materialSignals(surface.id, x, y, size);
-      const finish = refineryFinishLayers(surface.id, x, y, size);
-      heights[index] = signal.height + finish.height;
+      signals[index] = signal;
+      heights[index] = signal.height;
       const offset = index * 4;
-      base[offset] = clampByte(signal.base[0] + finish.tint[0]);
-      base[offset + 1] = clampByte(signal.base[1] + finish.tint[1]);
-      base[offset + 2] = clampByte(signal.base[2] + finish.tint[2]);
+      base[offset] = clampByte(signal.base[0]);
+      base[offset + 1] = clampByte(signal.base[1]);
+      base[offset + 2] = clampByte(signal.base[2]);
       base[offset + 3] = 255;
-      orm[offset] = clampByte((signal.occlusion + finish.ao) * 255);
-      orm[offset + 1] = clampByte((signal.roughness + finish.rough) * 255);
-      orm[offset + 2] = clampByte((finish.metallic ?? signal.metallic) * 255);
+      orm[offset] = clampByte(signal.occlusion * 255);
+      orm[offset + 1] = clampByte(signal.roughness * 255);
+      orm[offset + 2] = clampByte(signal.metallic * 255);
       orm[offset + 3] = 255;
       emissive[offset] = signal.emissive[0];
       emissive[offset + 1] = signal.emissive[1];
@@ -429,8 +361,6 @@ export async function writePremiumPbrSurfaceLibrary() {
     format: 'KTX2',
     supercompression: 'Zstandard',
     resolution: PREMIUM_PBR_SURFACE_RESOLUTION,
-    authoredPhase: PREMIUM_PBR_AUTHORING_PHASE,
-    sourceDetail: ['plate-seam-deposits', 'directional-abrasion', 'etched-service-labels', 'oil-drips', 'localized-heat-oxidation', 'granular-relief'],
     mipmapped: true,
     ormPacking: { occlusion: 'R', roughness: 'G', metallic: 'B' },
     surfaces: [],
