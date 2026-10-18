@@ -186,6 +186,7 @@ export function upgradeHeroLod0(source, family) {
     name: family + '-f3-authored-hardsurface',
     pbrMetallicRoughness: {
       baseColorTexture: { index: firstTexture },
+      baseColorFactor: [1, 1, 1, 1],
       metallicRoughnessTexture: { index: firstTexture + 2 },
       metallicFactor: 0.78,
       roughnessFactor: 0.46,
