@@ -726,3 +726,6 @@ console.log(`GRAPHICS_CONTENT_PASS assets=${reports.length} bytes=${totalBytes} 
 
 // Falsification controls share the same prepared asset snapshot as this content audit.
 await import('./heavy-asset-manifest.mjs');
+
+// P28-F2: audit the actual built refinery LOD0 pack and its authored detail.
+await import('./refinery-heavy-geometry.mjs');
