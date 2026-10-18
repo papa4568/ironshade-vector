@@ -227,7 +227,11 @@ export class BabylonRefineryPostProcessing {
     const stackEnabled = !qaStackDisabled;
     const sourceCount = this.syncBloomSources();
 
-    const ssaoRequested = stackEnabled && (qaExplicit || budget.ssaoEnabled);
+    // QA may force the visual stack only when a nonzero sampling budget exists.
+    // Performance intentionally has zero SSAO samples; requesting the pipeline
+    // anyway can monopolize constrained WebGL renderers during gameplay startup.
+    const ssaoRequested = stackEnabled && budget.ssaoSamples > 0
+      && (qaExplicit || budget.ssaoEnabled);
     const ssaoEnabled = this.syncSsao(ssaoRequested, budget);
 
     const bloomEnabled = stackEnabled && sourceCount > 0 && (qaExplicit || budget.bloomEnabled);

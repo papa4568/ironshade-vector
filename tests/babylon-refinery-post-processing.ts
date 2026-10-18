@@ -152,6 +152,12 @@ runtimePost.sync(true, highSnapshot);
 assert.equal(runtimeCanvas.dataset.environmentImageGradeMode, 'normal',
   'Returning to normal explicit QA must not inherit real-mission low-visibility grading.');
 
+// Even explicit visual QA must not create an SSAO pipeline with the zero
+// samples configured by the adaptive Performance tier.
+runtimePost.sync(false, performanceSnapshot);
+assert.equal(runtimeCanvas.dataset.environmentSsao2, 'off:adaptive-budget+fallback-contact');
+assert.match(runtimeCanvas.dataset.environmentContactDepth ?? '', /^grounding:refinery-contact-grounding-v1:/);
+runtimePost.sync(true, highSnapshot);
 assert.match(runtimeCanvas.dataset.environmentSsao2 ?? '', /^(primary:refinery-ssao2-v1:|off:unsupported\+fallback-contact$)/);
 if (runtimeCanvas.dataset.environmentSsao2?.startsWith('primary:')) {
   assert.match(runtimeCanvas.dataset.environmentContactDepth ?? '', /^grounding:refinery-contact-grounding-v1:instances-0:.*:fallback-idle:ssao2-primary$/);
