@@ -34,6 +34,14 @@ assert(inflated.length > premium.length + 4000, 'padding fixture must increase s
 assert(padded.meaningfulBytes === base.meaningfulBytes, 'synthetic JSON padding must never inflate premium source bytes');
 assert.deepEqual(padded.geometryHashes, base.geometryHashes, 'metadata padding must not change geometry content identity');
 
+const oversizedView = mutateGlbJson(premium, gltf => {
+  gltf.bufferViews[0].byteLength += 16; // Unused trailing view bytes overlap neighboring live payload, never accessed by this accessor.
+});
+const ignoredView = measureGlb(oversizedView, 'oversized-buffer-view');
+assert(ignoredView.meaningfulBytes === base.meaningfulBytes, 'unreferenced bytes in a referenced view must not increase premium content');
+assert(ignoredView.unusedBufferViewBytes > base.unusedBufferViewBytes, 'oversized accessor view must be exposed as unused payload');
+
+
 const missingTexture = mutateGlbJson(premium, gltf => { delete gltf.materials[0].normalTexture; });
 const missing = measureGlb(missingTexture, 'missing-normal');
 assert(!missing.materialChannels.includes('normal'), 'cannot credit a map merely because an unused image remains in GLB');
