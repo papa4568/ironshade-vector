@@ -1,10 +1,12 @@
 import { strict as assert } from 'node:assert';
+import { createHash } from 'node:crypto';
+import { deflateRawSync } from 'node:zlib';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { buildPremiumPbrReferenceGlb } from '../scripts/prepare-premium-pbr-reference.mjs';
 import { buildKtx2RgbaZstd } from '../scripts/prepare-premium-pbr-library.mjs';
-import { createHeavyManifest, measureGlb, measureKtx2, measureApkFromRows, runHeavyAssetManifest } from '../tools/heavy-asset-manifest.mjs';
+import { createHeavyManifest, measureGlb, measureKtx2, measureApkFromRows, measureApk, runHeavyAssetManifest } from '../tools/heavy-asset-manifest.mjs';
 
 function mutateGlbJson(bytes, mutation) {
   const jsonSize = bytes.readUInt32LE(12);
@@ -65,6 +67,57 @@ assert(delivered.categories.vfx.compressedBytes === 0 && delivered.categories.de
 assert.throws(() => measureApkFromRows(fake, fakeRows.slice(1)), /APK missing required asset/, 'missing APK payload must fail');
 assert.throws(() => measureApkFromRows(fake, [...fakeRows, fakeRows[0]]), /duplicate APK entry/, 'duplicate ZIP entries must fail');
 assert.throws(() => measureApkFromRows(fake, [{ ...fakeRows[0], sha256: 'different' }, fakeRows[1]]), /bytes mismatch/, 'tampered APK payload must fail');
+
+// Actual ZIP central-directory and local-header integrity: test both stored and deflated APK entries.
+function buildZip(entries) {
+  const locals = [], centrals = [];
+  let nextOffset = 0;
+  for (const item of entries) {
+    const name = Buffer.from(item.name);
+    const payload = item.method === 8 ? deflateRawSync(item.data) : item.data;
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(item.method, 8);
+    local.writeUInt32LE(payload.length, 18);
+    local.writeUInt32LE(item.data.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    locals.push(local, name, payload);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(item.method, 10);
+    central.writeUInt32LE(payload.length, 20);
+    central.writeUInt32LE(item.data.length, 24);
+    central.writeUInt16LE(name.length, 28);
+    central.writeUInt32LE(nextOffset, 42);
+    centrals.push(central, name);
+    nextOffset += local.length + name.length + payload.length;
+  }
+  const centralBytes = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50);
+  end.writeUInt16LE(entries.length, 8);
+  end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(centralBytes.length, 12);
+  end.writeUInt32LE(nextOffset, 16);
+  return Buffer.concat([...locals, centralBytes, end]);
+}
+const zipDir = await mkdtemp(join(tmpdir(), 'ironshade-p28-f0-zip-'));
+try {
+  const fixtures = [
+    { name: 'assets/public/assets/models/environments/floor.glb', data: Buffer.from('gltf content a'), method: 0, category: 'refinery' },
+    { name: 'assets/public/assets/materials/premium-pbr/steel-normal.ktx2', data: Buffer.from('texture content b repeated'.repeat(100)), method: 8, category: 'refinery' },
+  ];
+  const archive = resolve(zipDir, 'fixture.apk');
+  await writeFile(archive, buildZip(fixtures));
+  const records = fixtures.map(item => ({ path: item.name.slice('assets/public/'.length), category: item.category, fileSha256: createHash('sha256').update(item.data).digest('hex'), onDiskBytes: item.data.length }));
+  const checked = await measureApk({ assets: records }, archive);
+  assert(checked.assets.length === 2 && checked.assets.some(a => a.zipMethod === 8), 'stored and deflated APK assets must be measured');
+  assert(checked.categories.refinery.uncompressedBytes === fixtures.reduce((n, item) => n + item.data.length, 0), 'APK ZIP entry accounting must use measured source bytes');
+  await writeFile(archive, buildZip(fixtures.slice(0, 1)));
+  await assert.rejects(measureApk({ assets: records }, archive), /APK missing required asset/, 'missing APK ZIP entry must fail');
+  await writeFile(archive, buildZip([fixtures[0], fixtures[0], fixtures[1]]));
+  await assert.rejects(measureApk({ assets: records }, archive), /duplicate APK entry/, 'duplicate central entries must fail');
+} finally { await rm(zipDir, { recursive: true, force: true }); }
 
 const temp = await mkdtemp(join(tmpdir(), 'ironshade-p28-f0-'));
 try {
