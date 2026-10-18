@@ -2183,6 +2183,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     for (const node of instanceNodes(instance)) {
       const mesh = node instanceof InstancedMesh ? node.sourceMesh : node instanceof Mesh ? node : null;
       if (!mesh) continue;
+      // Keep both source meshes and Babylon's independently pickable instances
+      // out of gameplay hit-testing and pointer selection.
+      node.isPickable = false;
       const materialName = mesh.material?.name ?? '';
       const surface = REFINERY_DRESSING_SURFACES[materialName]
         ?? (materialName.startsWith('premium-pbr:') ? materialName.slice('premium-pbr:'.length) as PremiumPbrSurfaceId : undefined);
@@ -2228,6 +2231,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const reflectionAnchors: RefineryReflectionAnchor[] = [];
     const premiumSurfaceUsage = new Map<RefineryFamilyKey, Set<PremiumPbrSurfaceId>>();
     let placementCount = 0;
+    let primaryPlacementCount = 0;
     let placementBatchCount = 0;
     let placementPeakConcurrency = 0;
 
@@ -2277,6 +2281,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
             mountedInstances.push(instance);
             unmountedBatchInstances.delete(instance);
             placementCount += 1;
+            if (key in REFINERY_ASSET_FAMILIES) primaryPlacementCount += 1;
           }
         } catch (error) {
           unmountedBatchInstances.forEach(instance => instance.release());
@@ -2305,7 +2310,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.environmentVisual = 'authored-refinery-babylon';
       this.canvas.dataset.environmentLod = lods.join(',');
       this.canvas.dataset.environmentKit = REFINERY_ENVIRONMENT_KIT;
-      this.canvas.dataset.environmentInstances = String(placementCount);
+      // P27 authored-kit parity counters describe the original mandatory 11
+      // families only. New P28-F4 dressing reports through separate fields.
+      this.canvas.dataset.environmentInstances = String(primaryPlacementCount);
       this.canvas.dataset.environmentTerminals = String(placements.terminal.length);
       this.canvas.dataset.environmentLandmark = 'ore-smelter-gantry';
       this.canvas.dataset.environmentServiceDetails = `service-conduit:${placements.serviceConduit.length}`;
@@ -2317,12 +2324,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.mapLoadPlacementInstantiationMs = Math.max(0, performance.now() - placementStartedAt).toFixed(2);
       this.canvas.dataset.babylonEnvironmentState = 'ready';
       this.canvas.dataset.refineryDressingFamilies = (Object.keys(REFINERY_DRESSING_ASSET_FAMILIES) as RefineryDressingFamilyKey[]).join(',');
-      this.canvas.dataset.refineryDressingInstances = String((Object.keys(REFINERY_DRESSING_ASSET_FAMILIES) as RefineryDressingFamilyKey[])
-        .reduce((total, key) => total + placements[key].length, 0));
+      this.canvas.dataset.refineryDressingInstances = String(placementCount - primaryPlacementCount);
       this.canvas.dataset.refineryDressingAssets = selected.filter(item => item.key in REFINERY_DRESSING_ASSET_FAMILIES)
         .map(item => item.spec.id).join(',');
-      this.canvas.dataset.babylonEnvironmentAssets = String(selected.length);
-      this.canvas.dataset.babylonEnvironmentPlacements = String(placementCount);
+      this.canvas.dataset.babylonEnvironmentAssets = String(selected.filter(item => item.key in REFINERY_ASSET_FAMILIES).length);
+      this.canvas.dataset.babylonEnvironmentPlacements = String(primaryPlacementCount);
       this.canvas.dataset.babylonEnvironmentLod = lods.join(',');
       this.canvas.dataset.babylonEnvironmentReuse = 'cache-shared+geometry-shared+material-shared';
       this.canvas.dataset.babylonEnvironmentPlacementLoad = [
