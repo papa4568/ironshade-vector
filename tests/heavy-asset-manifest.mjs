@@ -155,6 +155,7 @@ try {
   await writeFile(resolve(model, 'refinery-duplicate-lod0.glb'), premium);
   const duplicate = await createHeavyManifest({ root: temp });
   assert(duplicate.assets.length === 2, 'both registered GLBs must be inventoried');
+  assert(duplicate.assets.every(asset => asset.qualityFlags.includes('placeholder-scale-geometry')), '12-triangle face-split panel must be rejected as placeholder-scale LOD0 geometry');
   assert(duplicate.assets[1].duplicateOf === duplicate.assets[0].path, 'identical files cannot be credited twice');
   assert(duplicate.assets[1].uniqueMeaningfulBytes === 0, 'duplicate geometry cannot increase premium source bytes');
   assert(duplicate.categories.refinery.assetCount === 2 && duplicate.categories.refinery.shippedBytes === premium.length * 2, 'shipped and qualified bytes must be separate');
