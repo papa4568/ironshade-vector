@@ -1,3 +1,4 @@
+import { upgradeHeroLod0 } from './lib/heavy-hero-lod0.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -105,7 +106,7 @@ function cloneNodeAsChild(gltf, sourceName, parentName, name, translation, scale
 }
 
 export function buildRefineryBossLod0Glb() {
-  const source = buildEliteEnemyLod0Glb();
+  const source = buildEliteEnemyLod0Glb({ premium: false });
   const { gltf, binary } = parseGlb(source);
 
   gltf.asset.generator = 'Ironshade Vector P28-D8 Refinery Boss LOD0 deterministic generator';
@@ -250,7 +251,8 @@ export function buildRefineryBossLod0Glb() {
     },
   };
 
-  return encodeGlb(gltf, binary);
+  const built = encodeGlb(gltf, binary);
+  return upgradeHeroLod0(built, 'boss');
 }
 
 export async function writeRefineryBossLod0() {
