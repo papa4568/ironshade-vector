@@ -196,12 +196,6 @@ export async function writeRefineryPremiumSurfaceGeometry() {
   await writeRefineryDecalAtlas();
   const { writeRefineryRouteDecals } = await import('./prepare-refinery-route-decals.mjs');
   await writeRefineryRouteDecals();
-  // P28-F2: floor and wall LOD0 used to be authored but skipped by the
-  // production prepare path, leaving checked-in baseline payloads in the APK.
-  const { writeRefineryFloorLod0Assets } = await import('./prepare-refinery-floor-lod0.mjs');
-  await writeRefineryFloorLod0Assets();
-  const { writeRefineryWallLod0Assets } = await import('./prepare-refinery-wall-lod0.mjs');
-  await writeRefineryWallLod0Assets();
   const { writeRefineryPipeCableLod0Assets } = await import('./prepare-refinery-pipe-cable-lod0.mjs');
   await writeRefineryPipeCableLod0Assets();
   const { writeRefineryConduitGantryLod0Assets } = await import('./prepare-refinery-conduit-gantry-lod0.mjs');
