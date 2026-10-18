@@ -129,6 +129,8 @@ for (const kind of refineryKinds) {
     assert.equal(canvas.dataset.babylonAmbientParticles, 'pooled:dust+sparks+vapor+debris');
     assert.equal(canvas.dataset.babylonAmbientParticleCounts, 'dust:128/128|sparks:48/48|vapor:24/24|debris:40/40');
     assert.equal(canvas.dataset.babylonAmbientParticlePoolSize, '240');
+    assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 1,
+      'P28-F5 four ambient pools must share one KTX2 GPU texture/decode.');
     assert.equal(canvas.dataset.babylonAmbientParticleDrawFamilies, '4');
     assert.equal(canvas.dataset.babylonAmbientGameplayCuePolicy, 'independent:1.00');
     assert.equal(canvas.dataset.babylonAmbientParticleSimulationOwnership, 'read-only-presentation');
@@ -190,6 +192,8 @@ for (const kind of refineryKinds) {
     ambient.release('scenario-exit');
     assert.equal(canvas.dataset.babylonAmbientParticleState, 'released');
     assert.equal(canvas.dataset.babylonAmbientParticlePoolSize, '0');
+    assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 0,
+      'P28-F5 refinery exit must release the shared atlas exactly once.');
     assert.equal(scene.meshes.some(mesh => mesh.name.startsWith('p28-e1-')), false, 'Scenario release must reclaim every ambient source and instance mesh.');
     assert.equal(scene.materials.some(material => material.name.startsWith('p28-e1-')), false, 'Scenario release must reclaim every ambient material.');
 
