@@ -394,6 +394,58 @@ export const REFINERY_ASSET_FAMILIES = {
   },
 } as const satisfies Record<'floor' | 'floorGrate' | 'bulkhead' | 'processor' | 'pipeRack' | 'wallPanel' | 'cableTray' | 'serviceConduit' | 'gantry' | 'crate' | 'terminal', GraphicsAssetFamily>;
 
+// P28-F4 non-colliding authored dressing; placement roots never enter simulation.
+export const REFINERY_DRESSING_ASSET_FAMILIES = {
+  valveSkid: {
+    id: 'refinery-dressing-valve-skid',
+    lods: {
+      0: createGraphicsAssetSpec('refinery-dressing-valve-skid-lod0', 'environment-module', '/assets/models/environments/refinery-dressing-valve-skid-lod0.glb', 0),
+    },
+  },
+  junctionBox: {
+    id: 'refinery-dressing-junction-box',
+    lods: {
+      0: createGraphicsAssetSpec('refinery-dressing-junction-box-lod0', 'environment-module', '/assets/models/environments/refinery-dressing-junction-box-lod0.glb', 0),
+    },
+  },
+  ventBank: {
+    id: 'refinery-dressing-vent-bank',
+    lods: {
+      0: createGraphicsAssetSpec('refinery-dressing-vent-bank-lod0', 'environment-module', '/assets/models/environments/refinery-dressing-vent-bank-lod0.glb', 0),
+    },
+  },
+  toolCart: {
+    id: 'refinery-dressing-tool-cart',
+    lods: {
+      0: createGraphicsAssetSpec('refinery-dressing-tool-cart-lod0', 'environment-module', '/assets/models/environments/refinery-dressing-tool-cart-lod0.glb', 0),
+    },
+  },
+  canisterRack: {
+    id: 'refinery-dressing-canister-rack',
+    lods: {
+      0: createGraphicsAssetSpec('refinery-dressing-canister-rack-lod0', 'environment-module', '/assets/models/environments/refinery-dressing-canister-rack-lod0.glb', 0),
+    },
+  },
+  guardRail: {
+    id: 'refinery-dressing-guard-rail',
+    lods: {
+      0: createGraphicsAssetSpec('refinery-dressing-guard-rail-lod0', 'environment-module', '/assets/models/environments/refinery-dressing-guard-rail-lod0.glb', 0),
+    },
+  },
+  hoseReel: {
+    id: 'refinery-dressing-hose-reel',
+    lods: {
+      0: createGraphicsAssetSpec('refinery-dressing-hose-reel-lod0', 'environment-module', '/assets/models/environments/refinery-dressing-hose-reel-lod0.glb', 0),
+    },
+  },
+  serviceCabinet: {
+    id: 'refinery-dressing-service-cabinet',
+    lods: {
+      0: createGraphicsAssetSpec('refinery-dressing-service-cabinet-lod0', 'environment-module', '/assets/models/environments/refinery-dressing-service-cabinet-lod0.glb', 0),
+    },
+  },
+} as const satisfies Record<'valveSkid' | 'junctionBox' | 'ventBank' | 'toolCart' | 'canisterRack' | 'guardRail' | 'hoseReel' | 'serviceCabinet', GraphicsAssetFamily>;
+
 export const SHOWCASE_REFINERY_MODULE_FAMILY: GraphicsAssetFamily = REFINERY_ASSET_FAMILIES.processor;
 
 
