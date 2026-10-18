@@ -182,7 +182,7 @@ export function createRefineryF5EffectPixels() {
   return pixels;
 }
 
-function patchGlbAtlas(bytes, path) {
+export function patchRefineryF5AtlasGlb(bytes, path) {
   if (bytes.toString('ascii', 0, 4) !== 'glTF' || bytes.readUInt32LE(8) !== bytes.length) {
     throw new Error(path + ': malformed source GLB');
   }
@@ -215,7 +215,7 @@ export async function writeRefineryF5Atlases() {
   }
   for (const target of REFINERY_F5_LIVE_MODEL_PATHS) {
     const output = resolve(process.cwd(), 'public/assets/models', target);
-    await writeFile(output, patchGlbAtlas(await readFile(output), target));
+    await writeFile(output, patchRefineryF5AtlasGlb(await readFile(output), target));
   }
   console.log('P28_F5_ATLASES_READY decals=' + decal.length + ' effects=' + effect.length + ' liveModels=' + REFINERY_F5_LIVE_MODEL_PATHS.length);
   return { decalBytes: decal.length, effectBytes: effect.length, liveModels: REFINERY_F5_LIVE_MODEL_PATHS.length };
