@@ -50,7 +50,7 @@ const leftDressingZ = [], rightDressingZ = [];
 for (const target of REFINERY_DRESSING_TARGETS) {
   const match = renderer.match(new RegExp('^    ' + target.family + ': \\[\\n([\\s\\S]*?)^    \\],', 'm'));
   assert(match, target.family + ' is missing a deterministic placement group');
-  const locations = [...match[1].matchAll(/x: width \\* (0\\.\\d+), z: height \\* (0\\.\\d+)/g)];
+  const locations = [...match[1].matchAll(/x: width \* (0\.\d+), z: height \* (0\.\d+)/g)];
   assert.equal(locations.length, 2, target.family + ' must ship two visible wall-side instances');
   for (const location of locations) {
     const x = Number(location[1]), z = Number(location[2]);
