@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { buildPremiumPbrReferenceGlb } from '../scripts/prepare-premium-pbr-reference.mjs';
 import { buildKtx2RgbaZstd } from '../scripts/prepare-premium-pbr-library.mjs';
-import { createHeavyManifest, measureGlb, measureKtx2, measureApkFromRows, runHeavyAssetManifest } from '../scripts/heavy-asset-manifest.mjs';
+import { createHeavyManifest, measureGlb, measureKtx2, measureApkFromRows, runHeavyAssetManifest } from '../tools/heavy-asset-manifest.mjs';
 
 function mutateGlbJson(bytes, mutation) {
   const jsonSize = bytes.readUInt32LE(12);
