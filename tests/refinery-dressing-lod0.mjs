@@ -34,7 +34,7 @@ for (const target of REFINERY_DRESSING_TARGETS) {
   totalTriangles += measurement.triangles;
 }
 assert.equal(allHashes.size, REFINERY_DRESSING_TARGETS.length, 'dressing families must not duplicate mesh payloads');
-for (const required of ['cylinder-pipe', 'machined-open-flange', 'inset-panel', 'chamfered-solid', 'recessed-louver'])
+for (const required of ['cylinder-pipe', 'machined-open-flange', 'inset-panel', 'chamfered-solid', 'open-machined-louver'])
   assert(features.has(required), 'missing distinctive industrial silhouette geometry ' + required);
 
 const registry = await readFile('src/game/graphicsAssetManifest.ts', 'utf8');
