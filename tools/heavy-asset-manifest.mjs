@@ -1,8 +1,7 @@
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import { readFile, readdir, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, relative, dirname, extname } from 'node:path';
-import { zstdDecompressSync } from 'node:zlib';
+import { inflateRawSync, zstdDecompressSync } from 'node:zlib';
 
 const ROOT = process.cwd();
 const CATEGORIES = ['refinery', 'operator', 'enemy', 'boss', 'decal', 'vfx'];
@@ -239,19 +238,50 @@ export function measureApkFromRows(manifest, rows) {
 }
 
 export async function measureApk(manifest, apkPath) {
-  const python = [
-    'import hashlib,json,sys,zipfile',
-    'with zipfile.ZipFile(sys.argv[1]) as z:',
-    '  result=[]',
-    '  for name in json.loads(sys.argv[2]):',
-    '    path="assets/public/"+name',
-    '    entries=[i for i in z.infolist() if i.filename==path]',
-    '    if len(entries)!=1: raise RuntimeError("missing or duplicate APK asset: "+path)',
-    '    i=entries[0]; data=z.read(i)',
-    '    result.append(dict(name=path,bytes=i.file_size,compressedBytes=i.compress_size,method=i.compress_type,sha256=hashlib.sha256(data).hexdigest()))',
-    'print(json.dumps(result))',
-  ].join('\n');
-  const rows = JSON.parse(execFileSync('python3', ['-c', python, apkPath, JSON.stringify(manifest.assets.map(a => a.path))], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }));
+  const apk = await readFile(apkPath);
+  const endOfCentralSignature = 0x06054b50;
+  let eocd = -1;
+  for (let offset = apk.length - 22; offset >= Math.max(0, apk.length - 22 - 65535); offset--) {
+    if (apk.readUInt32LE(offset) === endOfCentralSignature && offset + 22 + apk.readUInt16LE(offset + 20) === apk.length) {
+      eocd = offset;
+      break;
+    }
+  }
+  check(eocd >= 0, 'APK central directory is missing or malformed');
+  const total = apk.readUInt16LE(eocd + 10);
+  const centralSize = apk.readUInt32LE(eocd + 12);
+  const centralOffset = apk.readUInt32LE(eocd + 16);
+  check(apk.readUInt16LE(eocd + 4) === 0 && apk.readUInt16LE(eocd + 6) === 0 && total !== 65535 && centralSize !== 0xffffffff, 'split/ZIP64 APK not supported');
+  check(centralOffset + centralSize <= eocd, 'APK central directory extends out of bounds');
+  const wanted = new Set(manifest.assets.map(a => 'assets/public/' + a.path));
+  const rows = [];
+  let cursor = centralOffset;
+  for (let i = 0; i < total; i++) {
+    check(cursor + 46 <= centralOffset + centralSize && apk.readUInt32LE(cursor) === 0x02014b50, 'APK invalid central directory entry');
+    const method = apk.readUInt16LE(cursor + 10);
+    const compressedBytes = apk.readUInt32LE(cursor + 20);
+    const bytes = apk.readUInt32LE(cursor + 24);
+    const nameBytes = apk.readUInt16LE(cursor + 28);
+    const extraBytes = apk.readUInt16LE(cursor + 30);
+    const commentBytes = apk.readUInt16LE(cursor + 32);
+    const localOffset = apk.readUInt32LE(cursor + 42);
+    const next = cursor + 46 + nameBytes + extraBytes + commentBytes;
+    check(next <= centralOffset + centralSize, 'APK truncated central directory entry');
+    const name = apk.subarray(cursor + 46, cursor + 46 + nameBytes).toString('utf8');
+    cursor = next;
+    if (!wanted.has(name)) continue;
+    check(method === 0 || method === 8, 'unsupported APK asset ZIP method ' + method + ': ' + name);
+    check(localOffset + 30 <= apk.length && apk.readUInt32LE(localOffset) === 0x04034b50, 'APK invalid local entry ' + name);
+    const localNameBytes = apk.readUInt16LE(localOffset + 26), localExtraBytes = apk.readUInt16LE(localOffset + 28);
+    const dataOffset = localOffset + 30 + localNameBytes + localExtraBytes;
+    const localName = apk.subarray(localOffset + 30, localOffset + 30 + localNameBytes).toString('utf8');
+    check(localName === name, 'APK local/central asset name mismatch: ' + name);
+    const packed = checkedRange(apk, dataOffset, compressedBytes, 'APK ' + name);
+    const source = method === 0 ? packed : inflateRawSync(packed);
+    check(source.length === bytes, 'APK inflated asset byte count mismatch: ' + name);
+    rows.push({ name, bytes, compressedBytes, method, sha256: SHA(source) });
+  }
+  check(cursor === centralOffset + centralSize, 'APK central directory byte count mismatch');
   return measureApkFromRows(manifest, rows);
 }
 
