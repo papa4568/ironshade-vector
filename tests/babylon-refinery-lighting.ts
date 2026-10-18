@@ -248,6 +248,7 @@ assert.equal(localReflections.probeCount, 1, 'Focal machinery must own a localiz
 assert.equal(localReflections.materialCount, 1, 'Every eligible focal PBR surface must get a local binding.');
 assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /probes:1\|materials:1\|active-materials:0\|capture-geometry:1\|faces:6\|scheduled:0\|completed:0/);
 localReflections.sync(highSnapshot);
+assert.equal(reflectionScene.customRenderTargets.length, 1, 'Scheduled cubemaps must be registered for scene rendering before PBR binding.');
 assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /scheduled:1\|completed:0/, 'Static probes schedule one six-face capture per frame.');
 reflectionCanvas.dataset.graphicsPathSelection = 'qa-explicit';
 reflectionCanvas.dataset.refineryIblQa = 'off';
@@ -268,6 +269,7 @@ delete reflectionCanvas.dataset.refineryReflectionQa;
 localReflections.sync(performanceSnapshot);
 assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /state:global-ibl/, 'After QA capture is cleared, the measured-pressure fallback must resume.');
 localReflections.release();
+assert.equal(reflectionScene.customRenderTargets.length, 0, 'Refinery release must remove all custom reflection targets from the scene.');
 assert.equal(heroMesh.material, sharedMetal, 'Teardown must restore cached source material identity.');
 assert.equal(reflectionCanvas.dataset.refineryReflectionProbes, undefined, 'Teardown must remove stale resource telemetry.');
 localReflections.configure([{ id: 'processor-0', family: 'processor', root: heroRoot }], environmentRoot);
