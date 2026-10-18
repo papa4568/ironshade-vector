@@ -25,7 +25,7 @@ export const REFINERY_F5_EFFECT_ATLAS = Object.freeze({
 // source to avoid staging redundant large PNGs during catastrophic recovery.
 export const REFINERY_F5_LIVE_MODEL_PATHS = Object.freeze(
   [...new Set([...REFINERY_DECAL_TARGETS, ...REFINERY_ROUTE_DECAL_TARGETS].map(item => item.relativePath))]
-    .filter(path => path.endsWith('-lod0.glb')
+    .filter(path => (path.endsWith('-lod0.glb') && !path.includes('refinery-floor-panel-'))
       || /refinery-(processor|pipe-rack|smelter-gantry)-lod1\.glb$/.test(path))
     .sort(),
 );
