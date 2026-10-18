@@ -3,6 +3,8 @@ import { NullEngine } from '@babylonjs/core/Engines/nullEngine';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
+import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import { Scene } from '@babylonjs/core/scene';
 import { readFileSync } from 'node:fs';
 import {
@@ -17,6 +19,7 @@ import {
 } from '../src/game/babylonRefineryLighting';
 import { REFINERY_BABYLON_LIGHTING_PROFILE } from '../src/game/refineryLightingProfile';
 import { BabylonRefineryPracticalFixtures, REFINERY_PRACTICAL_FIXTURE_PROFILE } from '../src/game/babylonRefineryPracticalFixtures';
+import { BabylonRefineryReflectionProbes, REFINERY_REFLECTION_PROFILE, isRefineryReflectionFamily } from '../src/game/babylonRefineryReflectionProbes';
 import { isBabylonRefineryBloomSourceName } from '../src/game/babylonRefineryPostProcessing';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 
@@ -215,5 +218,50 @@ assert.equal(fixtureScene.materials.filter(material => material.name.startsWith(
 practicals.forEach(light => light.dispose());
 fixtureScene.dispose();
 fixtureEngine.dispose();
+
+
+assert.equal(isRefineryReflectionFamily('processor'), true);
+assert.equal(isRefineryReflectionFamily('gantry'), true);
+assert.equal(isRefineryReflectionFamily('terminal'), true);
+assert.equal(isRefineryReflectionFamily('enemy'), false, 'Combat actors and cues must not get local machinery probes.');
+assert.match(rendererSource, /uniqueMeshes: isRefineryReflectionFamily\(task.key\)/, 'Only focal refinery placements get independent per-location materials.');
+assert.match(rendererSource, /refineryReflectionProbes\.configure\(reflectionAnchors, loadRoot\)/, 'Capture must start after authored refinery placement completes.');
+assert.match(rendererSource, /refineryReflectionProbes\.release\(\)/, 'Refinery re-entry must release probe ownership before authored meshes.');
+const reflectionSceneEngine = new NullEngine();
+const reflectionScene = new Scene(reflectionSceneEngine);
+const reflectionCanvas = { dataset: {} } as unknown as HTMLCanvasElement;
+const environmentRoot = new TransformNode('refinery-test-root', reflectionScene);
+const staticBulkhead = MeshBuilder.CreateBox('refinery-static-bulkhead', { size: 4 }, reflectionScene);
+staticBulkhead.parent = environmentRoot;
+staticBulkhead.position.x = 4;
+const heroRoot = new TransformNode('refinery-test-processor', reflectionScene);
+heroRoot.parent = environmentRoot;
+const heroMesh = MeshBuilder.CreateBox('refinery-test-hero-metal', { size: 1 }, reflectionScene);
+heroMesh.parent = heroRoot;
+const sharedMetal = new PBRMaterial('refinery-test-shared-metal', reflectionScene);
+sharedMetal.metallic = 0.82;
+sharedMetal.roughness = 0.24;
+heroMesh.material = sharedMetal;
+const localReflections = new BabylonRefineryReflectionProbes(reflectionScene, reflectionCanvas);
+localReflections.configure([{ id: 'processor-0', family: 'processor', root: heroRoot }], environmentRoot);
+assert.equal(localReflections.probeCount, 1, 'Focal machinery must own a localized probe.');
+assert.equal(localReflections.materialCount, 1, 'Every eligible focal PBR surface must get a local binding.');
+assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /probes:1\|materials:1\|capture-geometry:1\|faces:6\|scheduled:0\|completed:0/);
+localReflections.sync(highSnapshot);
+assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /scheduled:1\|completed:0/, 'Static probes schedule one six-face capture per frame.');
+localReflections.sync(highSnapshot);
+assert.match(reflectionCanvas.dataset.refineryReflectionProbes, /scheduled:1\|completed:0/, 'Stable frames must not recapture probes.');
+localReflections.sync(performanceSnapshot);
+assert.equal(heroMesh.material, sharedMetal, 'Performance fallback must retain the original global-IBL material.');
+localReflections.release();
+assert.equal(heroMesh.material, sharedMetal, 'Teardown must restore cached source material identity.');
+assert.equal(reflectionCanvas.dataset.refineryReflectionProbes, undefined, 'Teardown must remove stale resource telemetry.');
+localReflections.configure([{ id: 'processor-0', family: 'processor', root: heroRoot }], environmentRoot);
+assert.equal(localReflections.probeCount, 1, 'Re-entry must rebuild without accumulating probe instances.');
+localReflections.dispose();
+assert.equal(heroMesh.material, sharedMetal);
+reflectionScene.dispose();
+reflectionSceneEngine.dispose();
+assert.equal(REFINERY_REFLECTION_PROFILE.captureMode, 'static-one-shot-staggered');
 
 console.log('P28_P1_REFINERY_LIGHTING_WORK_PASS frames=180 stable-shadow-rebuilds=1 stable-material-rebuilds=1 invalidation=topology+anchor+tier high-shadow=2048 adaptive=1024>off cues=preserved');

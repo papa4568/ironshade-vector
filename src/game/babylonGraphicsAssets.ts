@@ -340,7 +340,7 @@ export class BabylonGraphicsAssetRuntime {
     return { requested: uniqueSpecs.length, loaded, failed, workerCount };
   }
 
-  async instantiate(spec: GraphicsAssetSpec): Promise<BabylonGraphicsAssetInstance> {
+  async instantiate(spec: GraphicsAssetSpec, options: { uniqueMeshes?: boolean } = {}): Promise<BabylonGraphicsAssetInstance> {
     const entry = this.getOrCreateEntry(spec);
     entry.activeInstances += 1;
     try {
@@ -348,7 +348,7 @@ export class BabylonGraphicsAssetRuntime {
       const instantiated = container.instantiateModelsToScene(
         sourceName => `${spec.id}:${sourceName}`,
         false,
-        { doNotInstantiate: false },
+        { doNotInstantiate: options.uniqueMeshes ?? false },
       );
       const nativeMeshInstances = countNativeMeshInstances(instantiated.rootNodes);
       entry.activeNativeMeshInstances += nativeMeshInstances;

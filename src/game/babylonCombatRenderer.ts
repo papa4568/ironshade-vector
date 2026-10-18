@@ -29,6 +29,7 @@ import { BabylonParallaxArrayPresentation } from './babylonParallaxArrayPresenta
 import { BabylonPerseidCapstonePresentation } from './babylonPerseidCapstonePresentation';
 import { BabylonOrbitalStationPresentation } from './babylonOrbitalStationPresentation';
 import { BabylonRefineryLighting } from './babylonRefineryLighting';
+import { BabylonRefineryReflectionProbes, isRefineryReflectionFamily, type RefineryReflectionAnchor } from './babylonRefineryReflectionProbes';
 import { BabylonRefineryPostProcessing } from './babylonRefineryPostProcessing';
 import {
   createBabylonPremiumPbrSurfaceLibrary,
@@ -444,6 +445,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly parallaxArrayPresentation: BabylonParallaxArrayPresentation;
   private readonly perseidCapstonePresentation: BabylonPerseidCapstonePresentation;
   private readonly refineryLighting: BabylonRefineryLighting;
+  private readonly refineryReflectionProbes: BabylonRefineryReflectionProbes;
   private readonly refineryPostProcessing: BabylonRefineryPostProcessing;
   private refineryPremiumSurfaceLibrary: BabylonPremiumPbrSurfaceLibrary | null = null;
   private readonly renderBudget: AdaptiveRenderBudget;
@@ -500,6 +502,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.parallaxArrayPresentation = new BabylonParallaxArrayPresentation(scene, canvas, qualityCoarse);
     this.perseidCapstonePresentation = new BabylonPerseidCapstonePresentation(scene, canvas, qualityCoarse);
     this.refineryLighting = new BabylonRefineryLighting(scene, canvas);
+    this.refineryReflectionProbes = new BabylonRefineryReflectionProbes(scene, canvas);
     this.refineryPostProcessing = new BabylonRefineryPostProcessing(scene, canvas);
     this.renderBudget = new AdaptiveRenderBudget(qualityCoarse);
 
@@ -795,6 +798,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.worldPresentation.sync(state, mission, budget.detailScale);
     if (refineryScenario) {
       this.refineryLighting.sync(state, budget);
+      this.refineryReflectionProbes.sync(budget);
       this.refineryPostProcessing.sync(mission.conditions.includes('low-visibility'), budget);
     } else if (orbitalStationScenario) {
       this.orbitalStationPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
@@ -927,6 +931,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.orphelineCapstonePresentation.dispose();
     this.hecateCapstonePresentation.dispose();
     this.refineryPostProcessing.dispose();
+    this.refineryReflectionProbes.dispose();
     this.refineryLighting.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
     this.refineryPremiumSurfaceLibrary?.dispose();
@@ -2146,6 +2151,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const loadRoot = new TransformNode(`p27-b2-refinery-shell-${generation}`, this.scene);
     loadRoot.setEnabled(false);
     const mountedInstances: BabylonGraphicsAssetInstance[] = [];
+    const reflectionAnchors: RefineryReflectionAnchor[] = [];
     const premiumSurfaceUsage = new Map<RefineryFamilyKey, Set<PremiumPbrSurfaceId>>();
     let placementCount = 0;
     let placementBatchCount = 0;
@@ -2154,7 +2160,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     try {
       for (let offset = 0; offset < placementTasks.length; offset += REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE) {
         const batch = placementTasks.slice(offset, offset + REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE);
-        const results = await Promise.allSettled(batch.map(task => runtime.instantiate(task.spec)));
+        const results = await Promise.allSettled(batch.map(task => runtime.instantiate(task.spec, { uniqueMeshes: isRefineryReflectionFamily(task.key) })));
         placementBatchCount += 1;
         placementPeakConcurrency = Math.max(placementPeakConcurrency, batch.length);
 
@@ -2190,6 +2196,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
               root.parent = placementRoot;
             });
             this.applyRefineryPremiumSurfaces(key, instance, premiumSurfaceUsage);
+            if (isRefineryReflectionFamily(key)) {
+              reflectionAnchors.push({ id: key + '-' + task.index, family: key, root: placementRoot });
+            }
             mountedInstances.push(instance);
             unmountedBatchInstances.delete(instance);
             placementCount += 1;
@@ -2214,6 +2223,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.refineryAssetInstances.push(...mountedInstances);
       this.refineryMountRoot = loadRoot;
       loadRoot.setEnabled(true);
+      this.refineryReflectionProbes.configure(reflectionAnchors, loadRoot);
 
       const lods = [...new Set(selected.map(item => item.spec.lod))].sort();
       const stats = runtime.stats();
@@ -2287,6 +2297,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   }
 
   private releaseMountedRefineryAssets() {
+    this.refineryReflectionProbes.release();
     for (const instance of this.refineryAssetInstances.splice(0)) instance.release();
     this.refineryMountRoot?.dispose();
     this.refineryMountRoot = null;
