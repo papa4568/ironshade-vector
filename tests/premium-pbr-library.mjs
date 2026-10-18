@@ -69,6 +69,11 @@ function parseKtx2(buffer, label) {
 
 const first = await writePremiumPbrSurfaceLibrary();
 assert(first.manifest.surfaces.length === 5, 'premium PBR library must contain five authored surface families');
+assert(PREMIUM_PBR_SURFACE_RESOLUTION === 2048, 'P28-F1 refinery texture source must be authored at 2K rather than legacy 512px');
+assert(first.manifest.authoredPhase === 'P28-F1', 'P28-F1 source-art phase marker is missing');
+for (const layer of ['plate-seam-deposits', 'directional-abrasion', 'etched-service-labels', 'oil-drips', 'localized-heat-oxidation', 'granular-relief']) {
+  assert(first.manifest.sourceDetail?.includes(layer), `P28-F1 missing authored texture layer ${layer}`);
+}
 assert(first.manifest.format === 'KTX2', 'premium PBR library manifest must declare KTX2 delivery');
 assert(first.manifest.supercompression === 'Zstandard', 'premium PBR library manifest must declare Zstandard supercompression');
 assert(first.manifest.mipmapped === true, 'premium PBR library must keep mipmaps enabled');
@@ -110,6 +115,18 @@ for (const surface of PREMIUM_PBR_SURFACES) {
     assert(parsed.vkFormat === (expectsSrgb ? 43 : 37), `${surface.id}:${map} has the wrong RGBA8 color-space format`);
     assert(parsed.transfer === (expectsSrgb ? 2 : 1), `${surface.id}:${map} has the wrong DFD transfer function`);
     const base = parsed.levels[0].pixels;
+    // Every material delivers independently authored 2K source data rather
+    // than an upscaled/repeated legacy 512px tile.
+    const width = PREMIUM_PBR_SURFACE_RESOLUTION;
+    const sampleFingerprint = (x, y) => {
+      let hash = 2166136261;
+      for (let dy = 0; dy < 32; dy += 4) for (let dx = 0; dx < 32; dx += 4) {
+        const offset = ((y + dy) * width + (x + dx)) * 4;
+        for (let c = 0; c < 3; c++) hash = Math.imul(hash ^ base[offset + c], 16777619);
+      }
+      return hash >>> 0;
+    };
+    assert(sampleFingerprint(100, 100) !== sampleFingerprint(612, 100), `${surface.id}:${map} duplicates source detail across 512px panels`);
     const expectedBaseBytes = PREMIUM_PBR_SURFACE_RESOLUTION * PREMIUM_PBR_SURFACE_RESOLUTION * 4;
     assert(base.length === expectedBaseBytes, `${surface.id}:${map} base mip payload is incomplete`);
     assert(parsed.levels.at(-1)?.width === 1 && parsed.levels.at(-1)?.height === 1, `${surface.id}:${map} mip chain must terminate at 1x1`);
