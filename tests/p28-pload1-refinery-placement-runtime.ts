@@ -2,6 +2,7 @@ import { NullEngine } from '@babylonjs/core/Engines/nullEngine';
 import { Scene } from '@babylonjs/core/scene';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import { BabylonCombatRenderer } from '../src/game/babylonCombatRenderer';
+import { BabylonRefineryReflectionProbes } from '../src/game/babylonRefineryReflectionProbes';
 import {
   getBabylonGraphicsAssetRuntime,
   type BabylonGraphicsAssetInstance,
@@ -34,6 +35,7 @@ type HarnessRenderer = {
   refineryMountRoot: TransformNode | null;
   refineryEnvironmentSignature: string;
   refineryPremiumSurfaceLibrary: null;
+  refineryReflectionProbes: BabylonRefineryReflectionProbes;
   loadRefineryEnvironment: (
     state: SimState,
     worldW: number,
@@ -83,9 +85,11 @@ function buildHarness() {
   const scene = new Scene(engine);
   const dataset: Record<string, string> = { babylonEnvironmentState: 'loading' };
   const renderer = Object.create(BabylonCombatRenderer.prototype) as HarnessRenderer;
+  const canvas = { dataset } as unknown as HTMLCanvasElement;
   Object.assign(renderer, {
     scene,
-    canvas: { dataset },
+    canvas,
+    refineryReflectionProbes: new BabylonRefineryReflectionProbes(scene, canvas),
     disposed: false,
     refineryLoadGeneration: 1,
     refineryAssetInstances: [],
