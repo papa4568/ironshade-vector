@@ -4,10 +4,15 @@ import { NullEngine } from '@babylonjs/core/Engines/nullEngine';
 import { Scene } from '@babylonjs/core/scene';
 import {
   BABYLON_AMBIENT_FLAGSHIP_COUNTS,
+  BABYLON_AMBIENT_WORLD_SCALE,
+  BABYLON_REFINERY_AMBIENT_CUE_CLEARANCE,
+  BABYLON_REFINERY_AMBIENT_ZONES,
   BabylonAmbientParticles,
   babylonAmbientParticleBudget,
+  type BabylonAmbientParticleKind,
 } from '../src/game/babylonAmbientParticles';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
+import { getWorldSize } from '../src/game/sim';
 
 const high = new AdaptiveRenderBudget(false).sample(16.7, 1, 'flagship');
 const phoneDefault = new AdaptiveRenderBudget(true).sample(16.7, 1, 'adaptive');
@@ -94,6 +99,25 @@ assert.deepEqual(
 );
 assert.equal(measuredPressure.gameplayCueScale, 1, 'Ambient reduction must remain independent of gameplay cue scale.');
 
+const refineryKinds = Object.keys(BABYLON_REFINERY_AMBIENT_ZONES) as BabylonAmbientParticleKind[];
+const refineryContexts = new Set(refineryKinds.flatMap(kind => BABYLON_REFINERY_AMBIENT_ZONES[kind].map(zone => zone.context)));
+assert.deepEqual(
+  [...refineryContexts].sort(),
+  ['damaged-service', 'machinery', 'open-industrial', 'vents'],
+  'P28-E2 must explicitly cover machinery, vents, damaged service areas, and open industrial spaces.',
+);
+const refineryZoneCount = refineryKinds.reduce((sum, kind) => sum + BABYLON_REFINERY_AMBIENT_ZONES[kind].length, 0);
+assert.equal(refineryZoneCount, 21, 'P28-E2 refinery art direction must retain the complete deterministic 21-zone layout.');
+for (const kind of refineryKinds) {
+  for (const zone of BABYLON_REFINERY_AMBIENT_ZONES[kind]) {
+    const overlapsProtectedCenter = zone.x + zone.radiusX > BABYLON_REFINERY_AMBIENT_CUE_CLEARANCE.xMin
+      && zone.x - zone.radiusX < BABYLON_REFINERY_AMBIENT_CUE_CLEARANCE.xMax
+      && zone.z + zone.radiusZ > BABYLON_REFINERY_AMBIENT_CUE_CLEARANCE.zMin
+      && zone.z - zone.radiusZ < BABYLON_REFINERY_AMBIENT_CUE_CLEARANCE.zMax;
+    assert.equal(overlapsProtectedCenter, false, `P28-E2 ${kind}/${zone.id} must stay out of the protected central combat corridor.`);
+  }
+}
+
 {
   const engine = new NullEngine();
   const scene = new Scene(engine);
@@ -108,15 +132,42 @@ assert.equal(measuredPressure.gameplayCueScale, 1, 'Ambient reduction must remai
     assert.equal(canvas.dataset.babylonAmbientParticleDrawFamilies, '4');
     assert.equal(canvas.dataset.babylonAmbientGameplayCuePolicy, 'independent:1.00');
     assert.equal(canvas.dataset.babylonAmbientParticleSimulationOwnership, 'read-only-presentation');
+    assert.equal(canvas.dataset.babylonAmbientParticleArtDirection, 'refinery-industrial-v1');
+    assert.equal(canvas.dataset.babylonAmbientParticleZones, '21:damaged-service+machinery+open-industrial+vents');
+    assert.equal(canvas.dataset.babylonAmbientParticleCueClearance, 'center:x38-62+z38-62+presentation-only');
     const pooledInstances = scene.meshes.filter(mesh => /^p28-e1-(dust|sparks|vapor|debris)-\d+$/.test(mesh.name));
     assert.equal(pooledInstances.length, 240, 'P28-E1 must allocate one reusable flagship pool instead of creating per-frame particle meshes.');
     assert.equal(pooledInstances.filter(mesh => mesh.isEnabled()).length, 240, 'Healthy Flagship rendering must keep the complete ambient pool active.');
+
+    const world = getWorldSize();
+    const worldW = world.w * BABYLON_AMBIENT_WORLD_SCALE;
+    const worldH = world.h * BABYLON_AMBIENT_WORLD_SCALE;
+    for (const kind of refineryKinds) {
+      const instances = scene.meshes.filter(mesh => new RegExp(`^p28-e1-${kind}-\\d+$`).test(mesh.name));
+      assert.equal(instances.length, BABYLON_AMBIENT_FLAGSHIP_COUNTS[kind]);
+      for (const particle of instances) {
+        const normalizedX = particle.position.x / worldW;
+        const normalizedZ = particle.position.z / worldH;
+        const zones = BABYLON_REFINERY_AMBIENT_ZONES[kind];
+        assert.ok(
+          zones.some(zone => Math.abs(normalizedX - zone.x) <= zone.radiusX + 1e-6
+            && Math.abs(normalizedZ - zone.z) <= zone.radiusZ + 1e-6),
+          `P28-E2 ${particle.name} escaped its authored ${kind} zones at ${normalizedX.toFixed(3)},${normalizedZ.toFixed(3)}.`,
+        );
+        const insideProtectedCenter = normalizedX > BABYLON_REFINERY_AMBIENT_CUE_CLEARANCE.xMin
+          && normalizedX < BABYLON_REFINERY_AMBIENT_CUE_CLEARANCE.xMax
+          && normalizedZ > BABYLON_REFINERY_AMBIENT_CUE_CLEARANCE.zMin
+          && normalizedZ < BABYLON_REFINERY_AMBIENT_CUE_CLEARANCE.zMax;
+        assert.equal(insideProtectedCenter, false, `P28-E2 ${particle.name} entered the protected central combat corridor.`);
+      }
+    }
 
     ambient.sync(performance, 'asteroid-refinery');
     assert.equal(canvas.dataset.babylonAmbientParticleHostTier, 'performance');
     assert.equal(canvas.dataset.babylonAmbientParticleRuntimeTier, 'high');
     assert.equal(canvas.dataset.babylonAmbientParticleScale, '1.00');
     assert.equal(canvas.dataset.babylonAmbientParticleCounts, 'dust:128/128|sparks:48/48|vapor:24/24|debris:40/40');
+    assert.equal(canvas.dataset.babylonAmbientParticleArtDirection, 'refinery-industrial-v1');
 
     ambient.sync(measuredPressure, 'asteroid-refinery');
     assert.equal(canvas.dataset.babylonAmbientParticleRuntimeTier, 'performance');
@@ -133,6 +184,8 @@ assert.equal(measuredPressure.gameplayCueScale, 1, 'Ambient reduction must remai
     ambient.sync(high, 'orbital-station');
     assert.equal(firstDust.isDisposed(), true, 'Location switches must release the previous ambient pool before rebuilding for another location owner.');
     assert.notEqual(scene.getMeshByName('p28-e1-dust-0'), firstDust, 'A released location pool must not leak stale Babylon instances.');
+    assert.equal(canvas.dataset.babylonAmbientParticleArtDirection, 'shared-world-default');
+    assert.equal(canvas.dataset.babylonAmbientParticleCueClearance, 'gameplay-cues-independent');
 
     ambient.release('scenario-exit');
     assert.equal(canvas.dataset.babylonAmbientParticleState, 'released');
@@ -142,6 +195,7 @@ assert.equal(measuredPressure.gameplayCueScale, 1, 'Ambient reduction must remai
 
     ambient.sync(high, 'asteroid-refinery');
     assert.equal(canvas.dataset.babylonAmbientParticlePoolSize, '240', 'Re-entry must rebuild a complete pool after deterministic teardown.');
+    assert.equal(canvas.dataset.babylonAmbientParticleArtDirection, 'refinery-industrial-v1');
   } finally {
     // Production renderer teardown calls the refinery owner's release first, then dispose.
     ambient.release('renderer-dispose');
@@ -186,11 +240,13 @@ assert(postSource.includes("this.ambientParticles.sync(renderBudget, 'asteroid-r
 assert(postSource.includes('this.ambientParticles.release(reason)'), 'Location teardown must release the ambient pool through the established refinery lifecycle.');
 assert(postSource.includes('this.ambientParticles.dispose()'), 'Renderer teardown must dispose the ambient presentation owner.');
 assert(ambientSource.includes('RUNTIME_PRESSURE_SCALE[budget.runtimeTierName]'), 'Ambient density reduction must be driven by measured runtime pressure, not a fixed requested tier cap.');
+assert(ambientSource.includes("const refinery = this.locationKey === 'asteroid-refinery'"), 'P28-E2 must apply refinery-specific presentation art direction only to the refinery location.');
+assert(ambientSource.includes("context: 'machinery'") && ambientSource.includes("context: 'vents'") && ambientSource.includes("context: 'damaged-service'") && ambientSource.includes("context: 'open-industrial'"), 'P28-E2 source must retain every authored refinery ambience context.');
 assert(!ambientSource.includes('SimState'), 'Ambient animation must remain presentation-owned and must not read or mutate simulation state.');
 
 assert(browserSource.includes('BROWSER_P27D4_BABYLON_EFFECTS_QUALITY_PASS'), 'Browser QA must record measured D4 frame-time/effects evidence.');
-assert(packageSource.includes('test:babylon-effects-quality'), 'The production build must execute the D4/P28-E1 targeted regression.');
+assert(packageSource.includes('test:babylon-effects-quality'), 'The production build must execute the D4/P28-E1/P28-E2 targeted regression.');
 
 console.log(
-  'P27_D4_BABYLON_EFFECTS_QUALITY_PASS phoneDefault=high tiers=high>balanced>performance shadows=1024>512>off transparency=1.00>0.68>0.40 reflection=1.00>0.70>0.38 vfx=1.00>0.72>0.45 secondary=1.00>0.68>0.42 critical=1.00 degrade=performance recover=high ambient=240-pooled measured-pressure=101 gameplay-independent=1.00 teardown=clean frame-evidence=browser-runtime',
+  'P27_D4_BABYLON_EFFECTS_QUALITY_PASS phoneDefault=high tiers=high>balanced>performance shadows=1024>512>off transparency=1.00>0.68>0.40 reflection=1.00>0.70>0.38 vfx=1.00>0.72>0.45 secondary=1.00>0.68>0.42 critical=1.00 degrade=performance recover=high ambient=240-pooled measured-pressure=101 refinery-art-direction=21-zones contexts=machinery+vents+damaged-service+open-industrial center-clearance=x38-62+z38-62 gameplay-independent=1.00 teardown=clean frame-evidence=browser-runtime',
 );
