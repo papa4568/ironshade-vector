@@ -2164,8 +2164,6 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     for (const node of instanceNodes(instance)) {
       const mesh = node instanceof InstancedMesh ? node.sourceMesh : node instanceof Mesh ? node : null;
       if (!mesh) continue;
-      // Babylon instances carry their own pickability flag in addition to the source mesh.
-      if (node instanceof InstancedMesh || node instanceof Mesh) node.isPickable = false;
       const materialName = mesh.material?.name ?? '';
       let surface = assignments[materialName];
       if (!surface && materialName.startsWith('premium-pbr:')) {
