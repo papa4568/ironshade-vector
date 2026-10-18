@@ -13,11 +13,11 @@ import { REFINERY_ROUTE_DECAL_TARGETS } from '../scripts/prepare-refinery-route-
 
 const at = path => resolve(process.cwd(), path);
 const sourcePng = await readFile(at(REFINERY_F5_DECAL_ATLAS.path));
-assert(sourcePng.equals(createRefineryF5DecalPng()), 'P28-F5 2K decal atlas must regenerate byte-for-byte');
+assert(sourcePng.equals(createRefineryF5DecalPng()), 'P28-F5 production decal atlas must regenerate byte-for-byte');
 assert(sourcePng.length > 100_000, 'P28-F5 decal artwork must not be an empty/flat placeholder');
 assert(sourcePng.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])));
-assert.equal(sourcePng.readUInt32BE(16), 2048);
-assert.equal(sourcePng.readUInt32BE(20), 2048);
+assert.equal(sourcePng.readUInt32BE(16), 1024);
+assert.equal(sourcePng.readUInt32BE(20), 1024);
 
 const effect = await readFile(at(REFINERY_F5_EFFECT_ATLAS.path));
 assert(effect.subarray(0, 12).equals(Buffer.from([0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a])));
