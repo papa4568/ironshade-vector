@@ -218,7 +218,10 @@ export class BabylonRefineryPostProcessing {
     this.captureUpstreamImageProcessing();
     const qaExplicit = this.canvas.dataset.graphicsPathSelection === 'qa-explicit';
     const qaLowVisibility = qaExplicit && this.canvas.dataset.refineryImageGradeQa === 'low-visibility';
-    const effectiveLowVisibility = qaLowVisibility || lowVisibility;
+    // An explicit visual-QA session must be able to restore its normal grade
+    // even while the live mission still has a low-visibility condition.
+    // Outside QA, mission visibility remains authoritative.
+    const effectiveLowVisibility = qaExplicit ? qaLowVisibility : lowVisibility;
     const budget = resolveBabylonRefineryPostProcessingBudget(renderBudget, effectiveLowVisibility);
     const qaStackDisabled = qaExplicit && this.canvas.dataset.refineryPostStackQa === 'off';
     const stackEnabled = !qaStackDisabled;
