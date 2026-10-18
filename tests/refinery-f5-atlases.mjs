@@ -63,7 +63,8 @@ for (const target of targets) {
 const source = await readFile(at('src/game/babylonAmbientParticles.ts'), 'utf8');
 assert(source.includes("REFINERY_LOCAL_FX_ATLAS_URL = '/assets/effects/refinery-local-effects-f5.ktx2'"),
   'P28-F5 effect atlas must be bound by the live ambient renderer, not merely shipped');
-assert(source.includes('material.diffuseTexture = atlas') && source.includes('pool.material.diffuseTexture?.dispose()'),
+assert(source.includes('material.diffuseTexture = this.localFxAtlas') && source.includes('this.localFxAtlas?.dispose()')
+  && source.includes('source.setVerticesData(VertexBuffer.UVKind, uv)'),
   'P28-F5 ambient effects must mount and relinquish their local atlas textures');
 const manifest = JSON.parse(await readFile(at('public/assets/heavy-asset-manifest.json'), 'utf8'));
 const lookup = new Map(manifest.assets.map(asset => [asset.path, asset]));
