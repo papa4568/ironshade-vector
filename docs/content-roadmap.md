@@ -36,8 +36,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 #### E. Refinery ambience and local visual richness
 
-- [ ] **P28-E4 — Add local reflection probes for refinery hero machinery and spaces** — Add Babylon reflection probes wherever they materially improve focal metal machinery/space reflections instead of enforcing a fixed probe-count ceiling. **Done when:** hero metal gains convincing localized reflection variation, probe placement/update behavior is deterministic, repository-visible performance/resource telemetry is available, and standard build/APK gates pass. Physical target-phone acceptance is tracked in `docs/external-qa.md`.
-
 #### F. Heavy authored-asset production and shipping gate
 
 This phase is deliberately asset-heavy. It converts the earlier renderer/material/LOD foundations into substantial production art payloads before campaign-wide rollout. It must increase install content through useful authored art rather than padding, duplicate files, intentionally poor compression, or dead assets.

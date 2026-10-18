@@ -199,7 +199,7 @@ assert(
 );
 assert(
   rendererSource.includes('if (signature === this.refineryEnvironmentSignature) return;')
-    && rendererSource.includes('Promise.allSettled(batch.map(task => runtime.instantiate(task.spec)))'),
+    && rendererSource.includes('Promise.allSettled(batch.map(task => runtime.instantiate(task.spec, { uniqueMeshes: isRefineryReflectionFamily(task.key) })))'),
   'P28-PLOAD2 regressions must retain same-signature deduplication and bounded placement work instead of serialized/redundant reloads',
 );
 assert(

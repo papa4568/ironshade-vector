@@ -34,7 +34,7 @@ const placementBatchSize = Number(refineryRendererSource.match(/REFINERY_PLACEME
 assert(refineryLoadStart >= 0 && refineryLoadEnd > refineryLoadStart, 'P28-PLOAD1 must retain an inspectable refinery environment load boundary');
 assert(placementBatchSize === 4, `P28-PLOAD1 refinery placement creation must use the intended bounded batch size, got ${placementBatchSize}`);
 assert(
-  refineryLoadSource.includes('Promise.allSettled(batch.map(task => runtime.instantiate(task.spec)))')
+  refineryLoadSource.includes('Promise.allSettled(batch.map(task => runtime.instantiate(task.spec, { uniqueMeshes: isRefineryReflectionFamily(task.key) })))')
     && refineryLoadSource.includes('offset += REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE'),
   'P28-PLOAD1 refinery placement creation must instantiate bounded parallel batches instead of one serial await chain',
 );
@@ -90,7 +90,7 @@ assert(
   'Babylon WebGL engine teardown must explicitly release its WebGL context while leaving WebGPU untouched',
 );
 assert(
-  runtimeSource.includes('{ doNotInstantiate: false }') && runtimeSource.includes('activeNativeMeshInstances'),
+  runtimeSource.includes('{ doNotInstantiate: options.uniqueMeshes ?? false }') && runtimeSource.includes('activeNativeMeshInstances'),
   'Babylon asset runtime must retain native instance reuse and repository-visible reuse telemetry',
 );
 
