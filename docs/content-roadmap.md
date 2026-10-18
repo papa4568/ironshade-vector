@@ -72,6 +72,8 @@ Each rollout below reuses the P28 lighting/material/grounding/detail systems and
 
 - [ ] **P28-G9 — Refresh Parallax Array visuals** — Adopt the shared P28 stack in Parallax Array and tune its metrology/reference hardware profile. **Done when:** the route gains premium authored material/depth treatment while reference/gameplay cues remain distinct, and standard build/APK gates pass.
 
+- [ ] **P28-G10 — Refresh Solar Fabrication Yard visuals** — Adopt the shared P28 flagship visual stack in the existing Babylon Solar Fabrication Yard presentation and tune heat-shielded fabrication surfaces, solar-light response, gantry/machinery depth, and local atmosphere without changing thermal-shutter or radiant-hazard mechanics. **Done when:** the deterministic Solar Yard route has premium authored material/geometry detail, grounded props and characters, controlled solar emissives and atmospheric effects, unchanged gameplay and hazard cues, reviewed Flagship Android captures, and standard build/APK gates pass.
+
 #### H. Capstone visual refreshes
 
 - [ ] **P28-H1 — Refresh Perseid capstone visuals** — Adopt the shared P28 visual stack in the Perseid capstone without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment on the flagship target, boss/hazard cues remain dominant, and standard build/APK gates pass.
