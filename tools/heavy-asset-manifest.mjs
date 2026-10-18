@@ -249,6 +249,13 @@ export async function createHeavyManifest({ root = ROOT, assetRoot = resolve(roo
   catch (error) { if (error.code !== 'ENOENT') throw error; }
   const boundTextures = new Set([...materialSource.matchAll(/(?:baseColorUrl|normalUrl|ormUrl|emissiveUrl):\s*`\$\{ROOT\}\/([^`]+\.ktx2)`/g)]
     .map(match => 'assets/materials/premium-pbr/' + match[1]));
+  // A compressed effect atlas qualifies only if the actual ambient renderer binds it.
+  let ambientSource = '';
+  try { ambientSource = await readFile(resolve(root, 'src/game/babylonAmbientParticles.ts'), 'utf8'); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  for (const match of ambientSource.matchAll(/REFINERY_LOCAL_FX_ATLAS_URL\s*=\s*['"](\/assets\/effects\/[^'"]+\.ktx2)['"]/g)) {
+    boundTextures.add(match[1].slice(1));
+  }
   const files = (await allFiles(assetRoot)).filter(file => inHeavyScope('assets/' + relative(assetRoot, file).replaceAll('\\', '/')));
   const assets = [];
   for (const file of files) {
