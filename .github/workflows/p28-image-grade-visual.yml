@@ -10,6 +10,7 @@ on:
       - 'tests/babylon-refinery-post-processing.ts'
       - 'tests/babylon-effects-quality.ts'
       - 'tests/refinery-atmosphere.ts'
+      - 'scripts/browser-runtime-smoke.mjs'
       - 'scripts/p28a5-image-grade-capture.mjs'
       - 'scripts/p28d8-boss-capture.mjs'
       - 'scripts/p28e1-ambient-particles-capture.mjs'
