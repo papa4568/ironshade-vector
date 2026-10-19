@@ -20,9 +20,15 @@ export const REFINERY_F5_EFFECT_ATLAS = Object.freeze({
   kinds: Object.freeze(['dust', 'sparks', 'vapor', 'debris']),
 });
 
-// Diagnostic isolation of upgraded decal material loading; restore
-// full primary route and machinery coverage after browser A/B.
-export const REFINERY_F5_LIVE_MODEL_PATHS = Object.freeze(['environments/refinery-smelter-gantry-lod1.glb']);
+// Primary route LOD0 surfaces own the premium decals; key machinery gets a
+// high-detail trim at LOD1. Recovery LOD2 models keep their original 512px
+// source to avoid staging redundant large PNGs during catastrophic recovery.
+export const REFINERY_F5_LIVE_MODEL_PATHS = Object.freeze(
+  [...new Set([...REFINERY_DECAL_TARGETS, ...REFINERY_ROUTE_DECAL_TARGETS].map(item => item.relativePath))]
+    .filter(path => (path.endsWith('-lod0.glb') && !path.includes('refinery-floor-panel-'))
+      || /refinery-(processor|pipe-rack|smelter-gantry)-lod1\.glb$/.test(path))
+    .sort(),
+);
 
 function clamp(value) { return Math.max(0, Math.min(255, Math.round(value))); }
 function hash(x, y, seed) {
