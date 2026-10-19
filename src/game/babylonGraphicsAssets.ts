@@ -55,6 +55,12 @@ export type BabylonGraphicsAssetRuntimeStats = {
   estimatedCachedCompressedBytes: number;
   maxCachedCompressedBytes: number;
   maxCachedAssets: number;
+  sourceLoadAttempts: number;
+  sourceLoadFailures: number;
+  cacheHits: number;
+  cacheEvictions: number;
+  staleLoadDisposals: number;
+  inFlightLoads: number;
 };
 
 export type BabylonGraphicsAssetContainerLoader = (
@@ -68,6 +74,7 @@ type BabylonGraphicsAssetCacheEntry = {
   activeInstances: number;
   activeNativeMeshInstances: number;
   pendingDispose: boolean;
+  loading: boolean;
   disposePromise: Promise<void> | null;
   lastUsedOrdinal: number;
 };
@@ -181,6 +188,11 @@ export class BabylonGraphicsAssetRuntime {
   private readonly loadContainer: BabylonGraphicsAssetContainerLoader;
   private budget = { ...DEFAULT_BABYLON_GRAPHICS_ASSET_RUNTIME_BUDGET };
   private accessOrdinal = 0;
+  private sourceLoadAttempts = 0;
+  private sourceLoadFailures = 0;
+  private cacheHits = 0;
+  private cacheEvictions = 0;
+  private staleLoadDisposals = 0;
   private disposed = false;
 
   constructor(scene: Scene, loadContainer: BabylonGraphicsAssetContainerLoader = loadAssetContainerFromUrl) {
@@ -230,6 +242,7 @@ export class BabylonGraphicsAssetRuntime {
       if (estimatedCompressedBytes <= this.budget.maxCachedCompressedBytes && this.cache.size <= this.budget.maxCachedAssets) break;
       if (this.cache.get(url) !== entry || entry.activeInstances > 0 || entry.pendingDispose) continue;
       this.cache.delete(url);
+      this.cacheEvictions += 1;
       entry.pendingDispose = true;
       estimatedCompressedBytes -= entry.spec.compressedByteBudget;
       await this.finalizeEntry(entry);
@@ -252,19 +265,32 @@ export class BabylonGraphicsAssetRuntime {
 
     const cached = this.cache.get(spec.url);
     if (cached && !cached.pendingDispose) {
+      this.cacheHits += 1;
       cached.lastUsedOrdinal = ++this.accessOrdinal;
       return cached;
     }
 
+    this.sourceLoadAttempts += 1;
     let entry: BabylonGraphicsAssetCacheEntry;
     const promise = ensureBabylonGltfLoader()
       .then(() => this.loadContainer(spec, this.scene))
       .then(container => {
+        entry.loading = false;
+        // A load may finish after a renderer/scene has already been destroyed.
+        // Its container has never been handed to an instance, so no scene
+        // owner is guaranteed to dispose it. Never resurrect that cache entry.
+        if (this.disposed || this.scene.isDisposed) {
+          this.staleLoadDisposals += 1;
+          container.dispose();
+          throw new Error('Babylon graphics asset load completed after scene teardown');
+        }
         registerP27D6BabylonPrototype('assetContainer', container);
         this.applyTextureRuntimeBudget(container);
         return container;
       })
       .catch(error => {
+        entry.loading = false;
+        this.sourceLoadFailures += 1;
         if (this.cache.get(spec.url) === entry) this.cache.delete(spec.url);
         throw error;
       });
@@ -275,6 +301,7 @@ export class BabylonGraphicsAssetRuntime {
       activeInstances: 0,
       activeNativeMeshInstances: 0,
       pendingDispose: false,
+      loading: true,
       disposePromise: null,
       lastUsedOrdinal: ++this.accessOrdinal,
     };
@@ -300,6 +327,12 @@ export class BabylonGraphicsAssetRuntime {
         .reduce((sum, entry) => sum + entry.spec.compressedByteBudget, 0),
       maxCachedCompressedBytes: this.budget.maxCachedCompressedBytes,
       maxCachedAssets: this.budget.maxCachedAssets,
+      sourceLoadAttempts: this.sourceLoadAttempts,
+      sourceLoadFailures: this.sourceLoadFailures,
+      cacheHits: this.cacheHits,
+      cacheEvictions: this.cacheEvictions,
+      staleLoadDisposals: this.staleLoadDisposals,
+      inFlightLoads: [...this.cache.values()].filter(entry => entry.loading).length,
     };
   }
 
@@ -381,6 +414,7 @@ export class BabylonGraphicsAssetRuntime {
     const entry = this.cache.get(url);
     if (!entry) return false;
     this.cache.delete(url);
+    this.cacheEvictions += 1;
     entry.pendingDispose = true;
     if (entry.activeInstances === 0) await this.finalizeEntry(entry);
     return true;
