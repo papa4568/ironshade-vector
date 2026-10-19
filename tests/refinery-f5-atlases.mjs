@@ -73,9 +73,7 @@ for (let row = 0; row < 2; row += 1) {
 assert.equal(new Set(hashes).size, 4, 'P28-F5 particle families must not reuse duplicate atlas imagery');
 
 const targets = REFINERY_F5_LIVE_MODEL_PATHS;
-assert(targets.length >= 6 && targets.some(path => path.endsWith('-lod0.glb'))
-  && targets.some(path => path.endsWith('-lod1.glb')),
-  'P28-F5 must reach multiple premium route and machinery LODs, not one showpiece');
+assert.deepEqual(targets, ['environments/refinery-smelter-gantry-lod1.glb'], 'P28-F5 diagnostic should isolate exactly one upgraded material');
 for (const target of targets) {
   const glb = await readFile(at('public/assets/models/' + target));
   assert(glb.subarray(0, 4).toString() === 'glTF');
