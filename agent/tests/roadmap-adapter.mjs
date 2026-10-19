@@ -63,8 +63,10 @@ assert.deepEqual(graph.tasks[0].affectedDomains, firstRule.affectedDomains);
 assert.equal(graph.tasks[0].proofs.find(proof => proof.id === 'production-build')?.command, 'npm run build:prod');
 assert.equal(selectNextRoadmapTask(graph)?.id, firstTask.id);
 
-const driftMissing = clone(metadata);
-driftMissing.roadmapIds.shift();
+// Construct internally valid metadata for the later queue, then ensure the
+// unchanged earlier roadmap is rejected as drift. Simply shifting roadmapIds
+// can leave stale dependency overrides and fail schema validation first.
+const driftMissing = synchronizeRoadmapMetadata(metadata, roadmapTasks.slice(1));
 assert.throws(() => materializeRoadmapGraph(roadmapTasks, driftMissing), /roadmap metadata drift/);
 
 if (secondTask) {
