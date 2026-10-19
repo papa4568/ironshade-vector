@@ -55,7 +55,8 @@ async function waitFor(expression, label, timeoutMs = 10_000) {
     if (value) return value;
     await sleep(100);
   }
-  throw new Error(`Timed out waiting for ${label}.`);
+  const state = await evaluate(readGradeStateExpression).catch(error => ({ snapshotError: String(error) }));
+  throw new Error(`Timed out waiting for ${label}; graphics=${JSON.stringify(state)}`);
 }
 
 async function clickButton(label) {
