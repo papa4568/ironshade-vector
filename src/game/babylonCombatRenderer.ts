@@ -2301,6 +2301,13 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
           unmountedBatchInstances.forEach(instance => instance.release());
           throw error;
         }
+        // Even a cached GLB instantiates through already-resolved promises.
+        // Yield one browser task between batches so heavy refinery artwork
+        // cannot starve input, CDP checks or the next animation frame.
+        // The disabled shell remains atomic until every batch is mounted.
+        if (offset + REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE < placementTasks.length) {
+          await new Promise<void>(resolve => setTimeout(resolve, 0));
+        }
       }
 
       if (this.disposed || generation !== this.refineryLoadGeneration) {
