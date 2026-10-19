@@ -84,10 +84,19 @@ assert(shouldSubmitBabylonFrame(1000, 0, 120)
   'P28-F5 paced GPU submissions must retain a first frame and always render under healthy budgets.');
 assert(shouldSubmitBabylonFrame(100, 1000, 120),
   'P28-F5 suspended clock reset must not leave render submission stopped.');
+// A 220 ms software-rendered frame must still leave 120 ms of idle time for
+// input/CDP. Measuring from the submission timestamp would wrongly submit at
+// 1300, before the 1340 completion-based deadline.
+assert(!shouldSubmitBabylonFrame(1300, 1220, 120)
+  && shouldSubmitBabylonFrame(1340, 1220, 120),
+  'P28-F5 overloaded frames must retain post-completion idle time for browser input.');
 assert(rendererSource.includes('Math.max(babylonRenderPacingIntervalMs(budget), babylonBootstrapPacingIntervalMs(true, [')
   && rendererSource.includes('this.syncCamera(state, width / Math.max(1, height), cameraFeedback);')
-  && rendererSource.includes('this.scene.render();'),
-  'P28-F5 pacing must be restricted to refinery rendering and preserve scene submission.');
+  && rendererSource.includes('this.scene.render();')
+  && rendererSource.includes('this.lastSceneRenderAt = performance.now();')
+  && !rendererSource.includes('this.lastSceneRenderAt = now;')
+  && rendererSource.indexOf('this.lastSceneRenderAt = performance.now();') > rendererSource.indexOf('this.scene.render();'),
+  'P28-F5 pacing must be restricted to refinery rendering and anchored after expensive scene submissions.');
 
 assert(high.detailScale > balanced.detailScale && balanced.detailScale > performance.detailScale, 'Babylon authored detail budget must decrease each tier');
 assert(high.assetCacheCompressedByteBudget > balanced.assetCacheCompressedByteBudget && balanced.assetCacheCompressedByteBudget > performance.assetCacheCompressedByteBudget, 'Babylon cache byte budget must decrease each tier');
