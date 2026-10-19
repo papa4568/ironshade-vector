@@ -225,7 +225,7 @@ try {
       && Number(canvas?.dataset.refineryDressingInstances ?? 0) >= 8
       && canvas?.dataset.babylonEnemyState === 'ready'
       && canvas?.dataset.babylonAssetCacheTelemetry?.includes('loading:0');
-  })()`, 'normal Flagship refinery grade with elite enemy LOD0', 90_000);
+  })()`, 'normal Flagship refinery grade with elite enemy LOD0', 300_000);
 
   const normal = await evaluate(readGradeStateExpression);
   const expectedCatalog = 'enemy-assault-lod0,enemy-suppressor-lod0,enemy-technician-lod0,enemy-elite-lod0';
