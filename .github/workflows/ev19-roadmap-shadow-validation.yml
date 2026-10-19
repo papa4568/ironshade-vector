@@ -107,7 +107,7 @@ jobs:
           // The historical EV-19 prediction corpus remains immutable. Its *live*
           // advisory EV-7 probe must advance when F5 is archived: F6 becomes the
           // executable root and F7 remains a later, unimplemented task.
-          const activeTaskIds = [...readFileSync('docs/content-roadmap.md', 'utf8').matchAll(/^- \\[ \\] \\*\\*([A-Z0-9-]+) —/gm)].map(match => match[1]);
+          const activeTaskIds = readFileSync('docs/content-roadmap.md', 'utf8').split('\n').filter(line => line.startsWith('- [ ] **')).map(line => line.slice('- [ ] **'.length).split(' —', 1)[0]);
           if (currentSimulator.mode !== 'advisory'
             || JSON.stringify(currentSimulator.scenarios.map(entry => entry.taskId)) !== JSON.stringify(['P28-F7','P28-G1'])
             || activeTaskIds[0] !== 'P28-F6' || activeTaskIds[1] !== 'P28-F7') {
