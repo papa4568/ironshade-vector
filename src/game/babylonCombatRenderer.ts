@@ -941,10 +941,13 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     }
     this.canvas.dataset.babylonRenderPacing = pacingMs ? `paced:${pacingMs}` : 'full';
     this.scene.render();
-    this.lastSceneRenderAt = now;
     this.frames += 1;
     this.canvas.dataset.babylonFrames = String(this.frames);
     this.updateSceneTelemetry();
+    // Anchor the idle interval to completion, not submission. On software
+    // renderers a single scene.render() can exceed the entire pacing window;
+    // a start timestamp would immediately submit again and starve input/CDP.
+    this.lastSceneRenderAt = performance.now();
   }
 
   performanceStats(): CombatGraphicsPerformanceStats {
