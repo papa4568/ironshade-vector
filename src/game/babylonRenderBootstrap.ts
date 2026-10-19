@@ -20,6 +20,11 @@ export function babylonBootstrapFrameSample(
 export function babylonBootstrapPacingIntervalMs(
   refinery: boolean,
   readiness: readonly (string | undefined)[],
+  observedFrameMs = TARGET_FRAME_MS,
 ): number {
-  return refinery && readiness.some(state => state === 'loading') ? 120 : 0;
+  if (!refinery || !readiness.some(state => state === 'loading')) return 0;
+  // Asset decoding is not steady GPU pressure; preserve flagship LOD selection.
+  // When an actual bootstrap frame reaches 90ms, however, avoid saturating
+  // older Android WebViews and leave room for touch input and DevTools.
+  return observedFrameMs >= 90 && observedFrameMs < 2_000 ? 240 : 120;
 }
