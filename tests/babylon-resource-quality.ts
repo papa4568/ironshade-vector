@@ -5,6 +5,7 @@ import { selectGraphicsAssetSpec } from '../src/game/graphicsAssets';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 import { babylonEffectivePixelRatio } from '../src/game/babylonRenderResolution';
 import { babylonRenderPacingIntervalMs, shouldSubmitBabylonFrame } from '../src/game/babylonRenderPacing';
+import { babylonBootstrapFrameSample } from '../src/game/babylonRenderBootstrap';
 import { runtimeAnimationStride } from '../src/game/runtimeScalability';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -33,6 +34,18 @@ assert(Math.abs(babylonEffectivePixelRatio(1, 1, performance.pixelRatioScale) - 
 assert(Math.abs(babylonEffectivePixelRatio(1, 3, high.pixelRatioScale) - 1.8) < 1e-8, 'P28-F5 healthy High quality must preserve 3x flagship raster ceiling.');
 assert(Math.abs(babylonEffectivePixelRatio(1, 3, performance.pixelRatioScale) - 1.224) < 1e-8, 'P28-F5 Performance must retain adaptive scale on high-density devices.');
 assert(Number.isFinite(babylonEffectivePixelRatio(1, Number.NaN, performance.pixelRatioScale)), 'P28-F5 invalid device ratio must fail safe without breaking rendering.');
+
+assert(babylonBootstrapFrameSample(180, true, ['loading', 'ready', 'ready']) === 1000 / 60,
+  'P28-F5 first refinery shell must not downgrade quality because of temporary decode stalls.');
+assert(babylonBootstrapFrameSample(90, true, ['ready', 'loading', 'ready']) === 1000 / 60
+  && babylonBootstrapFrameSample(90, true, ['ready', 'ready', 'loading']) === 1000 / 60,
+  'P28-F5 operator and enemy catalog startup must retain initial High-detail asset selection.');
+assert(babylonBootstrapFrameSample(90, true, ['ready', 'ready', 'ready']) === 90
+  && babylonBootstrapFrameSample(90, true, ['error', 'ready', 'ready']) === 90
+  && babylonBootstrapFrameSample(90, false, ['loading', 'loading', 'loading']) === 90,
+  'P28-F5 real sustained pressure, failed loads, and other missions must retain unmodified adaptive recovery.');
+assert(rendererSource.includes('babylonBootstrapFrameSample(frameMs, mission.location'),
+  'P28-F5 runtime must sample asset bootstrap state only before selecting refinery authored LOD.');
 
 assert(babylonRenderPacingIntervalMs(high) === 0 && babylonRenderPacingIntervalMs(balanced) === 0,
   'P28-F5 healthy High and Balanced tiers must never pace GPU submissions.');
