@@ -145,13 +145,11 @@ for (const kind of refineryKinds) {
     assert.equal(canvas.dataset.babylonAmbientParticles, 'pooled:dust+sparks+vapor+debris');
     assert.equal(canvas.dataset.babylonAmbientParticleCounts, 'dust:128/128|sparks:48/48|vapor:24/24|debris:40/40');
     assert.equal(canvas.dataset.babylonAmbientParticlePoolSize, '240');
-    assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 0,
-      'P28-F5 must defer decorative KTX2 decode until the combat frame bootstrap completes.');
-    // Trigger the exact staged-attach boundary without depending on NullEngine wall-clock deltas.
-    (ambient as unknown as { elapsedSeconds: number }).elapsedSeconds = 3;
+    assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 1,
+      'P28-F5 must bind one shared local KTX2 texture before the first visible refinery frame.');
     ambient.sync(high, 'asteroid-refinery');
     assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 1,
-      'P28-F5 four ambient pools must share one GPU texture after staged warmup.');
+      'P28-F5 repeated sync must reuse the same texture, never decode again.');
     assert.equal(canvas.dataset.babylonAmbientParticleDrawFamilies, '4');
     assert.equal(canvas.dataset.babylonAmbientGameplayCuePolicy, 'independent:1.00');
     assert.equal(canvas.dataset.babylonAmbientParticleSimulationOwnership, 'read-only-presentation');
