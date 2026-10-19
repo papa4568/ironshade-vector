@@ -65,6 +65,7 @@ import { BabylonEnemyLifecycleVisuals } from './babylonEnemyLifecycleVisuals';
 import { BabylonProtocolStatusVisuals } from './babylonProtocolStatusVisuals';
 import { BabylonRefineryWorldPresentation } from './babylonWorldPresentation';
 import { refineryF5SeamVariation } from './refineryDecalVariation';
+import { babylonEffectivePixelRatio } from './babylonRenderResolution';
 import { BabylonWeaponVfx } from './babylonWeaponVfx';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { runtimeAnimationStride, runtimeScalabilityProfile } from './runtimeScalability';
@@ -2591,9 +2592,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   }
 
   private resize(width: number, height: number, quality: number, budget: RenderBudgetSnapshot) {
-    const qualityCap = quality < 0.55 ? 1.12 : quality < 0.8 ? 1.35 : 1.8;
-    const maxRatio = Math.max(0.76, qualityCap * budget.pixelRatioScale);
-    const nextRatio = Math.min(maxRatio, window.devicePixelRatio || 1);
+    const nextRatio = babylonEffectivePixelRatio(quality, window.devicePixelRatio || 1, budget.pixelRatioScale);
     const nextWidth = Math.max(1, width);
     const nextHeight = Math.max(1, height);
     const ratioChanged = Math.abs(nextRatio - this.pixelRatio) > 0.01;
