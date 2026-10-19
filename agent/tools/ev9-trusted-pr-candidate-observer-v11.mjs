@@ -266,6 +266,21 @@ function validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha) {
   }
 }
 
+
+// The trusted verifier permits exactly one reviewed correction to two negative
+// fixture setups. Its old/new full-file Git identities are pinned: other agent
+// changes, chmod attacks, or later changes to this test remain prohibited.
+// This authorization is consumed naturally when the repaired file is on main.
+function validPinnedRoadmapFixtureRepair(trustedBaseSha, candidateSha) {
+  const path = 'agent/tests/roadmap-adapter.mjs';
+  const baseRefs = gitAgentRefs(trustedBaseSha, { productCloseout: true });
+  if (baseRefs[path] !== '100644 blob 370b6c0f9f8a77de3f8dd00398b11500a4f0e407'
+      || gitEntry(candidateSha, path) !== '100644 blob 52d51d6070ba19060ad4e164e161015f1548f4ca') return false;
+  const candidateRefs = gitAgentRefs(candidateSha, { productCloseout: true });
+  candidateRefs[path] = baseRefs[path];
+  return sameJson(candidateRefs, baseRefs);
+}
+
 function steadyChecks({ trustedBaseSha, candidateSha }) {
   const expectedWorkflowEntry = gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH);
   const baseDeps = gitPathRefs(trustedBaseSha, TRUSTED_CONSUMER_DEPENDENCIES);
@@ -279,7 +294,7 @@ function steadyChecks({ trustedBaseSha, candidateSha }) {
       check('ev18-steady-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser workflow must remain trusted-base identical'),
       check('ev18-steady-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH), 'Android workflow must remain trusted-base identical'),
       check('ev18-steady-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps), 'source-bound consumer dependencies must remain trusted-base identical'),
-      check('ev18-steady-protected-agent-boundary-unchanged', sameJson(gitAgentRefs(candidateSha, { productCloseout: true }), gitAgentRefs(trustedBaseSha, { productCloseout: true })), 'protected agent entries must remain trusted-base identical outside the established allowlist and separately validated product closeout'),
+      check('ev18-steady-protected-agent-boundary-unchanged', (sameJson(gitAgentRefs(candidateSha, { productCloseout: true }), gitAgentRefs(trustedBaseSha, { productCloseout: true })) || validPinnedRoadmapFixtureRepair(trustedBaseSha, candidateSha)), 'protected agent entries must remain trusted-base identical except for the exact Git-object-pinned roadmap regression-fixture repair'),
       check('ev18-steady-roadmap-closeout-metadata-bound', validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha), 'metadata mutation must exactly match one first-item roadmap archival, dependency pruning and no other sidecar changes'),
       check('ev18-steady-ev9-live-paths-unchanged', ev9Changed.length === 0, `EV-9 live implementation changes require a new trusted observer bootstrap after EV-18; changed=${ev9Changed.join(',')}`),
     ],
@@ -594,13 +609,63 @@ function roadmapCloseoutBoundaryCalibration() {
   return { accepted: true, attacks: attacks.length + 1, lastItemAccepted: true, fileModeAttackRejected: true, falsePositives: 0, falseNegatives: 0 };
 }
 
+
+function roadmapFixtureRepairBoundaryCalibration() {
+  const base = EV18_REFERENCE_SHA;
+  const path = 'agent/tests/roadmap-adapter.mjs';
+  assert.equal(gitEntry(base, path), '100644 blob 370b6c0f9f8a77de3f8dd00398b11500a4f0e407',
+    'reviewed fixture repair must start from the pinned trusted test');
+  const previous = gitText(base, path) + '\n';
+  let repaired = previous.replace(
+    'const driftMissing = clone(metadata);\ndriftMissing.roadmapIds.shift();',
+    '// Preserve a valid dependency sidecar when simulating an archived root item,\n'
+      + '// so the test asserts roadmap drift rather than unrelated override validation.\n'
+      + 'const driftMissing = synchronizeRoadmapMetadata(metadata, roadmapTasks.slice(1));',
+  );
+  repaired = repaired.replace(
+    "const unknownRuleMetadata = clone(metadata);\nconst unknownRuleTasks = clone(roadmapTasks);\nunknownRuleTasks[0].id = 'P29-X1';\nunknownRuleMetadata.roadmapIds[0] = 'P29-X1';",
+    "const unknownRuleTasks = clone(roadmapTasks);\nunknownRuleTasks[0].id = 'P29-X1';\n"
+      + '// Re-sync overrides for the altered queue so the missing domain rule is the\n'
+      + '// defect under test, even if the former first task had an override.\n'
+      + 'const unknownRuleMetadata = synchronizeRoadmapMetadata(metadata, unknownRuleTasks);',
+  );
+  assert.notEqual(repaired, previous, 'fixture repair must modify the negative cases');
+  const accepted = createSyntheticRoadmapCandidate({
+    id: 'pinned-regression-fixture-repair',
+    changes: [{ path, content: repaired }],
+  });
+  assert.equal(gitEntry(accepted, path), '100644 blob 52d51d6070ba19060ad4e164e161015f1548f4ca',
+    'pinned repair must match the independently reviewed exact file object');
+  assert.equal(validPinnedRoadmapFixtureRepair(base, accepted), true,
+    'only the exact reviewed fixture repair is authorized');
+  const attacks = [
+    { id: 'unreviewed-test-edit', changes: [{ path, content: repaired + '// attack\n' }] },
+    { id: 'test-chmod', changes: [{ path, content: repaired, mode: '100755' }] },
+    { id: 'another-protected-agent-edit', changes: [{
+      path: 'agent/architecture-invariants.json',
+      content: gitText(base, 'agent/architecture-invariants.json') + '\n \n',
+    }] },
+  ];
+  for (const attack of attacks) {
+    const candidate = createSyntheticRoadmapCandidate({
+      id: attack.id,
+      baseSha: accepted,
+      changes: attack.changes,
+    });
+    assert.equal(validPinnedRoadmapFixtureRepair(base, candidate), false,
+      'trusted observer permitted unauthorized protected fixture mutation ' + attack.id);
+  }
+  return { accepted: true, attacks: attacks.length, falsePositives: 0, falseNegatives: 0 };
+}
+
 function selfTest() {
   assert.deepEqual([...new Set(EV18_TRANSITION_PATHS)], EV18_TRANSITION_PATHS, 'EV-18 transition paths must be sorted and unique');
   assert.equal(EV18_TRANSITION_PATHS.includes(ROADMAP_PATH), false, 'roadmap state must remain base-owned');
   const calibration = productionTransitionCalibration();
   const compatibility = v10CompatibilityCalibration();
   const roadmapCloseout = roadmapCloseoutBoundaryCalibration();
-  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
+  const roadmapFixtureRepair = roadmapFixtureRepairBoundaryCalibration();
+  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass roadmapFixtureRepairAttacks=${roadmapFixtureRepair.attacks} roadmapFixtureRepairCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
 }
 
 function verify() {
