@@ -70,7 +70,19 @@ async function waitFor(expression, label, timeoutMs = 10_000) {
     if (value) return value;
     await sleep(100);
   }
-  throw new Error(`Timed out waiting for ${label}.`);
+  const diagnostic = await evaluate(`(() => {
+    const d = document.querySelector('canvas')?.dataset;
+    return {
+      scenario: d?.babylonScenario, environmentVisual: d?.environmentVisual,
+      environmentState: d?.babylonEnvironmentState, environmentAssets: d?.babylonEnvironmentAssets,
+      dressingState: d?.refineryDressingState, dressingInstances: d?.refineryDressingInstances,
+      dressingAssets: d?.refineryDressingAssets, dressingError: d?.refineryDressingError,
+      player: d?.babylonPlayerState, enemies: d?.babylonEnemyState,
+      catalog: d?.babylonEnemyCatalogState, catalogAssets: d?.babylonEnemyCatalogAssets,
+      frame: d?.babylonFrames, assetCache: d?.babylonAssetCacheTelemetry,
+    };
+  })()`).catch(error => ({ diagnosticError: String(error) }));
+  throw new Error(`Timed out waiting for ${label}. state=${JSON.stringify(diagnostic)}`);
 }
 
 async function clickButton(label) {
