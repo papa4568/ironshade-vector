@@ -51,6 +51,10 @@ assert(babylonBootstrapPacingIntervalMs(true, ['loading', 'ready', 'ready']) ===
   && babylonBootstrapPacingIntervalMs(true, ['ready', 'loading', 'ready']) === 120
   && babylonBootstrapPacingIntervalMs(true, [undefined, 'ready', 'loading']) === 120,
   'P28-F5 pending authored refinery GLBs must yield GPU submission without changing High LOD selection.');
+assert(babylonBootstrapPacingIntervalMs(true, ['loading', 'ready', 'ready'], 125) === 240
+  && babylonBootstrapPacingIntervalMs(true, ['ready', 'loading', 'ready'], 90) === 240
+  && babylonBootstrapPacingIntervalMs(true, ['loading', 'ready', 'ready'], 3_000) === 120,
+  'P28-F5 measured 90ms+ asset-bootstrap frames must yield more GPU time without treating app suspend as sustained load.');
 assert(babylonBootstrapPacingIntervalMs(true, ['ready', 'ready', 'ready']) === 0
   && babylonBootstrapPacingIntervalMs(true, ['error', 'ready', 'ready']) === 0
   && babylonBootstrapPacingIntervalMs(false, ['loading', 'loading', 'loading']) === 0,
@@ -60,6 +64,8 @@ assert(babylonRenderPacingIntervalMs(high) === 0 && babylonRenderPacingIntervalM
 assert(babylonRenderPacingIntervalMs(performance) === 0,
   'P28-F5 explicit Performance mode without measured pressure must render every frame.');
 const severe = { tierName: 'performance' as const, smoothedFrameMs: 64 };
+assert(babylonRenderPacingIntervalMs({ tierName: 'performance', smoothedFrameMs: 110 }) === 240,
+  'P28-F5 catastrophic Performance-tier rendering must leave enough time for Android touch dispatch.');
 assert(babylonRenderPacingIntervalMs(severe) === 120,
   'P28-F5 sustained severe frame pressure must reduce GPU submission duty cycle.');
 assert(shouldSubmitBabylonFrame(1000, 0, 120)
