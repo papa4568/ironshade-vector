@@ -916,7 +916,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.canvas.dataset.babylonEnvironmentState,
         this.canvas.dataset.babylonPlayerState,
         this.canvas.dataset.babylonEnemyCatalogState,
-      ]))
+      ], frameMs))
       : 0;
     if (!shouldSubmitBabylonFrame(now, this.lastSceneRenderAt, pacingMs)) {
       this.canvas.dataset.babylonRenderPacing = `paced:${pacingMs}`;
