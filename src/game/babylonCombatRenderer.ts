@@ -67,6 +67,7 @@ import { BabylonRefineryWorldPresentation } from './babylonWorldPresentation';
 import { refineryF5SeamVariation } from './refineryDecalVariation';
 import { babylonEffectivePixelRatio } from './babylonRenderResolution';
 import { babylonRenderPacingIntervalMs, shouldSubmitBabylonFrame } from './babylonRenderPacing';
+import { babylonBootstrapFrameSample } from './babylonRenderBootstrap';
 import { BabylonWeaponVfx } from './babylonWeaponVfx';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { runtimeAnimationStride, runtimeScalabilityProfile } from './runtimeScalability';
@@ -683,7 +684,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const now = performance.now();
     const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
     this.lastFrameAt = now;
-    const budget = this.renderBudget.sample(frameMs, quality, qualityMode);
+    const budget = this.renderBudget.sample(babylonBootstrapFrameSample(frameMs, mission.location === 'asteroid-refinery', [
+      this.canvas.dataset.babylonEnvironmentState,
+      this.canvas.dataset.babylonPlayerState,
+      this.canvas.dataset.babylonEnemyCatalogState,
+    ]), quality, qualityMode);
     const runtimeProfile = runtimeScalabilityProfile(budget.tierName);
     this.canvas.dataset.runtimePools = [
       `damage:${Math.min(state.damageNumbers.length, runtimeProfile.poolRetention.damageNumbers)}/${runtimeProfile.poolRetention.damageNumbers}`,
