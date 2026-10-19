@@ -66,6 +66,7 @@ import { BabylonProtocolStatusVisuals } from './babylonProtocolStatusVisuals';
 import { BabylonRefineryWorldPresentation } from './babylonWorldPresentation';
 import { refineryF5SeamVariation } from './refineryDecalVariation';
 import { babylonEffectivePixelRatio } from './babylonRenderResolution';
+import { babylonRenderPacingIntervalMs, shouldSubmitBabylonFrame } from './babylonRenderPacing';
 import { BabylonWeaponVfx } from './babylonWeaponVfx';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { runtimeAnimationStride, runtimeScalabilityProfile } from './runtimeScalability';
@@ -506,6 +507,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private height = 1;
   private pixelRatio = 1;
   private lastFrameAt = 0;
+  private lastSceneRenderAt = 0;
   private graphicsBudgetSignature = '';
 
   private constructor(
@@ -901,7 +903,17 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.hecateCapstonePresentation.release('scenario-switch');
     }
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
+    // Under sustained severe refinery pressure, simulation and input still
+    // advance every RAF while Babylon GPU submissions are paced. Healthy High
+    // and Balanced frames render as before, as do all other mission locations.
+    const pacingMs = refineryScenario ? babylonRenderPacingIntervalMs(budget) : 0;
+    if (!shouldSubmitBabylonFrame(now, this.lastSceneRenderAt, pacingMs)) {
+      this.canvas.dataset.babylonRenderPacing = `paced:${pacingMs}`;
+      return;
+    }
+    this.canvas.dataset.babylonRenderPacing = pacingMs ? `paced:${pacingMs}` : 'full';
     this.scene.render();
+    this.lastSceneRenderAt = now;
     this.frames += 1;
     this.canvas.dataset.babylonFrames = String(this.frames);
     this.updateSceneTelemetry();
