@@ -7,7 +7,11 @@ import type { RenderBudgetSnapshot } from './renderQuality';
 export function babylonRenderPacingIntervalMs(
   budget: Pick<RenderBudgetSnapshot, 'tierName' | 'smoothedFrameMs'>,
 ): number {
-  return budget.tierName === 'performance' && budget.smoothedFrameMs >= 40 ? 120 : 0;
+  if (budget.tierName !== 'performance') return 0;
+  // A long-running 90ms+ render on software WebView/Chromium can starve
+  // touch dispatch even when simulation remains on the RAF cadence.
+  // Allow the renderer more idle time only under measured catastrophic load.
+  return budget.smoothedFrameMs >= 90 ? 240 : budget.smoothedFrameMs >= 40 ? 120 : 0;
 }
 
 export function shouldSubmitBabylonFrame(
