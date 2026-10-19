@@ -63,8 +63,9 @@ assert.deepEqual(graph.tasks[0].affectedDomains, firstRule.affectedDomains);
 assert.equal(graph.tasks[0].proofs.find(proof => proof.id === 'production-build')?.command, 'npm run build:prod');
 assert.equal(selectNextRoadmapTask(graph)?.id, firstTask.id);
 
-const driftMissing = clone(metadata);
-driftMissing.roadmapIds.shift();
+// Preserve a valid dependency sidecar when simulating an archived root item,
+// so the test asserts roadmap drift rather than unrelated override validation.
+const driftMissing = synchronizeRoadmapMetadata(metadata, roadmapTasks.slice(1));
 assert.throws(() => materializeRoadmapGraph(roadmapTasks, driftMissing), /roadmap metadata drift/);
 
 if (secondTask) {
@@ -87,10 +88,11 @@ if (secondTask) {
   assert.equal(synchronized.overrides[secondTask.id]?.dependsOn, undefined);
 }
 
-const unknownRuleMetadata = clone(metadata);
 const unknownRuleTasks = clone(roadmapTasks);
 unknownRuleTasks[0].id = 'P29-X1';
-unknownRuleMetadata.roadmapIds[0] = 'P29-X1';
+// Re-sync overrides for the altered queue so the missing domain rule is the
+// defect under test, even if the former first task had an override.
+const unknownRuleMetadata = synchronizeRoadmapMetadata(metadata, unknownRuleTasks);
 assert.throws(() => materializeRoadmapGraph(unknownRuleTasks, unknownRuleMetadata), /has no matching roadmap metadata rule/);
 
 console.log(`ROADMAP_ADAPTER_TEST_PASS tasks=${graph.tasks.length} first=${graph.tasks[0].id} last=${graph.tasks.at(-1).id} profiles=${Object.keys(metadata.proofProfiles).length}`);
