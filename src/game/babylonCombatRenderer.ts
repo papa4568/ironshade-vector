@@ -67,7 +67,7 @@ import { BabylonRefineryWorldPresentation } from './babylonWorldPresentation';
 import { refineryF5SeamVariation } from './refineryDecalVariation';
 import { babylonEffectivePixelRatio } from './babylonRenderResolution';
 import { babylonRenderPacingIntervalMs, shouldSubmitBabylonFrame } from './babylonRenderPacing';
-import { babylonBootstrapFrameSample } from './babylonRenderBootstrap';
+import { babylonBootstrapFrameSample, babylonBootstrapPacingIntervalMs } from './babylonRenderBootstrap';
 import { BabylonWeaponVfx } from './babylonWeaponVfx';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { runtimeAnimationStride, runtimeScalabilityProfile } from './runtimeScalability';
@@ -911,7 +911,13 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Under sustained severe refinery pressure, simulation and input still
     // advance every RAF while Babylon GPU submissions are paced. Healthy High
     // and Balanced frames render as before, as do all other mission locations.
-    const pacingMs = refineryScenario ? babylonRenderPacingIntervalMs(budget) : 0;
+    const pacingMs = refineryScenario
+      ? Math.max(babylonRenderPacingIntervalMs(budget), babylonBootstrapPacingIntervalMs(true, [
+        this.canvas.dataset.babylonEnvironmentState,
+        this.canvas.dataset.babylonPlayerState,
+        this.canvas.dataset.babylonEnemyCatalogState,
+      ]))
+      : 0;
     if (!shouldSubmitBabylonFrame(now, this.lastSceneRenderAt, pacingMs)) {
       this.canvas.dataset.babylonRenderPacing = `paced:${pacingMs}`;
       return;
