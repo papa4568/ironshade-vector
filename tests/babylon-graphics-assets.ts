@@ -351,8 +351,14 @@ async function run() {
   const lateScene = new Scene(lateEngine);
   let fulfillLateLoad!: (container: AssetContainer) => void;
   const deferredLoad = new Promise<AssetContainer>(resolve => { fulfillLateLoad = resolve; });
-  const lateRuntime = new BabylonGraphicsAssetRuntime(lateScene, async () => deferredLoad);
+  let notifyLoadStarted!: () => void;
+  const loadStarted = new Promise<void>(resolve => { notifyLoadStarted = resolve; });
+  const lateRuntime = new BabylonGraphicsAssetRuntime(lateScene, async () => {
+    notifyLoadStarted();
+    return deferredLoad;
+  });
   const latePreload = lateRuntime.preload([operatorLod1]);
+  await loadStarted;
   assert(lateRuntime.stats().inFlightLoads === 1, 'cold heavy-asset preload must expose one in-flight decode');
   lateRuntime.disposeForSceneTeardown();
   let lateDisposals = 0;
