@@ -689,10 +689,10 @@ function roadmapShadowCloseoutFixtureBundleCalibration(repairedAdapterCandidateS
   const originalTest = gitText(base, scenarioTestPath);
   const config = originalConfig
     .replace('"taskId": "P28-F6"', '"taskId": "P28-F7"')
-    .replace('"probeId": "mission-load-readiness-observer"', '"probeId": "heavy-art-acceptance-readiness-observer"') + '\\n';
-  const test = originalTest.replaceAll("'P28-F6'", "'P28-F7'") + '\\n';
-  assert.notEqual(config, originalConfig + '\\n');
-  assert.notEqual(test, originalTest + '\\n');
+    .replace('"probeId": "mission-load-readiness-observer"', '"probeId": "heavy-art-acceptance-readiness-observer"') + '\n';
+  const test = originalTest.replaceAll("'P28-F6'", "'P28-F7'") + '\n';
+  assert.notEqual(config, originalConfig + '\n');
+  assert.notEqual(test, originalTest + '\n');
   const accepted = createSyntheticRoadmapCandidate({
     id: 'exact-three-file-shadow-current-task-closeout',
     baseSha: repairedAdapterCandidateSha,
@@ -709,10 +709,10 @@ function roadmapShadowCloseoutFixtureBundleCalibration(repairedAdapterCandidateS
     'the exact reviewed three-file closeout fix must be eligible');
   const attacks = [
     { id: 'scenario-not-updated', baseSha: repairedAdapterCandidateSha, changes: [{ path: scenarioTestPath, content: test }] },
-    { id: 'unexpected-scenario-change', baseSha: accepted, changes: [{ path: scenarioConfigPath, content: config + '// unreviewed\\n' }] },
-    { id: 'unexpected-test-change', baseSha: accepted, changes: [{ path: scenarioTestPath, content: test + '// unreviewed\\n' }] },
+    { id: 'unexpected-scenario-change', baseSha: accepted, changes: [{ path: scenarioConfigPath, content: config + '// unreviewed\n' }] },
+    { id: 'unexpected-test-change', baseSha: accepted, changes: [{ path: scenarioTestPath, content: test + '// unreviewed\n' }] },
     { id: 'test-file-chmod', baseSha: accepted, changes: [{ path: scenarioTestPath, content: test, mode: '100755' }] },
-    { id: 'another-agent-edit', baseSha: accepted, changes: [{ path: 'agent/architecture-invariants.json', content: gitText(base, 'agent/architecture-invariants.json') + '\\n ' }] },
+    { id: 'another-agent-edit', baseSha: accepted, changes: [{ path: 'agent/architecture-invariants.json', content: gitText(base, 'agent/architecture-invariants.json') + '\n ' }] },
   ];
   for (const attack of attacks) {
     const candidate = createSyntheticRoadmapCandidate(attack);
