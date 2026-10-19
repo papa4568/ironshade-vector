@@ -155,6 +155,7 @@
     }
   ],
   "overrides": {
+    "P28-F6": {},
     "P28-F7": {
       "dependsOn": [
         "P28-F6"
