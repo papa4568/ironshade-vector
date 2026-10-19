@@ -230,6 +230,11 @@ jobs:
               '--disable-dev-shm-usage',
               '--enable-unsafe-webgpu',
               '--enable-features=Vulkan',
+              // Keep Lavapipe for Dawn/WebGPU, but avoid CPU-bound Vulkan
+              // presentation of WebGL2's full refinery scene on shared CI.
+              '--use-gl=angle',
+              '--use-angle=swiftshader',
+              '--enable-unsafe-swiftshader',
               '--ozone-platform=x11',
               '--ignore-gpu-blocklist',
               '--disable-gpu-driver-bug-workarounds',
