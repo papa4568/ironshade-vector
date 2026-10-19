@@ -2587,6 +2587,20 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   }
 
   private updateSceneTelemetry() {
+    const assetStats = getBabylonGraphicsAssetRuntime(this.scene).stats();
+    // Stable, observable cold/warm and re-entry evidence for Flagship route QA.
+    this.canvas.dataset.babylonAssetCacheTelemetry = [
+      `cached:${assetStats.cachedAssets}`,
+      `active:${assetStats.activeInstances}`,
+      `native:${assetStats.activeNativeMeshInstances}`,
+      `loading:${assetStats.inFlightLoads}`,
+      `loads:${assetStats.sourceLoadAttempts}`,
+      `failures:${assetStats.sourceLoadFailures}`,
+      `hits:${assetStats.cacheHits}`,
+      `evictions:${assetStats.cacheEvictions}`,
+      `late-disposed:${assetStats.staleLoadDisposals}`,
+      `bytes:${assetStats.estimatedCachedCompressedBytes}`,
+    ].join('|');
     this.canvas.dataset.babylonSceneTelemetry = [
       `meshes:${this.scene.meshes.length}`,
       `materials:${this.scene.materials.length}`,
