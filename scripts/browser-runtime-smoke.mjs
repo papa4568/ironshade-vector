@@ -719,6 +719,21 @@ async function p27C2BabylonDamagedVesselAudit() {
   );
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonDamagedPlayerPosition ?? ''");
 
+  // Moving through a fresh authored scene can schedule one more asynchronous
+  // enemy placement pass under slow software decoding. Assert the final
+  // post-movement state only after that pass settles; never credit fallback or
+  // missing enemies as success, and retain the bounded failure timeout.
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.babylonScenario === 'damaged-vessel'"
+      + " && canvas?.dataset.babylonEnemyCatalogState === 'ready'"
+      + " && canvas?.dataset.babylonEnemyState === 'ready'"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0;"
+      + " })()",
+    'P28-F6 Damaged Vessel post-movement authored-enemy readiness',
+    15_000,
+  );
+
   const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
     + " selection: canvas?.dataset.graphicsPathSelection ?? '',"
     + " requested: canvas?.dataset.graphicsPathRequested ?? '',"
