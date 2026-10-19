@@ -149,7 +149,6 @@ export function babylonAmbientParticleBudget(budget: RenderBudgetSnapshot): Baby
 export class BabylonAmbientParticles {
   private readonly pools = new Map<BabylonAmbientParticleKind, AmbientPool>();
   private localFxAtlas: Texture | null = null;
-  private readonly localFxWarmupSeconds = 3;
   private locationKey = '';
   private elapsedSeconds = 0;
   private disposed = false;
@@ -175,9 +174,9 @@ export class BabylonAmbientParticles {
 
     const deltaMs = this.scene.getEngine().getDeltaTime();
     this.elapsedSeconds += (Number.isFinite(deltaMs) && deltaMs > 0 ? Math.min(deltaMs, 50) : 1000 / 60) / 1000;
-    // Keep first-frame combat input responsive: decorative KTX2 decode starts
-    // only after the initial gameplay bootstrap.
-    if (this.locationKey === 'asteroid-refinery' && !this.localFxAtlas && this.elapsedSeconds >= this.localFxWarmupSeconds) {
+    // Bind the single shared KTX2 source before the first visible refinery frame;
+    // no startup period falls back to flat, untextured decorative particles.
+    if (this.locationKey === 'asteroid-refinery' && !this.localFxAtlas) {
       const atlas = new Texture(REFINERY_LOCAL_FX_ATLAS_URL, this.scene);
       atlas.wrapU = Texture.CLAMP_ADDRESSMODE;
       atlas.wrapV = Texture.CLAMP_ADDRESSMODE;
@@ -249,7 +248,7 @@ export class BabylonAmbientParticles {
 
   private ensurePools() {
     if (this.pools.size > 0) return;
-    // Quad UVs are pre-baked and the shared texture is attached after warmup.
+    // Quad UVs are pre-baked before binding the shared texture on first sync.
     (Object.keys(BABYLON_AMBIENT_FLAGSHIP_COUNTS) as BabylonAmbientParticleKind[]).forEach(kind => {
       this.pools.set(kind, this.createPool(kind, BABYLON_AMBIENT_FLAGSHIP_COUNTS[kind]));
     });
