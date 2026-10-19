@@ -220,6 +220,8 @@ for (const kind of refineryKinds) {
 
     ambient.sync(high, 'asteroid-refinery');
     assert.equal(canvas.dataset.babylonAmbientParticlePoolSize, '240', 'Re-entry must rebuild a complete pool after deterministic teardown.');
+    assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 1,
+      'P28-F5 scenario re-entry must restore exactly one shared atlas after disposal, without leaking extra textures.');
     assert.equal(canvas.dataset.babylonAmbientParticleArtDirection, 'refinery-industrial-v1');
   } finally {
     // Production renderer teardown calls the refinery owner's release first, then dispose.
