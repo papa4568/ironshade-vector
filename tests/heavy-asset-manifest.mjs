@@ -131,17 +131,31 @@ try {
   const fixtures = [
     { name: 'assets/public/assets/models/environments/floor.glb', data: Buffer.from('gltf content a'), method: 0, category: 'refinery' },
     { name: 'assets/public/assets/materials/premium-pbr/steel-normal.ktx2', data: Buffer.from('texture content b repeated'.repeat(100)), method: 8, category: 'refinery' },
+    { name: 'assets/public/assets/codecs/babylon/zstddec.wasm', data: Buffer.from('local KTX2 decoder fixture'), method: 0 },
   ];
   const archive = resolve(zipDir, 'fixture.apk');
   await writeFile(archive, buildZip(fixtures));
-  const records = fixtures.map(item => ({ path: item.name.slice('assets/public/'.length), category: item.category, fileSha256: createHash('sha256').update(item.data).digest('hex'), onDiskBytes: item.data.length }));
-  const checked = await measureApk({ assets: records }, archive);
+  const records = fixtures.slice(0, 2).map(item => ({ path: item.name.slice('assets/public/'.length), category: item.category, fileSha256: createHash('sha256').update(item.data).digest('hex'), onDiskBytes: item.data.length }));
+  const requiredRuntimeFiles = [{ path: 'assets/codecs/babylon/zstddec.wasm',
+    bytes: fixtures[2].data.length, sha256: createHash('sha256').update(fixtures[2].data).digest('hex') }];
+  const checked = await measureApk({ assets: records }, archive, { requiredRuntimeFiles });
   assert(checked.assets.length === 2 && checked.assets.some(a => a.zipMethod === 8), 'stored and deflated APK assets must be measured');
-  assert(checked.categories.refinery.uncompressedBytes === fixtures.reduce((n, item) => n + item.data.length, 0), 'APK ZIP entry accounting must use measured source bytes');
+  assert(checked.categories.refinery.uncompressedBytes === fixtures.slice(0, 2).reduce((n, item) => n + item.data.length, 0), 'APK ZIP entry accounting must use measured source bytes');
+  assert(checked.apkBytes === (await readFile(archive)).length
+    && checked.apkSha256 === createHash('sha256').update(await readFile(archive)).digest('hex'),
+    'exact total APK bytes and content SHA-256 must be reported, not inferred from art entries');
+  assert(checked.runtimeFiles.length === 1 && checked.totals.runtimeDependencyUncompressedBytes === fixtures[2].data.length,
+    'offline runtime codec bytes must be counted separately from art payload');
+  await writeFile(archive, buildZip(fixtures.slice(0, 2)));
+  await assert.rejects(measureApk({ assets: records }, archive, { requiredRuntimeFiles }),
+    /APK missing required local runtime dependency/, 'APK with missing local decoder must fail offline acceptance');
+  await writeFile(archive, buildZip([fixtures[0], fixtures[1], { ...fixtures[2], data: Buffer.from('tampered decoder') }]));
+  await assert.rejects(measureApk({ assets: records }, archive, { requiredRuntimeFiles }),
+    /APK local runtime dependency bytes mismatch/, 'tampered APK decoder bytes must fail');
   await writeFile(archive, buildZip(fixtures.slice(0, 1)));
-  await assert.rejects(measureApk({ assets: records }, archive), /APK missing required asset/, 'missing APK ZIP entry must fail');
-  await writeFile(archive, buildZip([fixtures[0], fixtures[0], fixtures[1]]));
-  await assert.rejects(measureApk({ assets: records }, archive), /duplicate APK entry/, 'duplicate central entries must fail');
+  await assert.rejects(measureApk({ assets: records }, archive, { requiredRuntimeFiles }), /APK missing required asset/, 'missing APK art ZIP entry must fail');
+  await writeFile(archive, buildZip([fixtures[0], fixtures[0], fixtures[1], fixtures[2]]));
+  await assert.rejects(measureApk({ assets: records }, archive, { requiredRuntimeFiles }), /duplicate APK entry/, 'duplicate central entries must fail');
 } finally { await rm(zipDir, { recursive: true, force: true }); }
 
 const temp = await mkdtemp(join(tmpdir(), 'ironshade-p28-f0-'));
