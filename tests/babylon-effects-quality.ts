@@ -24,11 +24,13 @@ assert(seamPlacements.every(v => Math.abs(v.x) <= 0.16 && Math.abs(v.z) <= 0.12
   'P28-F5 cosmetic variation must stay within the authored panel and not drift into gameplay cues.');
 const f5RendererSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 assert(f5RendererSource.includes("if (key === 'floor')") && f5RendererSource.includes('refineryF5SeamVariation(task.index)')
-  && f5RendererSource.includes('placementRoot.position.x += variant.x;')
-  && f5RendererSource.includes('placementRoot.position.z += variant.z;')
-  && f5RendererSource.includes('placementRoot.rotation.y += variant.yaw;')
-  && f5RendererSource.includes('placementRoot.scaling.x *= variant.scale;'),
-  'P28-F5 variation must be applied to live decorative refinery floor placements.');
+  && f5RendererSource.includes("mesh.name.includes('p28-b6-refinery-route-detail-atlas')")
+  && f5RendererSource.includes('mesh.position.x += variant.x;')
+  && f5RendererSource.includes('mesh.position.z += variant.z;')
+  && f5RendererSource.includes('mesh.rotation.y += variant.yaw;')
+  && f5RendererSource.includes('mesh.scaling.x *= variant.scale;')
+  && f5RendererSource.includes('mesh.isPickable = false;'),
+  'P28-F5 must vary only non-pickable decorative seam meshes and preserve floor placement geometry.');
 console.log('P28_F5_SEAM_VARIATION_PASS placements=20 variants=6 offsets=bounded gameplayGeometry=unchanged');
 const high = new AdaptiveRenderBudget(false).sample(16.7, 1, 'flagship');
 const phoneDefault = new AdaptiveRenderBudget(true).sample(16.7, 1, 'adaptive');
