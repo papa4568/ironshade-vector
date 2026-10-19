@@ -4,6 +4,7 @@ import { OPERATOR_ASSET_FAMILY, SHOWCASE_REFINERY_MODULE_FAMILY } from '../src/g
 import { selectGraphicsAssetSpec } from '../src/game/graphicsAssets';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 import { babylonEffectivePixelRatio } from '../src/game/babylonRenderResolution';
+import { babylonRenderPacingIntervalMs, shouldSubmitBabylonFrame } from '../src/game/babylonRenderPacing';
 import { runtimeAnimationStride } from '../src/game/runtimeScalability';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -32,6 +33,25 @@ assert(Math.abs(babylonEffectivePixelRatio(1, 1, performance.pixelRatioScale) - 
 assert(Math.abs(babylonEffectivePixelRatio(1, 3, high.pixelRatioScale) - 1.8) < 1e-8, 'P28-F5 healthy High quality must preserve 3x flagship raster ceiling.');
 assert(Math.abs(babylonEffectivePixelRatio(1, 3, performance.pixelRatioScale) - 1.224) < 1e-8, 'P28-F5 Performance must retain adaptive scale on high-density devices.');
 assert(Number.isFinite(babylonEffectivePixelRatio(1, Number.NaN, performance.pixelRatioScale)), 'P28-F5 invalid device ratio must fail safe without breaking rendering.');
+
+assert(babylonRenderPacingIntervalMs(high) === 0 && babylonRenderPacingIntervalMs(balanced) === 0,
+  'P28-F5 healthy High and Balanced tiers must never pace GPU submissions.');
+assert(babylonRenderPacingIntervalMs(performance) === 0,
+  'P28-F5 explicit Performance mode without measured pressure must render every frame.');
+const severe = { tierName: 'performance' as const, smoothedFrameMs: 64 };
+assert(babylonRenderPacingIntervalMs(severe) === 120,
+  'P28-F5 sustained severe frame pressure must reduce GPU submission duty cycle.');
+assert(shouldSubmitBabylonFrame(1000, 0, 120)
+  && !shouldSubmitBabylonFrame(1090, 1000, 120)
+  && shouldSubmitBabylonFrame(1120, 1000, 120)
+  && shouldSubmitBabylonFrame(1010, 1000, 0),
+  'P28-F5 paced GPU submissions must retain a first frame and always render under healthy budgets.');
+assert(shouldSubmitBabylonFrame(100, 1000, 120),
+  'P28-F5 suspended clock reset must not leave render submission stopped.');
+assert(rendererSource.includes('const pacingMs = refineryScenario ? babylonRenderPacingIntervalMs(budget) : 0;')
+  && rendererSource.includes('this.syncCamera(state, width / Math.max(1, height), cameraFeedback);')
+  && rendererSource.includes('this.scene.render();'),
+  'P28-F5 pacing must be restricted to refinery rendering and preserve scene submission.');
 
 assert(high.detailScale > balanced.detailScale && balanced.detailScale > performance.detailScale, 'Babylon authored detail budget must decrease each tier');
 assert(high.assetCacheCompressedByteBudget > balanced.assetCacheCompressedByteBudget && balanced.assetCacheCompressedByteBudget > performance.assetCacheCompressedByteBudget, 'Babylon cache byte budget must decrease each tier');
