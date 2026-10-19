@@ -693,11 +693,19 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     if (!refineryBootstrapping) this.refineryBootstrapStartedAt = 0;
     else if (this.refineryBootstrapStartedAt === 0) this.refineryBootstrapStartedAt = now;
     const loadingElapsedMs = refineryBootstrapping ? Math.max(0, now - this.refineryBootstrapStartedAt) : 0;
+    // Explicit graphics-comparison captures must verify the *real* High asset
+    // set while the software CI renderer is constructing it. This is never
+    // enabled by the shipped, production-default gameplay route. The normal
+    // two-second adaptive emergency recovery remains unchanged.
+    const graphicsComparisonQa = this.canvas.dataset.graphicsPathSelection === 'qa-explicit';
+    this.canvas.dataset.babylonBootstrapQaMode = refineryBootstrapping && graphicsComparisonQa
+      ? 'visual-proof-loading'
+      : 'production-recovery';
     const budget = this.renderBudget.sample(babylonBootstrapFrameSample(frameMs, mission.location === 'asteroid-refinery', [
       this.canvas.dataset.babylonEnvironmentState,
       this.canvas.dataset.babylonPlayerState,
       this.canvas.dataset.babylonEnemyCatalogState,
-    ], loadingElapsedMs), quality, qualityMode);
+    ], loadingElapsedMs, graphicsComparisonQa), quality, qualityMode);
     const runtimeProfile = runtimeScalabilityProfile(budget.tierName);
     this.canvas.dataset.runtimePools = [
       `damage:${Math.min(state.damageNumbers.length, runtimeProfile.poolRetention.damageNumbers)}/${runtimeProfile.poolRetention.damageNumbers}`,
