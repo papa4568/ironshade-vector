@@ -238,6 +238,57 @@ async function deployRefinery(idBase) {
   await waitFor('Number(document.querySelector("canvas")?.dataset.babylonFrames ?? "0") >= 2', 'P27-D5 Babylon rendered frames', 30_000);
 }
 
+function parseCacheMetrics(raw, label) {
+  const metrics = Object.fromEntries(String(raw).split('|').map(part => {
+    const index = part.indexOf(':');
+    return index > 0 ? [part.slice(0, index), Number(part.slice(index + 1))] : ['', NaN];
+  }));
+  for (const key of ['cached', 'active', 'native', 'loading']) {
+    if (!Number.isSafeInteger(metrics[key]) || metrics[key] < 0)
+      throw new Error(label + ' missing/invalid cache ownership metric: ' + JSON.stringify(metrics));
+  }
+  return metrics;
+}
+
+function assertZeroCacheTeardown(raw, label) {
+  const metrics = parseCacheMetrics(raw, label);
+  if (metrics.cached !== 0 || metrics.active !== 0 || metrics.native !== 0 || metrics.loading !== 0) {
+    throw new Error(label + ' retained native graphics resources: ' + JSON.stringify(metrics));
+  }
+  return metrics;
+}
+
+async function assertHeavyRoute(label) {
+  await waitFor('(() => { const data = document.querySelector("canvas")?.dataset; return data?.graphicsPathLoaded === "babylon"'
+    + ' && data?.babylonEnvironmentState === "ready" && data?.environmentVisual === "authored-refinery-babylon"'
+    + ' && data?.babylonPlayerState === "ready" && data?.babylonEnemyState === "ready"'
+    + ' && data?.babylonEnemyCatalogState === "ready" && data?.refineryWorldFallbackCount === "0"'
+    + ' && Number(data?.babylonEnvironmentAssets ?? 0) >= 11 && data?.babylonAssetCacheTelemetry?.includes("loading:0"); })()',
+    label + ' full authored-family cache route', 90_000);
+  const snapshot = await evaluate('(() => { const d = document.querySelector("canvas")?.dataset; return {'
+    + ' raw: d?.babylonAssetCacheTelemetry ?? "", environmentAssets: Number(d?.babylonEnvironmentAssets ?? 0),'
+    + ' enemyFallback: Number(d?.enemyFallbackCount ?? 0), refineryFallback: Number(d?.refineryWorldFallbackCount ?? 0),'
+    + ' operator: d?.operatorAsset ?? "", weapon: d?.weaponAsset ?? "",'
+    + ' localGlbRequests: performance.getEntriesByType("resource").filter(x => x.name.includes("/assets/models/") && x.name.endsWith(".glb")).length'
+    + ' }; })()');
+  const cache = parseCacheMetrics(snapshot?.raw, label);
+  for (const key of ['loads', 'failures', 'hits', 'late-disposed', 'bytes']) {
+    if (!Number.isSafeInteger(cache[key]) || cache[key] < 0)
+      throw new Error(label + ' invalid graphics cache metric ' + key + ': ' + JSON.stringify(cache));
+  }
+  if (cache.cached < 11 || cache.active < 1 || cache.loads < 11 || cache.hits < 1
+    || cache.failures !== 0 || cache.loading !== 0 || cache.bytes < 1
+    || snapshot.environmentAssets < 11 || snapshot.enemyFallback !== 0
+    || snapshot.refineryFallback !== 0 || !snapshot.operator || !snapshot.weapon
+    || snapshot.localGlbRequests < 11) {
+    throw new Error(label + ' heavy-art cache/fallback proof failed: ' + JSON.stringify({ cache, snapshot }));
+  }
+  console.log('ANDROID_P28F6_HEAVY_CACHE_PASS phase=' + phase + ' label=' + label
+    + ' loads=' + cache.loads + ' hits=' + cache.hits + ' cached=' + cache.cached
+    + ' owners=' + cache.active + ' models=' + snapshot.localGlbRequests + ' fallback=0');
+  return { cache, snapshot };
+}
+
 async function readBabylonState() {
   return await evaluate('(() => { const canvas = document.querySelector("canvas"); const root = document.querySelector(".game-root"); return { title: document.title, href: location.href, canvas: Boolean(canvas), selection: canvas?.dataset.graphicsPathSelection ?? "", requested: canvas?.dataset.graphicsPathRequested ?? "", graphicsLoaded: canvas?.dataset.graphicsPathLoaded ?? "", backendRequested: canvas?.dataset.babylonBackendRequested ?? "", backendLoaded: canvas?.dataset.babylonBackendLoaded ?? "", init: canvas?.dataset.babylonInit ?? "", scene: canvas?.dataset.babylonScene ?? "", disposed: canvas?.dataset.babylonDisposed ?? "", disposeCount: Number(canvas?.dataset.babylonDisposeCount ?? "0"), frames: Number(canvas?.dataset.babylonFrames ?? "0"), controls: [...document.querySelectorAll("[aria-label]")].some(element => element.getAttribute("aria-label") === "Touch combat controls"), shots: Number(root?.dataset.weaponShots ?? "0"), tutorialStep: Number(root?.dataset.tutorialStep ?? "0"), mission: document.querySelector(".mission-chip")?.textContent?.trim() ?? "" }; })()');
 }
@@ -332,6 +383,11 @@ async function proveRendererReentry() {
   if (!armed) throw new Error('P27-D5 could not arm renderer re-entry.');
   await waitFor('(() => { const canvas = document.querySelector("canvas"); return Boolean(canvas && canvas === globalThis.__ironshadeP27D5RestartCanvas && Number(canvas.dataset.babylonDisposeCount ?? "0") > ' + before + ' && canvas.dataset.babylonInit === "ready" && canvas.dataset.babylonScene === "active" && canvas.dataset.babylonDisposed === "false" && canvas.dataset.babylonBackendLoaded === "webgl2"); })()', 'P27-D5 Babylon renderer re-entry', 30_000);
   const after = Number(await evaluate('document.querySelector("canvas")?.dataset.babylonDisposeCount ?? "0"'));
+  const teardownRaw = await evaluate('document.querySelector("canvas")?.dataset.babylonAssetCacheTeardown ?? ""');
+  assertZeroCacheTeardown(teardownRaw, 'P28-F6 Android renderer restart');
+  const heavy = await assertHeavyRoute('renderer-restart');
+  console.log('ANDROID_P28F6_RENDERER_REENTRY_PASS cached=' + heavy.cache.cached
+    + ' loads=' + heavy.cache.loads + ' teardown=' + teardownRaw);
   console.log('ANDROID_P27D5_RENDERER_REENTRY_PASS backend=webgl2 disposeCount=' + before + '->' + after + ' surface=reused');
   return { before, after };
 }
@@ -340,13 +396,17 @@ async function proveMissionExitAndReentry() {
   const exited = await evaluate('(() => { const canvas = document.querySelector("canvas"); if (!canvas) return false; globalThis.__ironshadeP27D5ExitedCanvas = canvas; window.dispatchEvent(new Event("ironshade:p27d5-return-to-hub")); return true; })()');
   if (!exited) throw new Error('P27-D5 could not request mission exit.');
   await waitFor('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-primary-area") === "operations") && !document.querySelector("canvas")', 'P27-D5 return to Command Deck', 20_000);
-  const disposed = await evaluate('(() => { const canvas = globalThis.__ironshadeP27D5ExitedCanvas; return canvas ? { connected: canvas.isConnected, disposed: canvas.dataset.babylonDisposed ?? "", scene: canvas.dataset.babylonScene ?? "", disposeCount: Number(canvas.dataset.babylonDisposeCount ?? "0") } : null; })()');
+  const disposed = await evaluate('(() => { const canvas = globalThis.__ironshadeP27D5ExitedCanvas; return canvas ? { connected: canvas.isConnected, disposed: canvas.dataset.babylonDisposed ?? "", scene: canvas.dataset.babylonScene ?? "", disposeCount: Number(canvas.dataset.babylonDisposeCount ?? "0"), assetCacheTeardown: canvas.dataset.babylonAssetCacheTeardown ?? "" } : null; })()');
   if (!disposed || disposed.connected || disposed.disposed !== 'true' || disposed.scene !== 'disposed' || disposed.disposeCount < 1) {
     throw new Error('P27-D5 mission exit did not dispose Babylon renderer: ' + JSON.stringify(disposed));
   }
+  assertZeroCacheTeardown(disposed.assetCacheTeardown, 'P28-F6 Android mission exit');
   await deployRefinery(700);
+  const reenteredHeavy = await assertHeavyRoute('mission-reentry');
   const reentered = await readBabylonState();
   requireBabylonState(reentered, 'P27-D5 mission re-entry');
+  console.log('ANDROID_P28F6_MISSION_REENTRY_PASS teardown=' + disposed.assetCacheTeardown
+    + ' reloads=' + reenteredHeavy.cache.loads + ' hits=' + reenteredHeavy.cache.hits + ' fallback=0');
   console.log('ANDROID_P27D5_MISSION_REENTRY_PASS exit=disposed reentry=ready backend=webgl2 oldDisposeCount=' + disposed.disposeCount);
   return { disposed, reentered };
 }
@@ -395,6 +455,7 @@ if (phase === 'interaction' || phase === 'large-screen') {
   await deployRefinery(300);
   const initial = await readBabylonState();
   requireBabylonState(initial, 'P27-D5 initial Babylon', phase === 'interaction');
+  const initialHeavy = await assertHeavyRoute('cold-start');
   console.log('ANDROID_P27D5_BABYLON_WEBGL2_PASS requested=babylon backendRequested=webgl2 loaded=' + initial.backendLoaded + ' frames=' + initial.frames);
 
   if (phase === 'large-screen') {
@@ -425,6 +486,7 @@ if (phase === 'interaction' || phase === 'large-screen') {
     controller: 'gamepad-dodge',
     rendererReentry,
     missionLifecycle,
+    initialHeavy,
     finalState,
   };
   writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');
@@ -436,6 +498,7 @@ if (phase === 'interaction' || phase === 'large-screen') {
 await waitFor('(() => { const canvas = document.querySelector("canvas"); return Boolean(canvas && canvas.dataset.graphicsPathRequested === "babylon" && canvas.dataset.babylonBackendRequested === "webgl2" && canvas.dataset.babylonBackendLoaded === "webgl2" && canvas.dataset.babylonInit === "ready" && canvas.dataset.babylonScene === "active" && canvas.dataset.babylonDisposed === "false"); })()', 'P27-D5 resumed Babylon renderer', 45_000);
 const resumedBefore = await readBabylonState();
 requireBabylonState(resumedBefore, 'P27-D5 resumed Babylon');
+const resumedHeavy = await assertHeavyRoute('preserved-process-resume');
 await fireAfterResume(900);
 const resumedAfter = await readBabylonState();
 requireBabylonState(resumedAfter, 'P27-D5 resumed Babylon after touch');
@@ -452,6 +515,7 @@ const resumeReport = {
   inputAfterResume: 'real-touch-fire',
   before: resumedBefore,
   after: resumedAfter,
+  resumedHeavy,
 };
 writeFileSync(reportPath, JSON.stringify(resumeReport, null, 2) + '\n');
 console.log('ANDROID_P27D5_LIFECYCLE_RESUME_PASS process=preserved webView=preserved renderer=preserved backend=webgl2 input=real-touch-fire disposeCount=' + resumedAfter.disposeCount + ' report=' + reportPath);
