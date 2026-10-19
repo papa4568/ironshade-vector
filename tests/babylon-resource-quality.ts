@@ -5,7 +5,7 @@ import { selectGraphicsAssetSpec } from '../src/game/graphicsAssets';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 import { babylonEffectivePixelRatio } from '../src/game/babylonRenderResolution';
 import { babylonRenderPacingIntervalMs, shouldSubmitBabylonFrame } from '../src/game/babylonRenderPacing';
-import { babylonBootstrapFrameSample } from '../src/game/babylonRenderBootstrap';
+import { babylonBootstrapFrameSample, babylonBootstrapPacingIntervalMs } from '../src/game/babylonRenderBootstrap';
 import { runtimeAnimationStride } from '../src/game/runtimeScalability';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -47,6 +47,14 @@ assert(babylonBootstrapFrameSample(90, true, ['ready', 'ready', 'ready']) === 90
 assert(rendererSource.includes('babylonBootstrapFrameSample(frameMs, mission.location'),
   'P28-F5 runtime must sample asset bootstrap state only before selecting refinery authored LOD.');
 
+assert(babylonBootstrapPacingIntervalMs(true, ['loading', 'ready', 'ready']) === 120
+  && babylonBootstrapPacingIntervalMs(true, ['ready', 'loading', 'ready']) === 120
+  && babylonBootstrapPacingIntervalMs(true, [undefined, 'ready', 'loading']) === 120,
+  'P28-F5 pending authored refinery GLBs must yield GPU submission without changing High LOD selection.');
+assert(babylonBootstrapPacingIntervalMs(true, ['ready', 'ready', 'ready']) === 0
+  && babylonBootstrapPacingIntervalMs(true, ['error', 'ready', 'ready']) === 0
+  && babylonBootstrapPacingIntervalMs(false, ['loading', 'loading', 'loading']) === 0,
+  'P28-F5 must stop bootstrap pacing when ready/error and preserve other missions.');
 assert(babylonRenderPacingIntervalMs(high) === 0 && babylonRenderPacingIntervalMs(balanced) === 0,
   'P28-F5 healthy High and Balanced tiers must never pace GPU submissions.');
 assert(babylonRenderPacingIntervalMs(performance) === 0,
@@ -61,7 +69,7 @@ assert(shouldSubmitBabylonFrame(1000, 0, 120)
   'P28-F5 paced GPU submissions must retain a first frame and always render under healthy budgets.');
 assert(shouldSubmitBabylonFrame(100, 1000, 120),
   'P28-F5 suspended clock reset must not leave render submission stopped.');
-assert(rendererSource.includes('const pacingMs = refineryScenario ? babylonRenderPacingIntervalMs(budget) : 0;')
+assert(rendererSource.includes('Math.max(babylonRenderPacingIntervalMs(budget), babylonBootstrapPacingIntervalMs(true, [')
   && rendererSource.includes('this.syncCamera(state, width / Math.max(1, height), cameraFeedback);')
   && rendererSource.includes('this.scene.render();'),
   'P28-F5 pacing must be restricted to refinery rendering and preserve scene submission.');
