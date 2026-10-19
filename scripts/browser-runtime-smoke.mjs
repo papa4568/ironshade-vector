@@ -189,19 +189,43 @@ async function snapshot() {
     text: (document.body?.innerText ?? '').slice(0, 1600),
     buttons: [...document.querySelectorAll('button')].map(button => button.getAttribute('aria-label') || button.textContent?.trim() || '').slice(0, 60),
     canvases: document.querySelectorAll('canvas').length,
+    // Error snapshot only: no mutation of graphics state or acceptance.
+    babylon: (() => {
+      const data = document.querySelector('canvas')?.dataset;
+      if (!data) return null;
+      return {
+        init: data.babylonInit, frames: data.babylonFrames,
+        environment: data.babylonEnvironmentState,
+        environmentVisual: data.environmentVisual,
+        operator: data.babylonPlayerState, enemyCatalog: data.babylonEnemyCatalogState,
+        enemies: data.babylonEnemyState, world: data.babylonWorldState,
+        renderTier: data.renderTier, frameMs: data.renderFrameMs,
+        rawFrameMs: data.renderRawFrameMs,
+        loadError: data.babylonEnvironmentError,
+        assetRuntime: data.babylonEnvironmentRuntime,
+      };
+    })(),
   }))()`);
 }
 
 async function waitFor(predicateExpression, label, timeout = 45_000) {
   const deadline = Date.now() + timeout;
+  let transientCdpTimeouts = 0;
   while (Date.now() < deadline) {
-    if (await evaluate(predicateExpression)) return;
+    try {
+      if (await evaluate(predicateExpression)) return;
+    } catch (error) {
+      // On software-rendered CI, retry stalled DevTools only for read-only
+      // readiness predicates; never replay mutations or input actions.
+      if (!String(error?.message ?? error).includes('Timed out waiting for CDP Runtime.evaluate')) throw error;
+      transientCdpTimeouts += 1;
+    }
+    if (Date.now() >= deadline) break;
     await sleep(250);
   }
   const state = await snapshot().catch(error => ({ snapshotError: String(error) }));
-  throw new Error(`Timed out waiting for ${label}; browser=${JSON.stringify(state)}`);
+  throw new Error('Timed out waiting for ' + label + '; transientCdpTimeouts=' + transientCdpTimeouts + '; browser=' + JSON.stringify(state));
 }
-
 async function captureScreenshot(path = screenshotPath) {
   const result = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   if (!result?.data) throw new Error('Browser screenshot payload was empty.');
