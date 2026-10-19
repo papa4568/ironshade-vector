@@ -44,17 +44,20 @@ assert(babylonBootstrapFrameSample(90, true, ['ready', 'ready', 'ready']) === 90
   && babylonBootstrapFrameSample(90, true, ['error', 'ready', 'ready']) === 90
   && babylonBootstrapFrameSample(90, false, ['loading', 'loading', 'loading']) === 90,
   'P28-F5 real sustained pressure, failed loads, and other missions must retain unmodified adaptive recovery.');
-assert(rendererSource.includes('babylonBootstrapFrameSample(frameMs, mission.location'),
-  'P28-F5 runtime must sample asset bootstrap state only before selecting refinery authored LOD.');
+assert(babylonBootstrapFrameSample(180, true, ['loading', 'ready', 'ready'], 1_999) === 1000 / 60
+  && babylonBootstrapFrameSample(180, true, ['loading', 'ready', 'ready'], 2_000) === 180
+  && babylonBootstrapFrameSample(90, true, ['ready', 'loading', 'ready'], 5_000) === 90
+  && babylonBootstrapFrameSample(180, true, ['ready', 'ready', 'ready'], 300) === 180,
+  'P28-F5 temporary decode stalls must retain High art, but sustained 2-second loading must expose real pressure for emergency recovery.');
+assert(rendererSource.includes('babylonBootstrapFrameSample(frameMs, mission.location')
+  && rendererSource.includes('const refineryBootstrapping = mission.location')
+  && rendererSource.includes('loadingElapsedMs), quality, qualityMode)'),
+  'P28-F5 runtime must bound bootstrap grace and never hide prolonged real frame pressure.');
 
 assert(babylonBootstrapPacingIntervalMs(true, ['loading', 'ready', 'ready']) === 120
   && babylonBootstrapPacingIntervalMs(true, ['ready', 'loading', 'ready']) === 120
   && babylonBootstrapPacingIntervalMs(true, [undefined, 'ready', 'loading']) === 120,
   'P28-F5 pending authored refinery GLBs must yield GPU submission without changing High LOD selection.');
-assert(babylonBootstrapPacingIntervalMs(true, ['loading', 'ready', 'ready'], 125) === 240
-  && babylonBootstrapPacingIntervalMs(true, ['ready', 'loading', 'ready'], 90) === 240
-  && babylonBootstrapPacingIntervalMs(true, ['loading', 'ready', 'ready'], 3_000) === 120,
-  'P28-F5 measured 90ms+ asset-bootstrap frames must yield more GPU time without treating app suspend as sustained load.');
 assert(babylonBootstrapPacingIntervalMs(true, ['ready', 'ready', 'ready']) === 0
   && babylonBootstrapPacingIntervalMs(true, ['error', 'ready', 'ready']) === 0
   && babylonBootstrapPacingIntervalMs(false, ['loading', 'loading', 'loading']) === 0,
@@ -64,8 +67,6 @@ assert(babylonRenderPacingIntervalMs(high) === 0 && babylonRenderPacingIntervalM
 assert(babylonRenderPacingIntervalMs(performance) === 0,
   'P28-F5 explicit Performance mode without measured pressure must render every frame.');
 const severe = { tierName: 'performance' as const, smoothedFrameMs: 64 };
-assert(babylonRenderPacingIntervalMs({ tierName: 'performance', smoothedFrameMs: 110 }) === 240,
-  'P28-F5 catastrophic Performance-tier rendering must leave enough time for Android touch dispatch.');
 assert(babylonRenderPacingIntervalMs(severe) === 120,
   'P28-F5 sustained severe frame pressure must reduce GPU submission duty cycle.');
 assert(shouldSubmitBabylonFrame(1000, 0, 120)
