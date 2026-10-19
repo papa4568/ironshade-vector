@@ -2092,7 +2092,9 @@ async function p27A2BabylonBackendAudit() {
     await waitFor(
       `Number(document.querySelector('canvas')?.dataset.babylonFrames ?? 0) > ${frameAtProbe}`,
       'P27-B1 Babylon camera retarget frame',
-      5_000,
+      // Six actual rendered frames are still mandatory; the enlarged authored
+      // refinery needs a bounded SwiftShader compilation/frame budget.
+      requestedGraphicsPath === 'babylon' ? 25_000 : 5_000,
     );
   }
   const parseDirection = value => value.split(',').map(Number);
