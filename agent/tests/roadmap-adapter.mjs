@@ -89,10 +89,11 @@ if (secondTask) {
   assert.equal(synchronized.overrides[secondTask.id]?.dependsOn, undefined);
 }
 
-const unknownRuleMetadata = clone(metadata);
 const unknownRuleTasks = clone(roadmapTasks);
 unknownRuleTasks[0].id = 'P29-X1';
-unknownRuleMetadata.roadmapIds[0] = 'P29-X1';
+// Keep metadata internally valid while substituting a task with no matching
+// rule; existing overrides may refer to the original first task.
+const unknownRuleMetadata = synchronizeRoadmapMetadata(metadata, unknownRuleTasks);
 assert.throws(() => materializeRoadmapGraph(unknownRuleTasks, unknownRuleMetadata), /has no matching roadmap metadata rule/);
 
 console.log(`ROADMAP_ADAPTER_TEST_PASS tasks=${graph.tasks.length} first=${graph.tasks[0].id} last=${graph.tasks.at(-1).id} profiles=${Object.keys(metadata.proofProfiles).length}`);
