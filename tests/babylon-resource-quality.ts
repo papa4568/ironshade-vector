@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { OPERATOR_ASSET_FAMILY, SHOWCASE_REFINERY_MODULE_FAMILY } from '../src/game/graphicsAssetManifest';
 import { selectGraphicsAssetSpec } from '../src/game/graphicsAssets';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
+import { babylonEffectivePixelRatio } from '../src/game/babylonRenderResolution';
 import { runtimeAnimationStride } from '../src/game/runtimeScalability';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -25,6 +26,13 @@ const performance = new AdaptiveRenderBudget(false).sample(16.7, 1, 'performance
 assert(phoneDefault.tierName === 'high', 'P28-A0 coarse/mobile input must start at the flagship High baseline before measured frame pressure');
 assert(high.tierName === 'high' && balanced.tierName === 'balanced' && performance.tierName === 'performance', 'P27-D3 must retain deterministic High/Balanced/Performance tiers through flagship selection, measured pressure, and explicit Performance mode');
 assert(high.pixelRatioScale > balanced.pixelRatioScale && balanced.pixelRatioScale > performance.pixelRatioScale, 'Babylon hardware scaling budget must decrease each tier');
+assert(babylonEffectivePixelRatio(1, 1, high.pixelRatioScale) === 1, 'P28-F5 healthy High quality must retain full 1x raster.');
+assert(Math.abs(babylonEffectivePixelRatio(1, 1, balanced.pixelRatioScale) - 0.84) < 1e-8, 'P28-F5 measured Balanced pressure must reduce actual 1x raster.');
+assert(Math.abs(babylonEffectivePixelRatio(1, 1, performance.pixelRatioScale) - 0.76) < 1e-8, 'P28-F5 measured Performance pressure must reduce actual 1x raster.');
+assert(Math.abs(babylonEffectivePixelRatio(1, 3, high.pixelRatioScale) - 1.8) < 1e-8, 'P28-F5 healthy High quality must preserve 3x flagship raster ceiling.');
+assert(Math.abs(babylonEffectivePixelRatio(1, 3, performance.pixelRatioScale) - 1.224) < 1e-8, 'P28-F5 Performance must retain adaptive scale on high-density devices.');
+assert(Number.isFinite(babylonEffectivePixelRatio(1, Number.NaN, performance.pixelRatioScale)), 'P28-F5 invalid device ratio must fail safe without breaking rendering.');
+
 assert(high.detailScale > balanced.detailScale && balanced.detailScale > performance.detailScale, 'Babylon authored detail budget must decrease each tier');
 assert(high.assetCacheCompressedByteBudget > balanced.assetCacheCompressedByteBudget && balanced.assetCacheCompressedByteBudget > performance.assetCacheCompressedByteBudget, 'Babylon cache byte budget must decrease each tier');
 assert(high.assetCacheEntryBudget === 32 && balanced.assetCacheEntryBudget === 24 && performance.assetCacheEntryBudget === 20, 'Babylon cached resource count budget must be explicit per tier');
