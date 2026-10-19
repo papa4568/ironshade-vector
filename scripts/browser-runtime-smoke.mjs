@@ -20,12 +20,13 @@ const navigationUrl = (() => {
   return url.toString();
 })();
 const timeoutMs = Number(process.env.BROWSER_E2E_TIMEOUT_MS ?? 75_000);
-// Flagship SwiftShader captures can block Chrome CDP while the first heavy
-// Babylon frame compiles. This changes only the protocol response budget, not
-// any readiness or screenshot assertion. Normal browser E2E stays at 20s.
+// On the heavy Babylon comparison route a SwiftShader GLB decode/shader frame
+// may monopolize Chrome CDP beyond the legacy 20s response budget, despite
+// readiness and gameplay succeeding. Bound that *protocol* wait to 45s for
+// Babylon only; retain every route assertion and 20s non-Babylon default.
 const cdpRequestTimeoutMs = process.env.BROWSER_E2E_CDP_TIMEOUT_MS
   ? Math.max(20_000, Math.min(45_000, Number(process.env.BROWSER_E2E_CDP_TIMEOUT_MS)))
-  : 20_000;
+  : requestedGraphicsPath === 'babylon' ? 45_000 : 20_000;
 const startedAt = Date.now();
 const viewportMode = process.env.BROWSER_E2E_VIEWPORT ?? 'desktop';
 const targetLocation = process.env.BROWSER_E2E_LOCATION ?? 'asteroid-refinery';
