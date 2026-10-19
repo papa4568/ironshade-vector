@@ -13,3 +13,13 @@ export function babylonBootstrapFrameSample(
     ? Math.min(actualFrameMs, TARGET_FRAME_MS)
     : actualFrameMs;
 }
+
+// Keep the first high-detail refinery loads responsive on a shared software
+// renderer. LOD readiness and all gameplay simulation still advance each RAF;
+// only redundant GPU submissions are paced while authored assets are loading.
+export function babylonBootstrapPacingIntervalMs(
+  refinery: boolean,
+  readiness: readonly (string | undefined)[],
+): number {
+  return refinery && readiness.some(state => state === 'loading') ? 120 : 0;
+}
