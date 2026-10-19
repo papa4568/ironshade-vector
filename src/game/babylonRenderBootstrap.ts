@@ -7,7 +7,7 @@ import { TARGET_FRAME_MS } from './renderQuality';
 export function babylonBootstrapFrameSample(
   actualFrameMs: number,
   refinery: boolean,
-  readiness: readonly string[],
+  readiness: readonly (string | undefined)[],
 ): number {
   return refinery && readiness.some(state => state === 'loading')
     ? Math.min(actualFrameMs, TARGET_FRAME_MS)
