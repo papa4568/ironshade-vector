@@ -2278,14 +2278,20 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
             instance.rootNodes.forEach(root => {
               root.parent = placementRoot;
             });
-            // Vary only the authored floor presentation root, without traversing
-            // instanced mesh hierarchies. The simulation/collision remain authoritative.
+            // Vary only instanced cosmetic seam cards across repeated floor
+            // panels. The structural floor, anchors and collision stay untouched.
             if (key === 'floor') {
               const variant = refineryF5SeamVariation(task.index);
-              placementRoot.position.x += variant.x;
-              placementRoot.position.z += variant.z;
-              placementRoot.rotation.y += variant.yaw;
-              placementRoot.scaling.x *= variant.scale;
+              for (const root of instance.rootNodes) {
+                for (const mesh of root.getChildMeshes(false)) {
+                  if (!mesh.name.includes('p28-b6-refinery-route-detail-atlas')) continue;
+                  mesh.position.x += variant.x;
+                  mesh.position.z += variant.z;
+                  mesh.rotation.y += variant.yaw;
+                  mesh.scaling.x *= variant.scale;
+                  mesh.isPickable = false;
+                }
+              }
             }
             if (key in REFINERY_DRESSING_ASSET_FAMILIES) this.applyRefineryDressingSurfaces(instance);
             else this.applyRefineryPremiumSurfaces(key as RefineryFamilyKey, instance, premiumSurfaceUsage);
