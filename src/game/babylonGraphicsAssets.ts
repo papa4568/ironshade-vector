@@ -273,7 +273,10 @@ export class BabylonGraphicsAssetRuntime {
     this.sourceLoadAttempts += 1;
     let entry: BabylonGraphicsAssetCacheEntry;
     const promise = ensureBabylonGltfLoader()
-      .then(() => this.loadContainer(spec, this.scene))
+      .then(() => {
+        this.assertActive();
+        return this.loadContainer(spec, this.scene);
+      })
       .then(container => {
         entry.loading = false;
         // A load may finish after a renderer/scene has already been destroyed.
