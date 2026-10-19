@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 import { OPERATOR_ASSET_FAMILY, SHOWCASE_REFINERY_MODULE_FAMILY } from '../src/game/graphicsAssetManifest';
 import { selectGraphicsAssetSpec } from '../src/game/graphicsAssets';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
+import { babylonEffectivePixelRatio } from '../src/game/babylonRenderResolution';
+import { babylonRenderPacingIntervalMs, shouldSubmitBabylonFrame } from '../src/game/babylonRenderPacing';
+import { babylonBootstrapFrameSample, babylonBootstrapPacingIntervalMs } from '../src/game/babylonRenderBootstrap';
 import { runtimeAnimationStride } from '../src/game/runtimeScalability';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -25,6 +28,76 @@ const performance = new AdaptiveRenderBudget(false).sample(16.7, 1, 'performance
 assert(phoneDefault.tierName === 'high', 'P28-A0 coarse/mobile input must start at the flagship High baseline before measured frame pressure');
 assert(high.tierName === 'high' && balanced.tierName === 'balanced' && performance.tierName === 'performance', 'P27-D3 must retain deterministic High/Balanced/Performance tiers through flagship selection, measured pressure, and explicit Performance mode');
 assert(high.pixelRatioScale > balanced.pixelRatioScale && balanced.pixelRatioScale > performance.pixelRatioScale, 'Babylon hardware scaling budget must decrease each tier');
+assert(babylonEffectivePixelRatio(1, 1, high.pixelRatioScale) === 1, 'P28-F5 healthy High quality must retain full 1x raster.');
+assert(Math.abs(babylonEffectivePixelRatio(1, 1, balanced.pixelRatioScale) - 0.84) < 1e-8, 'P28-F5 measured Balanced pressure must reduce actual 1x raster.');
+assert(Math.abs(babylonEffectivePixelRatio(1, 1, performance.pixelRatioScale) - 0.76) < 1e-8, 'P28-F5 measured Performance pressure must reduce actual 1x raster.');
+assert(Math.abs(babylonEffectivePixelRatio(1, 3, high.pixelRatioScale) - 1.8) < 1e-8, 'P28-F5 healthy High quality must preserve 3x flagship raster ceiling.');
+assert(Math.abs(babylonEffectivePixelRatio(1, 3, performance.pixelRatioScale) - 1.224) < 1e-8, 'P28-F5 Performance must retain adaptive scale on high-density devices.');
+assert(Number.isFinite(babylonEffectivePixelRatio(1, Number.NaN, performance.pixelRatioScale)), 'P28-F5 invalid device ratio must fail safe without breaking rendering.');
+
+assert(babylonBootstrapFrameSample(180, true, ['loading', 'ready', 'ready']) === 1000 / 60,
+  'P28-F5 first refinery shell must not downgrade quality because of temporary decode stalls.');
+assert(babylonBootstrapFrameSample(90, true, ['ready', 'loading', 'ready']) === 1000 / 60
+  && babylonBootstrapFrameSample(90, true, ['ready', 'ready', 'loading']) === 1000 / 60,
+  'P28-F5 operator and enemy catalog startup must retain initial High-detail asset selection.');
+assert(babylonBootstrapFrameSample(90, true, ['ready', 'ready', 'ready']) === 90
+  && babylonBootstrapFrameSample(90, true, ['error', 'ready', 'ready']) === 90
+  && babylonBootstrapFrameSample(90, false, ['loading', 'loading', 'loading']) === 90,
+  'P28-F5 real sustained pressure, failed loads, and other missions must retain unmodified adaptive recovery.');
+assert(babylonBootstrapFrameSample(180, true, ['loading', 'ready', 'ready'], 1_999) === 1000 / 60
+  && babylonBootstrapFrameSample(180, true, ['loading', 'ready', 'ready'], 2_000) === 180
+  && babylonBootstrapFrameSample(90, true, ['ready', 'loading', 'ready'], 5_000) === 90
+  && babylonBootstrapFrameSample(180, true, ['ready', 'ready', 'ready'], 300) === 180,
+  'P28-F5 temporary decode stalls must retain High art, but sustained 2-second loading must expose real pressure for emergency recovery.');
+assert(babylonBootstrapFrameSample(180, true, ['loading', 'ready', 'ready'], 60_000, true) === 1000 / 60
+  && babylonBootstrapFrameSample(90, true, ['ready', 'loading', 'ready'], 60_000, true) === 1000 / 60
+  && babylonBootstrapFrameSample(180, true, ['ready', 'ready', 'ready'], 60_000, true) === 180
+  && babylonBootstrapFrameSample(90, true, ['error', 'ready', 'ready'], 60_000, true) === 90
+  && babylonBootstrapFrameSample(180, false, ['loading', 'loading', 'loading'], 60_000, true) === 180,
+  'P28-F5 explicit graphics-comparison QA may retain authored High only during pending refinery loads, never after readiness or on other routes.');
+assert(rendererSource.includes('babylonBootstrapFrameSample(frameMs, mission.location')
+  && rendererSource.includes('const refineryBootstrapping = mission.location')
+  && rendererSource.includes("this.canvas.dataset.graphicsPathSelection === 'qa-explicit'")
+  && rendererSource.includes("this.canvas.dataset.babylonBootstrapQaMode = refineryBootstrapping && graphicsComparisonQa")
+  && rendererSource.includes('loadingElapsedMs, graphicsComparisonQa), quality, qualityMode)'),
+  'P28-F5 visual QA must identify its limited bootstrap exception; production still bounds grace and samples sustained real pressure.');
+
+assert(babylonBootstrapPacingIntervalMs(true, ['loading', 'ready', 'ready']) === 120
+  && babylonBootstrapPacingIntervalMs(true, ['ready', 'loading', 'ready']) === 120
+  && babylonBootstrapPacingIntervalMs(true, [undefined, 'ready', 'loading']) === 120,
+  'P28-F5 pending authored refinery GLBs must yield GPU submission without changing High LOD selection.');
+assert(babylonBootstrapPacingIntervalMs(true, ['ready', 'ready', 'ready']) === 0
+  && babylonBootstrapPacingIntervalMs(true, ['error', 'ready', 'ready']) === 0
+  && babylonBootstrapPacingIntervalMs(false, ['loading', 'loading', 'loading']) === 0,
+  'P28-F5 must stop bootstrap pacing when ready/error and preserve other missions.');
+assert(babylonRenderPacingIntervalMs(high) === 0 && babylonRenderPacingIntervalMs(balanced) === 0,
+  'P28-F5 healthy High and Balanced tiers must never pace GPU submissions.');
+assert(babylonRenderPacingIntervalMs(performance) === 0,
+  'P28-F5 explicit Performance mode without measured pressure must render every frame.');
+const severe = { tierName: 'performance' as const, smoothedFrameMs: 64 };
+assert(babylonRenderPacingIntervalMs(severe) === 120,
+  'P28-F5 sustained severe frame pressure must reduce GPU submission duty cycle.');
+assert(shouldSubmitBabylonFrame(1000, 0, 120)
+  && !shouldSubmitBabylonFrame(1090, 1000, 120)
+  && shouldSubmitBabylonFrame(1120, 1000, 120)
+  && shouldSubmitBabylonFrame(1010, 1000, 0),
+  'P28-F5 paced GPU submissions must retain a first frame and always render under healthy budgets.');
+assert(shouldSubmitBabylonFrame(100, 1000, 120),
+  'P28-F5 suspended clock reset must not leave render submission stopped.');
+// A 220 ms software-rendered frame must still leave 120 ms of idle time for
+// input/CDP. Measuring from the submission timestamp would wrongly submit at
+// 1300, before the 1340 completion-based deadline.
+assert(!shouldSubmitBabylonFrame(1300, 1220, 120)
+  && shouldSubmitBabylonFrame(1340, 1220, 120),
+  'P28-F5 overloaded frames must retain post-completion idle time for browser input.');
+assert(rendererSource.includes('Math.max(babylonRenderPacingIntervalMs(budget), babylonBootstrapPacingIntervalMs(true, [')
+  && rendererSource.includes('this.syncCamera(state, width / Math.max(1, height), cameraFeedback);')
+  && rendererSource.includes('this.scene.render();')
+  && rendererSource.includes('this.lastSceneRenderAt = performance.now();')
+  && !rendererSource.includes('this.lastSceneRenderAt = now;')
+  && rendererSource.indexOf('this.lastSceneRenderAt = performance.now();') > rendererSource.indexOf('this.scene.render();'),
+  'P28-F5 pacing must be restricted to refinery rendering and anchored after expensive scene submissions.');
+
 assert(high.detailScale > balanced.detailScale && balanced.detailScale > performance.detailScale, 'Babylon authored detail budget must decrease each tier');
 assert(high.assetCacheCompressedByteBudget > balanced.assetCacheCompressedByteBudget && balanced.assetCacheCompressedByteBudget > performance.assetCacheCompressedByteBudget, 'Babylon cache byte budget must decrease each tier');
 assert(high.assetCacheEntryBudget === 32 && balanced.assetCacheEntryBudget === 24 && performance.assetCacheEntryBudget === 20, 'Babylon cached resource count budget must be explicit per tier');

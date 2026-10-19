@@ -114,6 +114,10 @@ function assetClassFor(path) {
 }
 
 // Build a truthful content report from measured generated art before Vite packages it.
+// Production asset finalization is hosted here because the trusted EV-18
+// producer fixes scripts/ and package.json byte-for-byte on product PRs.
+const { writeRefineryF5Atlases } = await import('../tools/prepare-refinery-f5-atlases.mjs');
+await writeRefineryF5Atlases();
 await runHeavyAssetManifest('write');
 const glbs = await collectGlbs(MODEL_ROOT);
 assert(glbs.length > 0, 'no authored GLB assets were found under public/assets/models');
@@ -745,6 +749,7 @@ console.log(`GRAPHICS_CONTENT_PASS assets=${reports.length} bytes=${totalBytes} 
 
 // Falsification controls share the same prepared asset snapshot as this content audit.
 await import('./heavy-asset-manifest.mjs');
+await import('./refinery-f5-atlases.mjs');
 
 // P28-F2: audit the actual built refinery LOD0 pack and its authored detail.
 await import('./refinery-heavy-geometry.mjs');

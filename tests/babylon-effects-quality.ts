@@ -13,7 +13,25 @@ import {
 } from '../src/game/babylonAmbientParticles';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 import { getWorldSize } from '../src/game/sim';
+import { REFINERY_F5_SEAM_VARIANTS, refineryF5SeamVariation } from '../src/game/refineryDecalVariation';
 
+const seamPlacements = Array.from({ length: 20 }, (_, index) => refineryF5SeamVariation(index));
+assert.equal(REFINERY_F5_SEAM_VARIANTS.length, 6, 'P28-F5 floor tiling mitigation must have six independently placed cosmetic seam variants.');
+assert.equal(new Set(seamPlacements.map(v => `${v.x}/${v.z}/${v.yaw}/${v.scale}`)).size, 6,
+  'P28-F5 twenty repeated panels must visibly vary the decorative seam location, rotation and width.');
+assert(seamPlacements.every(v => Math.abs(v.x) <= 0.16 && Math.abs(v.z) <= 0.12
+  && Math.abs(v.yaw) <= 0.06 && v.scale >= 0.94 && v.scale <= 1.04),
+  'P28-F5 cosmetic variation must stay within the authored panel and not drift into gameplay cues.');
+const f5RendererSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
+assert(f5RendererSource.includes("if (key === 'floor')") && f5RendererSource.includes('refineryF5SeamVariation(task.index)')
+  && f5RendererSource.includes("mesh.name.includes('p28-b6-refinery-route-detail-atlas')")
+  && f5RendererSource.includes('mesh.position.x += variant.x;')
+  && f5RendererSource.includes('mesh.position.z += variant.z;')
+  && f5RendererSource.includes('mesh.rotation.y += variant.yaw;')
+  && f5RendererSource.includes('mesh.scaling.x *= variant.scale;')
+  && f5RendererSource.includes('mesh.isPickable = false;'),
+  'P28-F5 must vary only non-pickable decorative seam meshes and preserve floor placement geometry.');
+console.log('P28_F5_SEAM_VARIATION_PASS placements=20 variants=6 offsets=bounded gameplayGeometry=unchanged');
 const high = new AdaptiveRenderBudget(false).sample(16.7, 1, 'flagship');
 const phoneDefault = new AdaptiveRenderBudget(true).sample(16.7, 1, 'adaptive');
 const balancedBudget = new AdaptiveRenderBudget(true);
@@ -129,6 +147,11 @@ for (const kind of refineryKinds) {
     assert.equal(canvas.dataset.babylonAmbientParticles, 'pooled:dust+sparks+vapor+debris');
     assert.equal(canvas.dataset.babylonAmbientParticleCounts, 'dust:128/128|sparks:48/48|vapor:24/24|debris:40/40');
     assert.equal(canvas.dataset.babylonAmbientParticlePoolSize, '240');
+    assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 1,
+      'P28-F5 must bind one shared local KTX2 texture before the first visible refinery frame.');
+    ambient.sync(high, 'asteroid-refinery');
+    assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 1,
+      'P28-F5 repeated sync must reuse the same texture, never decode again.');
     assert.equal(canvas.dataset.babylonAmbientParticleDrawFamilies, '4');
     assert.equal(canvas.dataset.babylonAmbientGameplayCuePolicy, 'independent:1.00');
     assert.equal(canvas.dataset.babylonAmbientParticleSimulationOwnership, 'read-only-presentation');
@@ -190,6 +213,8 @@ for (const kind of refineryKinds) {
     ambient.release('scenario-exit');
     assert.equal(canvas.dataset.babylonAmbientParticleState, 'released');
     assert.equal(canvas.dataset.babylonAmbientParticlePoolSize, '0');
+    assert.equal(scene.textures.filter(texture => texture.name.includes('refinery-local-effects-f5.ktx2')).length, 0,
+      'P28-F5 refinery exit must release the shared atlas exactly once.');
     assert.equal(scene.meshes.some(mesh => mesh.name.startsWith('p28-e1-')), false, 'Scenario release must reclaim every ambient source and instance mesh.');
     assert.equal(scene.materials.some(material => material.name.startsWith('p28-e1-')), false, 'Scenario release must reclaim every ambient material.');
 

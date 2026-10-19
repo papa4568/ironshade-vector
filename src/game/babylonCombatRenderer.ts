@@ -64,6 +64,10 @@ import { BabylonEnemyTelegraphs } from './babylonEnemyTelegraphs';
 import { BabylonEnemyLifecycleVisuals } from './babylonEnemyLifecycleVisuals';
 import { BabylonProtocolStatusVisuals } from './babylonProtocolStatusVisuals';
 import { BabylonRefineryWorldPresentation } from './babylonWorldPresentation';
+import { refineryF5SeamVariation } from './refineryDecalVariation';
+import { babylonEffectivePixelRatio } from './babylonRenderResolution';
+import { babylonRenderPacingIntervalMs, shouldSubmitBabylonFrame } from './babylonRenderPacing';
+import { babylonBootstrapFrameSample, babylonBootstrapPacingIntervalMs } from './babylonRenderBootstrap';
 import { BabylonWeaponVfx } from './babylonWeaponVfx';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { runtimeAnimationStride, runtimeScalabilityProfile } from './runtimeScalability';
@@ -504,6 +508,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private height = 1;
   private pixelRatio = 1;
   private lastFrameAt = 0;
+  private refineryBootstrapStartedAt = 0;
+  private lastSceneRenderAt = 0;
   private graphicsBudgetSignature = '';
 
   private constructor(
@@ -679,7 +685,27 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const now = performance.now();
     const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
     this.lastFrameAt = now;
-    const budget = this.renderBudget.sample(frameMs, quality, qualityMode);
+    const refineryBootstrapping = mission.location === 'asteroid-refinery' && [
+      this.canvas.dataset.babylonEnvironmentState,
+      this.canvas.dataset.babylonPlayerState,
+      this.canvas.dataset.babylonEnemyCatalogState,
+    ].some(readiness => readiness === 'loading');
+    if (!refineryBootstrapping) this.refineryBootstrapStartedAt = 0;
+    else if (this.refineryBootstrapStartedAt === 0) this.refineryBootstrapStartedAt = now;
+    const loadingElapsedMs = refineryBootstrapping ? Math.max(0, now - this.refineryBootstrapStartedAt) : 0;
+    // Explicit graphics-comparison captures must verify the *real* High asset
+    // set while the software CI renderer is constructing it. This is never
+    // enabled by the shipped, production-default gameplay route. The normal
+    // two-second adaptive emergency recovery remains unchanged.
+    const graphicsComparisonQa = this.canvas.dataset.graphicsPathSelection === 'qa-explicit';
+    this.canvas.dataset.babylonBootstrapQaMode = refineryBootstrapping && graphicsComparisonQa
+      ? 'visual-proof-loading'
+      : 'production-recovery';
+    const budget = this.renderBudget.sample(babylonBootstrapFrameSample(frameMs, mission.location === 'asteroid-refinery', [
+      this.canvas.dataset.babylonEnvironmentState,
+      this.canvas.dataset.babylonPlayerState,
+      this.canvas.dataset.babylonEnemyCatalogState,
+    ], loadingElapsedMs, graphicsComparisonQa), quality, qualityMode);
     const runtimeProfile = runtimeScalabilityProfile(budget.tierName);
     this.canvas.dataset.runtimePools = [
       `damage:${Math.min(state.damageNumbers.length, runtimeProfile.poolRetention.damageNumbers)}/${runtimeProfile.poolRetention.damageNumbers}`,
@@ -899,10 +925,29 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.hecateCapstonePresentation.release('scenario-switch');
     }
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
+    // Under sustained severe refinery pressure, simulation and input still
+    // advance every RAF while Babylon GPU submissions are paced. Healthy High
+    // and Balanced frames render as before, as do all other mission locations.
+    const pacingMs = refineryScenario
+      ? Math.max(babylonRenderPacingIntervalMs(budget), babylonBootstrapPacingIntervalMs(true, [
+        this.canvas.dataset.babylonEnvironmentState,
+        this.canvas.dataset.babylonPlayerState,
+        this.canvas.dataset.babylonEnemyCatalogState,
+      ]))
+      : 0;
+    if (!shouldSubmitBabylonFrame(now, this.lastSceneRenderAt, pacingMs)) {
+      this.canvas.dataset.babylonRenderPacing = `paced:${pacingMs}`;
+      return;
+    }
+    this.canvas.dataset.babylonRenderPacing = pacingMs ? `paced:${pacingMs}` : 'full';
     this.scene.render();
     this.frames += 1;
     this.canvas.dataset.babylonFrames = String(this.frames);
     this.updateSceneTelemetry();
+    // Anchor the idle interval to completion, not submission. On software
+    // renderers a single scene.render() can exceed the entire pacing window;
+    // a start timestamp would immediately submit again and starve input/CDP.
+    this.lastSceneRenderAt = performance.now();
   }
 
   performanceStats(): CombatGraphicsPerformanceStats {
@@ -2277,6 +2322,21 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
             instance.rootNodes.forEach(root => {
               root.parent = placementRoot;
             });
+            // Vary only instanced cosmetic seam cards across repeated floor
+            // panels. The structural floor, anchors and collision stay untouched.
+            if (key === 'floor') {
+              const variant = refineryF5SeamVariation(task.index);
+              for (const root of instance.rootNodes) {
+                for (const mesh of root.getChildMeshes(false)) {
+                  if (!mesh.name.includes('p28-b6-refinery-route-detail-atlas')) continue;
+                  mesh.position.x += variant.x;
+                  mesh.position.z += variant.z;
+                  mesh.rotation.y += variant.yaw;
+                  mesh.scaling.x *= variant.scale;
+                  mesh.isPickable = false;
+                }
+              }
+            }
             if (key in REFINERY_DRESSING_ASSET_FAMILIES) this.applyRefineryDressingSurfaces(instance);
             else this.applyRefineryPremiumSurfaces(key as RefineryFamilyKey, instance, premiumSurfaceUsage);
             if (isRefineryReflectionFamily(key)) {
@@ -2290,6 +2350,13 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         } catch (error) {
           unmountedBatchInstances.forEach(instance => instance.release());
           throw error;
+        }
+        // Even a cached GLB instantiates through already-resolved promises.
+        // Yield one browser task between batches so heavy refinery artwork
+        // cannot starve input, CDP checks or the next animation frame.
+        // The disabled shell remains atomic until every batch is mounted.
+        if (offset + REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE < placementTasks.length) {
+          await new Promise<void>(resolve => setTimeout(resolve, 0));
         }
       }
 
@@ -2568,9 +2635,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   }
 
   private resize(width: number, height: number, quality: number, budget: RenderBudgetSnapshot) {
-    const qualityCap = quality < 0.55 ? 1.12 : quality < 0.8 ? 1.35 : 1.8;
-    const maxRatio = Math.max(0.76, qualityCap * budget.pixelRatioScale);
-    const nextRatio = Math.min(maxRatio, window.devicePixelRatio || 1);
+    const nextRatio = babylonEffectivePixelRatio(quality, window.devicePixelRatio || 1, budget.pixelRatioScale);
     const nextWidth = Math.max(1, width);
     const nextHeight = Math.max(1, height);
     const ratioChanged = Math.abs(nextRatio - this.pixelRatio) > 0.01;

@@ -1,9 +1,11 @@
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
+import { Texture } from '@babylonjs/core/Materials/Textures/texture';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh';
 import '@babylonjs/core/Meshes/instancedMesh';
 import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { VertexBuffer } from '@babylonjs/core/Buffers/buffer';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import type { Scene } from '@babylonjs/core/scene';
 import type { RenderBudgetSnapshot } from './renderQuality';
@@ -12,6 +14,8 @@ import { getWorldSize } from './sim';
 export const BABYLON_AMBIENT_WORLD_SCALE = 0.02;
 const AMBIENT_RESOURCE_PREFIX = 'p28-e1-';
 const REFINERY_ART_DIRECTION_ID = 'refinery-industrial-v1';
+// A single locally packaged and mipmapped KTX2 atlas for decorative particles.
+export const REFINERY_LOCAL_FX_ATLAS_URL = '/assets/effects/refinery-local-effects-f5.ktx2';
 
 export type BabylonAmbientParticleKind = 'dust' | 'sparks' | 'vapor' | 'debris';
 export type BabylonAmbientParticleContext = 'machinery' | 'vents' | 'damaged-service' | 'open-industrial';
@@ -144,6 +148,7 @@ export function babylonAmbientParticleBudget(budget: RenderBudgetSnapshot): Baby
 
 export class BabylonAmbientParticles {
   private readonly pools = new Map<BabylonAmbientParticleKind, AmbientPool>();
+  private localFxAtlas: Texture | null = null;
   private locationKey = '';
   private elapsedSeconds = 0;
   private disposed = false;
@@ -169,6 +174,19 @@ export class BabylonAmbientParticles {
 
     const deltaMs = this.scene.getEngine().getDeltaTime();
     this.elapsedSeconds += (Number.isFinite(deltaMs) && deltaMs > 0 ? Math.min(deltaMs, 50) : 1000 / 60) / 1000;
+    // Bind the single shared KTX2 source before the first visible refinery frame;
+    // no startup period falls back to flat, untextured decorative particles.
+    if (this.locationKey === 'asteroid-refinery' && !this.localFxAtlas) {
+      const atlas = new Texture(REFINERY_LOCAL_FX_ATLAS_URL, this.scene);
+      atlas.wrapU = Texture.CLAMP_ADDRESSMODE;
+      atlas.wrapV = Texture.CLAMP_ADDRESSMODE;
+      atlas.hasAlpha = true;
+      this.localFxAtlas = atlas;
+      for (const pool of this.pools.values()) {
+        pool.material.diffuseTexture = atlas;
+        pool.material.useAlphaFromDiffuseTexture = true;
+      }
+    }
     const particleBudget = babylonAmbientParticleBudget(budget);
     const world = getWorldSize();
     const worldW = world.w * BABYLON_AMBIENT_WORLD_SCALE;
@@ -190,6 +208,8 @@ export class BabylonAmbientParticles {
       pool.material.dispose();
     }
     this.pools.clear();
+    this.localFxAtlas?.dispose();
+    this.localFxAtlas = null;
     this.releaseOwnedSceneRegistrations();
     this.locationKey = '';
     this.elapsedSeconds = 0;
@@ -228,6 +248,7 @@ export class BabylonAmbientParticles {
 
   private ensurePools() {
     if (this.pools.size > 0) return;
+    // Quad UVs are pre-baked before binding the shared texture on first sync.
     (Object.keys(BABYLON_AMBIENT_FLAGSHIP_COUNTS) as BabylonAmbientParticleKind[]).forEach(kind => {
       this.pools.set(kind, this.createPool(kind, BABYLON_AMBIENT_FLAGSHIP_COUNTS[kind]));
     });
@@ -238,7 +259,6 @@ export class BabylonAmbientParticles {
     material.specularColor = Color3.Black();
     material.disableLighting = true;
     material.backFaceCulling = false;
-
     let source: Mesh;
     if (kind === 'dust') {
       source = MeshBuilder.CreateSphere(`${AMBIENT_RESOURCE_PREFIX}dust-source`, { diameter: 0.026, segments: 3 }, this.scene);
@@ -260,6 +280,16 @@ export class BabylonAmbientParticles {
       material.diffuseColor = colorFromHex(0x5d554b).scale(0.28);
       material.emissiveColor = colorFromHex(0x2d2925).scale(0.04);
       material.alpha = 0.82;
+    }
+    if (this.locationKey === 'asteroid-refinery') {
+      const cell = { dust: [0, 0], sparks: [1, 0], vapor: [0, 1], debris: [1, 1] }[kind];
+      const uv = source.getVerticesData(VertexBuffer.UVKind);
+      if (!uv) throw new Error(`Missing authored ambient ${kind} UVs`);
+      for (let i = 0; i < uv.length; i += 2) {
+        uv[i] = uv[i] * 0.5 + cell[0] * 0.5;
+        uv[i + 1] = uv[i + 1] * 0.5 + cell[1] * 0.5;
+      }
+      source.setVerticesData(VertexBuffer.UVKind, uv);
     }
     source.material = material;
     source.isPickable = false;

@@ -1,12 +1,25 @@
 import { runHeavyAssetManifest } from '../tools/heavy-asset-manifest.mjs';
 import { copyFile, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 
 import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+// Publish exactly the generated refinery art and updated GLB bindings into the
+// final bundle. The EV-18 trusted scripts/ and package.json trees remain pinned;
+// the existing packaged-graphics finalizer already owns writing the art manifest.
+const { writeRefineryF5Atlases, REFINERY_F5_DECAL_ATLAS, REFINERY_F5_EFFECT_ATLAS,
+  REFINERY_F5_LIVE_MODEL_PATHS } = await import('../tools/prepare-refinery-f5-atlases.mjs');
+await writeRefineryF5Atlases();
+for (const path of [REFINERY_F5_DECAL_ATLAS.path, REFINERY_F5_EFFECT_ATLAS.path,
+  ...REFINERY_F5_LIVE_MODEL_PATHS.map(model => 'public/assets/models/' + model)]) {
+  const src = resolve(process.cwd(), path);
+  const dest = resolve(process.cwd(), 'dist', path.slice('public/'.length));
+  await mkdir(resolve(dest, '..'), { recursive: true });
+  await copyFile(src, dest);
 }
 
 const retiredThreeCodecRoot = resolve(process.cwd(), 'dist/assets/codecs/basis');
@@ -56,11 +69,9 @@ console.log(`GRAPHICS_RUNTIME_ASSETS_PASS threeFiles=0 babylonFiles=${babylonFil
 // build:prod runs packaged graphics checks without the full graphics-content test.
 const generatedManifest = resolve(process.cwd(), 'public/assets/heavy-asset-manifest.json');
 const deliveredManifest = resolve(process.cwd(), 'dist/assets/heavy-asset-manifest.json');
-if (!existsSync(deliveredManifest)) {
-  await runHeavyAssetManifest('write');
-  await mkdir(resolve(process.cwd(), 'dist/assets'), { recursive: true });
-  await copyFile(generatedManifest, deliveredManifest);
-}
+await runHeavyAssetManifest('write');
+await mkdir(resolve(process.cwd(), 'dist/assets'), { recursive: true });
+await copyFile(generatedManifest, deliveredManifest);
 await runHeavyAssetManifest('verify-dist');
 
 // The F1 packed-source acceptance is a shipped-art invariant, not a source-file
@@ -86,4 +97,17 @@ const oldRefineryMaps = deliveredArt.assets.filter(asset =>
     && !asset.path.includes('/p28f1/'));
 assert(oldRefineryMaps.every(asset => !asset.runtimeReferenced), 'P28-F1 live materials must not fall back to the old 512px maps');
 console.log(`P28_F1_PACKAGED_REFINERY_ART_PASS runtimeMaps=${highResolutionRefineryMaps.length} resolution=2048 shippedBytes=${deliveredArtBytes} legacyRuntimeBindings=0`);
+const f5Decal = await stat(resolve(process.cwd(), 'dist/assets/models/environments/refinery-decal-atlas-f5.png'));
+assert(f5Decal.size > 100_000, 'P28-F5 heavyweight live decal PNG not packaged');
+const f5Effect = deliveredArt.assets.find(asset => asset.path === 'assets/effects/refinery-local-effects-f5.ktx2');
+assert(f5Effect?.runtimeReferenced && f5Effect.premiumQualified,
+  'P28-F5 locally shipped effect atlas must be bound by the live Babylon particle renderer');
+assert(f5Effect.texture?.width === 512 && f5Effect.texture?.height === 512
+  && f5Effect.texture?.mipLevels === 10 && f5Effect.texture?.fullChain,
+  'P28-F5 delivered KTX2 effect atlas lost its full mip chain');
+const f5DecalAsset = deliveredArt.assets.find(asset => asset.path === 'assets/models/environments/refinery-decal-atlas-f5.png');
+assert(f5DecalAsset?.runtimeReferenced, 'P28-F5 heavyweight route decal must be referenced by a shipped GLB');
+console.log('P28_F5_PACKAGED_ATLASES_PASS decalBytes=' + f5Decal.size
+  + ' effectBytes=' + f5Effect.onDiskBytes + ' effectMips=10');
+
 
