@@ -49,10 +49,18 @@ assert(babylonBootstrapFrameSample(180, true, ['loading', 'ready', 'ready'], 1_9
   && babylonBootstrapFrameSample(90, true, ['ready', 'loading', 'ready'], 5_000) === 90
   && babylonBootstrapFrameSample(180, true, ['ready', 'ready', 'ready'], 300) === 180,
   'P28-F5 temporary decode stalls must retain High art, but sustained 2-second loading must expose real pressure for emergency recovery.');
+assert(babylonBootstrapFrameSample(180, true, ['loading', 'ready', 'ready'], 60_000, true) === 1000 / 60
+  && babylonBootstrapFrameSample(90, true, ['ready', 'loading', 'ready'], 60_000, true) === 1000 / 60
+  && babylonBootstrapFrameSample(180, true, ['ready', 'ready', 'ready'], 60_000, true) === 180
+  && babylonBootstrapFrameSample(90, true, ['error', 'ready', 'ready'], 60_000, true) === 90
+  && babylonBootstrapFrameSample(180, false, ['loading', 'loading', 'loading'], 60_000, true) === 180,
+  'P28-F5 explicit graphics-comparison QA may retain authored High only during pending refinery loads, never after readiness or on other routes.');
 assert(rendererSource.includes('babylonBootstrapFrameSample(frameMs, mission.location')
   && rendererSource.includes('const refineryBootstrapping = mission.location')
-  && rendererSource.includes('loadingElapsedMs), quality, qualityMode)'),
-  'P28-F5 runtime must bound bootstrap grace and never hide prolonged real frame pressure.');
+  && rendererSource.includes("this.canvas.dataset.graphicsPathSelection === 'qa-explicit'")
+  && rendererSource.includes("this.canvas.dataset.babylonBootstrapQaMode = refineryBootstrapping && graphicsComparisonQa")
+  && rendererSource.includes('loadingElapsedMs, graphicsComparisonQa), quality, qualityMode)'),
+  'P28-F5 visual QA must identify its limited bootstrap exception; production still bounds grace and samples sustained real pressure.');
 
 assert(babylonBootstrapPacingIntervalMs(true, ['loading', 'ready', 'ready']) === 120
   && babylonBootstrapPacingIntervalMs(true, ['ready', 'loading', 'ready']) === 120
