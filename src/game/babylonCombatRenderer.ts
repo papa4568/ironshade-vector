@@ -508,6 +508,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private height = 1;
   private pixelRatio = 1;
   private lastFrameAt = 0;
+  private refineryBootstrapStartedAt = 0;
   private lastSceneRenderAt = 0;
   private graphicsBudgetSignature = '';
 
@@ -684,11 +685,19 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const now = performance.now();
     const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
     this.lastFrameAt = now;
+    const refineryBootstrapping = mission.location === 'asteroid-refinery' && [
+      this.canvas.dataset.babylonEnvironmentState,
+      this.canvas.dataset.babylonPlayerState,
+      this.canvas.dataset.babylonEnemyCatalogState,
+    ].some(readiness => readiness === 'loading');
+    if (!refineryBootstrapping) this.refineryBootstrapStartedAt = 0;
+    else if (this.refineryBootstrapStartedAt === 0) this.refineryBootstrapStartedAt = now;
+    const loadingElapsedMs = refineryBootstrapping ? Math.max(0, now - this.refineryBootstrapStartedAt) : 0;
     const budget = this.renderBudget.sample(babylonBootstrapFrameSample(frameMs, mission.location === 'asteroid-refinery', [
       this.canvas.dataset.babylonEnvironmentState,
       this.canvas.dataset.babylonPlayerState,
       this.canvas.dataset.babylonEnemyCatalogState,
-    ]), quality, qualityMode);
+    ], loadingElapsedMs), quality, qualityMode);
     const runtimeProfile = runtimeScalabilityProfile(budget.tierName);
     this.canvas.dataset.runtimePools = [
       `damage:${Math.min(state.damageNumbers.length, runtimeProfile.poolRetention.damageNumbers)}/${runtimeProfile.poolRetention.damageNumbers}`,
@@ -916,7 +925,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.canvas.dataset.babylonEnvironmentState,
         this.canvas.dataset.babylonPlayerState,
         this.canvas.dataset.babylonEnemyCatalogState,
-      ], frameMs))
+      ]))
       : 0;
     if (!shouldSubmitBabylonFrame(now, this.lastSceneRenderAt, pacingMs)) {
       this.canvas.dataset.babylonRenderPacing = `paced:${pacingMs}`;
