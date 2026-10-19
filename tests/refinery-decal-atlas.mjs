@@ -74,7 +74,7 @@ for (const target of REFINERY_DECAL_TARGETS) {
   assert(material?.pbrMetallicRoughness?.baseColorFactor?.[3] <= 0.82, `${target.relativePath}: decal opacity exceeds readability budget`);
   const texture = gltf.textures?.[material.pbrMetallicRoughness.baseColorTexture.index];
   const image = gltf.images?.[texture?.source];
-  assert(image?.uri === (target.relativePath.endsWith('-lod1.glb') ? 'refinery-decal-atlas-f5.png' : 'refinery-decal-atlas.png'), `${target.relativePath}: tier-specific shared atlas URI changed`);
+  assert(image?.uri === (target.relativePath === 'environments/refinery-smelter-gantry-lod1.glb' ? 'refinery-decal-atlas-f5.png' : 'refinery-decal-atlas.png'), `${target.relativePath}: tier-specific shared atlas URI changed`);
 
   const sceneIndex = Number.isInteger(gltf.scene) ? gltf.scene : 0;
   const detailNode = (gltf.nodes ?? []).findIndex(node => node.mesh === detailMeshIndex);
