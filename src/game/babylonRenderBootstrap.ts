@@ -3,19 +3,24 @@ import { TARGET_FRAME_MS } from './renderQuality';
 // Asset decoding/instantiation produces transient main-thread gaps that do not
 // describe steady GPU performance. Do not downshift all pending LOD0 loads
 // before the first coherent authored shell, operator, and enemy catalog exist.
-// After a bounded 2-second initialization grace, sample real frame pressure even
-// if the three authored readiness gates remain loading.
+// In production, the grace ends after two seconds so sustained pressure can
+// recover even when a load stalls. The explicit graphics-comparison route is
+// different: while the initial authored scene is still assembling, its visual
+// QA must inspect the actual High assets rather than software-runner fallback
+// LODs. This opt-in QA exception ends immediately when readiness resolves.
 export function babylonBootstrapFrameSample(
   actualFrameMs: number,
   refinery: boolean,
   readiness: readonly (string | undefined)[],
   loadingElapsedMs = 0,
+  graphicsComparisonQa = false,
 ): number {
   // One transient decode stall must not lower the first authored LOD choice.
-  // Prolonged loading is different: report the actual measured frames after
-  // 2 seconds so the existing catastrophic-frame recovery can keep touch
-  // input responsive on software-rendered Android WebViews.
-  const withinGrace = Number.isFinite(loadingElapsedMs) && loadingElapsedMs < 2_000;
+  // Prolonged production loading must expose measured pressure after two
+  // seconds so Android emergency recovery is never gated on asset readiness.
+  // The explicit QA comparison retains High art while the loading renderer is
+  // already paced; it is a visual proof, not a frame-rate acceptance result.
+  const withinGrace = graphicsComparisonQa || (Number.isFinite(loadingElapsedMs) && loadingElapsedMs < 2_000);
   return refinery && withinGrace && readiness.some(state => state === 'loading')
     ? Math.min(actualFrameMs, TARGET_FRAME_MS)
     : actualFrameMs;
