@@ -104,7 +104,15 @@ jobs:
           if (report.schema !== 'ironshade-roadmap-shadow-validation-report:v5' || report.schemaVersion !== 5) fail('report schema drifted');
           if (report.taskId !== 'EV-19' || report.candidateSha !== process.env.CANDIDATE_SHA) fail('task/candidate binding mismatch');
           if (report.mode !== 'advisory' || report.acceptedForEnforcement !== false || report.candidatePassGranted !== false || report.blocking !== false) fail('EV-19 must remain advisory and grant no acceptance');
-          if (currentSimulator.mode !== 'advisory' || JSON.stringify(currentSimulator.scenarios.map(entry => entry.taskId)) !== JSON.stringify(['P28-F6','P28-G1'])) fail('live EV-7 simulator was changed by calibration');
+          // The historical EV-19 prediction corpus remains immutable. Its *live*
+          // advisory EV-7 probe must advance when F5 is archived: F6 becomes the
+          // executable root and F7 remains a later, unimplemented task.
+          const activeTaskIds = readFileSync('docs/content-roadmap.md', 'utf8').split('\n').filter(line => line.startsWith('- [ ] **')).map(line => line.slice('- [ ] **'.length).split(' —', 1)[0]);
+          if (currentSimulator.mode !== 'advisory'
+            || JSON.stringify(currentSimulator.scenarios.map(entry => entry.taskId)) !== JSON.stringify(['P28-F7','P28-G1'])
+            || activeTaskIds[0] !== 'P28-F6' || activeTaskIds[1] !== 'P28-F7') {
+            fail('live EV-7 advisory scenarios must target F7 and G1 after verified F5 closeout, with F6 as active root');
+          }
 
           if (report.actualOutcome.pullRequest !== 366 || report.actualOutcome.baseSha !== '2b1099df2a1869919683d3e2438217e09130ae88' || report.actualOutcome.implementationHeadSha !== '8d97a4fcbf20dd540009388487fecd979ae3c265' || report.actualOutcome.finalHeadSha !== 'a41aaaeb97df197664fb2f6f216c66768bb314fc' || report.actualOutcome.mergeCommitSha !== '452e91bd239a91441bd1dd8559833dd1edde2547') fail('merged P28-PLOAD2 outcome binding drifted');
           if (JSON.stringify(report.actualOutcome.productionSurfaces) !== JSON.stringify(['src/game/babylonCombatRenderer.ts','src/game/babylonRefineryMissionReadiness.ts','src/game/combatGraphicsBackendCore.ts','src/game/mapLoadReadinessTelemetry.ts'])) fail('merged P28-PLOAD2 production surface truth drifted');
