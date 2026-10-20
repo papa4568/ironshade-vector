@@ -24,7 +24,7 @@ For every P28 campaign map or capstone rollout, and for already-upgraded maps wh
 - Reject conspicuous oversized opaque floor-route ribbons, flat bright polygons, persistent plain cube placeholders for crates/cover/consoles/machinery, missing or untextured world geometry, and late art pop-in after a mission is playable. Deliberately box-shaped industrial models remain acceptable when their intended design, PBR finish and detail are visibly verified.
 - Audit live mesh/material provenance for navigation/guide geometry, authored versus procedural world-object families, loaded PBR channels, readiness and fallback counts/reasons. Every intentional fallback needs a documented and visually justified exception; no telemetry-only waiver.
 - Preserve collision, pathing, interactions, cover, mission simulation, touch targets, hazard/objective/loot cues and character readability. Recovery/load states remain safe and observable.
-- P28-G0A/G0B repair existing cross-map visual debt; P28-G0C adds automated route provenance assertions, adversarial visual regressions and mandatory real-frame review to subsequent P28-G/H candidate proofs. If a qualitative image needs human review, it remains a required review rather than an assumed CI pass. Physical flagship hardware FPS/thermal/hands-on acceptance stays in external QA.
+- The ordered P28-G2 prerequisites repair existing cross-map visual debt and add automated route provenance assertions, adversarial visual regressions and mandatory real-frame review to subsequent P28-G/H candidate proofs. If a qualitative image needs human review, it remains a required review rather than an assumed CI pass. Physical flagship hardware FPS/thermal/hands-on acceptance stays in external QA.
 
 ## Locked design decisions
 
