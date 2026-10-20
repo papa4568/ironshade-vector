@@ -222,4 +222,10 @@ assert(
   'P28-G2 must inspect actual authored LOD0 high-tier Android frames instead of low-detail emulator LOD2 stand-ins.',
 );
 
+assert(
+  read('scripts/browser-runtime-smoke.mjs').includes("canvas?.dataset.damagedPremiumAssetState === 'ready'")
+    && read('scripts/browser-runtime-smoke.mjs').includes('P28-G2 Damaged Vessel post-movement authored-premium material readiness'),
+  'P28-G2 browser gameplay parity must wait for real post-movement premium texture readiness.',
+);
+
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');

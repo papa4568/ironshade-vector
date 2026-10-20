@@ -750,10 +750,15 @@ async function p27C2BabylonDamagedVesselAudit() {
       + " canvas?.dataset.babylonScenario === 'damaged-vessel'"
       + " && canvas?.dataset.babylonEnemyCatalogState === 'ready'"
       + " && canvas?.dataset.babylonEnemyState === 'ready'"
-      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0;"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
+      + " && canvas?.dataset.damagedPremiumAssetState === 'ready'"
+      + " && Number(canvas?.dataset.damagedPremiumBindings ?? 0) >= 35"
+      + " && canvas?.dataset.environmentIbl === 'shared-prefiltered:ready'"
+      + " && canvas?.dataset.babylonSharedWorldArtState === 'ready'"
+      + " && Number(canvas?.dataset.babylonSharedWorldFailedCount ?? 0) === 0;"
       + " })()",
-    'P28-F6 Damaged Vessel post-movement authored-enemy readiness',
-    15_000,
+    'P28-G2 Damaged Vessel post-movement authored-premium material readiness',
+    45_000,
   );
 
   const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
