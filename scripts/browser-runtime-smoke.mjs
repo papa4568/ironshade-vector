@@ -645,10 +645,6 @@ async function p27C1BabylonOrbitalAudit() {
     || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
     || !state.environmentLighting.startsWith('orbital-key+rim+emergency+readability+practical:')
     || state.environmentIbl !== 'shared-prefiltered:ready'
-    || state.premiumAssetState !== 'ready'
-    || state.premiumBindings < 35
-    || state.worldArtState !== 'ready'
-    || state.sharedFallbacks !== 0
     || state.premiumState !== 'ready'
     || state.premiumBindings < 40
     || state.premiumSurfaces !== 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
@@ -827,6 +823,10 @@ async function p27C2BabylonDamagedVesselAudit() {
     || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
     || !/^damaged-vessel-emergency:breach\+salvage\+contact:player\+enemy\+practical:(1|2)\+shadow:off$/.test(state.environmentLighting)
     || state.environmentIbl !== 'shared-prefiltered:ready'
+    || state.premiumAssetState !== 'ready'
+    || state.premiumBindings < 35
+    || state.worldArtState !== 'ready'
+    || state.sharedFallbacks !== 0
     || !/^aces-\d+\.\d{2}$/.test(state.tone)
     || !/^damaged-vessel:emergency-amber:aces-\d+\.\d{2}$/.test(state.locationLighting)
     || state.materialIntent !== 'premium-ktx2-scarred-hull-pbr+shared-world-pbr'
