@@ -127,4 +127,16 @@ assert(
   'P28-G2 Orbital/Damaged shared world must use authored mesh families, count fallbacks, preserve authored placement and block visual-ready while incomplete.',
 );
 
+const androidG2 = read('scripts/android-p28g2-damaged-capture.mjs');
+const androidG2Runner = read('scripts/android-p28g2-damaged-capture.sh');
+assert(
+  androidG2.includes("d?.babylonScenario === 'damaged-vessel'")
+    && androidG2.includes("d.babylonSharedWorldArtState === 'ready'")
+    && androidG2.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
+    && androidG2.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && androidG2Runner.includes('adb exec-out screencap -p')
+    && workflow.includes('bash scripts/android-p28g2-damaged-capture.sh'),
+  'P28-G2 must generate APK-backed normal/action Damaged Vessel frames with authored/route provenance.',
+);
+
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');
