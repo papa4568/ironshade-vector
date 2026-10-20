@@ -590,6 +590,7 @@ async function p27C1BabylonOrbitalAudit() {
       premiumBindings: Number(canvas?.dataset.orbitalPremiumBindings ?? 0),
       premiumSurfaces: canvas?.dataset.orbitalPremiumSurfaces ?? '',
       grounding: canvas?.dataset.orbitalGrounding ?? '',
+      groundedProps: Number(canvas?.dataset.orbitalGroundedProps ?? 0),
       groundedEnemies: Number(canvas?.dataset.orbitalGroundedEnemies ?? 0),
       pbr: canvas?.dataset.babylonPbrMaterials ?? '',
       postRelease: canvas?.dataset.babylonPostRelease ?? '',
@@ -648,6 +649,7 @@ async function p27C1BabylonOrbitalAudit() {
     || state.premiumBindings < 40
     || state.premiumSurfaces !== 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
     || state.grounding !== 'player+enemies:soft-contact'
+    || state.groundedProps !== 25
     || !/^aces-\d+\.\d{2}$/.test(state.tone)
     || !/^orbital-station:neutral-cyan:aces-\d+\.\d{2}$/.test(state.locationLighting)
     || state.materialIntent !== 'premium-ktx2-pbr+wayfinding-emissives+shared-world-pbr'
