@@ -163,6 +163,12 @@ try {
   })()`;
   await waitFor(ready, 'Damaged Vessel route / authored-world visual readiness', 90_000);
   await sleep(650);
+  const beforeVisual = await evaluate(`(() => {
+    const d = document.querySelector('canvas')?.dataset ?? {};
+    return { assetIds: d.babylonSharedWorldAssets ?? '',
+      artState: d.babylonSharedWorldArtState ?? '',
+      premium: d.damagedPremiumAssetState ?? '', ibl: d.environmentIbl ?? '' };
+  })()`);
   const normalBytes = await capture('android-p28g2-damaged-vessel-normal.png');
   const before = await evaluate("document.querySelector('canvas')?.dataset.babylonDamagedPlayerPosition ?? ''");
   await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
@@ -203,7 +209,9 @@ try {
     task: 'P28-G2', deviceValidation: 'emulator-visual-evidence-not-physical-thermal-acceptance',
     normalScreenshot: 'android-p28g2-damaged-vessel-normal.png',
     actionScreenshot: 'android-p28g2-damaged-vessel-action.png',
-    screenshotsBytes: [normalBytes, actionBytes], beforePosition: before, ...result,
+    screenshotsBytes: [normalBytes, actionBytes], beforePosition: before,
+    beforeAssetIds: beforeVisual.assetIds, beforeArtState: beforeVisual.artState,
+    beforePremium: beforeVisual.premium, beforeIbl: beforeVisual.ibl, ...result,
   }, null, 2) + '\n');
   console.log('ANDROID_P28G2_DAMAGED_VISUAL_CAPTURE_PASS route=damaged-vessel authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
 } finally {

@@ -134,13 +134,37 @@ export function auditGameplayPair(normal, action) {
     normal: first, action: second, changedRatio: Number(changedRatio.toFixed(5)) };
 }
 
+// Disallow a visually plausible screenshot from masking source-asset fallback
+// or unready materials. This contract complements real pixel inspection.
+export function auditAuthoredVisualProvenance(state) {
+  const finite = key => Number.isFinite(Number(state?.[key])) ? Number(state[key]) : NaN;
+  const mapped = finite('mappedObjects'), authored = finite('authoredObjects'), fallback = finite('fallbackObjects');
+  const problems = [];
+  if (state?.capturedRoute !== 'damaged-vessel' || state?.backend !== 'webgl2') problems.push('wrong-map-or-backend');
+  if (state?.artState !== 'ready' || !(mapped > 0 && authored === mapped && fallback === 0)) problems.push('procedural-box-or-unresolved-world-slot');
+  if (state?.premium !== 'ready' || !(finite('premiumBindings') >= 35)
+    || state?.ibl !== 'shared-prefiltered:ready') problems.push('missing-or-unready-premium-material');
+  if (state?.routeStyle !== 'damaged-recessed-deck-inlay'
+    || !(finite('routeMaxWidth') > 0 && finite('routeMaxWidth') <= 0.20)) problems.push('oversized-route-material');
+  if (state?.objectiveCue !== 'beacon+navigation-path'
+    || !(finite('worldObjects') >= 1)) problems.push('missing-or-occluded-objective');
+  if (!state?.assetIds || !(finite('groundProps') >= 11)) problems.push('missing-asset-provenance');
+  if (state?.beforeAssetIds !== state?.assetIds
+    || state?.beforeArtState !== 'ready'
+    || state?.beforePremium !== 'ready'
+    || state?.beforeIbl !== 'shared-prefiltered:ready') problems.push('late-asset-pop-in');
+  return { valid: problems.length === 0, problems };
+}
+
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
-  const [normalPath, actionPath, reportPath] = process.argv.slice(2);
-  assert(normalPath && actionPath && reportPath, 'Provide normal/action PNG and pixel-report output');
+  const [normalPath, actionPath, reportPath, provenancePath] = process.argv.slice(2);
+  assert(normalPath && actionPath && reportPath && provenancePath, 'Provide normal/action PNG, pixel-report and captured provenance JSON');
   const report = auditGameplayPair(
     decodeScreenshotPng(readFileSync(normalPath)), decodeScreenshotPng(readFileSync(actionPath)));
-  writeFileSync(reportPath, JSON.stringify({ task: 'P28-G2', ...report }, null, 2) + '\n');
-  assert(report.valid, 'P28-G2 screenshot-content gate failed: ' + JSON.stringify(report));
+  const provenance = auditAuthoredVisualProvenance(JSON.parse(readFileSync(provenancePath, 'utf8')));
+  writeFileSync(reportPath, JSON.stringify({ task: 'P28-G2', ...report, provenance }, null, 2) + '\n');
+  assert(report.valid && provenance.valid,
+    'P28-G2 screenshot-content/provenance gate failed: ' + JSON.stringify({ report, provenance }));
   console.log('P28G2_GAMEPLAY_PIXEL_CONTENT_PASS change=' + report.changedRatio
     + ' colors=' + report.normal.colorBins + '/' + report.action.colorBins);
 }

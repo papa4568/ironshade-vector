@@ -1,6 +1,6 @@
 // Synthetic negative controls for the APK screenshot-content gate.
 import { deflateSync } from 'node:zlib';
-import { decodeScreenshotPng, auditGameplayFrame, auditGameplayPair } from '../scripts/verify-p28g2-gameplay-frames.mjs';
+import { decodeScreenshotPng, auditGameplayFrame, auditGameplayPair, auditAuthoredVisualProvenance } from '../scripts/verify-p28g2-gameplay-frames.mjs';
 
 function assert(condition, message) { if (!condition) throw new Error(message); }
 function crc32(bytes) {
@@ -42,4 +42,28 @@ assert(!auditGameplayFrame(decodeScreenshotPng(makeFrame('blank'))).valid, 'Blac
 assert(!auditGameplayFrame(decodeScreenshotPng(makeFrame('pale'))).valid, 'Large pale floor band must fail');
 assert(auditGameplayPair(normal, action).valid, 'Distinct textured normal/action frames should pass');
 assert(!auditGameplayPair(normal, normal).valid, 'Identical content must fail even with valid PNGs');
+const authored = {
+  capturedRoute: 'damaged-vessel', backend: 'webgl2', artState: 'ready',
+  mappedObjects: 12, authoredObjects: 12, fallbackObjects: 0,
+  premium: 'ready', premiumBindings: 60, ibl: 'shared-prefiltered:ready',
+  routeStyle: 'damaged-recessed-deck-inlay', routeMaxWidth: 0.16,
+  objectiveCue: 'beacon+navigation-path', worldObjects: 19,
+  assetIds: 'cover-authored,terminal-authored', groundProps: 11,
+  beforeAssetIds: 'cover-authored,terminal-authored',
+  beforeArtState: 'ready', beforePremium: 'ready',
+  beforeIbl: 'shared-prefiltered:ready',
+};
+assert(auditAuthoredVisualProvenance(authored).valid, 'Real authored provenance control must pass');
+for (const [label, injection] of [
+  ['raw-box', { fallbackObjects: 1, authoredObjects: 11 }],
+  ['texture-missing', { premium: 'loading' }],
+  ['ibl-missing', { ibl: 'shared-prefiltered:loading' }],
+  ['oversized-route', { routeMaxWidth: 1.48 }],
+  ['occluded-objective', { objectiveCue: '' }],
+  ['late-pop-in', { beforeAssetIds: 'cover-authored' }],
+  ['wrong-location', { capturedRoute: 'asteroid-refinery' }],
+]) {
+  assert(!auditAuthoredVisualProvenance({ ...authored, ...injection }).valid,
+    'Injected ' + label + ' must be rejected by the visual source contract');
+}
 console.log('P28G2_PIXEL_NEGATIVE_CONTROLS_PASS cases=textured+black+pale-band+stale-action');
