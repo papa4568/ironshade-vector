@@ -58,6 +58,15 @@ assert(auditAuthoredVisualProvenance(authored).valid, 'Real authored provenance 
 const station = { ...authored, capturedRoute: 'orbital-station',
   routeStyle: 'orbital-recessed-deck-inlay', premiumBindings: 126, groundProps: 25 };
 assert(auditAuthoredVisualProvenance(station).valid, 'Orbital authored visual baseline must pass');
+const spin = { ...authored, capturedRoute: 'spin-habitat',
+  routeStyle: 'spin-recessed-deck-inlay', premiumBindings: 110, groundProps: 4 };
+assert(auditAuthoredVisualProvenance(spin).valid, 'Spin authored visual baseline must pass');
+assert(!auditAuthoredVisualProvenance({ ...spin, groundProps: 0 }).valid,
+  'Spin route must reject ungrounded service machinery');
+assert(!auditAuthoredVisualProvenance({ ...spin, premium: 'loading' }).valid,
+  'Spin route must reject unready texture channels');
+assert(!auditAuthoredVisualProvenance({ ...spin, beforeAssetIds: 'old-lod2' }).valid,
+  'Spin route must reject late world-asset pop-in');
 assert(!auditAuthoredVisualProvenance({ ...station, fallbackObjects: 1, authoredObjects: 11 }).valid,
   'Orbital regression must detect an injected raw world box');
 for (const [label, injection] of [

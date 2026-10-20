@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import {
   BABYLON_SPIN_HABITAT_IDENTITY,
   BABYLON_SPIN_HABITAT_LIGHTING,
+  BABYLON_SPIN_PREMIUM_SURFACES,
 } from '../src/game/babylonSpinHabitatPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 import {
@@ -116,6 +117,48 @@ assert(
   pkg.scripts?.['test:babylon-spin-habitat']?.includes('tests/babylon-spin-habitat.ts')
     && pkg.scripts?.build?.includes('npm run test:babylon-spin-habitat'),
   'P27-C3 unit/source regression must be wired into the full production build.',
+);
+
+
+const androidWorkflow = read('.github/workflows/pr-android-apk.yml');
+const androidCapture = read('scripts/android-p28g3-spin-capture.mjs');
+const androidCaptureRunner = read('scripts/android-p28g3-spin-capture.sh');
+const readiness = read('src/game/babylonRefineryMissionReadiness.ts');
+assert(
+  BABYLON_SPIN_PREMIUM_SURFACES.join(',') === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
+    && habitat.includes('this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene)')
+    && habitat.includes("this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env'")
+    && habitat.includes('this.canvas.dataset.spinPremiumBindings = String(this.premiumBindingCount)')
+    && habitat.includes("this.canvas.dataset.spinPremiumAssetState = premiumReady ? 'ready' : 'loading'")
+    && habitat.includes('this.groundingSource.createInstance')
+    && habitat.includes('this.enemyGrounding.delete(id)')
+    && habitat.includes('this.premiumSurfaces.dispose()')
+    && habitat.includes('this.iblTexture.dispose()')
+    && habitat.includes('this.groundingTexture.dispose()'),
+  'P28-G3 Spin Habitat must bind real KTX2 premium surfaces, IBL and grounded props/actors with cleanup.',
+);
+assert(
+  habitat.includes('p28-g3-spin-torque-rail-')
+    && habitat.includes('p28-g3-spin-ring-joint-')
+    && habitat.includes('p28-g3-spin-spoke-cross-rib-')
+    && habitat.includes('p28-g3-spin-service-brace-')
+    && habitat.includes('p28-g3-spin-axis-bearing-foot-')
+    && habitat.includes('this.rotorRoot.rotation.y = this.rotationY')
+    && world.includes("|| mission.location === 'spin-habitat'")
+    && readiness.includes("|| mission.location === 'spin-habitat'"),
+  'P28-G3 must keep the rotating frame linked to gravity, add visible mechanical detail, and prevent bare world fallbacks.',
+);
+assert(
+  androidCapture.includes("d?.babylonScenario === 'spin-habitat'")
+    && androidCapture.includes("d.babylonSharedWorldArtState === 'ready'")
+    && androidCapture.includes("d.spinPremiumAssetState === 'ready'")
+    && androidCapture.includes("d.environmentIbl === 'shared-prefiltered:ready'")
+    && androidCapture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
+    && androidCapture.includes('before === result.playerPosition')
+    && androidCapture.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && androidCaptureRunner.includes('adb exec-out screencap -p')
+    && androidWorkflow.includes('bash scripts/android-p28g3-spin-capture.sh'),
+  'P28-G3 must require real high-tier APK normal/action frames, shared LOD0, loaded surfaces and source provenance.',
 );
 
 console.log('BABYLON_SPIN_HABITAT_PASS identity=ring-and-spokes+habitat-alloy+cool-green+habitat-service spindown=shared-gravity navigation=shared boss=sable-voss world=shared-cues browser=headed');
