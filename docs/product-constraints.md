@@ -16,6 +16,16 @@ Target **premium console/PC-quality ARPG presentation on current high-performanc
 - Major combat actions should synchronize targeting, animation, sound, VFX, camera response, and haptics where supported.
 - Android phone-class windows below 600dp smallest width stay sensor-landscape. Android tablet/foldable/desktop-style windows at 600dp or wider are intentionally resizable and orientation-adaptive; the app declares the Android game category but does not use that Android 16 exception to lock large-screen orientation.
 
+## Campaign visual acceptance contract
+
+For every P28 campaign map or capstone rollout, and for already-upgraded maps when shared rendering changes, **the actual rendered image is an acceptance criterion**. A green build, texture-ready flag, mesh inventory, PNG decode or emulator-smoke check cannot substitute for seeing the result.
+
+- Capture and inspect exact-candidate Flagship/high-tier phone-landscape gameplay frames in normal and active-combat states, at actual game zoom, after scene readiness and after map re-entry. Identify the real location ID, not just the HUD objective title. Keep screenshots and an independent pixel-level review verdict with candidate evidence.
+- Reject conspicuous oversized opaque floor-route ribbons, flat bright polygons, persistent plain cube placeholders for crates/cover/consoles/machinery, missing or untextured world geometry, and late art pop-in after a mission is playable. Deliberately box-shaped industrial models remain acceptable when their intended design, PBR finish and detail are visibly verified.
+- Audit live mesh/material provenance for navigation/guide geometry, authored versus procedural world-object families, loaded PBR channels, readiness and fallback counts/reasons. Every intentional fallback needs a documented and visually justified exception; no telemetry-only waiver.
+- Preserve collision, pathing, interactions, cover, mission simulation, touch targets, hazard/objective/loot cues and character readability. Recovery/load states remain safe and observable.
+- The ordered P28-G2 prerequisites repair existing cross-map visual debt and add automated route provenance assertions, adversarial visual regressions and mandatory real-frame review to subsequent P28-G/H candidate proofs. If a qualitative image needs human review, it remains a required review rather than an assumed CI pass. Physical flagship hardware FPS/thermal/hands-on acceptance stays in external QA.
+
 ## Locked design decisions
 
 - General interface size/accessibility scaling must not resize, reposition, or change touch hit regions for movement, FIRE, DODGE, class skills, ACT, or other combat controls. Combat-control geometry remains owned exclusively by the dedicated Combat layout preset and movement/action cluster settings.

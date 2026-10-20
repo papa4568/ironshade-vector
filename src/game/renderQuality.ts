@@ -85,7 +85,7 @@ export class AdaptiveRenderBudget {
 
   constructor(_coarse: boolean) {}
 
-  sample(frameMs: number, requestedQuality: number, qualityMode: GraphicsQualityMode = 'adaptive'): RenderBudgetSnapshot {
+  sample(frameMs: number, requestedQuality: number, qualityMode: GraphicsQualityMode = 'adaptive', forceFlagshipVisualQa = false): RenderBudgetSnapshot {
     const rawFrameMs = Number.isFinite(frameMs) ? Math.max(0, frameMs) : 0;
     const frameSampleState: RenderFrameSampleState = !Number.isFinite(frameMs) || frameMs < 4
       ? 'ignored-invalid'
@@ -137,7 +137,10 @@ export class AdaptiveRenderBudget {
 
     const requested = Math.max(0.35, Math.min(1, requestedQuality));
     const modeFloor: AdaptiveRenderTier = qualityMode === 'performance' ? 2 : 0;
-    const tier = Math.max(this.runtimeTier, modeFloor, qualityFloorTier(requested)) as AdaptiveRenderTier;
+    // A deliberate screenshot-only proof mode must display LOD0/high, even on
+    // a slow virtual GPU. Runtime pressure continues to be measured, and
+    // normal gameplay retains its adaptive downgrade behavior.
+    const tier = forceFlagshipVisualQa ? 0 : Math.max(this.runtimeTier, modeFloor, qualityFloorTier(requested)) as AdaptiveRenderTier;
     return {
       tier,
       tierName: TIER_NAME[tier],

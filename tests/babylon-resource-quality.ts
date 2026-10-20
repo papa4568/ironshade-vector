@@ -59,7 +59,9 @@ assert(rendererSource.includes('babylonBootstrapFrameSample(frameMs, mission.loc
   && rendererSource.includes('const refineryBootstrapping = mission.location')
   && rendererSource.includes("this.canvas.dataset.graphicsPathSelection === 'qa-explicit'")
   && rendererSource.includes("this.canvas.dataset.babylonBootstrapQaMode = refineryBootstrapping && graphicsComparisonQa")
-  && rendererSource.includes('loadingElapsedMs, graphicsComparisonQa), quality, qualityMode)'),
+  && rendererSource.includes('loadingElapsedMs, graphicsComparisonQa), flagshipVisualQa ? 1 : quality,')
+  && rendererSource.includes("flagshipVisualQa ? 'flagship' : qualityMode, flagshipVisualQa)")
+  && rendererSource.includes("get('p28FlagshipVisualQa') === '1'"),
   'P28-F5 visual QA must identify its limited bootstrap exception; production still bounds grace and samples sustained real pressure.');
 
 assert(babylonBootstrapPacingIntervalMs(true, ['loading', 'ready', 'ready']) === 120

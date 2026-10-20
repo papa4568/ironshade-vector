@@ -151,6 +151,7 @@ export class BabylonRefineryWorldPresentation {
   private readonly interactableRequests = new Set<string>();
   private readonly authoredWorldObjects = new Map<string, AuthoredWorldObjectVisual>();
   private readonly refineryObjectRequests = new Map<string, string>();
+  private readonly sharedWorldFailures = new Map<string, string>();
   private readonly hazards: WorldCueVisual[] = [];
   private readonly breaches: RingVisual[] = [];
   private readonly loot: GroundLootVisual[] = [];
@@ -163,6 +164,7 @@ export class BabylonRefineryWorldPresentation {
   private loadGeneration = 0;
   private active = false;
   private premiumRefineryScenario = false;
+  private premiumSharedWorldScenario = false;
   private disposed = false;
 
   constructor(
@@ -184,6 +186,9 @@ export class BabylonRefineryWorldPresentation {
     if (this.disposed) return;
     this.active = true;
     this.premiumRefineryScenario = mission.location === 'asteroid-refinery';
+    // Reuse the existing authored industrial families on the two current
+    // flagship map refreshes instead of exposing naked generic objects.
+    this.premiumSharedWorldScenario = mission.location === 'orbital-station' || mission.location === 'damaged-vessel';
     this.syncObjects(state, detailScale);
     this.syncObjective(state, mission);
     this.syncGroundLoot(state, detailScale);
@@ -215,6 +220,7 @@ export class BabylonRefineryWorldPresentation {
       return;
     }
     this.active = false;
+    this.premiumSharedWorldScenario = false;
     this.loadGeneration += 1;
 
     for (const visual of this.authoredWorldObjects.values()) {
@@ -223,6 +229,7 @@ export class BabylonRefineryWorldPresentation {
     }
     this.authoredWorldObjects.clear();
     this.refineryObjectRequests.clear();
+    this.sharedWorldFailures.clear();
 
     for (const visual of this.authoredInteractables.values()) {
       visual.instance.release();
@@ -295,6 +302,15 @@ export class BabylonRefineryWorldPresentation {
     this.canvas.dataset.refineryWorldAuthoredCount = '0';
     this.canvas.dataset.refineryWorldFallbackCount = '0';
     this.canvas.dataset.refineryWorldAssets = '';
+    this.canvas.dataset.babylonSharedWorldVisual = 'released';
+    this.canvas.dataset.babylonSharedWorldMappedCount = '0';
+    this.canvas.dataset.babylonSharedWorldAuthoredCount = '0';
+    this.canvas.dataset.babylonSharedWorldFallbackCount = '0';
+    this.canvas.dataset.babylonSharedWorldAssets = '';
+    this.canvas.dataset.babylonSharedWorldPendingCount = '0';
+    this.canvas.dataset.babylonSharedWorldFailedCount = '0';
+    this.canvas.dataset.babylonSharedWorldFallbackReasons = '';
+    this.canvas.dataset.babylonSharedWorldArtState = 'released';
     this.canvas.dataset.babylonWorldRelease = reason + ':deterministic';
   }
 
@@ -480,6 +496,7 @@ export class BabylonRefineryWorldPresentation {
     if (!spec) {
       this.ensureObjectFallback(object, object.kind === 'cover' && Boolean(this.getPremiumSurfaceLibrary));
       this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':spec-unavailable';
+      this.sharedWorldFailures.set(object.id, familyKey + ':spec-unavailable');
       if (interactableWorldPresentation(object.kind)) {
         this.canvas.dataset.interactableVisual = 'procedural-fallback-babylon';
       }
@@ -509,6 +526,7 @@ export class BabylonRefineryWorldPresentation {
       previous?.instance.release();
       previous?.mount.dispose();
       this.authoredWorldObjects.set(object.id, { instance, mount, assetId: spec.id, family: familyKey });
+      this.sharedWorldFailures.delete(object.id);
       const fallback = this.objectVisuals.get(object.id);
       if (fallback) {
         this.disposeObjectFallback(fallback);
@@ -532,6 +550,7 @@ export class BabylonRefineryWorldPresentation {
       }
       const message = error instanceof Error ? error.message : String(error);
       this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':' + message;
+      this.sharedWorldFailures.set(object.id, familyKey + ':' + message);
       if (interactableWorldPresentation(object.kind)) {
         this.canvas.dataset.interactableVisual = 'procedural-fallback-babylon';
       }
@@ -548,6 +567,8 @@ export class BabylonRefineryWorldPresentation {
 
   private syncObjects(state: SimState, detailScale: number) {
     const refineryScenario = this.premiumRefineryScenario;
+    const sharedPremiumScenario = this.premiumSharedWorldScenario;
+    const mappedScenario = refineryScenario || sharedPremiumScenario;
     const quality = worldMaterialQualityProfile(worldQualityName(detailScale));
     const activeIds = new Set<string>();
     const activeAssets = new Set<string>();
@@ -558,12 +579,19 @@ export class BabylonRefineryWorldPresentation {
     let authoredCount = 0;
     let fallbackCount = 0;
     let mappedInteractableAuthoredCount = 0;
+    let sharedPendingCount = 0;
+    let sharedFailedCount = 0;
 
     for (const object of state.objects) {
       activeIds.add(object.id);
-      const mappedFamily = refineryScenario ? refineryWorldObjectFamilyKey(object) : null;
+      const mappedFamily = mappedScenario ? refineryWorldObjectFamilyKey(object) : null;
       if (mappedFamily) {
         if (object.active) mappedCount += 1;
+        // Purpose-built PBR industrial dressing remains visible while a GLB
+        // resolves; do not recreate a fallback once its authored mesh mounts.
+        if (!this.authoredWorldObjects.has(object.id)) {
+          this.ensureObjectFallback(object, Boolean(this.getPremiumSurfaceLibrary));
+        }
         void this.loadRefineryWorldObject(object, detailScale);
       } else {
         this.ensureObjectFallback(object, false);
@@ -571,11 +599,15 @@ export class BabylonRefineryWorldPresentation {
       }
 
       if (object.active) activeCount += 1;
-      if (refineryScenario && object.kind === 'cover' && object.active) premiumCoverCount += 1;
+      if (mappedScenario && object.kind === 'cover' && object.active) premiumCoverCount += 1;
 
       const authoredWorld = mappedFamily ? this.authoredWorldObjects.get(object.id) : undefined;
       const authoredInteractable = mappedFamily ? undefined : this.authoredInteractables.get(object.id);
       const visual = this.objectVisuals.get(object.id);
+      if (sharedPremiumScenario && object.active && mappedFamily && !authoredWorld) {
+        if (this.sharedWorldFailures.has(object.id)) sharedFailedCount += 1;
+        else sharedPendingCount += 1;
+      }
       const coverVisibility = object.kind === 'cover'
         && Math.hypot(object.x + object.w / 2 - state.player.x, object.y + object.h / 2 - state.player.y) < 155
         ? 0.48
@@ -651,7 +683,7 @@ export class BabylonRefineryWorldPresentation {
     for (const [id, visual] of this.objectVisuals) if (!activeIds.has(id)) visual.mesh.setEnabled(false);
     for (const [id, visual] of this.interactableCues) if (!activeIds.has(id)) visual.root.setEnabled(false);
     for (const [id, visual] of this.authoredInteractables) if (!activeIds.has(id) || refineryScenario) visual.mount.setEnabled(false);
-    for (const [id, visual] of this.authoredWorldObjects) if (!activeIds.has(id) || !refineryScenario) visual.mount.setEnabled(false);
+    for (const [id, visual] of this.authoredWorldObjects) if (!activeIds.has(id) || !mappedScenario) visual.mount.setEnabled(false);
 
     this.canvas.dataset.worldObjectCount = String(activeCount);
     this.canvas.dataset.interactableActive = String(interactableCount);
@@ -659,7 +691,7 @@ export class BabylonRefineryWorldPresentation {
       [...this.authoredInteractables.values()].filter(visual => visual.mount.isEnabled()).length + mappedInteractableAuthoredCount,
     );
     this.canvas.dataset.babylonCoverPremiumCount = String(premiumCoverCount);
-    this.canvas.dataset.babylonCoverPremiumSurfaces = refineryScenario && this.getPremiumSurfaceLibrary
+    this.canvas.dataset.babylonCoverPremiumSurfaces = mappedScenario && this.getPremiumSurfaceLibrary
       ? 'painted-metal+bare-metal+polymer-rubber'
       : 'inactive';
     this.canvas.dataset.refineryWorldVisual = refineryScenario ? 'authored-family-mapped' : 'procedural-fallback-babylon';
@@ -667,6 +699,22 @@ export class BabylonRefineryWorldPresentation {
     this.canvas.dataset.refineryWorldAuthoredCount = String(authoredCount);
     this.canvas.dataset.refineryWorldFallbackCount = String(fallbackCount);
     this.canvas.dataset.refineryWorldAssets = [...activeAssets].sort().join(',');
+    // Visual readiness is separate from authoritative combat readiness. A map
+    // with pending/missing authored meshes can never report art-ready.
+    this.canvas.dataset.babylonSharedWorldVisual = sharedPremiumScenario ? 'authored-family-mapped' : 'inactive';
+    this.canvas.dataset.babylonSharedWorldMappedCount = String(sharedPremiumScenario ? mappedCount : 0);
+    this.canvas.dataset.babylonSharedWorldAuthoredCount = String(sharedPremiumScenario ? authoredCount : 0);
+    this.canvas.dataset.babylonSharedWorldFallbackCount = String(sharedPremiumScenario ? fallbackCount : 0);
+    this.canvas.dataset.babylonSharedWorldAssets = sharedPremiumScenario ? [...activeAssets].sort().join(',') : '';
+    this.canvas.dataset.babylonSharedWorldPendingCount = String(sharedPremiumScenario ? sharedPendingCount : 0);
+    this.canvas.dataset.babylonSharedWorldFailedCount = String(sharedPremiumScenario ? sharedFailedCount : 0);
+    this.canvas.dataset.babylonSharedWorldFallbackReasons = sharedPremiumScenario
+      ? [...this.sharedWorldFailures.entries()].filter(([id]) => activeIds.has(id)).map(([id, reason]) => id + ':' + reason).sort().join('|') : '';
+    this.canvas.dataset.babylonSharedWorldArtState = sharedPremiumScenario
+      ? (sharedPendingCount > 0 ? 'loading'
+        : sharedFailedCount > 0 ? 'fallback'
+          : mappedCount > 0 && authoredCount === mappedCount && fallbackCount === 0 ? 'ready' : 'loading')
+      : 'inactive';
     this.canvas.dataset.interactableReadability = 'shape-coded+state-emissive+floor-cue:quality-safe';
   }
 

@@ -1,4 +1,5 @@
 import { writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const phase = process.env.ANDROID_P27D5_PHASE ?? 'interaction';
@@ -99,15 +100,43 @@ async function waitForSession() {
   while (Date.now() - startedAt < timeoutMs) {
     try {
       const targets = await listTargets();
-      const target = targets.find(candidate => candidate.webSocketDebuggerUrl && candidate.title === 'Ironshade Vector');
-      if (target) {
+      // Android can retain a DevTools target from a paused renderer while a
+      // new renderer is already foregrounded. Probe every live page target.
+      const matches = targets.filter(candidate => candidate.webSocketDebuggerUrl
+        && (candidate.type === 'page' || candidate.type === 'webview' || !candidate.type) && candidate.title === 'Ironshade Vector');
+      for (const target of matches) {
+        try {
+        // A heavy renderer recovery may expose a CDP target before its event
+        // loop can service protocol requests. Bound each candidate probe to
+        // a fraction of the outer session deadline.
         const socket = await connect(target.webSocketDebuggerUrl);
-        const session = createSession(socket);
-        await session.call('Runtime.enable');
-        await session.call('Page.enable');
-        const ready = await session.evaluate('document.readyState');
-        if (ready === 'complete' || ready === 'interactive') return { socket, session };
-        socket.close();
+        let accepted = false;
+        try {
+          const session = createSession(socket);
+          const remaining = () => Math.max(1, Math.min(6_000, timeoutMs - (Date.now() - startedAt)));
+          // On a preserved WebView after HOME, Runtime.enable may stall while
+          // replaying contexts, even though direct Runtime.evaluate is usable.
+          // The real resume contract still requires a live document, renderer,
+          // cache ownership, and post-resume input; no telemetry is synthesized.
+          if (phase !== 'cache-resume') {
+            await session.call('Runtime.enable', {}, remaining());
+            await session.call('Page.enable', {}, remaining());
+          }
+          const ready = await session.call('Runtime.evaluate', {
+            expression: 'document.readyState', awaitPromise: true, returnByValue: true,
+          }, remaining());
+          if (ready.result?.value === 'complete' || ready.result?.value === 'interactive') {
+            accepted = true;
+            return { socket, session };
+          }
+        } finally {
+          // Only release a successfully initialized socket to the caller.
+          // Failed attempts must be closed before opening another CDP session.
+          if (!accepted) socket.close();
+        }
+        } catch (error) {
+          lastError = error;
+        }
       }
     } catch (error) {
       lastError = error;
@@ -499,6 +528,52 @@ if (phase === 'interaction' || phase === 'large-screen' || phase === 'cache-life
     console.log('ANDROID_P28F6_CACHE_LIFECYCLE_PASS backend=webgl2 authored=local rendererReentry=zero-owners missionExitReentry=zero-owners report=' + reportPath);
   } else {
     console.log('ANDROID_P27D5_INTERACTION_PASS backend=webgl2 touch=move+aim+fire+ability controller=dodge rendererReentry=verified missionExitReentry=verified report=' + reportPath);
+  }
+  if (phase === 'cache-lifecycle') {
+    // Keep the *same* inspector connection through HOME and foreground resume.
+    // Reattaching after a long-lived WebView has been frozen can stall CDP
+    // Runtime.evaluate even when Android has correctly resumed its Activity.
+    // This still probes the unmodified live scene and the preserved PID/canvas.
+    const adb = (...args) => execFileSync('adb', args, {
+      timeout: 30_000, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
+    }).trim();
+    const processBefore = adb('shell', 'pidof', 'app.ironshade.vector');
+    if (!processBefore) throw new Error('P28-F6 Android process not found before HOME');
+    adb('shell', 'input', 'keyevent', 'KEYCODE_HOME');
+    await sleep(2_000);
+    adb('shell', 'am', 'start', '-W', '--activity-reorder-to-front', '-n', 'app.ironshade.vector/.MainActivity');
+    const processAfter = adb('shell', 'pidof', 'app.ironshade.vector');
+    if (processAfter !== processBefore) {
+      throw new Error('P28-F6 Android process was reclaimed across HOME: ' + processBefore + ' -> ' + processAfter);
+    }
+    writeFileSync('android-p28f6-resume-screen.png',
+      execFileSync('adb', ['exec-out', 'screencap', '-p'], { timeout: 30_000, maxBuffer: 16 * 1024 * 1024 }));
+    await waitFor('(() => { const canvas = document.querySelector("canvas"); return Boolean(canvas && canvas.dataset.babylonBackendLoaded === "webgl2" && canvas.dataset.babylonScene === "active" && canvas.dataset.babylonDisposed === "false"); })()',
+      'P28-F6 preserved WebView renderer after HOME', 45_000);
+    const resumedBefore = await readBabylonState();
+    requireBabylonState(resumedBefore, 'P28-F6 Android resume');
+    const resumedHeavy = await assertHeavyRoute('preserved-process-resume');
+    // A native screenshot alone could reflect a stale buffer; real touch and
+    // live shot-count advancement independently prove the resumed JS/renderer.
+    await fireAfterResume(900);
+    const resumedAfter = await readBabylonState();
+    requireBabylonState(resumedAfter, 'P28-F6 Android resume after touch');
+    if (resumedAfter.disposeCount !== resumedBefore.disposeCount
+        || resumedAfter.disposeCount !== finalState.disposeCount) {
+      throw new Error('P28-F6 Android renderer was replaced across HOME: '
+        + finalState.disposeCount + ' -> ' + resumedBefore.disposeCount + ' -> ' + resumedAfter.disposeCount);
+    }
+    const resumeReport = {
+      schema: 'p27-d5-babylon-android-v1', phase: 'cache-resume',
+      process: 'preserved', processBefore, processAfter,
+      webView: 'preserved', renderer: 'preserved', backend: 'webgl2',
+      inspection: 'single-CDP-connection-across-HOME',
+      inputAfterResume: 'real-touch-fire-and-shot-counter',
+      before: resumedBefore, after: resumedAfter, resumedHeavy,
+    };
+    writeFileSync('android-p28f6-resume.json', JSON.stringify(resumeReport, null, 2) + '\n');
+    console.log('ANDROID_P28F6_CACHE_RESUME_PASS process=preserved webView=preserved renderer=preserved backend=webgl2 activeOwners='
+      + resumedHeavy.cache.active + ' disposeCount=' + resumedAfter.disposeCount + ' report=android-p28f6-resume.json');
   }
   socket.close();
   process.exit(0);

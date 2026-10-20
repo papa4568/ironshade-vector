@@ -99,6 +99,7 @@ try {
   url.searchParams.set('graphicsCompare', '1');
   url.searchParams.set('graphicsPath', 'babylon');
   url.searchParams.set('babylonBackend', 'webgl2');
+  url.searchParams.set('p28FlagshipVisualQa', '1');
   await call('Page.navigate', { url: url.toString() });
 
   const startSurface = await waitFor(`(() => {
@@ -147,9 +148,18 @@ try {
     return d?.babylonScenario === 'orbital-station'
       && d.graphicsPathLoaded === 'babylon'
       && d.babylonBackend === 'webgl2'
+      && d.renderTier === 'high'
+      && d.p28FlagshipCapture === 'high-tier-qa-visual-only'
+      && Boolean(d.babylonSharedWorldAssets)
+      && d.babylonSharedWorldAssets.split(',').every(id => id.endsWith('-lod0'))
       && d.babylonInit === 'ready'
       && Number(d.babylonFrames || 0) >= 2
       && d.orbitalPremiumAssetState === 'ready'
+      && d.babylonSharedWorldArtState === 'ready'
+      && d.missionVisualReadiness === 'ready'
+      && d.missionVisualMode === 'authored'
+      && Number(d.babylonSharedWorldPendingCount || 0) === 0
+      && Number(d.babylonSharedWorldFailedCount || 0) === 0
       && Number(d.orbitalPremiumBindings || 0) >= 40
       && d.orbitalPremiumSurfaces === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
       && d.orbitalGrounding === 'player+enemies:soft-contact'
@@ -161,6 +171,12 @@ try {
   })()`;
   await waitFor(readyExpression, 'premium Orbital Station combat/material/cue readiness', 90_000);
   await sleep(650);
+  const beforeVisual = await evaluate(`(() => {
+    const d = document.querySelector('canvas')?.dataset ?? {};
+    return { assetIds: d.babylonSharedWorldAssets ?? '',
+      artState: d.babylonSharedWorldArtState ?? '',
+      premium: d.orbitalPremiumAssetState ?? '', ibl: d.environmentIbl ?? '' };
+  })()`);
   const initialBytes = await capture('android-p28g1-orbital-station-normal.png');
   const beforePosition = await evaluate(`document.querySelector('canvas')?.dataset.babylonOrbitalPlayerPosition ?? ''`);
   // Exercise the same real WebView input path as the browser Orbital Station route.
@@ -176,8 +192,18 @@ try {
     return {
       location: d.babylonScenario ?? '', graphics: d.graphicsPathLoaded ?? '',
       backend: d.babylonBackend ?? '', tier: d.renderTier ?? '',
+      captureMode: d.p28FlagshipCapture ?? '',
       frameCount: Number(d.babylonFrames || 0),
       premium: d.orbitalPremiumAssetState ?? '', bindings: Number(d.orbitalPremiumBindings || 0),
+      premiumBindings: Number(d.orbitalPremiumBindings || 0),
+      artState: d.babylonSharedWorldArtState ?? '',
+      mappedObjects: Number(d.babylonSharedWorldMappedCount || 0),
+      authoredObjects: Number(d.babylonSharedWorldAuthoredCount || 0),
+      fallbackObjects: Number(d.babylonSharedWorldFailedCount || 0),
+      assetIds: d.babylonSharedWorldAssets ?? '',
+      routeStyle: d.babylonRouteMarkingProfile ?? '',
+      routeMaxWidth: Number(d.babylonRouteMarkingMaxWidth || 0),
+      groundProps: Number(d.orbitalGroundedProps || 0),
       surfaces: d.orbitalPremiumSurfaces ?? '', ibl: d.environmentIbl ?? '',
       grounding: d.orbitalGrounding ?? '', groundedProps: Number(d.orbitalGroundedProps || 0),
       groundedEnemies: Number(d.orbitalGroundedEnemies || 0),
@@ -188,8 +214,10 @@ try {
     };
   })()`);
   if (state.location !== 'orbital-station' || state.premium !== 'ready'
+      || state.tier !== 'high' || state.captureMode !== 'high-tier-qa-visual-only'
       || state.bindings < 40 || state.groundedProps !== 25 || state.worldObjects < 1
       || state.interactables < 1 || !state.tier || state.width <= 0 || state.height <= 0
+      || beforePosition === state.playerPosition
       || !(state.frameCount >= 2) || !(afterBytes > 20_000)) {
     throw new Error('P28-G1 Android capture contains incomplete presentation: ' + JSON.stringify(state));
   }
@@ -198,7 +226,9 @@ try {
     deviceValidation: 'emulator-visual-evidence-not-physical-thermal-acceptance',
     capturedRoute: 'orbital-station', normalScreenshot: 'android-p28g1-orbital-station-normal.png',
     actionScreenshot: 'android-p28g1-orbital-station-action.png',
-    imageBytes: [initialBytes, afterBytes], beforePosition, ...state,
+    imageBytes: [initialBytes, afterBytes], beforePosition,
+    beforeAssetIds: beforeVisual.assetIds, beforeArtState: beforeVisual.artState,
+    beforePremium: beforeVisual.premium, beforeIbl: beforeVisual.ibl, ...state,
   }, null, 2) + '\n');
   console.log('ANDROID_P28G1_ORBITAL_CAPTURE_PASS route=orbital-station backend=webgl2 premium=ready surfaces=5 meshBindings=' + state.bindings + ' groundedProps=25 screenshots=2 tier=' + state.tier + ' player=' + beforePosition + '->' + state.playerPosition);
 } finally {

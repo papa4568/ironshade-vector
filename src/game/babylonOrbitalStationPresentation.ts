@@ -14,6 +14,7 @@ import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Scene } from '@babylonjs/core/scene';
 import { getMapNavigationPlan } from './mapNavigation';
+import { babylonRouteMarkingWidth, BABYLON_ROUTE_MARKING_WIDTHS } from './babylonRouteMarkings';
 import { createBabylonPremiumPbrSurfaceLibrary, type BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
 import { createRefineryContactDepthAlphaData } from './refineryContactDepth';
 import { REFINERY_ACTOR_GROUNDING_PROFILE, refineryActorGroundingScale } from './babylonRefineryLighting';
@@ -290,7 +291,7 @@ export class BabylonOrbitalStationPresentation {
         const a = route.points[index];
         const b = route.points[index + 1];
         const routeMaterial = route.kind === 'primary' ? routePrimary : routeSecondary;
-        const width = scaled(route.kind === 'primary' ? 74 : route.kind === 'secondary' ? 50 : 36);
+        const width = babylonRouteMarkingWidth(route.kind);
         createRouteSegment(
           scene,
           this.root,
@@ -489,6 +490,8 @@ export class BabylonOrbitalStationPresentation {
     this.canvas.dataset.babylonOrbitalParity = 'architecture+materials+lighting+props+navigation+shared-world-cues';
     this.canvas.dataset.babylonOrbitalPlayerPosition = `${state.player.x.toFixed(1)},${state.player.y.toFixed(1)}`;
     this.canvas.dataset.babylonOrbitalRoutes = String(getMapNavigationPlan('orbital-station').routes.length);
+    this.canvas.dataset.babylonRouteMarkingProfile = 'orbital-recessed-deck-inlay';
+    this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary);
     this.canvas.dataset.babylonOrbitalLandmarks = getMapNavigationPlan('orbital-station').landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;
     this.canvas.dataset.babylonMaterialIntent = 'premium-ktx2-pbr+wayfinding-emissives+shared-world-pbr';

@@ -12,6 +12,7 @@ test -n "$PID"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:webview_devtools_remote_${PID}"
 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-p28g1-orbital-capture.mjs
+node scripts/verify-p28g2-gameplay-frames.mjs android-p28g1-orbital-station-normal.png android-p28g1-orbital-station-action.png android-p28g1-orbital-station-pixel-report.json android-p28g1-orbital-station.json
 # Capture the actual Android display in addition to the Chrome WebView frames.
 adb exec-out screencap -p > android-p28g1-orbital-station-device.png
 node --input-type=module -e '

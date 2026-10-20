@@ -22,6 +22,7 @@ export const MISSION_VISUAL_FALLBACK_TIMEOUT_MS = 4_000;
 
 type ReadinessInput = {
   refinery: boolean;
+  sharedPremium?: boolean;
   elapsedMs: number;
   environmentState: string | undefined;
   environmentError: string | undefined;
@@ -57,6 +58,22 @@ function datasetCount(value: string | undefined) {
 
 export function resolveMissionVisualReadiness(input: ReadinessInput): Pick<MissionVisualReadiness, 'phase' | 'mode' | 'shell' | 'world' | 'reason'> {
   const timedOut = input.elapsedMs >= MISSION_VISUAL_FALLBACK_TIMEOUT_MS;
+  if (input.sharedPremium) {
+    // Production gameplay must not unfreeze while a GLB is pending: a visible
+    // temporary fallback is not the same as an explicitly failed asset.
+    const shellReady = input.environmentState === 'ready';
+    const allSettled = input.mappedCount > 0
+      && input.authoredCount + input.fallbackCount === input.mappedCount;
+    if (shellReady && input.worldState === 'ready' && allSettled) {
+      const hasFailures = input.fallbackCount > 0;
+      return {
+        phase: 'ready', mode: hasFailures ? 'fallback' : 'authored',
+        shell: 'authored', world: hasFailures ? 'fallback' : 'authored',
+        reason: hasFailures ? input.environmentError || 'authored-world-load-failed' : null,
+      };
+    }
+    return { phase: 'loading', mode: 'authored', shell: shellReady ? 'authored' : 'loading', world: 'loading', reason: null };
+  }
   if (!input.refinery) {
     const ready = input.worldState === 'ready';
     return ready
@@ -157,7 +174,8 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
     this.delegate.render(...args);
     this.framesInGeneration += 1;
     this.observeAuthoredPlayerState();
-    this.refreshReadiness(mission.location === 'asteroid-refinery');
+    this.refreshReadiness(mission.location === 'asteroid-refinery',
+      mission.location === 'orbital-station' || mission.location === 'damaged-vessel');
     if (this.readiness.phase === 'loading' || this.readiness.mode === 'fallback') {
       this.ensureGuardVisuals(state, missionKey);
     }
@@ -236,23 +254,28 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
     this.ensureGuardVisuals(state, missionKey);
   }
 
-  private refreshReadiness(refinery: boolean) {
+  private refreshReadiness(refinery: boolean, sharedPremium: boolean) {
     if (this.framesInGeneration < 1) return;
     const now = performance.now();
     const environmentState = this.canvas.dataset.babylonEnvironmentState;
     const worldState = this.canvas.dataset.babylonWorldState;
-    const mappedCount = datasetCount(this.canvas.dataset.refineryWorldMappedCount);
-    const authoredCount = datasetCount(this.canvas.dataset.refineryWorldAuthoredCount);
-    const fallbackCount = datasetCount(this.canvas.dataset.refineryWorldFallbackCount);
+    const mappedCount = datasetCount(sharedPremium
+      ? this.canvas.dataset.babylonSharedWorldMappedCount : this.canvas.dataset.refineryWorldMappedCount);
+    const authoredCount = datasetCount(sharedPremium
+      ? this.canvas.dataset.babylonSharedWorldAuthoredCount : this.canvas.dataset.refineryWorldAuthoredCount);
+    const fallbackCount = datasetCount(sharedPremium
+      ? this.canvas.dataset.babylonSharedWorldFailedCount : this.canvas.dataset.refineryWorldFallbackCount);
     const mappedSettled = mappedCount === 0 || authoredCount + fallbackCount >= mappedCount;
     const sourcesIncomplete = refinery
       ? (environmentState !== 'ready' && environmentState !== 'error') || !mappedSettled
-      : worldState !== 'ready';
+      : sharedPremium ? environmentState !== 'ready' || !mappedSettled
+        : worldState !== 'ready';
     if (!this.sourcesIncomplete && sourcesIncomplete) this.readinessAttemptStartedAt = now;
     this.sourcesIncomplete = sourcesIncomplete;
 
     const resolved = resolveMissionVisualReadiness({
       refinery,
+      sharedPremium,
       elapsedMs: now - this.readinessAttemptStartedAt,
       environmentState,
       environmentError: this.canvas.dataset.babylonEnvironmentError,
@@ -266,7 +289,7 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
       missionKey: this.missionKey,
       ...resolved,
     };
-    this.syncMapLoadTelemetry(refinery, now, environmentState, worldState, mappedSettled, fallbackCount, resolved);
+    this.syncMapLoadTelemetry(refinery, sharedPremium, now, environmentState, worldState, mappedSettled, fallbackCount, resolved);
     if (resolved.phase === 'ready' && resolved.mode === 'authored') {
       this.disposeGuardVisuals();
       this.canvas.dataset.missionVisualGuard = 'released-authored';
@@ -283,6 +306,7 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
 
   private syncMapLoadTelemetry(
     refinery: boolean,
+    sharedPremium: boolean,
     now: number,
     environmentState: string | undefined,
     worldState: string | undefined,
@@ -304,7 +328,9 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
       if (worldState === 'ready' && mappedSettled) {
         this.mapLoadTelemetry.recordElapsed('mapped-world-ready', now, fallbackCount > 0 ? 'fallback' : 'ready');
       }
-    } else if (worldState === 'ready') {
+    } else if (sharedPremium && environmentState === 'ready' && worldState === 'ready' && mappedSettled) {
+      this.mapLoadTelemetry.recordElapsed('mapped-world-ready', now, fallbackCount > 0 ? 'fallback' : 'ready');
+    } else if (!sharedPremium && worldState === 'ready') {
       this.mapLoadTelemetry.recordElapsed('mapped-world-ready', now);
     }
     if (resolved.phase === 'ready') {

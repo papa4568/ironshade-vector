@@ -698,6 +698,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // enabled by the shipped, production-default gameplay route. The normal
     // two-second adaptive emergency recovery remains unchanged.
     const graphicsComparisonQa = this.canvas.dataset.graphicsPathSelection === 'qa-explicit';
+    const flagshipVisualQa = graphicsComparisonQa
+      && new URLSearchParams(this.canvas.ownerDocument.defaultView?.location.search ?? '').get('p28FlagshipVisualQa') === '1';
+    this.canvas.dataset.p28FlagshipCapture = flagshipVisualQa ? 'high-tier-qa-visual-only' : 'production-adaptive';
     this.canvas.dataset.babylonBootstrapQaMode = refineryBootstrapping && graphicsComparisonQa
       ? 'visual-proof-loading'
       : 'production-recovery';
@@ -705,7 +708,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.babylonEnvironmentState,
       this.canvas.dataset.babylonPlayerState,
       this.canvas.dataset.babylonEnemyCatalogState,
-    ], loadingElapsedMs, graphicsComparisonQa), quality, qualityMode);
+    ], loadingElapsedMs, graphicsComparisonQa), flagshipVisualQa ? 1 : quality,
+      flagshipVisualQa ? 'flagship' : qualityMode, flagshipVisualQa);
     const runtimeProfile = runtimeScalabilityProfile(budget.tierName);
     this.canvas.dataset.runtimePools = [
       `damage:${Math.min(state.damageNumbers.length, runtimeProfile.poolRetention.damageNumbers)}/${runtimeProfile.poolRetention.damageNumbers}`,

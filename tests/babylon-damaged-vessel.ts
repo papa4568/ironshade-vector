@@ -3,8 +3,11 @@ import { resolve } from 'node:path';
 import {
   BABYLON_DAMAGED_VESSEL_IDENTITY,
   BABYLON_DAMAGED_VESSEL_LIGHTING,
+  BABYLON_DAMAGED_PREMIUM_SURFACES,
 } from '../src/game/babylonDamagedVesselPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { resolveMissionVisualReadiness } from '../src/game/babylonRefineryMissionReadiness';
+import { BABYLON_ROUTE_MARKING_WIDTHS, babylonRouteMarkingWidth } from '../src/game/babylonRouteMarkings';
 
 function read(path: string) {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
@@ -19,6 +22,7 @@ const vessel = read('src/game/babylonDamagedVesselPresentation.ts');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');
 const workflow = read('.github/workflows/browser-e2e.yml');
+const androidWorkflow = read('.github/workflows/pr-android-apk.yml');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 
 assert(
@@ -96,6 +100,141 @@ assert(
   pkg.scripts?.['test:babylon-damaged-vessel']?.includes('tests/babylon-damaged-vessel.ts')
     && pkg.scripts?.build?.includes('npm run test:babylon-damaged-vessel'),
   'P27-C2 unit/source regression must be wired into the full production build.',
+);
+
+
+// P28-G2: the old 74/50/36 simulation-unit slabs rendered as 1.48/1.00/0.72
+// world-unit opaque floor bands. Keep decorative inlays separate from the
+// simulation's 78-unit lane-clearance contract and inspect other ported routes.
+assert(
+  Object.entries(BABYLON_ROUTE_MARKING_WIDTHS).every(([kind, width]) =>
+    width > 0 && width <= 0.20 && babylonRouteMarkingWidth(kind as keyof typeof BABYLON_ROUTE_MARKING_WIDTHS) === width)
+    && BABYLON_ROUTE_MARKING_WIDTHS.primary > BABYLON_ROUTE_MARKING_WIDTHS.secondary
+    && BABYLON_ROUTE_MARKING_WIDTHS.secondary > BABYLON_ROUTE_MARKING_WIDTHS.connector
+    && [vessel, read('src/game/babylonOrbitalStationPresentation.ts'), read('src/game/babylonSpinHabitatPresentation.ts')]
+      .every(source => source.includes('babylonRouteMarkingWidth(route.kind)')
+        && source.includes('babylonRouteMarkingMaxWidth')
+        && !/scaled\(route\.kind/.test(source))
+    && read('src/game/babylonSolarYardPresentation.ts').includes("route.kind === 'primary' ? 0.12 : 0.075")
+    && read('src/game/mapNavigation.ts').includes('rectRouteDistance(object, route.points[index], route.points[index + 1]) < 78'),
+  'P28-G2 floor navigation must use legible narrow visual inlays while preserving simulation-owned lane clearance.',
+);
+
+assert(
+  world.includes("mission.location === 'orbital-station' || mission.location === 'damaged-vessel'")
+    && world.includes('if (!this.authoredWorldObjects.has(object.id))')
+    && world.includes('const mappedFamily = mappedScenario ? refineryWorldObjectFamilyKey(object) : null')
+    && world.includes("this.canvas.dataset.babylonSharedWorldArtState = sharedPremiumScenario")
+    && world.includes("this.canvas.dataset.babylonSharedWorldFallbackCount = String(sharedPremiumScenario ? fallbackCount : 0)")
+    && world.includes('authoredWorld.mount.scaling.set(fit.scaleX, fit.scaleY * durabilityScale, fit.scaleZ)'),
+  'P28-G2 Orbital/Damaged shared world must use authored mesh families, count fallbacks, preserve authored placement and block visual-ready while incomplete.',
+);
+
+const androidG2 = read('scripts/android-p28g2-damaged-capture.mjs');
+const androidG2Runner = read('scripts/android-p28g2-damaged-capture.sh');
+assert(
+  androidG2.includes("d?.babylonScenario === 'damaged-vessel'")
+    && androidG2.includes("d.babylonSharedWorldArtState === 'ready'")
+    && androidG2.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
+    && androidG2.includes("before === result.playerPosition")
+    && read('scripts/android-p28g1-orbital-capture.mjs').includes("d.babylonSharedWorldArtState === 'ready'")
+    && androidG2.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && androidG2Runner.includes('adb exec-out screencap -p')
+    && androidWorkflow.includes('bash scripts/android-p28g2-damaged-capture.sh'),
+  'P28-G2 must generate APK-backed normal/action Damaged Vessel frames with authored/route provenance.',
+);
+
+assert(
+  BABYLON_DAMAGED_PREMIUM_SURFACES.join(',') === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
+    && vessel.includes('this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene)')
+    && vessel.includes("this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env'")
+    && vessel.includes("this.canvas.dataset.damagedPremiumAssetState = premiumReady ? 'ready' : 'loading'")
+    && vessel.includes('this.groundingSource.createInstance')
+    && vessel.includes('this.canvas.dataset.damagedPremiumBindings = String(this.premiumBindingCount)')
+    && vessel.includes("this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading'")
+    && vessel.includes('this.premiumSurfaces.dispose()'),
+  'P28-G2 Damaged Vessel must bind real KTX2 PBR textures, shared IBL and grounded actors/props with deterministic disposal.',
+);
+
+const sharedLoading = resolveMissionVisualReadiness({
+  refinery: false, sharedPremium: true, elapsedMs: 14_000,
+  environmentState: 'ready', environmentError: undefined, worldState: 'ready',
+  mappedCount: 8, authoredCount: 6, fallbackCount: 0,
+});
+const sharedAuthored = resolveMissionVisualReadiness({
+  refinery: false, sharedPremium: true, elapsedMs: 1_000,
+  environmentState: 'ready', environmentError: undefined, worldState: 'ready',
+  mappedCount: 8, authoredCount: 8, fallbackCount: 0,
+});
+const sharedFailure = resolveMissionVisualReadiness({
+  refinery: false, sharedPremium: true, elapsedMs: 1_000,
+  environmentState: 'ready', environmentError: 'crate:failed-to-load', worldState: 'ready',
+  mappedCount: 8, authoredCount: 7, fallbackCount: 1,
+});
+assert(
+  sharedLoading.phase === 'loading'
+    && sharedAuthored.phase === 'ready' && sharedAuthored.mode === 'authored'
+    && sharedFailure.phase === 'ready' && sharedFailure.mode === 'fallback'
+    && sharedFailure.reason === 'crate:failed-to-load'
+    && world.includes('this.sharedWorldFailures.set(object.id')
+    && world.includes("this.canvas.dataset.babylonSharedWorldArtState = sharedPremiumScenario")
+    && read('src/game/babylonRefineryMissionReadiness.ts').includes('mission.location === \'orbital-station\' || mission.location === \'damaged-vessel\''),
+  'P28-G2 shared-world readyness must freeze combat while authored assets load and only expose explicitly failed assets as fallback.',
+);
+
+assert(
+  androidG2Runner.includes('node scripts/verify-p28g2-gameplay-frames.mjs')
+    && androidWorkflow.includes('android-p28g2-damaged-vessel-pixel-report.json')
+    && read('scripts/verify-p28g2-gameplay-frames.mjs').includes('auditGameplayPair')
+    && read('tests/p28-g2-frame-content.mjs').includes("makeFrame('pale')")
+    && pkg.scripts?.build?.includes('npm run test:p28g2-frame-content'),
+  'P28-G2 must run a screenshot-content visual gate with real APK frames and blank/pale/stale negative controls.',
+);
+
+const lifecycleTransport = read('scripts/android-babylon-lifecycle-smoke.mjs');
+assert(
+  lifecycleTransport.includes('Math.min(6_000, timeoutMs - (Date.now() - startedAt))')
+    && lifecycleTransport.includes('if (!accepted) socket.close()')
+    && lifecycleTransport.includes("session.call('Runtime.enable', {}, remaining())"),
+  'P28-G2 Android heavy-art resume CDP recovery must retry closed sockets within its overall timeout instead of hanging on one command.',
+);
+
+assert(
+  read('scripts/android-p28g1-orbital-capture.sh').includes('node scripts/verify-p28g2-gameplay-frames.mjs')
+    && read('scripts/android-p28g1-orbital-capture.mjs').includes('beforeAssetIds: beforeVisual.assetIds')
+    && read('.github/workflows/pr-android-apk.yml').includes('android-p28g1-orbital-station-pixel-report.json'),
+  'P28-G2 content quality gate must cover real Orbital Station and Damaged Vessel Android frames.',
+);
+
+assert(
+  read('scripts/android-babylon-lifecycle-smoke.mjs').includes("if (phase !== 'cache-resume')")
+    && read('scripts/android-babylon-lifecycle-smoke.mjs').includes("const matches = targets.filter")
+    && read('scripts/android-p28f6-heavy-cache-smoke.sh').includes('android-p28f6-resume-diagnostics.txt')
+    && read('.github/workflows/pr-android-apk.yml').includes('android-p28f6-resume-logcat.txt'),
+  'P28-G2 Android resume must probe live page targets without blocked Runtime.enable and retain failure forensics.',
+);
+
+assert(
+  read('scripts/android-p28g1-orbital-capture.mjs').includes("url.searchParams.set('p28FlagshipVisualQa', '1')")
+    && read('scripts/android-p28g2-damaged-capture.mjs').includes("d.renderTier === 'high'")
+    && read('src/game/babylonCombatRenderer.ts').includes("this.canvas.dataset.p28FlagshipCapture")
+    && read('scripts/verify-p28g2-gameplay-frames.mjs').includes('not-authored-lod0-flagship-visual'),
+  'P28-G2 must inspect actual authored LOD0 high-tier Android frames instead of low-detail emulator LOD2 stand-ins.',
+);
+
+assert(
+  read('scripts/browser-runtime-smoke.mjs').includes("canvas?.dataset.damagedPremiumAssetState === 'ready'")
+    && read('scripts/browser-runtime-smoke.mjs').includes('P28-G2 Damaged Vessel post-movement authored-premium material readiness'),
+  'P28-G2 browser gameplay parity must wait for real post-movement premium texture readiness.',
+);
+
+assert(
+  read('scripts/android-babylon-lifecycle-smoke.mjs').includes("inspection: 'single-CDP-connection-across-HOME'")
+    && read('scripts/android-babylon-lifecycle-smoke.mjs').includes('await fireAfterResume(900)')
+    && read('scripts/android-babylon-lifecycle-smoke.mjs').includes('processAfter !== processBefore')
+    && read('scripts/android-p28f6-heavy-cache-smoke.sh').includes('if ! ANDROID_P27D5_PHASE=cache-lifecycle')
+    && read('scripts/android-p28f6-heavy-cache-smoke.sh').includes('android-p28f6-resume-diagnostics.txt'),
+  'P28-G2 must prove true process-preserving post-HOME gameplay from one continuous Android CDP session with failure forensics.',
 );
 
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');

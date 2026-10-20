@@ -750,10 +750,15 @@ async function p27C2BabylonDamagedVesselAudit() {
       + " canvas?.dataset.babylonScenario === 'damaged-vessel'"
       + " && canvas?.dataset.babylonEnemyCatalogState === 'ready'"
       + " && canvas?.dataset.babylonEnemyState === 'ready'"
-      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0;"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
+      + " && canvas?.dataset.damagedPremiumAssetState === 'ready'"
+      + " && Number(canvas?.dataset.damagedPremiumBindings ?? 0) >= 35"
+      + " && canvas?.dataset.environmentIbl === 'shared-prefiltered:ready'"
+      + " && canvas?.dataset.babylonSharedWorldArtState === 'ready'"
+      + " && Number(canvas?.dataset.babylonSharedWorldFailedCount ?? 0) === 0;"
       + " })()",
-    'P28-F6 Damaged Vessel post-movement authored-enemy readiness',
-    15_000,
+    'P28-G2 Damaged Vessel post-movement authored-premium material readiness',
+    45_000,
   );
 
   const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
@@ -776,6 +781,8 @@ async function p27C2BabylonDamagedVesselAudit() {
     + " environmentLighting: canvas?.dataset.environmentLighting ?? '', environmentIbl: canvas?.dataset.environmentIbl ?? '',"
     + " tone: canvas?.dataset.environmentTone ?? '', locationLighting: canvas?.dataset.locationLighting ?? '',"
     + " materialIntent: canvas?.dataset.babylonMaterialIntent ?? '', pbr: canvas?.dataset.babylonPbrMaterials ?? '',"
+    + " premiumAssetState: canvas?.dataset.damagedPremiumAssetState ?? '', premiumBindings: Number(canvas?.dataset.damagedPremiumBindings ?? 0),"
+    + " worldArtState: canvas?.dataset.babylonSharedWorldArtState ?? '', sharedFallbacks: Number(canvas?.dataset.babylonSharedWorldFailedCount ?? 0),"
     + " postRelease: canvas?.dataset.babylonPostRelease ?? '', worldState: canvas?.dataset.babylonWorldState ?? '',"
     + " worldMode: canvas?.dataset.worldPresentationMode ?? '', worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0),"
     + " interactables: Number(canvas?.dataset.interactableActive ?? 0), interactableAuthored: Number(canvas?.dataset.interactableAuthoredCount ?? 0),"
@@ -820,11 +827,15 @@ async function p27C2BabylonDamagedVesselAudit() {
     || state.lighting !== 'emergency-amber'
     || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
     || !/^damaged-vessel-emergency:breach\+salvage\+contact:player\+enemy\+practical:(1|2)\+shadow:off$/.test(state.environmentLighting)
-    || state.environmentIbl !== 'off:damaged-vessel'
+    || state.environmentIbl !== 'shared-prefiltered:ready'
+    || state.premiumAssetState !== 'ready'
+    || state.premiumBindings < 35
+    || state.worldArtState !== 'ready'
+    || state.sharedFallbacks !== 0
     || !/^aces-\d+\.\d{2}$/.test(state.tone)
     || !/^damaged-vessel:emergency-amber:aces-\d+\.\d{2}$/.test(state.locationLighting)
-    || state.materialIntent !== 'procedural-scarred-hull-pbr+shared-world-pbr'
-    || !/^pbr:\d+\|damaged:7$/.test(state.pbr)
+    || state.materialIntent !== 'premium-ktx2-scarred-hull-pbr+shared-world-pbr'
+    || !/^pbr:\d+\|damaged:8$/.test(state.pbr)
     || state.postRelease !== 'scenario-switch'
     || state.worldState !== 'ready'
     || state.worldMode !== 'scene-meshes-not-hud'

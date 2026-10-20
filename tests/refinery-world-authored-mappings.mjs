@@ -64,7 +64,9 @@ const syncSource = world.slice(syncStart, syncEnd);
 assert(!syncSource.includes('MeshBuilder.CreateBox'), 'P28-C8 mapped sync path must not construct generic boxes directly');
 assert(syncSource.includes('scaled(object.x + object.w / 2)') && syncSource.includes('scaled(object.y + object.h / 2)'), 'P28-C8 presentation must retain simulation-owned interaction/object centers');
 assert(syncSource.includes('authoredWorld.mount.scaling.set(fit.scaleX, fit.scaleY * durabilityScale, fit.scaleZ)'), 'P28-C8 authored object footprint/durability fitting is missing');
-assert(syncSource.includes('const mappedFamily = refineryScenario ? refineryWorldObjectFamilyKey(object) : null'), 'P28-C8 refinery mapping gate is missing');
+assert(syncSource.includes('const mappedFamily = mappedScenario ? refineryWorldObjectFamilyKey(object) : null')
+  && syncSource.includes('const mappedScenario = refineryScenario || sharedPremiumScenario'),
+  'P28-C8 refinery world mapping must remain enabled with the authored-family shared-map rollout');
 assert(syncSource.includes('mappedInteractableAuthoredCount'), 'P28-C8 mapped refinery interactables must contribute to authored readiness counts');
 
 assert(verifier.includes('refineryWorldVisual') && verifier.includes('refineryWorldMappedCount') && verifier.includes('refineryWorldAuthoredCount') && verifier.includes('refineryWorldFallbackCount'), 'P28-C8 live refinery verifier does not inspect world-family mapping telemetry');
