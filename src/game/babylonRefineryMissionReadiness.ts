@@ -175,7 +175,8 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
     this.framesInGeneration += 1;
     this.observeAuthoredPlayerState();
     this.refreshReadiness(mission.location === 'asteroid-refinery',
-      mission.location === 'orbital-station' || mission.location === 'damaged-vessel');
+      mission.location === 'orbital-station' || mission.location === 'damaged-vessel'
+      || mission.location === 'spin-habitat');
     if (this.readiness.phase === 'loading' || this.readiness.mode === 'fallback') {
       this.ensureGuardVisuals(state, missionKey);
     }

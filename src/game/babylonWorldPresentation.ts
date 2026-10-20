@@ -186,9 +186,10 @@ export class BabylonRefineryWorldPresentation {
     if (this.disposed) return;
     this.active = true;
     this.premiumRefineryScenario = mission.location === 'asteroid-refinery';
-    // Reuse the existing authored industrial families on the two current
-    // flagship map refreshes instead of exposing naked generic objects.
-    this.premiumSharedWorldScenario = mission.location === 'orbital-station' || mission.location === 'damaged-vessel';
+    // Shared authored LOD0 families also serve the Spin Habitat machinery,
+    // cover and equipment slots, with explicit readiness and fallback counts.
+    this.premiumSharedWorldScenario = mission.location === 'orbital-station' || mission.location === 'damaged-vessel'
+      || mission.location === 'spin-habitat';
     this.syncObjects(state, detailScale);
     this.syncObjective(state, mission);
     this.syncGroundLoot(state, detailScale);
