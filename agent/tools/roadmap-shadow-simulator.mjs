@@ -256,7 +256,9 @@ export async function buildRoadmapShadowReport({ candidateSha, config = null, co
   // targeting today's item (or a verified archived item) is no longer
   // predictive; retain its exclusion in the advisory evidence, not as a CI fault.
   const archive = await readFile(resolve(repoRoot, 'docs/content-roadmap-archive.md'), 'utf8');
-  const archivedTaskIds = new Set([...archive.matchAll(/^- \\[x\\] \\*\\*([A-Z0-9-]+) —/gm)].map(match => match[1]));
+  const archivedTaskIds = new Set(archive.split('\n')
+    .filter(line => line.startsWith('- [x] **'))
+    .map(line => line.slice(8).split(' —')[0]));
   const skippedScenarios = [];
   const scenarios = [];
 
