@@ -101,13 +101,28 @@ async function waitForSession() {
       const targets = await listTargets();
       const target = targets.find(candidate => candidate.webSocketDebuggerUrl && candidate.title === 'Ironshade Vector');
       if (target) {
+        // A heavy renderer recovery may expose a CDP target before the WebView
+        // event loop can service Runtime.enable. A 90s per-command timeout
+        // must not consume the entire 75s outer session-recovery deadline.
         const socket = await connect(target.webSocketDebuggerUrl);
-        const session = createSession(socket);
-        await session.call('Runtime.enable');
-        await session.call('Page.enable');
-        const ready = await session.evaluate('document.readyState');
-        if (ready === 'complete' || ready === 'interactive') return { socket, session };
-        socket.close();
+        let accepted = false;
+        try {
+          const session = createSession(socket);
+          const remaining = () => Math.max(1, Math.min(6_000, timeoutMs - (Date.now() - startedAt)));
+          await session.call('Runtime.enable', {}, remaining());
+          await session.call('Page.enable', {}, remaining());
+          const ready = await session.call('Runtime.evaluate', {
+            expression: 'document.readyState', awaitPromise: true, returnByValue: true,
+          }, remaining());
+          if (ready.result?.value === 'complete' || ready.result?.value === 'interactive') {
+            accepted = true;
+            return { socket, session };
+          }
+        } finally {
+          // Only release a successfully initialized socket to the caller.
+          // Failed attempts must be closed before opening another CDP session.
+          if (!accepted) socket.close();
+        }
       }
     } catch (error) {
       lastError = error;

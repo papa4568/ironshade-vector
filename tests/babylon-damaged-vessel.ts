@@ -191,4 +191,12 @@ assert(
   'P28-G2 must run a screenshot-content visual gate with real APK frames and blank/pale/stale negative controls.',
 );
 
+const lifecycleTransport = read('scripts/android-babylon-lifecycle-smoke.mjs');
+assert(
+  lifecycleTransport.includes('Math.min(6_000, timeoutMs - (Date.now() - startedAt))')
+    && lifecycleTransport.includes('if (!accepted) socket.close()')
+    && lifecycleTransport.includes("session.call('Runtime.enable', {}, remaining())"),
+  'P28-G2 Android heavy-art resume CDP recovery must retry closed sockets within its overall timeout instead of hanging on one command.',
+);
+
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');
