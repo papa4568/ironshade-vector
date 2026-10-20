@@ -40,6 +40,8 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 This phase is deliberately asset-heavy. It converts the earlier renderer/material/LOD foundations into substantial production art payloads before campaign-wide rollout. It must increase install content through useful authored art rather than padding, duplicate files, intentionally poor compression, or dead assets.
 
+
+
 #### G. Campaign-location rollout of the shared visual stack
 
 Each rollout below reuses the P28 lighting/material/grounding/detail systems and existing location modules; it is a location-integration/tuning batch only, not a new hero-asset or gameplay-design batch.
