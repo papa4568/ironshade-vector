@@ -303,6 +303,25 @@ function validPinnedRoadmapShadowCloseoutFixtureBundle(trustedBaseSha, candidate
   return sameJson(candidateRefs, baseRefs);
 }
 
+
+ // F7's completed product closeout makes P28-G1 current. Preserve the EV-7
+ // rule that shadow probes target only *later* items, while permitting exactly
+ // the reviewed G1/G2 -> G2/G3 data/test fixture update. A future arbitrary
+ // agent mutation (including chmod or a third file) is still rejected.
+ function validPinnedF7ShadowCloseoutFixtureBundle(trustedBaseSha, candidateSha) {
+   const expected = [
+     ['agent/roadmap-shadow-simulator.json', '100644 blob fd0c368e289bcd84242b63810c2b2e990c3ba088', '100644 blob 475b9c75344844fea5c89bb8e777a1f3f902ceab'],
+     ['agent/tests/roadmap-shadow-simulator.mjs', '100644 blob 5e9d7b6f5b0fe9ffe73fe4c9bfe22a7b848e5767', '100644 blob 6ea06d7a53eb26ded954e67270697a3b02e35d6b'],
+   ];
+   const baseRefs = gitAgentRefs(trustedBaseSha, { productCloseout: true });
+   const candidateRefs = gitAgentRefs(candidateSha, { productCloseout: true });
+   for (const [path, before, after] of expected) {
+     if (baseRefs[path] !== before || candidateRefs[path] !== after) return false;
+     candidateRefs[path] = before;
+   }
+   return sameJson(candidateRefs, baseRefs);
+ }
+
 function steadyChecks({ trustedBaseSha, candidateSha }) {
   const expectedWorkflowEntry = gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH);
   const baseDeps = gitPathRefs(trustedBaseSha, TRUSTED_CONSUMER_DEPENDENCIES);
@@ -316,7 +335,7 @@ function steadyChecks({ trustedBaseSha, candidateSha }) {
       check('ev18-steady-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser workflow must remain trusted-base identical'),
       check('ev18-steady-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH), 'Android workflow must remain trusted-base identical'),
       check('ev18-steady-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps), 'source-bound consumer dependencies must remain trusted-base identical'),
-      check('ev18-steady-protected-agent-boundary-unchanged', (sameJson(gitAgentRefs(candidateSha, { productCloseout: true }), gitAgentRefs(trustedBaseSha, { productCloseout: true })) || validPinnedRoadmapFixtureRepair(trustedBaseSha, candidateSha) || validPinnedRoadmapShadowCloseoutFixtureBundle(trustedBaseSha, candidateSha)), 'protected agent entries must remain trusted-base identical except for the exact Git-object-pinned roadmap regression-fixture repair'),
+      check('ev18-steady-protected-agent-boundary-unchanged', (sameJson(gitAgentRefs(candidateSha, { productCloseout: true }), gitAgentRefs(trustedBaseSha, { productCloseout: true })) || validPinnedRoadmapFixtureRepair(trustedBaseSha, candidateSha) || validPinnedRoadmapShadowCloseoutFixtureBundle(trustedBaseSha, candidateSha) || validPinnedF7ShadowCloseoutFixtureBundle(trustedBaseSha, candidateSha)), 'protected agent entries must remain trusted-base identical except for the exact Git-object-pinned roadmap regression-fixture repair'),
       check('ev18-steady-roadmap-closeout-metadata-bound', validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha), 'metadata mutation must exactly match one first-item roadmap archival, dependency pruning and no other sidecar changes'),
       check('ev18-steady-ev9-live-paths-unchanged', ev9Changed.length === 0, `EV-9 live implementation changes require a new trusted observer bootstrap after EV-18; changed=${ev9Changed.join(',')}`),
     ],
@@ -722,6 +741,51 @@ function roadmapShadowCloseoutFixtureBundleCalibration(repairedAdapterCandidateS
   return { accepted: true, attacks: attacks.length, falsePositives: 0, falseNegatives: 0 };
 }
 
+
+ // Real immutable Git blobs, not candidate-declared scenario strings, are the
+ // authority for this two-file allowance. After F7 merges, this calibration
+ // retires naturally because the *before* entries are absent from trusted main.
+ function f7ShadowCloseoutFixtureCalibration() {
+   const base = git(['rev-parse', 'HEAD']);
+   const configPath = 'agent/roadmap-shadow-simulator.json';
+   const testPath = 'agent/tests/roadmap-shadow-simulator.mjs';
+   const baseConfig = gitEntry(base, configPath);
+   const baseTest = gitEntry(base, testPath);
+   if (baseConfig === '100644 blob 475b9c75344844fea5c89bb8e777a1f3f902ceab' && baseTest === '100644 blob 6ea06d7a53eb26ded954e67270697a3b02e35d6b') {
+     return { retired: true, attacks: 0, falsePositives: 0, falseNegatives: 0 };
+   }
+   assert.equal(baseConfig, '100644 blob fd0c368e289bcd84242b63810c2b2e990c3ba088', 'unrecognized pre-F7 shadow config baseline');
+   assert.equal(baseTest, '100644 blob 5e9d7b6f5b0fe9ffe73fe4c9bfe22a7b848e5767', 'unrecognized pre-F7 shadow test baseline');
+   const configText = git(['cat-file', 'blob', '475b9c75344844fea5c89bb8e777a1f3f902ceab']) + '\n';
+   const testText = git(['cat-file', 'blob', '6ea06d7a53eb26ded954e67270697a3b02e35d6b']) + '\n';
+   const accepted = createSyntheticRoadmapCandidate({
+     id: 'f7-exact-shadow-queue-transition',
+     baseSha: base,
+     changes: [
+       { path: configPath, content: configText },
+       { path: testPath, content: testText },
+     ],
+   });
+   assert.equal(gitEntry(accepted, configPath), '100644 blob 475b9c75344844fea5c89bb8e777a1f3f902ceab');
+   assert.equal(gitEntry(accepted, testPath), '100644 blob 6ea06d7a53eb26ded954e67270697a3b02e35d6b');
+   assert.equal(validPinnedF7ShadowCloseoutFixtureBundle(base, accepted), true,
+     'two exact reviewed shadow files must be the only accepted protected change');
+   const attacks = [
+     { id: 'only-test', baseSha: base, changes: [{ path: testPath, content: testText }] },
+     { id: 'only-config', baseSha: base, changes: [{ path: configPath, content: configText }] },
+     { id: 'drift-config', baseSha: accepted, changes: [{ path: configPath, content: configText + ' ' }] },
+     { id: 'drift-test', baseSha: accepted, changes: [{ path: testPath, content: testText + ' ' }] },
+     { id: 'test-chmod', baseSha: accepted, changes: [{ path: testPath, content: testText, mode: '100755' }] },
+     { id: 'extra-protected-agent', baseSha: accepted, changes: [{ path: 'agent/architecture-invariants.json', content: gitText(base, 'agent/architecture-invariants.json') + '\n ' }] },
+   ];
+   for (const attack of attacks) {
+     const dishonest = createSyntheticRoadmapCandidate(attack);
+     assert.equal(validPinnedF7ShadowCloseoutFixtureBundle(base, dishonest), false,
+       'unauthorized F7 shadow fixture mutation admitted: ' + attack.id);
+   }
+   return { retired: false, attacks: attacks.length, falsePositives: 0, falseNegatives: 0 };
+ }
+
 function selfTest() {
   assert.deepEqual([...new Set(EV18_TRANSITION_PATHS)], EV18_TRANSITION_PATHS, 'EV-18 transition paths must be sorted and unique');
   assert.equal(EV18_TRANSITION_PATHS.includes(ROADMAP_PATH), false, 'roadmap state must remain base-owned');
@@ -730,7 +794,8 @@ function selfTest() {
   const roadmapCloseout = roadmapCloseoutBoundaryCalibration();
   const roadmapFixtureRepair = roadmapFixtureRepairBoundaryCalibration();
   const roadmapShadowBundle = roadmapShadowCloseoutFixtureBundleCalibration(roadmapFixtureRepair.candidateSha);
-  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass roadmapFixtureRepairAttacks=${roadmapFixtureRepair.attacks} roadmapFixtureRepairCalibration=pass roadmapShadowBundleAttacks=${roadmapShadowBundle.attacks} roadmapShadowBundleCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
+  const f7ShadowBundle = f7ShadowCloseoutFixtureCalibration();
+  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass roadmapFixtureRepairAttacks=${roadmapFixtureRepair.attacks} roadmapFixtureRepairCalibration=pass roadmapShadowBundleAttacks=${roadmapShadowBundle.attacks} roadmapShadowBundleCalibration=pass f7ShadowFixtureAttacks=${f7ShadowBundle.attacks} f7ShadowFixtureRetired=${f7ShadowBundle.retired} f7ShadowFixtureCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
 }
 
 function verify() {
