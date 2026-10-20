@@ -126,6 +126,7 @@ export class BabylonOrbitalStationPresentation {
   private readonly premiumSurfaces: BabylonPremiumPbrSurfaceLibrary;
   private readonly ownedMaterials: PBRMaterial[];
   private readonly premiumBindingCount: number;
+  private readonly staticPropGroundingCount: number;
   private readonly fixtureMaterial: PBRMaterial;
   private readonly iblTexture: CubeTexture;
   private iblReady = false;
@@ -152,6 +153,7 @@ export class BabylonOrbitalStationPresentation {
     const worldH = scaled(world.h);
     const cx = worldW / 2;
     const cz = worldH / 2;
+    const staticPropContacts: { x: number; z: number; width: number; depth: number }[] = [];
 
     // Bind the shipped P28 texture library to actual station meshes, not telemetry-only assets.
     this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
@@ -230,6 +232,7 @@ export class BabylonOrbitalStationPresentation {
         scale,
       );
       cargo.rotation.y = ((index % 5) - 2) * 0.055;
+      staticPropContacts.push({ x, z, width: scale * 1.5, depth: scale });
       createBox(scene, this.root, `p28-g1-cargo-top-recess-${index}`, dark,
         x, scale + 0.022, z, scale * 1.24, 0.044, scale * 0.76);
     }
@@ -250,6 +253,7 @@ export class BabylonOrbitalStationPresentation {
         0.62 * scale,
         0.72 * scale,
       );
+      staticPropContacts.push({ x, z, width: 0.92 * scale * (index % 3 === 0 ? 1.25 : 1), depth: 0.72 * scale });
     }
 
     for (let index = 0; index < 8; index += 1) {
@@ -342,6 +346,18 @@ export class BabylonOrbitalStationPresentation {
     this.groundingSource.isPickable = false;
     this.groundingSource.alphaIndex = -300;
     this.groundingSource.rotation.x = Math.PI / 2;
+    // Station cargo and service cases also receive soft floor contact; these are
+    // presentation-only and stay at the existing authored positions.
+    staticPropContacts.forEach(({ x, z, width, depth }, index) => {
+      const contact = this.groundingSource.createInstance('p28-g1-orbital-prop-contact-' + index);
+      contact.parent = this.root;
+      contact.position.set(x, 0.042, z);
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(width * 1.28, depth * 1.28, 1);
+      contact.isPickable = false;
+      contact.alphaIndex = -300;
+    });
+    this.staticPropGroundingCount = staticPropContacts.length;
     this.meshCount = this.root.getChildMeshes(false).length;
     this.root.setEnabled(false);
 
@@ -488,6 +504,7 @@ export class BabylonOrbitalStationPresentation {
     this.canvas.dataset.orbitalPremiumSurfaces = BABYLON_ORBITAL_PREMIUM_SURFACES.join(',');
     this.canvas.dataset.orbitalGrounding = 'player+enemies:soft-contact';
     this.canvas.dataset.orbitalGroundedEnemies = String(nearby.size);
+    this.canvas.dataset.orbitalGroundedProps = String(this.staticPropGroundingCount);
     this.canvas.dataset.babylonLightingBudget = `tier:${renderBudget.tierName}|practical:${practicalCount}|shadows:off`;
     this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading';
     this.canvas.dataset.environmentLighting = `orbital-key+rim+emergency+readability+practical:${practicalCount}`;
