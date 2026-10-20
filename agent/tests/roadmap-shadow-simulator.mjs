@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { loadRoadmapAdapter } from '../tools/roadmap-adapter.mjs';
 
 import {
   analyzeRoadmapShadowScenario,
@@ -23,8 +24,21 @@ assert.throws(
 
 const report = await buildRoadmapShadowReport({ candidateSha: '1'.repeat(40) });
 assert.equal(report.schema, 'ironshade-roadmap-shadow-simulator-report:v1');
-assert.equal(report.scenarioCount, 2);
-assert.deepEqual(report.summary.taskIds, ['P28-G2', 'P28-G3']);
+const { roadmapTasks } = await loadRoadmapAdapter();
+const futureTaskIds = new Set(roadmapTasks.slice(1).map(task => task.id));
+const archivedTasks = (await readFile(resolve('docs/content-roadmap-archive.md'), 'utf8'));
+const expectedIds = config.scenarios.map(scenario => scenario.taskId).filter(id => futureTaskIds.has(id));
+const expectedSkipped = config.scenarios.filter(scenario => !futureTaskIds.has(scenario.taskId)).map(scenario => ({
+  taskId: scenario.taskId,
+  reason: roadmapTasks[0]?.id === scenario.taskId ? 'current-task' : 'archived-task',
+}));
+assert.equal(report.scenarioCount, expectedIds.length);
+assert.deepEqual(report.summary.taskIds, expectedIds);
+assert.deepEqual(report.skippedScenarios, expectedSkipped);
+assert(expectedSkipped.every(scenario =>
+  scenario.reason === 'current-task' || archivedTasks.includes(`- [x] **${scenario.taskId} —`)),
+  'EV-7 may skip a historical shadow probe only if that product task is currently active or archived');
+assert(Number.isFinite(report.summary.maximumFrictionScore) && report.summary.maximumFrictionScore >= 0);
 assert.equal(report.summary.missingExtensionPointCount, 0, 'current architecture should expose the configured clean extension points');
 assert.equal(report.summary.requiredBoundaryViolationCount, 0, 'current architecture should not require configured forbidden dependencies');
 assert.equal(report.temporaryProbesPersisted, false);
@@ -33,14 +47,13 @@ assert.equal(report.acceptedForEnforcement, false);
 assert.equal(report.candidatePassGranted, false);
 assert.equal(report.blocking, false);
 
-// Both advisory probes must remain strictly *later* than the current G1 root.
-// Regression: moving a configured probe to the current task is a hard error,
-// not a silently accepted or skipped future-work prediction.
-const currentTaskConfig = structuredClone(config);
-currentTaskConfig.scenarios[1].taskId = 'P28-G1';
+// Archived and current probes must never be credited as predictive future work.
+// An unrecognized product ID remains a hard error instead of silently vanishing.
+const unknownTaskConfig = structuredClone(config);
+unknownTaskConfig.scenarios[1].taskId = 'P28-Z999';
 await assert.rejects(
-  buildRoadmapShadowReport({ candidateSha: '1'.repeat(40), config: currentTaskConfig }),
-  /must target a later roadmap item, not the current product task/,
+  buildRoadmapShadowReport({ candidateSha: '1'.repeat(40), config: unknownTaskConfig }),
+  /is neither an active nor archived roadmap task/,
 );
 
 const spinScenario = config.scenarios[1];

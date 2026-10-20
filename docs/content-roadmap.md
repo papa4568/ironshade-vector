@@ -46,7 +46,6 @@ This phase is deliberately asset-heavy. It converts the earlier renderer/materia
 
 Each rollout below reuses the P28 lighting/material/grounding/detail systems and existing location modules; it is a location-integration/tuning batch only, not a new hero-asset or gameplay-design batch.
 
-- [ ] **P28-G1 — Refresh Orbital Station visuals** — Adopt the shared P28 visual stack in the existing Babylon Orbital Station presentation and tune its location profile. **Done when:** its deterministic route has premium authored surface depth, grounded characters/props, controlled emissives/atmosphere, preserved cue readability, Flagship Android captures, and standard build/APK gates pass.
 - [ ] **P28-G2 — Refresh Damaged Vessel visuals** — Adopt the shared P28 stack in Damaged Vessel and tune damaged-hull surface/lighting parameters while preserving breach/salvage gameplay cues. **Done when:** the deterministic route is materially richer and spatially deeper without cue loss or collision changes, Flagship Android captures pass review, and standard build/APK gates pass.
 
 - [ ] **P28-G3 — Refresh Spin Habitat visuals** — Adopt the shared P28 stack in Spin Habitat and tune ring/spoke surfaces and lighting to reinforce rotational architecture without changing mechanics. **Done when:** the route reads as a distinct premium location at gameplay zoom on the flagship target and standard build/APK gates pass.

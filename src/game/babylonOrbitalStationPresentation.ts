@@ -1,18 +1,29 @@
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
+import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Scene } from '@babylonjs/core/scene';
 import { getMapNavigationPlan } from './mapNavigation';
+import { createBabylonPremiumPbrSurfaceLibrary, type BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
+import { createRefineryContactDepthAlphaData } from './refineryContactDepth';
+import { REFINERY_ACTOR_GROUNDING_PROFILE, refineryActorGroundingScale } from './babylonRefineryLighting';
 import type { RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize, type SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
+export const BABYLON_ORBITAL_PREMIUM_SURFACES = [
+  'deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture',
+] as const;
 
 export const BABYLON_ORBITAL_STATION_IDENTITY = Object.freeze({
   silhouette: 'radial-spine',
@@ -112,6 +123,17 @@ export class BabylonOrbitalStationPresentation {
   private readonly root: TransformNode;
   private readonly materials: PBRMaterial[];
   private readonly routeGlowMaterials: PBRMaterial[] = [];
+  private readonly premiumSurfaces: BabylonPremiumPbrSurfaceLibrary;
+  private readonly ownedMaterials: PBRMaterial[];
+  private readonly premiumBindingCount: number;
+  private readonly staticPropGroundingCount: number;
+  private readonly fixtureMaterial: PBRMaterial;
+  private readonly iblTexture: CubeTexture;
+  private iblReady = false;
+  private readonly groundingTexture: RawTexture;
+  private readonly groundingMaterial: StandardMaterial;
+  private readonly groundingSource: Mesh;
+  private readonly enemyGrounding = new Map<number, InstancedMesh>();
   private readonly hemisphere: HemisphericLight;
   private readonly keyLight: DirectionalLight;
   private readonly rimLight: DirectionalLight;
@@ -131,14 +153,20 @@ export class BabylonOrbitalStationPresentation {
     const worldH = scaled(world.h);
     const cx = worldW / 2;
     const cz = worldH / 2;
+    const staticPropContacts: { x: number; z: number; width: number; depth: number }[] = [];
 
-    const floor = createMaterial(scene, 'p27-c1-orbital-floor-material', 0x101716, 0.62, 0.52);
-    const structural = createMaterial(scene, 'p27-c1-orbital-structure-material', 0x4d6760, 0.8, 0.34);
-    const dark = createMaterial(scene, 'p27-c1-orbital-dark-material', 0x171d20, 0.9, 0.42);
+    // Bind the shipped P28 texture library to actual station meshes, not telemetry-only assets.
+    this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
+    const floor = this.premiumSurfaces.get('deck-plate');
+    const structural = this.premiumSurfaces.get('painted-metal');
+    const dark = this.premiumSurfaces.get('bare-metal');
+    const gasket = this.premiumSurfaces.get('polymer-rubber');
+    this.fixtureMaterial = this.premiumSurfaces.get('emissive-fixture');
     const accent = createMaterial(scene, 'p27-c1-orbital-accent-material', 0x7aa99c, 0.58, 0.25, 0x7aa99c, 0.2);
     const routePrimary = createMaterial(scene, 'p27-c1-orbital-route-primary-material', 0x263532, 0.72, 0.36, 0x7aa99c, 0.22);
     const routeSecondary = createMaterial(scene, 'p27-c1-orbital-route-secondary-material', 0x242c2d, 0.74, 0.42, 0x4d6760, 0.08);
-    this.materials = [floor, structural, dark, accent, routePrimary, routeSecondary];
+    this.ownedMaterials = [accent, routePrimary, routeSecondary];
+    this.materials = [floor, structural, dark, ...this.ownedMaterials];
     this.routeGlowMaterials.push(routePrimary, routeSecondary);
 
     this.root = new TransformNode('p27-c1-orbital-station-environment', scene);
@@ -150,6 +178,10 @@ export class BabylonOrbitalStationPresentation {
       createBox(scene, this.root, `p27-c1-orbital-rib-top-${index}`, dark, x, 2.4, 0.34, 0.16, 4.8, 0.22);
       createBox(scene, this.root, `p27-c1-orbital-rib-bottom-${index}`, dark, x, 2.4, worldH - 0.34, 0.16, 4.8, 0.22);
       createBox(scene, this.root, `p27-c1-orbital-overhead-${index}`, structural, x, 4.75, cz, 0.18, 0.18, worldH * 0.95);
+      for (const edge of [0.65, worldH - 0.65]) {
+        createBox(scene, this.root, `p28-g1-rib-housing-${index}-${edge}`, dark, x, 2.84, edge, 0.36, 0.46, 0.27);
+        createBox(scene, this.root, `p28-g1-rib-fastener-${index}-${edge}`, structural, x, 2.87, edge, 0.13, 0.13, 0.31);
+      }
     }
 
     for (const z of [1.35, worldH - 1.35]) {
@@ -176,6 +208,7 @@ export class BabylonOrbitalStationPresentation {
       createBox(scene, group, `p27-c1-orbital-airlock-${side}-door`, dark, 0.34, 1.22, 0, 0.68, 1.9, 2.18);
       for (const sign of [-1, 1]) {
         createBox(scene, group, `p27-c1-orbital-airlock-${side}-guide-${sign}`, accent, 0.39, 1.22 + sign * 0.68, sign * 0.92, 0.72, 0.09, 0.16);
+        createBox(scene, group, `p28-g1-airlock-seal-${side}-${sign}`, gasket, 0.7, 1.25, sign * 1.07, 0.085, 2.1, 0.11);
       }
     };
     addAirlock(0.35, worldH * 0.27, 0, 'port');
@@ -199,6 +232,9 @@ export class BabylonOrbitalStationPresentation {
         scale,
       );
       cargo.rotation.y = ((index % 5) - 2) * 0.055;
+      staticPropContacts.push({ x, z, width: scale * 1.5, depth: scale });
+      createBox(scene, this.root, `p28-g1-cargo-top-recess-${index}`, dark,
+        x, scale + 0.022, z, scale * 1.24, 0.044, scale * 0.76);
     }
 
     for (let index = 0; index < 12; index += 1) {
@@ -217,6 +253,7 @@ export class BabylonOrbitalStationPresentation {
         0.62 * scale,
         0.72 * scale,
       );
+      staticPropContacts.push({ x, z, width: 0.92 * scale * (index % 3 === 0 ? 1.25 : 1), depth: 0.72 * scale });
     }
 
     for (let index = 0; index < 8; index += 1) {
@@ -276,8 +313,60 @@ export class BabylonOrbitalStationPresentation {
       createBox(scene, this.root, `p27-c1-orbital-landmark-beacon-${index}`, accent, x, 3.15, z, 1.45, 0.14, 0.4);
     });
 
+    for (const [index, normalizedX] of [0.25, 0.75].entries()) {
+      const x = worldW * normalizedX;
+      const z = worldH * (index === 0 ? 0.22 : 0.78);
+      createBox(scene, this.root, `p28-g1-practical-housing-${index}`, dark, x, 3.74, z, 1.1, 0.21, 0.62);
+      createBox(scene, this.root, `p28-g1-practical-emitter-${index}`,
+        this.fixtureMaterial, x, 3.61, z, 0.75, 0.045, 0.42);
+    }
+    const sharedMaterials = new Set(this.premiumSurfaces.materials.values());
+    this.premiumBindingCount = this.root.getChildMeshes(false)
+      .filter(mesh => mesh.material instanceof PBRMaterial && sharedMaterials.has(mesh.material)).length;
+
+    // Contact decals borrow the proven P28 alpha generator and never touch collision.
+    const groundingSize = REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize;
+    this.groundingTexture = RawTexture.CreateRGBATexture(
+      createRefineryContactDepthAlphaData(groundingSize), groundingSize, groundingSize, scene, false, false,
+    );
+    this.groundingTexture.hasAlpha = true;
+    this.groundingMaterial = new StandardMaterial('p28-g1-orbital-contact-material', scene);
+    this.groundingMaterial.diffuseColor = new Color3(0.015, 0.022, 0.023);
+    this.groundingMaterial.specularColor = Color3.Black();
+    this.groundingMaterial.diffuseTexture = this.groundingTexture;
+    this.groundingMaterial.useAlphaFromDiffuseTexture = true;
+    this.groundingMaterial.disableLighting = true;
+    this.groundingMaterial.disableDepthWrite = true;
+    this.groundingMaterial.backFaceCulling = false;
+    this.groundingMaterial.alpha = 0.26;
+    this.groundingSource = MeshBuilder.CreatePlane('p28-g1-orbital-player-contact',
+      { width: 1, height: 1, sideOrientation: Mesh.DOUBLESIDE }, scene);
+    this.groundingSource.parent = this.root;
+    this.groundingSource.material = this.groundingMaterial;
+    this.groundingSource.isPickable = false;
+    this.groundingSource.alphaIndex = -300;
+    this.groundingSource.rotation.x = Math.PI / 2;
+    // Station cargo and service cases also receive soft floor contact; these are
+    // presentation-only and stay at the existing authored positions.
+    staticPropContacts.forEach(({ x, z, width, depth }, index) => {
+      const contact = this.groundingSource.createInstance('p28-g1-orbital-prop-contact-' + index);
+      contact.parent = this.root;
+      contact.position.set(x, 0.042, z);
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(width * 1.28, depth * 1.28, 1);
+      contact.isPickable = false;
+      contact.alphaIndex = -300;
+    });
+    this.staticPropGroundingCount = staticPropContacts.length;
     this.meshCount = this.root.getChildMeshes(false).length;
     this.root.setEnabled(false);
+
+    // Reuse the shipped P28 prefiltered reflection asset at restrained, cool-route intensity.
+    this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env',
+      scene, undefined, false, undefined,
+      () => { this.iblReady = true; }, () => { this.iblReady = false; }, undefined, true);
+    this.iblTexture.name = 'p28-g1-orbital-shared-prefiltered-ibl';
+    this.iblTexture.gammaSpace = false;
 
     const lighting = BABYLON_ORBITAL_STATION_LIGHTING;
     this.hemisphere = new HemisphericLight('p27-c1-orbital-hemisphere', new Vector3(-0.45, 1, 0.32), scene);
@@ -329,6 +418,36 @@ export class BabylonOrbitalStationPresentation {
 
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
+    this.groundingMaterial.alpha = renderBudget.tierName === 'performance' ? 0.18 : 0.26;
+    this.groundingSource.position.set(px, 0.044, pz);
+    this.groundingSource.scaling.set(0.98, 0.65, 1);
+    const nearby = new Set<number>();
+    const radiusSq = REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius ** 2;
+    for (const enemy of state.enemies) {
+      if (!enemy.active || enemy.dead) continue;
+      const dx = enemy.x - state.player.x;
+      const dz = enemy.y - state.player.y;
+      if (dx * dx + dz * dz > radiusSq) continue;
+      nearby.add(enemy.id);
+      let contact = this.enemyGrounding.get(enemy.id);
+      if (!contact) {
+        contact = this.groundingSource.createInstance('p28-g1-orbital-enemy-contact-' + enemy.id);
+        contact.parent = this.root;
+        contact.isPickable = false;
+        contact.alphaIndex = -300;
+        this.enemyGrounding.set(enemy.id, contact);
+      }
+      const size = refineryActorGroundingScale(enemy.role);
+      contact.position.set(scaled(enemy.x), 0.043, scaled(enemy.y));
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(0.98 * size, 0.65 * size, 1);
+    }
+    for (const [id, contact] of this.enemyGrounding) {
+      if (!nearby.has(id)) {
+        contact.dispose();
+        this.enemyGrounding.delete(id);
+      }
+    }
     const activeBoss = state.enemies.find(enemy => enemy.active && !enemy.dead && enemy.role === 'boss') ?? null;
     const dangerPulse = activeBoss?.bossPhase === 2 ? 1 + Math.sin(state.time * 4.6) * 0.16 : 1;
     const damagedGrid = state.hazards.some(hazard => hazard.active && hazard.kind === 'shockGrid');
@@ -344,12 +463,14 @@ export class BabylonOrbitalStationPresentation {
       light.intensity = enabled ? (index === 0 ? 1.55 : 1.28) * tierScale : 0;
     });
 
+    this.fixtureMaterial.emissiveColor = new Color3(0.66, 0.86, 0.81).scale(
+      renderBudget.tierName === 'performance' ? 0.62 : tierScale);
     const routePulse = 0.88 + Math.sin(state.time * 3.8) * 0.12;
     this.routeGlowMaterials[0].emissiveColor = colorFromHex(0x7aa99c).scale(0.22 * routePulse);
     this.routeGlowMaterials[1].emissiveColor = colorFromHex(0x4d6760).scale(0.08 * routePulse);
 
-    this.scene.environmentTexture = null;
-    this.scene.environmentIntensity = 0;
+    this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
+    this.scene.environmentIntensity = this.iblReady ? 0.32 * tierScale : 0;
     this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
     this.scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.scene.imageProcessingConfiguration.exposure = lighting.exposure * (lowVisibility ? 0.96 : 1);
@@ -370,11 +491,24 @@ export class BabylonOrbitalStationPresentation {
     this.canvas.dataset.babylonOrbitalRoutes = String(getMapNavigationPlan('orbital-station').routes.length);
     this.canvas.dataset.babylonOrbitalLandmarks = getMapNavigationPlan('orbital-station').landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;
-    this.canvas.dataset.babylonMaterialIntent = 'procedural-clean-industrial-pbr+shared-world-pbr';
+    this.canvas.dataset.babylonMaterialIntent = 'premium-ktx2-pbr+wayfinding-emissives+shared-world-pbr';
+    const premiumReady = BABYLON_ORBITAL_PREMIUM_SURFACES.every(id => {
+      const material = this.premiumSurfaces.get(id);
+      return material.albedoTexture?.isReady() === true
+        && material.bumpTexture?.isReady() === true
+        && material.metallicTexture?.isReady() === true
+        && (!material.emissiveTexture || material.emissiveTexture.isReady());
+    });
+    this.canvas.dataset.orbitalPremiumAssetState = premiumReady ? 'ready' : 'loading';
+    this.canvas.dataset.orbitalPremiumBindings = String(this.premiumBindingCount);
+    this.canvas.dataset.orbitalPremiumSurfaces = BABYLON_ORBITAL_PREMIUM_SURFACES.join(',');
+    this.canvas.dataset.orbitalGrounding = 'player+enemies:soft-contact';
+    this.canvas.dataset.orbitalGroundedEnemies = String(nearby.size);
+    this.canvas.dataset.orbitalGroundedProps = String(this.staticPropGroundingCount);
     this.canvas.dataset.babylonLightingBudget = `tier:${renderBudget.tierName}|practical:${practicalCount}|shadows:off`;
-    this.canvas.dataset.environmentIbl = 'off:orbital-station';
+    this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading';
     this.canvas.dataset.environmentLighting = `orbital-key+rim+emergency+readability+practical:${practicalCount}`;
-    this.canvas.dataset.environmentShadowBudget = 'off:orbital-procedural';
+    this.canvas.dataset.environmentShadowBudget = 'contact-only:orbital-station';
     this.canvas.dataset.environmentTone = `aces-${this.scene.imageProcessingConfiguration.exposure.toFixed(2)}`;
     this.canvas.dataset.locationLighting = `orbital-station:neutral-cyan:aces-${this.scene.imageProcessingConfiguration.exposure.toFixed(2)}`;
     this.canvas.dataset.babylonPbrMaterials = `pbr:${pbrCount}|station:${this.materials.length}`;
@@ -392,9 +526,16 @@ export class BabylonOrbitalStationPresentation {
 
   dispose() {
     this.release('renderer-dispose');
+    for (const contact of this.enemyGrounding.values()) contact.dispose();
+    this.enemyGrounding.clear();
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose());
     this.root.dispose();
-    this.materials.forEach(material => material.dispose());
+    this.groundingMaterial.dispose();
+    this.groundingTexture.dispose();
+    if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
+    this.iblTexture.dispose();
+    this.ownedMaterials.forEach(material => material.dispose());
+    this.premiumSurfaces.dispose();
     this.hemisphere.dispose();
     this.keyLight.dispose();
     this.rimLight.dispose();

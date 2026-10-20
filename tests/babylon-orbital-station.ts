@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import {
   BABYLON_ORBITAL_STATION_IDENTITY,
   BABYLON_ORBITAL_STATION_LIGHTING,
+  BABYLON_ORBITAL_PREMIUM_SURFACES,
 } from '../src/game/babylonOrbitalStationPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 
@@ -19,6 +20,9 @@ const station = read('src/game/babylonOrbitalStationPresentation.ts');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');
 const workflow = read('.github/workflows/browser-e2e.yml');
+const androidWorkflow = read('.github/workflows/pr-android-apk.yml');
+const androidCapture = read('scripts/android-p28g1-orbital-capture.mjs');
+const androidCaptureRunner = read('scripts/android-p28g1-orbital-capture.sh');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 
 assert(
@@ -44,6 +48,44 @@ assert(
   'P27-C1 Babylon Orbital Station lighting must retain the neutral-cyan Three profile.',
 );
 
+
+assert(
+  BABYLON_ORBITAL_PREMIUM_SURFACES.join(',') === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
+    && station.includes('createBabylonPremiumPbrSurfaceLibrary(scene)')
+    && station.includes("this.premiumSurfaces.get('deck-plate')")
+    && station.includes("this.premiumSurfaces.get('painted-metal')")
+    && station.includes("this.premiumSurfaces.get('bare-metal')")
+    && station.includes("this.premiumSurfaces.get('polymer-rubber')")
+    && station.includes("this.premiumSurfaces.get('emissive-fixture')")
+    && station.includes('premiumBindingCount = this.root.getChildMeshes(false)')
+    && station.includes("orbitalPremiumAssetState = premiumReady ? 'ready' : 'loading'")
+    && station.includes("orbitalGrounding = 'player+enemies:soft-contact'")
+    && station.includes('createRefineryContactDepthAlphaData(groundingSize)')
+    && station.includes('this.enemyGrounding.delete(id)')
+    && station.includes('staticPropContacts.push({ x, z')
+    && station.includes('this.staticPropGroundingCount = staticPropContacts.length')
+    && station.includes('orbitalGroundedProps = String(this.staticPropGroundingCount)')
+    && station.includes('this.premiumSurfaces.dispose()')
+    && station.includes('this.iblTexture.dispose()'),
+  'P28-G1 must bind shipped premium KTX2 art to real meshes, ground actors and dispose the shared assets.',
+);
+
+assert(
+  androidWorkflow.includes('bash scripts/android-p28g1-orbital-capture.sh')
+    && androidWorkflow.includes('android-p28g1-orbital-station-device.png')
+    && androidWorkflow.includes('android-p28g1-orbital-station-normal.png')
+    && androidWorkflow.includes('android-p28g1-orbital-station-action.png')
+    && androidWorkflow.includes('android-p28g1-orbital-station.json')
+    && androidCapture.includes("d?.babylonScenario === 'orbital-station'")
+    && androidCapture.includes("d.orbitalPremiumAssetState === 'ready'")
+    && androidCapture.includes("Number(d.orbitalGroundedProps || 0) === 25")
+    && androidCapture.includes("d.environmentIbl === 'shared-prefiltered:ready'")
+    && androidCapture.includes("d.objectiveWorldCue === 'beacon+navigation-path'")
+    && androidCapture.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && androidCaptureRunner.includes('adb exec-out screencap -p')
+    && androidCaptureRunner.includes('ANDROID_P28G1_FLAGSHIP_CAPTURE_PASS'),
+  'P28-G1 must archive real APK-backed Android WebView and device-screen Orbital Station visual captures, not refinery images.',
+);
 
 const navigation = getMapNavigationPlan('orbital-station');
 assert(

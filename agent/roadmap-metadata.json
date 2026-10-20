@@ -3,7 +3,6 @@
   "schemaVersion": 1,
   "roadmap": "docs/content-roadmap.md",
   "roadmapIds": [
-    "P28-G1",
     "P28-G2",
     "P28-G3",
     "P28-G4",
@@ -153,7 +152,6 @@
     }
   ],
   "overrides": {
-    "P28-G1": {},
     "P28-G2": {},
     "P28-G3": {},
     "P28-G4": {},

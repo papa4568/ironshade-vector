@@ -252,12 +252,28 @@ export async function buildRoadmapShadowReport({ candidateSha, config = null, co
     roadmapPath: resolve(repoRoot, 'docs/content-roadmap.md'),
   });
   const taskIndexes = new Map(roadmapTasks.map((task, index) => [task.id, index]));
+  // Shadow probes remain future-only as the product queue advances. A probe
+  // targeting today's item (or a verified archived item) is no longer
+  // predictive; retain its exclusion in the advisory evidence, not as a CI fault.
+  const archive = await readFile(resolve(repoRoot, 'docs/content-roadmap-archive.md'), 'utf8');
+  const archivedTaskIds = new Set(archive.split('\n')
+    .filter(line => line.startsWith('- [x] **'))
+    .map(line => line.slice(8).split(' —')[0]));
+  const skippedScenarios = [];
   const scenarios = [];
 
   for (const scenario of loadedConfig.scenarios) {
     const taskIndex = taskIndexes.get(scenario.taskId);
-    assert(taskIndex !== undefined, `roadmap shadow scenario ${scenario.taskId} is not an active roadmap task`);
-    assert(taskIndex > 0, `roadmap shadow scenario ${scenario.taskId} must target a later roadmap item, not the current product task`);
+    if (taskIndex === 0) {
+      skippedScenarios.push({ taskId: scenario.taskId, reason: 'current-task' });
+      continue;
+    }
+    if (taskIndex === undefined) {
+      assert(archivedTaskIds.has(scenario.taskId),
+        `roadmap shadow scenario ${scenario.taskId} is neither an active nor archived roadmap task`);
+      skippedScenarios.push({ taskId: scenario.taskId, reason: 'archived-task' });
+      continue;
+    }
     const roadmapTask = roadmapTasks[taskIndex];
     const compileResult = compile ? await compileRoadmapShadowProbe(scenario, { repoRoot }) : null;
     const analysis = await analyzeRoadmapShadowScenario(scenario, { compileResult });
@@ -276,9 +292,10 @@ export async function buildRoadmapShadowReport({ candidateSha, config = null, co
     candidateSha,
     scenarioCount: scenarios.length,
     scenarios,
+    skippedScenarios,
     summary: {
       taskIds: scenarios.map(scenario => scenario.taskId),
-      maximumFrictionScore: Math.max(...scenarios.map(scenario => scenario.frictionScore)),
+      maximumFrictionScore: Math.max(0, ...scenarios.map(scenario => scenario.frictionScore)),
       missingExtensionPointCount: scenarios.reduce((sum, scenario) => sum + scenario.missingExtensionPoints.length, 0),
       requiredBoundaryViolationCount: scenarios.reduce((sum, scenario) => sum + scenario.requiredBoundaryViolations.length, 0),
       compiledProbeCount: scenarios.filter(scenario => scenario.probeCompilation.status !== 'not-run').length,

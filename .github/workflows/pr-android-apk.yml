@@ -213,7 +213,7 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          script: bash -lc 'ok=0; for attempt in 1 2; do if ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh; then ok=1; break; fi; if [[ "$attempt" -lt 2 ]]; then echo "API 35 smoke attempt failed; retrying once on the same emulator"; adb shell am force-stop app.ironshade.vector || true; sleep 3; fi; done; test "$ok" = 1 && bash scripts/android-p28f6-heavy-cache-smoke.sh'
+          script: bash -lc 'ok=0; for attempt in 1 2; do if ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh; then ok=1; break; fi; if [[ "$attempt" -lt 2 ]]; then echo "API 35 smoke attempt failed; retrying once on the same emulator"; adb shell am force-stop app.ironshade.vector || true; sleep 3; fi; done; test "$ok" = 1 && bash scripts/android-p28f6-heavy-cache-smoke.sh && bash scripts/android-p28g1-orbital-capture.sh'
 
       - name: Upload API 35 evidence
         if: always()
@@ -227,6 +227,11 @@ jobs:
             android-babylon-webgpu.json
             android-p28f6-interaction.json
             android-p28f6-resume.json
+            android-p28g1-orbital-station-normal.png
+            android-p28g1-orbital-station-action.png
+            android-p28g1-orbital-station-device.png
+            android-p28g1-orbital-station.json
+            android-p28g1-orbital-station-logcat.txt
           if-no-files-found: warn
           retention-days: 30
 
