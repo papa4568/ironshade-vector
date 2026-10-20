@@ -11,7 +11,7 @@ PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
 test -n "$PID"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:webview_devtools_remote_${PID}"
-CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-p28g3-damaged-capture.mjs
+CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-p28g3-spin-capture.mjs
 node scripts/verify-p28g3-gameplay-frames.mjs android-p28g3-spin-habitat-normal.png android-p28g3-spin-habitat-action.png android-p28g3-spin-habitat-pixel-report.json android-p28g3-spin-habitat.json
 # Capture the actual Android display in addition to the Chrome WebView frames.
 adb exec-out screencap -p > android-p28g3-spin-habitat-device.png
