@@ -160,6 +160,7 @@ assert(
     && androidCapture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
     && androidCapture.includes('before === result.playerPosition')
     && androidCapture.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && androidCaptureRunner.includes('CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-p28g3-spin-capture.mjs')
     && androidCaptureRunner.includes('adb exec-out screencap -p')
     && androidWorkflow.includes('bash scripts/android-p28g3-spin-capture.sh'),
   'P28-G3 must require real high-tier APK normal/action frames, shared LOD0, loaded surfaces and source provenance.',
