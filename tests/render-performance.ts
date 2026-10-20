@@ -40,6 +40,13 @@ assert(snapshot.refineryIblScale===1 && snapshot.refineryBloomScale===1 && snaps
 for(let i=0;i<180;i+=1) snapshot=desktop.sample(30,1);
 assert(snapshot.tierName==='performance' && !snapshot.shadows && snapshot.shadowMapSize===256 && snapshot.vfxDensity===0.45 && snapshot.transparencyScale===0.4,'sustained slow frames must reach performance tier');
 assert(snapshot.detailScale===0.5,'sustained slow frames must keep resource detail aligned with the Performance tier');
+const visualQaBudget = new AdaptiveRenderBudget(false);
+let visualQa;
+for (let i = 0; i < 180; i += 1) visualQa = visualQaBudget.sample(40, 1, 'flagship', true);
+assert(visualQa?.tierName === 'high' && visualQa?.detailScale === 1 && visualQa?.runtimeTierName === 'performance',
+  'opt-in visual QA must render real high-tier LOD0 without fabricating device runtime-pressure telemetry');
+assert(visualQaBudget.sample(40, 1, 'flagship').tierName === 'performance',
+  'production tier must still adapt immediately after the opt-in QA override is absent');
 assert(snapshot.refineryIblScale<0.5 && snapshot.refineryBloomScale<0.5 && snapshot.refineryContactDepthScale<0.5 && snapshot.refineryAtmosphereScale<0.5 && snapshot.gameplayCueScale===1,'performance tier must shed secondary effects while preserving critical cues');
 for(let i=0;i<700;i+=1) snapshot=desktop.sample(16.4,1); assert(snapshot.tierName==='high','healthy frames must recover desktop quality');
 assert(snapshot.detailScale===1,'healthy recovery must restore flagship resource detail');

@@ -99,6 +99,7 @@ try {
   url.searchParams.set('graphicsCompare', '1');
   url.searchParams.set('graphicsPath', 'babylon');
   url.searchParams.set('babylonBackend', 'webgl2');
+  url.searchParams.set('p28FlagshipVisualQa', '1');
   await call('Page.navigate', { url: url.toString() });
 
   const startSurface = await waitFor(`(() => {
@@ -147,6 +148,10 @@ try {
     return d?.babylonScenario === 'orbital-station'
       && d.graphicsPathLoaded === 'babylon'
       && d.babylonBackend === 'webgl2'
+      && d.renderTier === 'high'
+      && d.p28FlagshipCapture === 'high-tier-qa-visual-only'
+      && Boolean(d.babylonSharedWorldAssets)
+      && d.babylonSharedWorldAssets.split(',').every(id => id.endsWith('-lod0'))
       && d.babylonInit === 'ready'
       && Number(d.babylonFrames || 0) >= 2
       && d.orbitalPremiumAssetState === 'ready'
@@ -187,6 +192,7 @@ try {
     return {
       location: d.babylonScenario ?? '', graphics: d.graphicsPathLoaded ?? '',
       backend: d.babylonBackend ?? '', tier: d.renderTier ?? '',
+      captureMode: d.p28FlagshipCapture ?? '',
       frameCount: Number(d.babylonFrames || 0),
       premium: d.orbitalPremiumAssetState ?? '', bindings: Number(d.orbitalPremiumBindings || 0),
       premiumBindings: Number(d.orbitalPremiumBindings || 0),
@@ -208,6 +214,7 @@ try {
     };
   })()`);
   if (state.location !== 'orbital-station' || state.premium !== 'ready'
+      || state.tier !== 'high' || state.captureMode !== 'high-tier-qa-visual-only'
       || state.bindings < 40 || state.groundedProps !== 25 || state.worldObjects < 1
       || state.interactables < 1 || !state.tier || state.width <= 0 || state.height <= 0
       || beforePosition === state.playerPosition

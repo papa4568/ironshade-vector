@@ -145,6 +145,10 @@ export function auditAuthoredVisualProvenance(state) {
   }[state?.capturedRoute];
   const problems = [];
   if (!expected || state?.backend !== 'webgl2') problems.push('wrong-map-or-backend');
+  if (state?.tier !== 'high' || state?.captureMode !== 'high-tier-qa-visual-only'
+    || !state?.assetIds || !state.assetIds.split(',').every(id => id.endsWith('-lod0'))) {
+    problems.push('not-authored-lod0-flagship-visual');
+  }
   if (state?.artState !== 'ready' || !(mapped > 0 && authored === mapped && fallback === 0)) problems.push('procedural-box-or-unresolved-world-slot');
   if (state?.premium !== 'ready' || !(finite('premiumBindings') >= (expected?.bindings ?? Infinity))
     || state?.ibl !== 'shared-prefiltered:ready') problems.push('missing-or-unready-premium-material');

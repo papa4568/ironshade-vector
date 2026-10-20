@@ -44,12 +44,13 @@ assert(auditGameplayPair(normal, action).valid, 'Distinct textured normal/action
 assert(!auditGameplayPair(normal, normal).valid, 'Identical content must fail even with valid PNGs');
 const authored = {
   capturedRoute: 'damaged-vessel', backend: 'webgl2', artState: 'ready',
+  tier: 'high', captureMode: 'high-tier-qa-visual-only',
   mappedObjects: 12, authoredObjects: 12, fallbackObjects: 0,
   premium: 'ready', premiumBindings: 60, ibl: 'shared-prefiltered:ready',
   routeStyle: 'damaged-recessed-deck-inlay', routeMaxWidth: 0.16,
   objectiveCue: 'beacon+navigation-path', worldObjects: 19,
-  assetIds: 'cover-authored,terminal-authored', groundProps: 11,
-  beforeAssetIds: 'cover-authored,terminal-authored',
+  assetIds: 'refinery-crate-lod0,refinery-terminal-lod0', groundProps: 11,
+  beforeAssetIds: 'refinery-crate-lod0,refinery-terminal-lod0',
   beforeArtState: 'ready', beforePremium: 'ready',
   beforeIbl: 'shared-prefiltered:ready',
 };
@@ -61,6 +62,9 @@ assert(!auditAuthoredVisualProvenance({ ...station, fallbackObjects: 1, authored
   'Orbital regression must detect an injected raw world box');
 for (const [label, injection] of [
   ['raw-box', { fallbackObjects: 1, authoredObjects: 11 }],
+  ['legacy-lod', { assetIds: 'refinery-crate-lod2' }],
+  ['downshifted-tier', { tier: 'performance' }],
+  ['production-misclassified', { captureMode: 'production-adaptive' }],
   ['texture-missing', { premium: 'loading' }],
   ['ibl-missing', { ibl: 'shared-prefiltered:loading' }],
   ['oversized-route', { routeMaxWidth: 1.48 }],

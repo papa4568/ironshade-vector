@@ -214,4 +214,12 @@ assert(
   'P28-G2 Android resume must probe live page targets without blocked Runtime.enable and retain failure forensics.',
 );
 
+assert(
+  read('scripts/android-p28g1-orbital-capture.mjs').includes("url.searchParams.set('p28FlagshipVisualQa', '1')")
+    && read('scripts/android-p28g2-damaged-capture.mjs').includes("d.renderTier === 'high'")
+    && read('src/game/babylonCombatRenderer.ts').includes("this.canvas.dataset.p28FlagshipCapture")
+    && read('scripts/verify-p28g2-gameplay-frames.mjs').includes('not-authored-lod0-flagship-visual'),
+  'P28-G2 must inspect actual authored LOD0 high-tier Android frames instead of low-detail emulator LOD2 stand-ins.',
+);
+
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');

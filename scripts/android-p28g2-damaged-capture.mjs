@@ -99,6 +99,7 @@ try {
   url.searchParams.set('graphicsCompare', '1');
   url.searchParams.set('graphicsPath', 'babylon');
   url.searchParams.set('babylonBackend', 'webgl2');
+  url.searchParams.set('p28FlagshipVisualQa', '1');
   await call('Page.navigate', { url: url.toString() });
   const surface = await waitFor(`(() => {
     if (document.readyState !== 'complete') return '';
@@ -138,6 +139,10 @@ try {
     return d?.babylonScenario === 'damaged-vessel'
       && d.graphicsPathLoaded === 'babylon'
       && d.babylonBackend === 'webgl2'
+      && d.renderTier === 'high'
+      && d.p28FlagshipCapture === 'high-tier-qa-visual-only'
+      && Boolean(d.babylonSharedWorldAssets)
+      && d.babylonSharedWorldAssets.split(',').every(id => id.endsWith('-lod0'))
       && d.babylonInit === 'ready'
       && Number(d.babylonFrames || 0) >= 2
       && d.babylonEnvironmentState === 'ready'
@@ -182,7 +187,7 @@ try {
     const d = canvas?.dataset ?? {};
     return {
       capturedRoute: d.babylonScenario ?? '',
-      tier: d.renderTier ?? '',
+      tier: d.renderTier ?? '', captureMode: d.p28FlagshipCapture ?? '',
       backend: d.babylonBackend ?? '',
       routeStyle: d.babylonRouteMarkingProfile ?? '',
       routeMaxWidth: Number(d.babylonRouteMarkingMaxWidth || 0),
@@ -199,7 +204,8 @@ try {
       width: canvas?.width ?? 0, height: canvas?.height ?? 0,
     };
   })()`);
-  if (before === result.playerPosition || result.capturedRoute !== 'damaged-vessel' || result.artState !== 'ready' || result.premium !== 'ready'
+  if (result.tier !== 'high' || result.captureMode !== 'high-tier-qa-visual-only'
+      || before === result.playerPosition || result.capturedRoute !== 'damaged-vessel' || result.artState !== 'ready' || result.premium !== 'ready'
     || !result.assetIds || result.fallbackObjects > 0 || result.authoredObjects !== result.mappedObjects
     || !result.tier || result.width <= 0 || result.height <= 0
     || !(normalBytes > 20_000 && actionBytes > 20_000)) {
