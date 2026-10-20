@@ -21,6 +21,7 @@ const vessel = read('src/game/babylonDamagedVesselPresentation.ts');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');
 const workflow = read('.github/workflows/browser-e2e.yml');
+const androidWorkflow = read('.github/workflows/pr-android-apk.yml');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 
 assert(
@@ -136,7 +137,7 @@ assert(
     && androidG2.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
     && androidG2.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
     && androidG2Runner.includes('adb exec-out screencap -p')
-    && workflow.includes('bash scripts/android-p28g2-damaged-capture.sh'),
+    && androidWorkflow.includes('bash scripts/android-p28g2-damaged-capture.sh'),
   'P28-G2 must generate APK-backed normal/action Damaged Vessel frames with authored/route provenance.',
 );
 
