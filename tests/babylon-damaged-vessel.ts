@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import {
   BABYLON_DAMAGED_VESSEL_IDENTITY,
   BABYLON_DAMAGED_VESSEL_LIGHTING,
+  BABYLON_DAMAGED_PREMIUM_SURFACES,
 } from '../src/game/babylonDamagedVesselPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 import { BABYLON_ROUTE_MARKING_WIDTHS, babylonRouteMarkingWidth } from '../src/game/babylonRouteMarkings';
@@ -137,6 +138,18 @@ assert(
     && androidG2Runner.includes('adb exec-out screencap -p')
     && workflow.includes('bash scripts/android-p28g2-damaged-capture.sh'),
   'P28-G2 must generate APK-backed normal/action Damaged Vessel frames with authored/route provenance.',
+);
+
+assert(
+  BABYLON_DAMAGED_PREMIUM_SURFACES.join(',') === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
+    && vessel.includes('this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene)')
+    && vessel.includes("this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env'")
+    && vessel.includes("this.canvas.dataset.damagedPremiumAssetState = premiumReady ? 'ready' : 'loading'")
+    && vessel.includes('this.groundingSource.createInstance')
+    && vessel.includes('this.canvas.dataset.damagedPremiumBindings = String(this.premiumBindingCount)')
+    && vessel.includes("this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading'")
+    && vessel.includes('this.premiumSurfaces.dispose()'),
+  'P28-G2 Damaged Vessel must bind real KTX2 PBR textures, shared IBL and grounded actors/props with deterministic disposal.',
 );
 
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');

@@ -1,20 +1,30 @@
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
+import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Scene } from '@babylonjs/core/scene';
 import { getMapNavigationPlan } from './mapNavigation';
 import { babylonRouteMarkingWidth, BABYLON_ROUTE_MARKING_WIDTHS } from './babylonRouteMarkings';
+import { createBabylonPremiumPbrSurfaceLibrary, type BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
+import { createRefineryContactDepthAlphaData } from './refineryContactDepth';
+import { REFINERY_ACTOR_GROUNDING_PROFILE, refineryActorGroundingScale } from './babylonRefineryLighting';
 import type { RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize, type SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
+export const BABYLON_DAMAGED_PREMIUM_SURFACES = [
+  'deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture',
+] as const;
 
 export const BABYLON_DAMAGED_VESSEL_IDENTITY = Object.freeze({
   silhouette: 'broken-ribs',
@@ -100,6 +110,16 @@ export class BabylonDamagedVesselPresentation {
   private readonly root: TransformNode;
   private readonly materials: PBRMaterial[];
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
+  private readonly premiumSurfaces: BabylonPremiumPbrSurfaceLibrary;
+  private readonly ownedMaterials: PBRMaterial[];
+  private readonly premiumBindingCount: number;
+  private readonly staticPropGroundingCount: number;
+  private readonly iblTexture: CubeTexture;
+  private iblReady = false;
+  private readonly groundingTexture: RawTexture;
+  private readonly groundingMaterial: StandardMaterial;
+  private readonly groundingSource: Mesh;
+  private readonly enemyGrounding = new Map<number, InstancedMesh>();
   private readonly vaporMaterial: StandardMaterial;
   private readonly vaporMeshes: ReturnType<typeof MeshBuilder.CreateSphere>[] = [];
   private readonly hemisphere: HemisphericLight;
@@ -121,15 +141,21 @@ export class BabylonDamagedVesselPresentation {
     const worldH = scaled(world.h);
     const cx = worldW / 2;
     const cz = worldH / 2;
+    const staticPropContacts: { x: number; z: number; width: number; depth: number }[] = [];
 
-    const floor = material(scene, 'p27-c2-damaged-floor-material', 0x171513, 0.66, 0.58);
-    const structural = material(scene, 'p27-c2-damaged-structure-material', 0x4f4943, 0.82, 0.43);
-    const scarred = material(scene, 'p27-c2-damaged-scarred-material', 0x302c29, 0.76, 0.60);
-    const tornEdge = material(scene, 'p27-c2-damaged-torn-edge-material', 0x6b5548, 0.70, 0.48);
+    // Keep the original damaged-hull silhouette, but bind shipped KTX2 normal
+    // and ORM artwork to its actual floor, braces, seals and exposed edges.
+    this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
+    const floor = this.premiumSurfaces.get('deck-plate');
+    const structural = this.premiumSurfaces.get('painted-metal');
+    const scarred = this.premiumSurfaces.get('polymer-rubber');
+    const tornEdge = this.premiumSurfaces.get('bare-metal');
+    const fixture = this.premiumSurfaces.get('emissive-fixture');
     const warning = material(scene, 'p27-c2-damaged-warning-material', 0x5c241c, 0.50, 0.38, 0xf0754f, 0.72);
     const routePrimary = material(scene, 'p27-c2-damaged-route-primary-material', 0x382c28, 0.68, 0.50, 0xf0754f, 0.17);
     const routeSecondary = material(scene, 'p27-c2-damaged-route-secondary-material', 0x252a29, 0.72, 0.56, 0x6bc6c1, 0.06);
-    this.materials = [floor, structural, scarred, tornEdge, warning, routePrimary, routeSecondary];
+    this.ownedMaterials = [warning, routePrimary, routeSecondary];
+    this.materials = [floor, structural, scarred, tornEdge, fixture, ...this.ownedMaterials];
     this.routeMaterials = [routePrimary, routeSecondary];
 
     this.root = new TransformNode('p27-c2-damaged-vessel-environment', scene);
@@ -150,6 +176,13 @@ export class BabylonDamagedVesselPresentation {
       );
       rib.rotation.z = -0.14 + index * 0.055;
       rib.rotation.y = Math.PI * 0.5 + (index - 2) * 0.03;
+      // Torn reinforcement flanges cast readable relief at gameplay zoom.
+      box(scene, this.root, 'p28-g2-damaged-rib-flange-' + index,
+        tornEdge, worldW * (0.82 + (index % 3) * 0.015) - 0.19,
+        3.08, worldH * (0.22 + index * 0.14), 0.11, 0.18, 2.15);
+      box(scene, this.root, 'p28-g2-damaged-rib-gasket-' + index,
+        scarred, worldW * (0.82 + (index % 3) * 0.015) - 0.23,
+        1.65, worldH * (0.22 + index * 0.14), 0.14, 0.22, 1.85);
     }
 
     for (let index = 0; index < 6; index += 1) {
@@ -167,6 +200,10 @@ export class BabylonDamagedVesselPresentation {
       );
       plate.rotation.y = Math.PI / 2 + (index - 2) * 0.06;
       plate.rotation.z = 0.16 + index * 0.025;
+      box(scene, this.root, 'p28-g2-damaged-plate-edge-' + index,
+        tornEdge, worldW * (0.88 - (index % 3) * 0.02) - 0.14,
+        1.27 + (index % 2) * 0.5, worldH * (0.26 + index * 0.09),
+        0.15, 0.31, 1.22);
     }
 
     const salvageX = [0.16, 0.17, 0.16, 0.38, 0.56, 0.72];
@@ -176,6 +213,11 @@ export class BabylonDamagedVesselPresentation {
       const z = worldH * salvageZ[index];
       box(scene, this.root, 'p27-c2-damaged-salvage-rack-' + index, structural, x, 0.58, z, 1.35, 1.16, 0.68);
       box(scene, this.root, 'p27-c2-damaged-salvage-status-' + index, warning, x, 1.18, z, 0.42, 0.12, 0.50);
+      box(scene, this.root, 'p28-g2-damaged-salvage-rail-' + index, tornEdge,
+        x, 0.93, z, 1.17, 0.12, 0.12);
+      box(scene, this.root, 'p28-g2-damaged-salvage-lock-' + index, fixture,
+        x, 1.22, z + 0.18, 0.11, 0.08, 0.08);
+      staticPropContacts.push({ x, z, width: 1.35, depth: 0.68 });
     }
 
     const serviceX = [0.86, 0.87, 0.14, 0.34, 0.68];
@@ -194,6 +236,7 @@ export class BabylonDamagedVesselPresentation {
       pipe.rotation.z = Math.PI / 2;
       pipe.material = tornEdge;
       pipe.isPickable = false;
+      staticPropContacts.push({ x, z, width: 1.10, depth: 0.66 });
     }
 
     const breach = MeshBuilder.CreateTorus('p27-c2-damaged-breach-frame', {
@@ -267,8 +310,49 @@ export class BabylonDamagedVesselPresentation {
       box(scene, this.root, 'p27-c2-damaged-landmark-beacon-' + index, warning, x, 2.75, z, 1.28, 0.12, 0.36);
     });
 
+    const sharedMaterials = new Set(this.premiumSurfaces.materials.values());
+    this.premiumBindingCount = this.root.getChildMeshes(false)
+      .filter(mesh => mesh.material instanceof PBRMaterial && sharedMaterials.has(mesh.material)).length;
+
+    const groundingSize = REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize;
+    this.groundingTexture = RawTexture.CreateRGBATexture(
+      createRefineryContactDepthAlphaData(groundingSize), groundingSize, groundingSize, scene, false, false,
+    );
+    this.groundingTexture.hasAlpha = true;
+    this.groundingMaterial = new StandardMaterial('p28-g2-damaged-contact-material', scene);
+    this.groundingMaterial.diffuseColor = new Color3(0.022, 0.013, 0.011);
+    this.groundingMaterial.specularColor = Color3.Black();
+    this.groundingMaterial.diffuseTexture = this.groundingTexture;
+    this.groundingMaterial.useAlphaFromDiffuseTexture = true;
+    this.groundingMaterial.disableLighting = true;
+    this.groundingMaterial.disableDepthWrite = true;
+    this.groundingMaterial.backFaceCulling = false;
+    this.groundingMaterial.alpha = 0.28;
+    this.groundingSource = MeshBuilder.CreatePlane('p28-g2-damaged-player-contact',
+      { width: 1, height: 1, sideOrientation: Mesh.DOUBLESIDE }, scene);
+    this.groundingSource.parent = this.root;
+    this.groundingSource.material = this.groundingMaterial;
+    this.groundingSource.isPickable = false;
+    this.groundingSource.alphaIndex = -300;
+    this.groundingSource.rotation.x = Math.PI / 2;
+    staticPropContacts.forEach(({ x, z, width, depth }, index) => {
+      const contact = this.groundingSource.createInstance('p28-g2-damaged-prop-contact-' + index);
+      contact.parent = this.root;
+      contact.position.set(x, 0.042, z);
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(width * 1.26, depth * 1.26, 1);
+      contact.isPickable = false;
+      contact.alphaIndex = -300;
+    });
+    this.staticPropGroundingCount = staticPropContacts.length;
     this.meshCount = this.root.getChildMeshes(false).length;
     this.root.setEnabled(false);
+
+    this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env',
+      scene, undefined, false, undefined,
+      () => { this.iblReady = true; }, () => { this.iblReady = false; }, undefined, true);
+    this.iblTexture.name = 'p28-g2-damaged-shared-prefiltered-ibl';
+    this.iblTexture.gammaSpace = false;
 
     const lighting = BABYLON_DAMAGED_VESSEL_LIGHTING;
     this.hemisphere = new HemisphericLight('p27-c2-damaged-hemisphere', new Vector3(-0.38, 1, 0.28), scene);
@@ -318,6 +402,36 @@ export class BabylonDamagedVesselPresentation {
 
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
+    this.groundingMaterial.alpha = renderBudget.tierName === 'performance' ? 0.19 : 0.28;
+    this.groundingSource.position.set(px, 0.044, pz);
+    this.groundingSource.scaling.set(1.06, 0.72, 1);
+    const nearby = new Set<number>();
+    const radiusSq = REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius ** 2;
+    for (const enemy of state.enemies) {
+      if (!enemy.active || enemy.dead) continue;
+      const dx = enemy.x - state.player.x;
+      const dz = enemy.y - state.player.y;
+      if (dx * dx + dz * dz > radiusSq) continue;
+      nearby.add(enemy.id);
+      let contact = this.enemyGrounding.get(enemy.id);
+      if (!contact) {
+        contact = this.groundingSource.createInstance('p28-g2-damaged-enemy-contact-' + enemy.id);
+        contact.parent = this.root;
+        contact.isPickable = false;
+        contact.alphaIndex = -300;
+        this.enemyGrounding.set(enemy.id, contact);
+      }
+      const size = refineryActorGroundingScale(enemy.role);
+      contact.position.set(scaled(enemy.x), 0.043, scaled(enemy.y));
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(1.06 * size, 0.72 * size, 1);
+    }
+    for (const [id, contact] of this.enemyGrounding) {
+      if (!nearby.has(id)) {
+        contact.dispose();
+        this.enemyGrounding.delete(id);
+      }
+    }
     let readabilityX = px;
     let readabilityZ = pz;
     let nearestDistanceSq = Number.POSITIVE_INFINITY;
@@ -369,8 +483,8 @@ export class BabylonDamagedVesselPresentation {
       mesh.scaling.set(scale, scale * 0.76, scale);
     });
 
-    this.scene.environmentTexture = null;
-    this.scene.environmentIntensity = 0;
+    this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
+    this.scene.environmentIntensity = this.iblReady ? 0.26 * tierScale : 0;
     this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
     this.scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.scene.imageProcessingConfiguration.exposure = lighting.exposure * (lowVisibility ? 1.04 : 1);
@@ -399,9 +513,22 @@ export class BabylonDamagedVesselPresentation {
     this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary);
     this.canvas.dataset.babylonDamagedLandmarks = navigation.landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;
-    this.canvas.dataset.babylonMaterialIntent = 'procedural-scarred-hull-pbr+shared-world-pbr';
+    this.canvas.dataset.babylonMaterialIntent = 'premium-ktx2-scarred-hull-pbr+shared-world-pbr';
+    const premiumReady = BABYLON_DAMAGED_PREMIUM_SURFACES.every(id => {
+      const pbr = this.premiumSurfaces.get(id);
+      return pbr.albedoTexture?.isReady() === true
+        && pbr.bumpTexture?.isReady() === true
+        && pbr.metallicTexture?.isReady() === true
+        && (!pbr.emissiveTexture || pbr.emissiveTexture.isReady());
+    });
+    this.canvas.dataset.damagedPremiumAssetState = premiumReady ? 'ready' : 'loading';
+    this.canvas.dataset.damagedPremiumBindings = String(this.premiumBindingCount);
+    this.canvas.dataset.damagedPremiumSurfaces = BABYLON_DAMAGED_PREMIUM_SURFACES.join(',');
+    this.canvas.dataset.damagedGrounding = 'player+enemies:soft-contact';
+    this.canvas.dataset.damagedGroundedEnemies = String(nearby.size);
+    this.canvas.dataset.damagedGroundedProps = String(this.staticPropGroundingCount);
     this.canvas.dataset.babylonLightingBudget = 'tier:' + renderBudget.tierName + '|practical:' + practicalCount + '|shadows:off';
-    this.canvas.dataset.environmentIbl = 'off:damaged-vessel';
+    this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading';
     this.canvas.dataset.environmentLighting = 'damaged-vessel-emergency:breach+salvage+contact:player+enemy+practical:' + practicalCount + '+shadow:off';
     this.canvas.dataset.environmentShadowBudget = 'off:damaged-vessel-babylon';
     this.canvas.dataset.environmentTone = 'aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2);
@@ -421,9 +548,16 @@ export class BabylonDamagedVesselPresentation {
 
   dispose() {
     this.release('renderer-dispose');
+    for (const contact of this.enemyGrounding.values()) contact.dispose();
+    this.enemyGrounding.clear();
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose());
     this.root.dispose();
-    this.materials.forEach(item => item.dispose());
+    this.groundingMaterial.dispose();
+    this.groundingTexture.dispose();
+    if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
+    this.iblTexture.dispose();
+    this.ownedMaterials.forEach(item => item.dispose());
+    this.premiumSurfaces.dispose();
     this.vaporMaterial.dispose();
     this.hemisphere.dispose();
     this.keyLight.dispose();

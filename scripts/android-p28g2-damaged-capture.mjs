@@ -141,6 +141,12 @@ try {
       && d.babylonInit === 'ready'
       && Number(d.babylonFrames || 0) >= 2
       && d.babylonEnvironmentState === 'ready'
+      && d.damagedPremiumAssetState === 'ready'
+      && Number(d.damagedPremiumBindings || 0) >= 35
+      && d.damagedPremiumSurfaces === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
+      && d.environmentIbl === 'shared-prefiltered:ready'
+      && d.damagedGrounding === 'player+enemies:soft-contact'
+      && Number(d.damagedGroundedProps) === 11
       && d.babylonRouteMarkingProfile === 'damaged-recessed-deck-inlay'
       && Number(d.babylonRouteMarkingMaxWidth) > 0
       && Number(d.babylonRouteMarkingMaxWidth) <= 0.20
@@ -175,13 +181,15 @@ try {
       fallbackObjects: Number(d.babylonSharedWorldFallbackCount || 0),
       assetIds: d.babylonSharedWorldAssets ?? '',
       artState: d.babylonSharedWorldArtState ?? '',
+      premium: d.damagedPremiumAssetState ?? '', premiumBindings: Number(d.damagedPremiumBindings || 0),
+      ibl: d.environmentIbl ?? '', groundProps: Number(d.damagedGroundedProps || 0),
       worldObjects: Number(d.worldObjectCount || 0),
       playerPosition: d.babylonDamagedPlayerPosition ?? '',
       objectiveCue: d.objectiveWorldCue ?? '',
       width: canvas?.width ?? 0, height: canvas?.height ?? 0,
     };
   })()`);
-  if (result.capturedRoute !== 'damaged-vessel' || result.artState !== 'ready'
+  if (result.capturedRoute !== 'damaged-vessel' || result.artState !== 'ready' || result.premium !== 'ready'
     || !result.assetIds || result.fallbackObjects > 0 || result.authoredObjects !== result.mappedObjects
     || !result.tier || result.width <= 0 || result.height <= 0
     || !(normalBytes > 20_000 && actionBytes > 20_000)) {
