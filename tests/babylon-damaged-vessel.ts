@@ -111,7 +111,7 @@ assert(
     && [vessel, read('src/game/babylonOrbitalStationPresentation.ts'), read('src/game/babylonSpinHabitatPresentation.ts')]
       .every(source => source.includes('babylonRouteMarkingWidth(route.kind)')
         && source.includes('babylonRouteMarkingMaxWidth')
-        && !/scaled\\(route\\.kind/.test(source))
+        && !/scaled\(route\.kind/.test(source))
     && read('src/game/babylonSolarYardPresentation.ts').includes("route.kind === 'primary' ? 0.12 : 0.075")
     && read('src/game/mapNavigation.ts').includes('rectRouteDistance(object, route.points[index], route.points[index + 1]) < 78'),
   'P28-G2 floor navigation must use legible narrow visual inlays while preserving simulation-owned lane clearance.',
