@@ -111,3 +111,7 @@ console.log('P28_F5_PACKAGED_ATLASES_PASS decalBytes=' + f5Decal.size
   + ' effectBytes=' + f5Effect.onDiskBytes + ' effectMips=10');
 
 
+// Final P28-F7 source acceptance is a shipped-art gate: run only after the
+// real delivered manifest has been generated and compared byte-for-byte.
+await import('./p28-f7-heavy-acceptance.mjs');
+await (await import('../tools/p28-f7-heavy-acceptance.mjs')).runP28F7('source');
