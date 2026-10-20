@@ -40,10 +40,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 This phase is deliberately asset-heavy. It converts the earlier renderer/material/LOD foundations into substantial production art payloads before campaign-wide rollout. It must increase install content through useful authored art rather than padding, duplicate files, intentionally poor compression, or dead assets.
 
-
-
-- [ ] **P28-F7 — Pass the P28 heavy-asset acceptance gate before broad rollout** — Perform a final deterministic refinery acceptance pass proving the APK now contains a materially larger real-art payload than the pre-heavy baseline and that the additional bytes correspond to used premium textures, meshes, decals, and effects. Do not require or reward an arbitrary APK size, and do not count padding, duplicate data, dead assets, or intentionally degraded compression as progress. **Done when:** before/after asset manifests and APK reports show meaningful real-art growth by family; Flagship captures visibly justify that payload at gameplay zoom; no mapped hero/refinery production LOD0 remains a box-derived placeholder; all technically available browser/Android/APK gates pass; and only then may campaign-location rollout proceed.
-
 #### G. Campaign-location rollout of the shared visual stack
 
 Each rollout below reuses the P28 lighting/material/grounding/detail systems and existing location modules; it is a location-integration/tuning batch only, not a new hero-asset or gameplay-design batch.
