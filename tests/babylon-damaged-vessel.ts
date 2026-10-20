@@ -5,6 +5,7 @@ import {
   BABYLON_DAMAGED_VESSEL_LIGHTING,
 } from '../src/game/babylonDamagedVesselPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { BABYLON_ROUTE_MARKING_WIDTHS, babylonRouteMarkingWidth } from '../src/game/babylonRouteMarkings';
 
 function read(path: string) {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
@@ -96,6 +97,24 @@ assert(
   pkg.scripts?.['test:babylon-damaged-vessel']?.includes('tests/babylon-damaged-vessel.ts')
     && pkg.scripts?.build?.includes('npm run test:babylon-damaged-vessel'),
   'P27-C2 unit/source regression must be wired into the full production build.',
+);
+
+
+// P28-G2: the old 74/50/36 simulation-unit slabs rendered as 1.48/1.00/0.72
+// world-unit opaque floor bands. Keep decorative inlays separate from the
+// simulation's 78-unit lane-clearance contract and inspect other ported routes.
+assert(
+  Object.entries(BABYLON_ROUTE_MARKING_WIDTHS).every(([kind, width]) =>
+    width > 0 && width <= 0.20 && babylonRouteMarkingWidth(kind as keyof typeof BABYLON_ROUTE_MARKING_WIDTHS) === width)
+    && BABYLON_ROUTE_MARKING_WIDTHS.primary > BABYLON_ROUTE_MARKING_WIDTHS.secondary
+    && BABYLON_ROUTE_MARKING_WIDTHS.secondary > BABYLON_ROUTE_MARKING_WIDTHS.connector
+    && [vessel, read('src/game/babylonOrbitalStationPresentation.ts'), read('src/game/babylonSpinHabitatPresentation.ts')]
+      .every(source => source.includes('babylonRouteMarkingWidth(route.kind)')
+        && source.includes('babylonRouteMarkingMaxWidth')
+        && !/scaled\\(route\\.kind/.test(source))
+    && read('src/game/babylonSolarYardPresentation.ts').includes("route.kind === 'primary' ? 0.12 : 0.075")
+    && read('src/game/mapNavigation.ts').includes('rectRouteDistance(object, route.points[index], route.points[index + 1]) < 78'),
+  'P28-G2 floor navigation must use legible narrow visual inlays while preserving simulation-owned lane clearance.',
 );
 
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');

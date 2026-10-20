@@ -11,6 +11,7 @@ import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Scene } from '@babylonjs/core/scene';
 import { getMapNavigationPlan } from './mapNavigation';
+import { babylonRouteMarkingWidth, BABYLON_ROUTE_MARKING_WIDTHS } from './babylonRouteMarkings';
 import type { RenderBudgetSnapshot } from './renderQuality';
 import {
   spinHabitatArchitectureState,
@@ -260,7 +261,7 @@ export class BabylonSpinHabitatPresentation {
           scaled(a.y),
           scaled(b.x),
           scaled(b.y),
-          scaled(route.kind === 'primary' ? 72 : route.kind === 'secondary' ? 48 : 34),
+          babylonRouteMarkingWidth(route.kind),
         );
       }
     });
@@ -569,6 +570,8 @@ export class BabylonSpinHabitatPresentation {
     this.canvas.dataset.babylonSpinHabitatParity = 'architecture+spindown+props+interactables+navigation+boss-cues+shared-world-cues';
     this.canvas.dataset.babylonSpinPlayerPosition = state.player.x.toFixed(1) + ',' + state.player.y.toFixed(1);
     this.canvas.dataset.babylonSpinRoutes = String(navigation.routes.length);
+    this.canvas.dataset.babylonRouteMarkingProfile = 'spin-recessed-deck-inlay';
+    this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary);
     this.canvas.dataset.babylonSpinLandmarks = navigation.landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;
     this.canvas.dataset.babylonMaterialIntent = 'procedural-habitat-alloy-pbr+shared-world-pbr';

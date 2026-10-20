@@ -10,6 +10,7 @@ import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Scene } from '@babylonjs/core/scene';
 import { getMapNavigationPlan } from './mapNavigation';
+import { babylonRouteMarkingWidth, BABYLON_ROUTE_MARKING_WIDTHS } from './babylonRouteMarkings';
 import type { RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize, type SimState } from './sim';
 
@@ -255,7 +256,7 @@ export class BabylonDamagedVesselPresentation {
           scaled(a.y),
           scaled(b.x),
           scaled(b.y),
-          scaled(route.kind === 'primary' ? 74 : route.kind === 'secondary' ? 50 : 36),
+          babylonRouteMarkingWidth(route.kind),
         );
       }
     });
@@ -394,6 +395,8 @@ export class BabylonDamagedVesselPresentation {
     this.canvas.dataset.babylonDamagedParity = 'architecture+scarred-hull+breach-effects+props+navigation+shared-world-cues';
     this.canvas.dataset.babylonDamagedPlayerPosition = state.player.x.toFixed(1) + ',' + state.player.y.toFixed(1);
     this.canvas.dataset.babylonDamagedRoutes = String(navigation.routes.length);
+    this.canvas.dataset.babylonRouteMarkingProfile = 'damaged-recessed-deck-inlay';
+    this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary);
     this.canvas.dataset.babylonDamagedLandmarks = navigation.landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;
     this.canvas.dataset.babylonMaterialIntent = 'procedural-scarred-hull-pbr+shared-world-pbr';
