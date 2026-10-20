@@ -1,6 +1,7 @@
 // P28-G1: exact-APK Android WebView visual proof for the Orbital Station route.
 // Screenshots and telemetry are captured from the live, deployed combat scene.
 import { writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 const endpoint = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -79,11 +80,9 @@ async function clickButton(label) {
   if (!found) throw new Error('P28-G1 Android action unavailable: ' + label);
 }
 async function capture(path) {
-  // A CDP capture retains its exact-route frame while native adb screencap checks
-  // the actual Android display separately in the containing shell script.
-  const result = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
-  if (!result?.data) throw new Error('P28-G1 screenshot missing: ' + path);
-  const png = Buffer.from(result.data, 'base64');
+  // Render evidence comes from the Android device framebuffer, not a synthetic
+  // canvas export or a desktop browser masquerading as an Android screen.
+  const png = execFileSync('adb', ['exec-out', 'screencap', '-p'], { maxBuffer: 16 * 1024 * 1024 });
   if (png.length < 20_000 || png.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') {
     throw new Error('P28-G1 screenshot blank or invalid: ' + path + ' bytes=' + png.length);
   }
@@ -117,7 +116,7 @@ try {
       return true;
     })()`);
     if (!chosen) throw new Error('P28-G1 Android cannot select Vanguard for the capture.');
-    await waitFor('Boolean(document.querySelector(\'[aria-label="Confirm Vanguard"]\'))', 'Vanguard confirm');
+    await waitFor('(() => { const b = document.querySelector(\'[aria-label="Confirm Vanguard"]\'); return Boolean(b && !b.disabled); })()', 'Vanguard confirm');
     const confirmed = await evaluate(`(() => {
       const button = document.querySelector('[aria-label="Confirm Vanguard"]');
       if (!button || button.disabled) return false;
