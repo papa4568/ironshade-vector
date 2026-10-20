@@ -136,6 +136,8 @@ assert(
   androidG2.includes("d?.babylonScenario === 'damaged-vessel'")
     && androidG2.includes("d.babylonSharedWorldArtState === 'ready'")
     && androidG2.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
+    && androidG2.includes("before === result.playerPosition")
+    && read('scripts/android-p28g1-orbital-capture.mjs').includes("d.babylonSharedWorldArtState === 'ready'")
     && androidG2.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
     && androidG2Runner.includes('adb exec-out screencap -p')
     && androidWorkflow.includes('bash scripts/android-p28g2-damaged-capture.sh'),

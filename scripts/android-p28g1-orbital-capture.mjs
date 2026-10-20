@@ -150,6 +150,11 @@ try {
       && d.babylonInit === 'ready'
       && Number(d.babylonFrames || 0) >= 2
       && d.orbitalPremiumAssetState === 'ready'
+      && d.babylonSharedWorldArtState === 'ready'
+      && d.missionVisualReadiness === 'ready'
+      && d.missionVisualMode === 'authored'
+      && Number(d.babylonSharedWorldPendingCount || 0) === 0
+      && Number(d.babylonSharedWorldFailedCount || 0) === 0
       && Number(d.orbitalPremiumBindings || 0) >= 40
       && d.orbitalPremiumSurfaces === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
       && d.orbitalGrounding === 'player+enemies:soft-contact'
@@ -190,6 +195,7 @@ try {
   if (state.location !== 'orbital-station' || state.premium !== 'ready'
       || state.bindings < 40 || state.groundedProps !== 25 || state.worldObjects < 1
       || state.interactables < 1 || !state.tier || state.width <= 0 || state.height <= 0
+      || beforePosition === state.playerPosition
       || !(state.frameCount >= 2) || !(afterBytes > 20_000)) {
     throw new Error('P28-G1 Android capture contains incomplete presentation: ' + JSON.stringify(state));
   }

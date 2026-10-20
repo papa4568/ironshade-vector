@@ -193,7 +193,7 @@ try {
       width: canvas?.width ?? 0, height: canvas?.height ?? 0,
     };
   })()`);
-  if (result.capturedRoute !== 'damaged-vessel' || result.artState !== 'ready' || result.premium !== 'ready'
+  if (before === result.playerPosition || result.capturedRoute !== 'damaged-vessel' || result.artState !== 'ready' || result.premium !== 'ready'
     || !result.assetIds || result.fallbackObjects > 0 || result.authoredObjects !== result.mappedObjects
     || !result.tier || result.width <= 0 || result.height <= 0
     || !(normalBytes > 20_000 && actionBytes > 20_000)) {
