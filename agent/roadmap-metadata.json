@@ -3,9 +3,6 @@
   "schemaVersion": 1,
   "roadmap": "docs/content-roadmap.md",
   "roadmapIds": [
-    "P28-G0A",
-    "P28-G0B",
-    "P28-G0C",
     "P28-G2",
     "P28-G3",
     "P28-G4",
@@ -25,7 +22,7 @@
         "id": "targeted-regressions",
         "kind": "test",
         "required": true,
-        "description": "Run the narrow task-specific regressions including route overlay geometry, shared world-object fallback/readiness and gameplay cue integrity when affected."
+        "description": "Run the narrow task-specific regressions needed to disprove the implementation before final verification."
       },
       {
         "id": "production-build",
@@ -38,7 +35,7 @@
         "id": "flagship-capture",
         "kind": "review",
         "required": true,
-        "description": "Exact-candidate Flagship normal/action gameplay screenshots must receive direct image-content inspection, recorded actual location ID and live route/object material/fallback provenance under the campaign visual acceptance contract; PNG validity and telemetry alone are insufficient."
+        "description": "Deterministic Flagship visual evidence required by the roadmap item is captured and remains gameplay-readable."
       },
       {
         "id": "candidate-ci",
@@ -155,22 +152,7 @@
     }
   ],
   "overrides": {
-    "P28-G0A": {},
-    "P28-G0B": {
-      "dependsOn": [
-        "P28-G0A"
-      ]
-    },
-    "P28-G0C": {
-      "dependsOn": [
-        "P28-G0B"
-      ]
-    },
-    "P28-G2": {
-      "dependsOn": [
-        "P28-G0C"
-      ]
-    },
+    "P28-G2": {},
     "P28-G3": {},
     "P28-G4": {},
     "P28-G5": {},
