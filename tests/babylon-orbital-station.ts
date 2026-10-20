@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import {
   BABYLON_ORBITAL_STATION_IDENTITY,
   BABYLON_ORBITAL_STATION_LIGHTING,
+  BABYLON_ORBITAL_PREMIUM_SURFACES,
 } from '../src/game/babylonOrbitalStationPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 
@@ -44,6 +45,24 @@ assert(
   'P27-C1 Babylon Orbital Station lighting must retain the neutral-cyan Three profile.',
 );
 
+
+assert(
+  BABYLON_ORBITAL_PREMIUM_SURFACES.join(',') === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
+    && station.includes('createBabylonPremiumPbrSurfaceLibrary(scene)')
+    && station.includes("this.premiumSurfaces.get('deck-plate')")
+    && station.includes("this.premiumSurfaces.get('painted-metal')")
+    && station.includes("this.premiumSurfaces.get('bare-metal')")
+    && station.includes("this.premiumSurfaces.get('polymer-rubber')")
+    && station.includes("this.premiumSurfaces.get('emissive-fixture')")
+    && station.includes('premiumBindingCount = this.root.getChildMeshes(false)')
+    && station.includes("orbitalPremiumAssetState = premiumReady ? 'ready' : 'loading'")
+    && station.includes("orbitalGrounding = 'player+enemies:soft-contact'")
+    && station.includes('createRefineryContactDepthAlphaData(groundingSize)')
+    && station.includes('this.enemyGrounding.delete(id)')
+    && station.includes('this.premiumSurfaces.dispose()')
+    && station.includes('this.iblTexture.dispose()'),
+  'P28-G1 must bind shipped premium KTX2 art to real meshes, ground actors and dispose the shared assets.',
+);
 
 const navigation = getMapNavigationPlan('orbital-station');
 assert(
