@@ -526,6 +526,54 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-12",
+      "title": "Authorize exact future-only EV-7 advisory fixture closeout through trusted EV-9",
+      "priority": 120,
+      "status": "verified",
+      "dependsOn": [
+        "AO-11"
+      ],
+      "acceptance": [
+        "The trusted-base EV-9 observer permits the P28-F7 closeout to advance only the exact 100644 Git-object-pinned EV-7 advisory fixture pair, from now-current P28-G1/G2 scenarios to future P28-G2/G3, without allowing arbitrary protected agent mutation.",
+        "The trusted observer calibrates one legitimate two-file transition and rejects missing config, missing test, content drift, mode changes, and unrelated protected-agent edits; all existing EV-18/EV-24, AO-11, and current exact-head observer checks remain in force.",
+        "This separate prerequisite is reviewed against AO-12 rather than wrongly judged as P28-F7 game-art acceptance; F7 implementation and its APK/LOD0/visual growth audit remain exclusively on PR #426, and all ordinary product roadmap selection, production build, browser, Android, and independent-review gates remain unchanged."
+      ],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "roadmap",
+        "ci"
+      ],
+      "proofs": [
+        {
+          "id": "ev9-f7-shadow-boundary-regression",
+          "kind": "test",
+          "required": true,
+          "description": "Trusted observer self-test calibrates the exact F7 two-file Git-object exception and negative controls while retaining previous observer calibrations.",
+          "command": "node agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs self-test"
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Protected agent/workflow boundaries, exact-head observer enforcement, and candidate architecture checks remain intact."
+        },
+        {
+          "id": "ao12-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Exact-SHA PR Candidate, Agent Orchestration, trusted EV-9 observer, browser, and Android gates pass for the governance prerequisite."
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "Separate trusted read-only verifier reviews AO-12's precise fixture exception and retained negative-control coverage before the prerequisite can merge."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }
