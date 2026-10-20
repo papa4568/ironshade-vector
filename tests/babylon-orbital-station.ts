@@ -59,6 +59,9 @@ assert(
     && station.includes("orbitalGrounding = 'player+enemies:soft-contact'")
     && station.includes('createRefineryContactDepthAlphaData(groundingSize)')
     && station.includes('this.enemyGrounding.delete(id)')
+    && station.includes('staticPropContacts.push({ x, z')
+    && station.includes('this.staticPropGroundingCount = staticPropContacts.length')
+    && station.includes('orbitalGroundedProps = String(this.staticPropGroundingCount)')
     && station.includes('this.premiumSurfaces.dispose()')
     && station.includes('this.iblTexture.dispose()'),
   'P28-G1 must bind shipped premium KTX2 art to real meshes, ground actors and dispose the shared assets.',
