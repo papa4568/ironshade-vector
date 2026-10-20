@@ -321,6 +321,14 @@ for (const metric of f6CacheMetrics) {
   assert(f5RendererSource.includes(`assetStats.${metric}`),
     `P28-F6 Flagship cache telemetry must report measured ${metric}`);
 }
+// Governance/bootstrap regression: the shipped heavy local-effects atlas must
+// remain live in each effect pool (and be released), not merely occupy APK bytes.
+assert(ambientSource.includes("export const REFINERY_LOCAL_FX_ATLAS_URL = '/assets/effects/refinery-local-effects-f5.ktx2'")
+  && ambientSource.includes("pool.material.diffuseTexture = atlas")
+  && ambientSource.includes("pool.material.useAlphaFromDiffuseTexture = true")
+  && ambientSource.includes("this.localFxAtlas?.dispose()"),
+  'The F7 premium local-effects payload must be bound to every live ambience pool and released on teardown.');
+
 console.log('P28_F6_FLAGSHIP_CACHE_TELEMETRY_PASS metrics=' + f6CacheMetrics.length
   + ' scenes=live coldWarmReuse=observable teardown=observable');
 
