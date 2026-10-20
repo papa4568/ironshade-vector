@@ -102,8 +102,9 @@ async function waitForSession() {
       // Android can retain a DevTools target from a paused renderer while a
       // new renderer is already foregrounded. Probe every live page target.
       const matches = targets.filter(candidate => candidate.webSocketDebuggerUrl
-        && candidate.type === 'page' && candidate.title === 'Ironshade Vector');
+        && (candidate.type === 'page' || candidate.type === 'webview' || !candidate.type) && candidate.title === 'Ironshade Vector');
       for (const target of matches) {
+        try {
         // A heavy renderer recovery may expose a CDP target before its event
         // loop can service protocol requests. Bound each candidate probe to
         // a fraction of the outer session deadline.
@@ -131,6 +132,9 @@ async function waitForSession() {
           // Only release a successfully initialized socket to the caller.
           // Failed attempts must be closed before opening another CDP session.
           if (!accepted) socket.close();
+        }
+        } catch (error) {
+          lastError = error;
         }
       }
     } catch (error) {
