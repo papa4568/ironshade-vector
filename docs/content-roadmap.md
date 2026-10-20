@@ -50,7 +50,6 @@ Each rollout below reuses the P28 lighting/material/grounding/detail systems and
 
 All remaining P28-G/H work must meet the [campaign visual acceptance contract](./product-constraints.md#campaign-visual-acceptance-contract); screenshots must be inspected for image content rather than accepted by metadata or PNG validation alone.
 
-- [ ] **P28-G3 — Refresh Spin Habitat visuals** — Adopt the shared P28 stack in Spin Habitat and tune ring/spoke surfaces and lighting to reinforce rotational architecture without changing mechanics. **Done when:** the route reads as a distinct premium location at gameplay zoom on the flagship target and standard build/APK gates pass; the campaign visual acceptance contract passes on real normal/action screenshots, with no unexplained bare placeholders, oversized route-band visuals, or missing material bindings.
 
 - [ ] **P28-G4 — Refresh Jovian Harvester visuals** — Adopt the shared P28 stack in Jovian Harvester and tune its industrial/atmospheric profile. **Done when:** the route gains premium authored depth and identity while storm/hazard tells remain dominant, and standard build/APK gates pass; the campaign visual acceptance contract passes on real normal/action screenshots, with no unexplained bare placeholders, oversized route-band visuals, or missing material bindings.
 
