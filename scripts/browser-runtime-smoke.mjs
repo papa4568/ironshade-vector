@@ -892,6 +892,11 @@ async function p27C3BabylonSpinHabitatAudit() {
       + " && canvas?.dataset.babylonEnvironmentState === 'ready'"
       + " && canvas?.dataset.environmentVisual === 'procedural-spin-habitat-babylon'"
       + " && canvas?.dataset.environmentMotion === 'gravity-coupled-rigid-rotation'"
+      + " && canvas?.dataset.spinPremiumAssetState === 'ready'"
+      + " && Number(canvas?.dataset.spinPremiumBindings ?? 0) >= 35"
+      + " && canvas?.dataset.environmentIbl === 'shared-prefiltered:ready'"
+      + " && canvas?.dataset.babylonSharedWorldArtState === 'ready'"
+      + " && canvas?.dataset.missionVisualReadiness === 'ready'"
       + " && canvas?.dataset.environmentSpinSource === 'sector-A-gravity'"
       + " && canvas?.dataset.environmentSpindownSource === 'sector-B-transfer-gravity'"
       + " && canvas?.dataset.environmentVfx === 'spindown-brake-arcs+axis-warning-pulse'"
@@ -985,7 +990,13 @@ async function p27C3BabylonSpinHabitatAudit() {
     + " objective: canvas?.dataset.objectiveTarget ?? '', objectiveCue: canvas?.dataset.objectiveWorldCue ?? '',"
     + " hazards: Number(canvas?.dataset.hazardActive ?? 0), hazardReadability: canvas?.dataset.hazardReadability ?? '',"
     + " playerState: canvas?.dataset.babylonPlayerState ?? '', enemyState: canvas?.dataset.babylonEnemyState ?? '', enemies: Number(canvas?.dataset.enemyActive ?? 0),"
-    + " playerPosition: canvas?.dataset.babylonSpinPlayerPosition ?? '' }; })()");
+    + " playerPosition: canvas?.dataset.babylonSpinPlayerPosition ?? '',"
+    + " premiumState: canvas?.dataset.spinPremiumAssetState ?? '', premiumBindings: Number(canvas?.dataset.spinPremiumBindings ?? 0),"
+    + " premiumSurfaces: canvas?.dataset.spinPremiumSurfaces ?? '',"
+    + " groundedProps: Number(canvas?.dataset.spinGroundedProps ?? 0), sharedWorld: canvas?.dataset.babylonSharedWorldArtState ?? '',"
+    + " mappedWorld: Number(canvas?.dataset.babylonSharedWorldMappedCount ?? 0), authoredWorld: Number(canvas?.dataset.babylonSharedWorldAuthoredCount ?? 0),"
+    + " fallbackWorld: Number(canvas?.dataset.babylonSharedWorldFallbackCount ?? 0),"
+    + " visualReadiness: canvas?.dataset.missionVisualReadiness ?? '' }; })()");
 
   const kit = new Set(String(state.environmentKit).split(',').filter(Boolean));
   const expectedKit = ['floor', 'ring-segment', 'spoke-truss', 'axis-hub', 'service-bay', 'wayfinding', 'spindown', 'ambient', 'boss-cue'];
@@ -1043,10 +1054,19 @@ async function p27C3BabylonSpinHabitatAudit() {
     || state.lighting !== 'cool-green'
     || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
     || !/^spin-habitat-cool-green:axis\+rim\+contact:player\+enemy\+practical:(1|2)\+shadow:off$/.test(state.environmentLighting)
-    || state.environmentIbl !== 'off:spin-habitat'
+    || state.environmentIbl !== 'shared-prefiltered:ready'
+    || state.premiumState !== 'ready'
+    || state.premiumBindings < 35
+    || state.premiumSurfaces !== 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
+    || state.groundedProps !== 4
+    || state.sharedWorld !== 'ready'
+    || state.visualReadiness !== 'ready'
+    || state.mappedWorld < 1
+    || state.authoredWorld !== state.mappedWorld
+    || state.fallbackWorld !== 0
     || !/^aces-\d+\.\d{2}$/.test(state.tone)
     || !/^spin-habitat:cool-green:aces-\d+\.\d{2}$/.test(state.locationLighting)
-    || state.materialIntent !== 'procedural-habitat-alloy-pbr+shared-world-pbr'
+    || state.materialIntent !== 'premium-ktx2-habitat-alloy-pbr+shared-world-pbr'
     || !/^pbr:\d+\|spin:7$/.test(state.pbr)
     || state.worldState !== 'ready'
     || state.worldMode !== 'scene-meshes-not-hud'

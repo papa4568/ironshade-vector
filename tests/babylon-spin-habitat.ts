@@ -149,7 +149,11 @@ assert(
   'P28-G3 must keep the rotating frame linked to gravity, add visible mechanical detail, and prevent bare world fallbacks.',
 );
 assert(
-  androidCapture.includes("d?.babylonScenario === 'spin-habitat'")
+  browser.includes("canvas?.dataset.spinPremiumAssetState === 'ready'")
+    && browser.includes("state.environmentIbl !== 'shared-prefiltered:ready'")
+    && browser.includes("state.authoredWorld !== state.mappedWorld")
+    && browser.includes("state.materialIntent !== 'premium-ktx2-habitat-alloy-pbr+shared-world-pbr'")
+    && androidCapture.includes("d?.babylonScenario === 'spin-habitat'")
     && androidCapture.includes("d.babylonSharedWorldArtState === 'ready'")
     && androidCapture.includes("d.spinPremiumAssetState === 'ready'")
     && androidCapture.includes("d.environmentIbl === 'shared-prefiltered:ready'")
