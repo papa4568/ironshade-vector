@@ -751,7 +751,13 @@ function roadmapShadowCloseoutFixtureBundleCalibration(repairedAdapterCandidateS
    const testPath = 'agent/tests/roadmap-shadow-simulator.mjs';
    const baseConfig = gitEntry(base, configPath);
    const baseTest = gitEntry(base, testPath);
-   if (baseConfig === '100644 blob 475b9c75344844fea5c89bb8e777a1f3f902ceab' && baseTest === '100644 blob 6ea06d7a53eb26ded954e67270697a3b02e35d6b') {
+   // After the verified F7 transition, the advisory shadow regression may
+   // legitimately evolve as product tasks move from future to current/archived.
+   // Keep the historical config pinned, but do not confuse a later test-file
+   // revision with the pre-F7 baseline this calibration exclusively protects.
+   if (baseConfig === '100644 blob 475b9c75344844fea5c89bb8e777a1f3f902ceab'
+     && gitText(base, 'docs/content-roadmap-archive.md').includes('**P28-F7 —')) {
+     assert.match(baseTest, /^100644 blob [a-f0-9]{40}$/, 'retired shadow test must remain a tracked regular file');
      return { retired: true, attacks: 0, falsePositives: 0, falseNegatives: 0 };
    }
    assert.equal(baseConfig, '100644 blob fd0c368e289bcd84242b63810c2b2e990c3ba088', 'unrecognized pre-F7 shadow config baseline');
