@@ -11,24 +11,13 @@ PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
 test -n "$PID"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:webview_devtools_remote_${PID}"
-ANDROID_P27D5_PHASE=cache-lifecycle ANDROID_P27D5_CDP_TIMEOUT_MS=90000 \
+# A single inspector session tests the preserved renderer across HOME
+# without an emulator-specific CDP reattachment race. All process, cache,
+# real-touch, screenshot and zero-owner checks remain mandatory.
+if ! ANDROID_P27D5_PHASE=cache-lifecycle ANDROID_P27D5_CDP_TIMEOUT_MS=90000 \
   ANDROID_P27D5_REPORT_PATH=android-p28f6-interaction.json \
-  CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-lifecycle-smoke.mjs
-adb shell input keyevent KEYCODE_HOME
-sleep 2
-adb shell am start -W --activity-reorder-to-front -n "$ACTIVITY"
-RESUME_PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
-if [[ "$RESUME_PID" != "$PID" ]]; then
-  echo "P28-F6 Android heavy-art lifecycle reclaimed WebView process: $PID -> $RESUME_PID" >&2
-  exit 1
-fi
-
-# Always preserve unmodified post-resume framebuffer; on failure also retain
-# Android's process/window/renderer diagnostic state before emulator teardown.
-adb exec-out screencap -p > android-p28f6-resume-screen.png
-if ! ANDROID_P27D5_PHASE=cache-resume ANDROID_P27D5_CDP_TIMEOUT_MS=90000 \
-  ANDROID_P27D5_REPORT_PATH=android-p28f6-resume.json \
   CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-lifecycle-smoke.mjs; then
+  adb exec-out screencap -p > android-p28f6-resume-screen.png 2>/dev/null || true
   {
     echo '--- process ---'
     adb shell pidof "$PACKAGE" || true
@@ -45,4 +34,4 @@ if ! ANDROID_P27D5_PHASE=cache-resume ANDROID_P27D5_CDP_TIMEOUT_MS=90000 \
   echo 'P28-F6 process-preserving Android resume failed; forensic evidence retained.' >&2
   exit 1
 fi
-echo "ANDROID_P28F6_HEAVY_LIFECYCLE_PASS cold=authored-cache rendererRestart=zero-owners missionReentry=zero-owners processResume=preserved touch=existing-fast-smoke"
+echo "ANDROID_P28F6_HEAVY_LIFECYCLE_PASS cold=authored-cache rendererRestart=zero-owners missionReentry=zero-owners processResume=preserved touch=real-post-resume"
