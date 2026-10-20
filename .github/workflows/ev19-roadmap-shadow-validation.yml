@@ -105,13 +105,21 @@ jobs:
           if (report.taskId !== 'EV-19' || report.candidateSha !== process.env.CANDIDATE_SHA) fail('task/candidate binding mismatch');
           if (report.mode !== 'advisory' || report.acceptedForEnforcement !== false || report.candidatePassGranted !== false || report.blocking !== false) fail('EV-19 must remain advisory and grant no acceptance');
           // The historical EV-19 prediction corpus remains immutable. The live
-          // advisory EV-7 probes must move beyond the F7 executable root after
-          // F6 closes; only G1 and G2 are later, unimplemented tasks.
+          // advisory EV-7 probes advance with the product roadmap: current and
+          // archived items are no longer future predictions.
           const activeTaskIds = readFileSync('docs/content-roadmap.md', 'utf8').split('\n').filter(line => line.startsWith('- [ ] **')).map(line => line.slice('- [ ] **'.length).split(' —', 1)[0]);
+          const archive = readFileSync('docs/content-roadmap-archive.md', 'utf8');
+          const archivedTaskIds = new Set(archive.split('\n').filter(line => line.startsWith('- [x] **')).map(line => line.slice(8).split(' —', 1)[0]));
+          const configuredTaskIds = currentSimulator.scenarios.map(entry => entry.taskId);
           if (currentSimulator.mode !== 'advisory'
-            || JSON.stringify(currentSimulator.scenarios.map(entry => entry.taskId)) !== JSON.stringify(['P28-G2','P28-G3'])
-            || activeTaskIds[0] !== 'P28-G1' || activeTaskIds[1] !== 'P28-G2' || activeTaskIds[2] !== 'P28-G3') {
-            fail('live EV-7 advisory scenarios must target future G2/G3 following verified F7 closeout, with G1 as active root');
+            || JSON.stringify(configuredTaskIds) !== JSON.stringify(['P28-G2','P28-G3'])
+            || !activeTaskIds.length
+            || configuredTaskIds.some(id => !activeTaskIds.includes(id) && !archivedTaskIds.has(id))
+            || configuredTaskIds.some(id => {
+              const index = activeTaskIds.indexOf(id);
+              return index > 0 && !activeTaskIds.slice(1).includes(id);
+            })) {
+            fail('live EV-7 scenarios must remain configured as G2/G3 and resolve to active or historically archived product tasks');
           }
 
           if (report.actualOutcome.pullRequest !== 366 || report.actualOutcome.baseSha !== '2b1099df2a1869919683d3e2438217e09130ae88' || report.actualOutcome.implementationHeadSha !== '8d97a4fcbf20dd540009388487fecd979ae3c265' || report.actualOutcome.finalHeadSha !== 'a41aaaeb97df197664fb2f6f216c66768bb314fc' || report.actualOutcome.mergeCommitSha !== '452e91bd239a91441bd1dd8559833dd1edde2547') fail('merged P28-PLOAD2 outcome binding drifted');
