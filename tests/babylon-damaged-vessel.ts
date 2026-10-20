@@ -117,4 +117,14 @@ assert(
   'P28-G2 floor navigation must use legible narrow visual inlays while preserving simulation-owned lane clearance.',
 );
 
+assert(
+  world.includes("mission.location === 'orbital-station' || mission.location === 'damaged-vessel'")
+    && world.includes('if (!this.authoredWorldObjects.has(object.id))')
+    && world.includes('const mappedFamily = mappedScenario ? refineryWorldObjectFamilyKey(object) : null')
+    && world.includes("this.canvas.dataset.babylonSharedWorldArtState = sharedPremiumScenario")
+    && world.includes("this.canvas.dataset.babylonSharedWorldFallbackCount = String(sharedPremiumScenario ? fallbackCount : 0)")
+    && world.includes('authoredWorld.mount.scaling.set(fit.scaleX, fit.scaleY * durabilityScale, fit.scaleZ)'),
+  'P28-G2 Orbital/Damaged shared world must use authored mesh families, count fallbacks, preserve authored placement and block visual-ready while incomplete.',
+);
+
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');
