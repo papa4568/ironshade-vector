@@ -9,6 +9,8 @@ on:
       - 'src/game/babylonRefineryBossPresentation.ts'
       - 'tests/babylon-refinery-post-processing.ts'
       - 'tests/babylon-effects-quality.ts'
+      - 'tests/p28-f7-heavy-acceptance.mjs'
+      - 'tools/p28-f7-heavy-acceptance.mjs'
       - 'tests/refinery-atmosphere.ts'
       - 'scripts/browser-runtime-smoke.mjs'
       - 'scripts/p28a5-image-grade-capture.mjs'
