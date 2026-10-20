@@ -236,6 +236,7 @@ jobs:
             android-p28g2-damaged-vessel-action.png
             android-p28g2-damaged-vessel-device.png
             android-p28g2-damaged-vessel.json
+            android-p28g2-damaged-vessel-pixel-report.json
             android-p28g2-damaged-vessel-logcat.txt
           if-no-files-found: warn
           retention-days: 30

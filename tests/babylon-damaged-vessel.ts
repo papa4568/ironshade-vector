@@ -180,4 +180,13 @@ assert(
   'P28-G2 shared-world readyness must freeze combat while authored assets load and only expose explicitly failed assets as fallback.',
 );
 
+assert(
+  androidG2Runner.includes('node scripts/verify-p28g2-gameplay-frames.mjs')
+    && androidWorkflow.includes('android-p28g2-damaged-vessel-pixel-report.json')
+    && read('scripts/verify-p28g2-gameplay-frames.mjs').includes('auditGameplayPair')
+    && read('tests/p28-g2-frame-content.mjs').includes("makeFrame('pale')")
+    && pkg.scripts?.build?.includes('npm run test:p28g2-frame-content'),
+  'P28-G2 must run a screenshot-content visual gate with real APK frames and blank/pale/stale negative controls.',
+);
+
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');
