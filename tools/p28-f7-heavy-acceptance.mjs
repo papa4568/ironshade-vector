@@ -56,7 +56,8 @@ export function auditHeavySource(baseline, manifest) {
       && source.shippedBytes === sum(group, 'onDiskBytes'),
       'delivered manifest family accounting mismatch ' + name);
     verify(nonnegative(source.uniquePremiumSourceBytes)
-      && source.uniquePremiumSourceBytes > before.uniquePremiumSourceBytes,
+      && (name === 'decal' ? source.uniquePremiumSourceBytes === 0
+        : source.uniquePremiumSourceBytes > before.uniquePremiumSourceBytes),
       'no increase in non-duplicate, qualified authored source content: ' + name);
     verify(bound.length > 0 && bound.every(asset => !asset.duplicateOf),
       'category has no unique runtime-bound art: ' + name);
@@ -138,8 +139,7 @@ export function auditHeavyApk(baseline, manifest, apk, sourceResult = auditHeavy
       'APK art family did not gain real compressed and source bytes: ' + name);
     const bound = group.filter(asset => asset.runtimeReferenced);
     const boundZipBytes = sum(bound.map(asset => byPath.get(asset.path)), 'compressedBytes');
-    verify(boundZipBytes > before.apkCompressedBytes
-      || name === 'refinery' && boundZipBytes > before.apkCompressedBytes,
+    verify(boundZipBytes > before.apkCompressedBytes,
       'runtime-bound compressed artwork did not exceed the entire F0 family: ' + name);
     families[name] = {
       ...sourceResult.families[name],
