@@ -8,6 +8,9 @@ on:
       - 'tests/heavy-asset-manifest.mjs'
       - 'tests/graphics-content-assets.mjs'
       - 'tests/graphics-runtime-assets.mjs'
+      - 'tools/p28-f7-baseline.json'
+      - 'tools/p28-f7-heavy-acceptance.mjs'
+      - 'tests/p28-f7-heavy-acceptance.mjs'
       - '.github/workflows/p28-f0-heavy-art-apk.yml'
 
 permissions:
@@ -94,6 +97,8 @@ jobs:
           test -s Ironshade-Vector-Android-Debug.sha256
           sha256sum -c Ironshade-Vector-Android-Debug.sha256
           node tools/heavy-asset-manifest.mjs apk
+          node tests/p28-f7-heavy-acceptance.mjs apk
+          node tools/p28-f7-heavy-acceptance.mjs apk
           node -e 'const r=require("./p28-f0-heavy-asset-apk.json"); if(r.assets.length < 20) process.exit(1); for(const v of Object.values(r.categories)) if(!Number.isFinite(v.compressedBytes)) process.exit(1);'
           echo "P28_F0_EXACT_APK_AUDIT_PASS candidate=$CANDIDATE_SHA"
 
@@ -101,6 +106,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: p28-f0-heavy-art-apk-${{ github.event.pull_request.head.sha }}
-          path: p28-f0-heavy-asset-apk.json
+          path: |
+            p28-f0-heavy-asset-apk.json
+            p28-f7-heavy-asset-acceptance.json
           if-no-files-found: error
           retention-days: 30

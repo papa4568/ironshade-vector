@@ -3,7 +3,6 @@
   "schemaVersion": 1,
   "roadmap": "docs/content-roadmap.md",
   "roadmapIds": [
-    "P28-F7",
     "P28-G1",
     "P28-G2",
     "P28-G3",
@@ -154,71 +153,18 @@
     }
   ],
   "overrides": {
-    "P28-F7": {},
-    "P28-G1": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-G2": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-G3": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-G4": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-G5": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-G6": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-G7": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-G8": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-G9": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-H1": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-H2": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-H3": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    },
-    "P28-H4": {
-      "dependsOn": [
-        "P28-F7"
-      ]
-    }
+    "P28-G1": {},
+    "P28-G2": {},
+    "P28-G3": {},
+    "P28-G4": {},
+    "P28-G5": {},
+    "P28-G6": {},
+    "P28-G7": {},
+    "P28-G8": {},
+    "P28-G9": {},
+    "P28-H1": {},
+    "P28-H2": {},
+    "P28-H3": {},
+    "P28-H4": {}
   }
 }

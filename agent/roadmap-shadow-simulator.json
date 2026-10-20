@@ -4,55 +4,6 @@
   "mode": "advisory",
   "scenarios": [
     {
-      "taskId": "P28-G1",
-      "probeId": "orbital-station-refresh-extension",
-      "expectedSurfaces": [
-        "src/game/babylonOrbitalStationPresentation.ts",
-        "src/game/babylonCombatRenderer.ts"
-      ],
-      "preferredSurfaceCount": 2,
-      "extensionPoints": [
-        {
-          "path": "src/game/babylonOrbitalStationPresentation.ts",
-          "contains": "export class BabylonOrbitalStationPresentation",
-          "description": "The location presentation remains independently addressable for a future visual-stack refresh."
-        },
-        {
-          "path": "src/game/babylonOrbitalStationPresentation.ts",
-          "contains": "sync(state: SimState, renderBudget: RenderBudgetSnapshot, lowVisibility: boolean)",
-          "description": "The location refresh can consume simulation state and render budget through its existing presentation sync boundary."
-        },
-        {
-          "path": "src/game/babylonOrbitalStationPresentation.ts",
-          "contains": "release(reason: string)",
-          "description": "The location presentation exposes lifecycle release without changing simulation ownership."
-        }
-      ],
-      "forbiddenDependencies": [
-        {
-          "path": "src/game/babylonOrbitalStationPresentation.ts",
-          "contains": "from './babylonCombatRenderer'",
-          "description": "A location presentation must not depend back on the renderer that owns it."
-        }
-      ],
-      "probe": {
-        "imports": [
-          {
-            "path": "src/game/babylonOrbitalStationPresentation.ts",
-            "typeOnly": false,
-            "names": [
-              "BABYLON_ORBITAL_STATION_IDENTITY",
-              "BabylonOrbitalStationPresentation"
-            ]
-          }
-        ],
-        "body": [
-          "export type OrbitalRefreshExtension = Pick<BabylonOrbitalStationPresentation, 'sync' | 'release' | 'dispose'>;",
-          "export const orbitalRefreshIdentity = BABYLON_ORBITAL_STATION_IDENTITY;"
-        ]
-      }
-    },
-    {
       "taskId": "P28-G2",
       "probeId": "damaged-vessel-refresh-extension",
       "expectedSurfaces": [
@@ -98,6 +49,55 @@
         "body": [
           "export type DamagedVesselRefreshExtension = Pick<BabylonDamagedVesselPresentation, 'sync' | 'release' | 'dispose'>;",
           "export const damagedVesselRefreshIdentity = BABYLON_DAMAGED_VESSEL_IDENTITY;"
+        ]
+      }
+    },
+    {
+      "taskId": "P28-G3",
+      "probeId": "spin-habitat-refresh-extension",
+      "expectedSurfaces": [
+        "src/game/babylonSpinHabitatPresentation.ts",
+        "src/game/babylonCombatRenderer.ts"
+      ],
+      "preferredSurfaceCount": 2,
+      "extensionPoints": [
+        {
+          "path": "src/game/babylonSpinHabitatPresentation.ts",
+          "contains": "export class BabylonSpinHabitatPresentation",
+          "description": "The location presentation remains independently addressable for a future visual-stack refresh."
+        },
+        {
+          "path": "src/game/babylonSpinHabitatPresentation.ts",
+          "contains": "sync(state: SimState, renderBudget: RenderBudgetSnapshot, lowVisibility: boolean)",
+          "description": "The location refresh can consume simulation state and render budget through its existing presentation sync boundary."
+        },
+        {
+          "path": "src/game/babylonSpinHabitatPresentation.ts",
+          "contains": "release(reason: string)",
+          "description": "The location presentation exposes lifecycle release without changing simulation ownership."
+        }
+      ],
+      "forbiddenDependencies": [
+        {
+          "path": "src/game/babylonSpinHabitatPresentation.ts",
+          "contains": "from './babylonCombatRenderer'",
+          "description": "A location presentation must not depend back on the renderer that owns it."
+        }
+      ],
+      "probe": {
+        "imports": [
+          {
+            "path": "src/game/babylonSpinHabitatPresentation.ts",
+            "typeOnly": false,
+            "names": [
+              "BABYLON_SPIN_HABITAT_IDENTITY",
+              "BabylonSpinHabitatPresentation"
+            ]
+          }
+        ],
+        "body": [
+          "export type SpinRefreshExtension = Pick<BabylonSpinHabitatPresentation, 'sync' | 'release' | 'dispose'>;",
+          "export const spinRefreshIdentity = BABYLON_SPIN_HABITAT_IDENTITY;"
         ]
       }
     }

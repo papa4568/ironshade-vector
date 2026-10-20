@@ -1,0 +1,58 @@
+{
+  "schema": "ironshade-p28-f7-baseline-v1",
+  "source": {
+    "candidateSha": "01bfb938d02e2c7a2dbb8053156cf843c1f7e373",
+    "manifestArtifactId": 12123739276,
+    "manifestArtifactDigest": "sha256:a1e0c0c3caaf4d696aded294473eeab6066e1322404ffcd11a25d3ff677ee46b",
+    "manifestSha256": "a191f9b94212476f712b5eb66c75a5c782942503fd9e88e22771a1d17e6bdbd1",
+    "apkAuditArtifactId": 12124447085,
+    "apkAuditArtifactDigest": "sha256:c22d6caef72b58614f96f080a49cac77e1c4d779d50d36f3b1ddd5b5e1e1f007",
+    "apkAuditSha256": "91a89cbb7876a681d506cd14561d5666514024dbd7b0a17298504d7dcac9af99",
+    "auditRun": 39094567752
+  },
+  "assetCount": 95,
+  "families": {
+    "refinery": {
+      "assetCount": 51,
+      "shippedBytes": 4863985,
+      "uniquePremiumSourceBytes": 22369600,
+      "apkUncompressedBytes": 4863985,
+      "apkCompressedBytes": 4048876
+    },
+    "operator": {
+      "assetCount": 12,
+      "shippedBytes": 413740,
+      "uniquePremiumSourceBytes": 48541,
+      "apkUncompressedBytes": 413740,
+      "apkCompressedBytes": 74056
+    },
+    "enemy": {
+      "assetCount": 20,
+      "shippedBytes": 531620,
+      "uniquePremiumSourceBytes": 0,
+      "apkUncompressedBytes": 531620,
+      "apkCompressedBytes": 95287
+    },
+    "boss": {
+      "assetCount": 11,
+      "shippedBytes": 160860,
+      "uniquePremiumSourceBytes": 0,
+      "apkUncompressedBytes": 160860,
+      "apkCompressedBytes": 32449
+    },
+    "decal": {
+      "assetCount": 1,
+      "shippedBytes": 35312,
+      "uniquePremiumSourceBytes": 0,
+      "apkUncompressedBytes": 35312,
+      "apkCompressedBytes": 35312
+    },
+    "vfx": {
+      "assetCount": 0,
+      "shippedBytes": 0,
+      "uniquePremiumSourceBytes": 0,
+      "apkUncompressedBytes": 0,
+      "apkCompressedBytes": 0
+    }
+  }
+}
