@@ -128,18 +128,24 @@ try {
     const campaignKey = 'ironshade-vector-campaign-v1';
     const stateRaw = localStorage.getItem(stateKey);
     const campaignRaw = localStorage.getItem(campaignKey);
-    if (!campaignRaw) return false;
-    const campaign = JSON.parse(campaignRaw);
-    campaign.cycle = 1;
-    localStorage.setItem(campaignKey, JSON.stringify(campaign));
+    // Fresh class intake persists campaign in state; returning players may
+    // also have the dedicated campaign key. The headed browser QA handles both.
+    let updated = false;
     if (stateRaw) {
       const state = JSON.parse(stateRaw);
       if (state?.campaign) {
         state.campaign.cycle = 1;
         localStorage.setItem(stateKey, JSON.stringify(state));
+        updated = true;
       }
     }
-    return JSON.parse(localStorage.getItem(campaignKey)).cycle === 1;
+    if (campaignRaw) {
+      const campaign = JSON.parse(campaignRaw);
+      campaign.cycle = 1;
+      localStorage.setItem(campaignKey, JSON.stringify(campaign));
+      updated = true;
+    }
+    return updated;
   })()`);
   if (!seeded) throw new Error('P28-G3 could not seed the persisted cycle-one campaign for Spin Habitat.');
   await call('Page.reload', { ignoreCache: true });
