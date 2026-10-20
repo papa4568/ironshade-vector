@@ -231,6 +231,7 @@ jobs:
             android-p28g1-orbital-station-action.png
             android-p28g1-orbital-station-device.png
             android-p28g1-orbital-station.json
+            android-p28g1-orbital-station-pixel-report.json
             android-p28g1-orbital-station-logcat.txt
             android-p28g2-damaged-vessel-normal.png
             android-p28g2-damaged-vessel-action.png

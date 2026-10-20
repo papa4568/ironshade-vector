@@ -54,6 +54,11 @@ const authored = {
   beforeIbl: 'shared-prefiltered:ready',
 };
 assert(auditAuthoredVisualProvenance(authored).valid, 'Real authored provenance control must pass');
+const station = { ...authored, capturedRoute: 'orbital-station',
+  routeStyle: 'orbital-recessed-deck-inlay', premiumBindings: 126, groundProps: 25 };
+assert(auditAuthoredVisualProvenance(station).valid, 'Orbital authored visual baseline must pass');
+assert(!auditAuthoredVisualProvenance({ ...station, fallbackObjects: 1, authoredObjects: 11 }).valid,
+  'Orbital regression must detect an injected raw world box');
 for (const [label, injection] of [
   ['raw-box', { fallbackObjects: 1, authoredObjects: 11 }],
   ['texture-missing', { premium: 'loading' }],

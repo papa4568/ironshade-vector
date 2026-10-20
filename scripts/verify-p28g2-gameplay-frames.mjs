@@ -139,16 +139,20 @@ export function auditGameplayPair(normal, action) {
 export function auditAuthoredVisualProvenance(state) {
   const finite = key => Number.isFinite(Number(state?.[key])) ? Number(state[key]) : NaN;
   const mapped = finite('mappedObjects'), authored = finite('authoredObjects'), fallback = finite('fallbackObjects');
+  const expected = {
+    'orbital-station': { profile: 'orbital-recessed-deck-inlay', bindings: 40, contacts: 25 },
+    'damaged-vessel': { profile: 'damaged-recessed-deck-inlay', bindings: 35, contacts: 11 },
+  }[state?.capturedRoute];
   const problems = [];
-  if (state?.capturedRoute !== 'damaged-vessel' || state?.backend !== 'webgl2') problems.push('wrong-map-or-backend');
+  if (!expected || state?.backend !== 'webgl2') problems.push('wrong-map-or-backend');
   if (state?.artState !== 'ready' || !(mapped > 0 && authored === mapped && fallback === 0)) problems.push('procedural-box-or-unresolved-world-slot');
-  if (state?.premium !== 'ready' || !(finite('premiumBindings') >= 35)
+  if (state?.premium !== 'ready' || !(finite('premiumBindings') >= (expected?.bindings ?? Infinity))
     || state?.ibl !== 'shared-prefiltered:ready') problems.push('missing-or-unready-premium-material');
-  if (state?.routeStyle !== 'damaged-recessed-deck-inlay'
+  if (state?.routeStyle !== expected?.profile
     || !(finite('routeMaxWidth') > 0 && finite('routeMaxWidth') <= 0.20)) problems.push('oversized-route-material');
   if (state?.objectiveCue !== 'beacon+navigation-path'
     || !(finite('worldObjects') >= 1)) problems.push('missing-or-occluded-objective');
-  if (!state?.assetIds || !(finite('groundProps') >= 11)) problems.push('missing-asset-provenance');
+  if (!state?.assetIds || !(finite('groundProps') >= (expected?.contacts ?? Infinity))) problems.push('missing-asset-provenance');
   if (state?.beforeAssetIds !== state?.assetIds
     || state?.beforeArtState !== 'ready'
     || state?.beforePremium !== 'ready'

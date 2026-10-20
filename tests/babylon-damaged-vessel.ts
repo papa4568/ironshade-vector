@@ -199,4 +199,11 @@ assert(
   'P28-G2 Android heavy-art resume CDP recovery must retry closed sockets within its overall timeout instead of hanging on one command.',
 );
 
+assert(
+  read('scripts/android-p28g1-orbital-capture.sh').includes('node scripts/verify-p28g2-gameplay-frames.mjs')
+    && read('scripts/android-p28g1-orbital-capture.mjs').includes('beforeAssetIds: beforeVisual.assetIds')
+    && read('.github/workflows/pr-android-apk.yml').includes('android-p28g1-orbital-station-pixel-report.json'),
+  'P28-G2 content quality gate must cover real Orbital Station and Damaged Vessel Android frames.',
+);
+
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');
