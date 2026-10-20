@@ -151,6 +151,10 @@ try {
       && Number(d.babylonRouteMarkingMaxWidth) > 0
       && Number(d.babylonRouteMarkingMaxWidth) <= 0.20
       && d.babylonSharedWorldArtState === 'ready'
+      && d.missionVisualReadiness === 'ready'
+      && d.missionVisualMode === 'authored'
+      && Number(d.babylonSharedWorldPendingCount || 0) === 0
+      && Number(d.babylonSharedWorldFailedCount || 0) === 0
       && Number(d.babylonSharedWorldMappedCount || 0) > 0
       && Number(d.babylonSharedWorldAuthoredCount || 0) === Number(d.babylonSharedWorldMappedCount || 0)
       && Number(d.babylonSharedWorldFallbackCount || 0) === 0

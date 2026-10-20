@@ -6,6 +6,7 @@ import {
   BABYLON_DAMAGED_PREMIUM_SURFACES,
 } from '../src/game/babylonDamagedVesselPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { resolveMissionVisualReadiness } from '../src/game/babylonRefineryMissionReadiness';
 import { BABYLON_ROUTE_MARKING_WIDTHS, babylonRouteMarkingWidth } from '../src/game/babylonRouteMarkings';
 
 function read(path: string) {
@@ -151,6 +152,32 @@ assert(
     && vessel.includes("this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading'")
     && vessel.includes('this.premiumSurfaces.dispose()'),
   'P28-G2 Damaged Vessel must bind real KTX2 PBR textures, shared IBL and grounded actors/props with deterministic disposal.',
+);
+
+const sharedLoading = resolveMissionVisualReadiness({
+  refinery: false, sharedPremium: true, elapsedMs: 14_000,
+  environmentState: 'ready', environmentError: undefined, worldState: 'ready',
+  mappedCount: 8, authoredCount: 6, fallbackCount: 0,
+});
+const sharedAuthored = resolveMissionVisualReadiness({
+  refinery: false, sharedPremium: true, elapsedMs: 1_000,
+  environmentState: 'ready', environmentError: undefined, worldState: 'ready',
+  mappedCount: 8, authoredCount: 8, fallbackCount: 0,
+});
+const sharedFailure = resolveMissionVisualReadiness({
+  refinery: false, sharedPremium: true, elapsedMs: 1_000,
+  environmentState: 'ready', environmentError: 'crate:failed-to-load', worldState: 'ready',
+  mappedCount: 8, authoredCount: 7, fallbackCount: 1,
+});
+assert(
+  sharedLoading.phase === 'loading'
+    && sharedAuthored.phase === 'ready' && sharedAuthored.mode === 'authored'
+    && sharedFailure.phase === 'ready' && sharedFailure.mode === 'fallback'
+    && sharedFailure.reason === 'crate:failed-to-load'
+    && world.includes('this.sharedWorldFailures.set(object.id')
+    && world.includes("this.canvas.dataset.babylonSharedWorldArtState = sharedPremiumScenario")
+    && read('src/game/babylonRefineryMissionReadiness.ts').includes('mission.location === \'orbital-station\' || mission.location === \'damaged-vessel\''),
+  'P28-G2 shared-world readyness must freeze combat while authored assets load and only expose explicitly failed assets as fallback.',
 );
 
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');
