@@ -1,4 +1,4 @@
-// P28-G3: exact-APK Android WebView visual proof for the Orbital Station route.
+// P28-G3: exact-APK Android WebView visual proof for the Spin Habitat route.
 // Screenshots and telemetry are captured from the live, deployed combat scene.
 import { writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -120,6 +120,31 @@ try {
   }
   await waitFor(`[...document.querySelectorAll('button')].some(b =>
     (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations')`, 'Command Deck');
+  // Rotating Spin Habitat is a cycle-one campaign contract. Keep the same
+  // campaign state precondition as the headed browser route; do not loosen
+  // the production unlock rule or forge a contract DOM node for QA.
+  const seeded = await evaluate(`(() => {
+    const stateKey = 'ironshade-vector-state-v1';
+    const campaignKey = 'ironshade-vector-campaign-v1';
+    const stateRaw = localStorage.getItem(stateKey);
+    const campaignRaw = localStorage.getItem(campaignKey);
+    if (!campaignRaw) return false;
+    const campaign = JSON.parse(campaignRaw);
+    campaign.cycle = 1;
+    localStorage.setItem(campaignKey, JSON.stringify(campaign));
+    if (stateRaw) {
+      const state = JSON.parse(stateRaw);
+      if (state?.campaign) {
+        state.campaign.cycle = 1;
+        localStorage.setItem(stateKey, JSON.stringify(state));
+      }
+    }
+    return JSON.parse(localStorage.getItem(campaignKey)).cycle === 1;
+  })()`);
+  if (!seeded) throw new Error('P28-G3 could not seed the persisted cycle-one campaign for Spin Habitat.');
+  await call('Page.reload', { ignoreCache: true });
+  await waitFor(`[...document.querySelectorAll('button')].some(b =>
+    (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations')`, 'cycle-one Command Deck');
   await clickButton('Operations');
   await waitFor(`[...document.querySelectorAll('button')].some(b =>
     (b.textContent || '').trim().toLowerCase() === 'contracts')`, 'Operations');
@@ -219,7 +244,7 @@ try {
     beforeAssetIds: beforeVisual.assetIds, beforeArtState: beforeVisual.artState,
     beforePremium: beforeVisual.premium, beforeIbl: beforeVisual.ibl, ...result,
   }, null, 2) + '\n');
-  console.log('ANDROID_P28G3_DAMAGED_VISUAL_CAPTURE_PASS route=spin-habitat authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
+  console.log('ANDROID_P28G3_SPIN_VISUAL_CAPTURE_PASS route=spin-habitat authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
 } finally {
   socket.close();
 }
