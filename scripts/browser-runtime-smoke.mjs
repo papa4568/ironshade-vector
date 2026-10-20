@@ -513,6 +513,10 @@ async function p27C1BabylonOrbitalAudit() {
       && canvas?.dataset.babylonOrbitalParity === 'architecture+materials+lighting+props+navigation+shared-world-cues'
       && canvas?.dataset.locationArtIdentity === 'radial-spine|clean-industrial|neutral-cyan|service-cases'
       && canvas?.dataset.babylonLightingProfile === 'neutral-cyan'
+      && canvas?.dataset.orbitalPremiumAssetState === 'ready'
+      && Number(canvas?.dataset.orbitalPremiumBindings ?? 0) >= 40
+      && canvas?.dataset.orbitalGrounding === 'player+enemies:soft-contact'
+      && canvas?.dataset.environmentIbl === 'shared-prefiltered:ready'
       && canvas?.dataset.babylonWorldState === 'ready'
       && canvas?.dataset.worldPresentationMode === 'scene-meshes-not-hud'
       && Number(canvas?.dataset.worldObjectCount ?? 0) > 0
@@ -582,6 +586,11 @@ async function p27C1BabylonOrbitalAudit() {
       tone: canvas?.dataset.environmentTone ?? '',
       locationLighting: canvas?.dataset.locationLighting ?? '',
       materialIntent: canvas?.dataset.babylonMaterialIntent ?? '',
+      premiumState: canvas?.dataset.orbitalPremiumAssetState ?? '',
+      premiumBindings: Number(canvas?.dataset.orbitalPremiumBindings ?? 0),
+      premiumSurfaces: canvas?.dataset.orbitalPremiumSurfaces ?? '',
+      grounding: canvas?.dataset.orbitalGrounding ?? '',
+      groundedEnemies: Number(canvas?.dataset.orbitalGroundedEnemies ?? 0),
       pbr: canvas?.dataset.babylonPbrMaterials ?? '',
       postRelease: canvas?.dataset.babylonPostRelease ?? '',
       worldState: canvas?.dataset.babylonWorldState ?? '',
@@ -634,10 +643,14 @@ async function p27C1BabylonOrbitalAudit() {
     || state.lighting !== 'neutral-cyan'
     || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
     || !state.environmentLighting.startsWith('orbital-key+rim+emergency+readability+practical:')
-    || state.environmentIbl !== 'off:orbital-station'
+    || state.environmentIbl !== 'shared-prefiltered:ready'
+    || state.premiumState !== 'ready'
+    || state.premiumBindings < 40
+    || state.premiumSurfaces !== 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
+    || state.grounding !== 'player+enemies:soft-contact'
     || !/^aces-\d+\.\d{2}$/.test(state.tone)
     || !/^orbital-station:neutral-cyan:aces-\d+\.\d{2}$/.test(state.locationLighting)
-    || state.materialIntent !== 'procedural-clean-industrial-pbr+shared-world-pbr'
+    || state.materialIntent !== 'premium-ktx2-pbr+wayfinding-emissives+shared-world-pbr'
     || !/^pbr:\d+\|station:6$/.test(state.pbr)
     || state.postRelease !== 'scenario-switch'
     || state.worldState !== 'ready'
