@@ -206,4 +206,12 @@ assert(
   'P28-G2 content quality gate must cover real Orbital Station and Damaged Vessel Android frames.',
 );
 
+assert(
+  read('scripts/android-babylon-lifecycle-smoke.mjs').includes("if (phase !== 'cache-resume')")
+    && read('scripts/android-babylon-lifecycle-smoke.mjs').includes("const matches = targets.filter")
+    && read('scripts/android-p28f6-heavy-cache-smoke.sh').includes('android-p28f6-resume-diagnostics.txt')
+    && read('.github/workflows/pr-android-apk.yml').includes('android-p28f6-resume-logcat.txt'),
+  'P28-G2 Android resume must probe live page targets without blocked Runtime.enable and retain failure forensics.',
+);
+
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');

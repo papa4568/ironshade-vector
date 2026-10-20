@@ -99,18 +99,27 @@ async function waitForSession() {
   while (Date.now() - startedAt < timeoutMs) {
     try {
       const targets = await listTargets();
-      const target = targets.find(candidate => candidate.webSocketDebuggerUrl && candidate.title === 'Ironshade Vector');
-      if (target) {
-        // A heavy renderer recovery may expose a CDP target before the WebView
-        // event loop can service Runtime.enable. A 90s per-command timeout
-        // must not consume the entire 75s outer session-recovery deadline.
+      // Android can retain a DevTools target from a paused renderer while a
+      // new renderer is already foregrounded. Probe every live page target.
+      const matches = targets.filter(candidate => candidate.webSocketDebuggerUrl
+        && candidate.type === 'page' && candidate.title === 'Ironshade Vector');
+      for (const target of matches) {
+        // A heavy renderer recovery may expose a CDP target before its event
+        // loop can service protocol requests. Bound each candidate probe to
+        // a fraction of the outer session deadline.
         const socket = await connect(target.webSocketDebuggerUrl);
         let accepted = false;
         try {
           const session = createSession(socket);
           const remaining = () => Math.max(1, Math.min(6_000, timeoutMs - (Date.now() - startedAt)));
-          await session.call('Runtime.enable', {}, remaining());
-          await session.call('Page.enable', {}, remaining());
+          // On a preserved WebView after HOME, Runtime.enable may stall while
+          // replaying contexts, even though direct Runtime.evaluate is usable.
+          // The real resume contract still requires a live document, renderer,
+          // cache ownership, and post-resume input; no telemetry is synthesized.
+          if (phase !== 'cache-resume') {
+            await session.call('Runtime.enable', {}, remaining());
+            await session.call('Page.enable', {}, remaining());
+          }
           const ready = await session.call('Runtime.evaluate', {
             expression: 'document.readyState', awaitPromise: true, returnByValue: true,
           }, remaining());

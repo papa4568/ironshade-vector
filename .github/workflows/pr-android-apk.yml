@@ -227,6 +227,9 @@ jobs:
             android-babylon-webgpu.json
             android-p28f6-interaction.json
             android-p28f6-resume.json
+            android-p28f6-resume-screen.png
+            android-p28f6-resume-diagnostics.txt
+            android-p28f6-resume-logcat.txt
             android-p28g1-orbital-station-normal.png
             android-p28g1-orbital-station-action.png
             android-p28g1-orbital-station-device.png
