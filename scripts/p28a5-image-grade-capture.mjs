@@ -6,6 +6,21 @@ const reportPath = process.env.BROWSER_E2E_P28A5_REPORT ?? 'browser-p28a5-image-
 // Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'; visualDetail: 'p28-c8-refinery-world-authored-mappings'; visualDetail: 'p28-c9-refinery-geometry-reuse'; visualDetail: 'p28-d0-premium-character-source'; visualDetail: 'p28-d1-vanguard-operator-lod0'; visualDetail: 'p28-d2-vector-operator-lod0'; visualDetail: 'p28-d3-systems-operator-lod0'; visualDetail: 'p28-d4-assault-enemy-lod0'; visualDetail: 'p28-d5-suppressor-enemy-lod0'; visualDetail: 'p28-d6-technician-enemy-lod0'
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+function assertHeavyCache(raw, label) {
+  const metrics = Object.fromEntries(String(raw).split('|').map(field => {
+    const index = field.indexOf(':');
+    return index > 0 ? [field.slice(0, index), Number(field.slice(index + 1))] : ['', NaN];
+  }));
+  const keys = ['cached', 'active', 'native', 'loading', 'loads', 'failures', 'hits', 'evictions', 'late-disposed', 'bytes'];
+  if (keys.some(key => !Number.isSafeInteger(metrics[key]) || metrics[key] < 0)
+    || metrics.cached < 11 || metrics.active < 1 || metrics.loads < 11
+    || metrics.hits < 1 || metrics.loading !== 0 || metrics.failures !== 0
+    || metrics['late-disposed'] !== 0 || metrics.bytes < 1) {
+    throw new Error(`P28-F6 ${label} graphics source ownership invalid: ${JSON.stringify(metrics)}`);
+  }
+  return metrics;
+}
+
 if (typeof WebSocket !== 'function') {
   throw new Error('Node WebSocket support is required for P28-A5 browser capture.');
 }
@@ -55,7 +70,19 @@ async function waitFor(expression, label, timeoutMs = 10_000) {
     if (value) return value;
     await sleep(100);
   }
-  throw new Error(`Timed out waiting for ${label}.`);
+  const diagnostic = await evaluate(`(() => {
+    const d = document.querySelector('canvas')?.dataset;
+    return {
+      scenario: d?.babylonScenario, environmentVisual: d?.environmentVisual,
+      environmentState: d?.babylonEnvironmentState, environmentAssets: d?.babylonEnvironmentAssets,
+      dressingState: d?.refineryDressingState, dressingInstances: d?.refineryDressingInstances,
+      dressingAssets: d?.refineryDressingAssets, dressingError: d?.refineryDressingError,
+      player: d?.babylonPlayerState, enemies: d?.babylonEnemyState,
+      catalog: d?.babylonEnemyCatalogState, catalogAssets: d?.babylonEnemyCatalogAssets,
+      frame: d?.babylonFrames, assetCache: d?.babylonAssetCacheTelemetry,
+    };
+  })()`).catch(error => ({ diagnosticError: String(error) }));
+  throw new Error(`Timed out waiting for ${label}. state=${JSON.stringify(diagnostic)}`);
 }
 
 async function clickButton(label) {
@@ -114,6 +141,13 @@ const readGradeStateExpression = `(() => {
     enemyLifecycleTracked: Number(canvas.dataset.babylonEnemyLifecycleTracked ?? 0),
     enemyLifecycleOwnership: canvas.dataset.babylonEnemyLifecycleSimulationOwnership ?? '',
     enemyLifecycleEffectsMode: canvas.dataset.babylonEnemyLifecycleEffectsMode ?? '',
+    assetCache: canvas.dataset.babylonAssetCacheTelemetry ?? '',
+    environmentState: canvas.dataset.babylonEnvironmentState ?? '',
+    environmentAssets: Number(canvas.dataset.babylonEnvironmentAssets ?? 0),
+    dressingState: canvas.dataset.refineryDressingState ?? '',
+    dressingInstances: Number(canvas.dataset.refineryDressingInstances ?? 0),
+    dressingAssets: canvas.dataset.refineryDressingAssets ?? '',
+    weaponAsset: canvas.dataset.weaponAsset ?? '',
     assetRuntime: canvas.dataset.babylonWorldRuntime ?? '',
     sceneTelemetry: canvas.dataset.babylonSceneTelemetry ?? '',
     width: Math.round(rect.width),
@@ -184,11 +218,31 @@ try {
       && catalog.split(',').includes('enemy-assault-lod0')
       && catalog.split(',').includes('enemy-suppressor-lod0')
       && catalog.split(',').includes('enemy-technician-lod0')
-      && catalog.split(',').includes('enemy-elite-lod0');
-  })()`, 'normal Flagship refinery grade with elite enemy LOD0', 90_000);
+      && catalog.split(',').includes('enemy-elite-lod0')
+      && canvas?.dataset.babylonEnvironmentState === 'ready'
+      && Number(canvas?.dataset.babylonEnvironmentAssets ?? 0) >= 11
+      && canvas?.dataset.refineryDressingState === 'ready'
+      && Number(canvas?.dataset.refineryDressingInstances ?? 0) >= 8
+      && canvas?.dataset.babylonEnemyState === 'ready'
+      && canvas?.dataset.babylonAssetCacheTelemetry?.includes('loading:0');
+  })()`, 'normal Flagship refinery grade with elite enemy LOD0', 300_000);
 
   const normal = await evaluate(readGradeStateExpression);
   const expectedCatalog = 'enemy-assault-lod0,enemy-suppressor-lod0,enemy-technician-lod0,enemy-elite-lod0';
+  const coldCache = assertHeavyCache(normal?.assetCache, 'cold Flagship refinery route');
+  const localResources = await evaluate(`(() => {
+    const delivered = performance.getEntriesByType('resource')
+      .map(entry => entry.name)
+      .filter(name => name.includes('/assets/models/') && name.endsWith('.glb'));
+    const foreign = delivered.filter(name => {
+      try { return new URL(name, location.href).origin !== location.origin; } catch { return true; }
+    });
+    return { localCount: delivered.length, foreign };
+  })()`);
+  if (!localResources || localResources.localCount < 11 || localResources.foreign.length) {
+    throw new Error('P28-F6 cold route heavy-model requests are missing or nonlocal: '
+      + JSON.stringify(localResources));
+  }
   if (!normal
     || normal.tier !== 'high'
     || !normal.atmosphere.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1')
@@ -196,6 +250,13 @@ try {
     || normal.refineryWorldMappedCount < 1
     || normal.refineryWorldAuthoredCount !== normal.refineryWorldMappedCount
     || normal.refineryWorldFallbackCount !== 0
+    || normal.enemyFallbackCount !== 0
+    || normal.environmentState !== 'ready'
+    || normal.environmentAssets < 11
+    || normal.dressingState !== 'ready'
+    || normal.dressingInstances < 8
+    || normal.dressingAssets.split(',').length < 8
+    || !normal.weaponAsset
     || normal.operatorVisual !== 'authored-0-babylon'
     || normal.operatorAsset !== 'operator-systems-lod0'
     || normal.operatorClassAsset !== 'systems'
@@ -261,6 +322,24 @@ try {
     throw new Error(`P28-D7 low-visibility elite LOD0 telemetry is incomplete: ${JSON.stringify(lowVisibility)}`);
   }
 
+  const warmCache = assertHeavyCache(lowVisibility.assetCache, 'warm Flagship refinery route');
+  if (warmCache.loads !== coldCache.loads
+    || warmCache.cached !== coldCache.cached
+    // Live enemy spawns may add native owners after the cold snapshot.
+    // Only source loads/asset identities must remain identical; allow a
+    // bounded count of legitimate gameplay owners without allowing leaks.
+    || warmCache.active < coldCache.active
+    || warmCache.active > coldCache.active + 4
+    || warmCache.native < coldCache.native
+    || warmCache.native > coldCache.native + 256
+    || warmCache.bytes !== coldCache.bytes
+    || warmCache.hits < coldCache.hits
+    || lowVisibility.enemyFallbackCount !== 0
+    || lowVisibility.refineryWorldFallbackCount !== 0) {
+    throw new Error('P28-F6 warm Flagship reuse regressed or fell back: '
+      + JSON.stringify({ coldCache, warmCache, lowVisibility }));
+  }
+
   const capture = await call('Page.captureScreenshot', { format: 'png', fromSurface: true });
   const png = Buffer.from(capture.data, 'base64');
   if (png.length < 10_000) throw new Error(`P28-A5 low-visibility screenshot is unexpectedly small: ${png.length} bytes.`);
@@ -271,6 +350,7 @@ try {
     visualDetail: 'p28-d7-elite-enemy-lod0',
     normal,
     lowVisibility,
+    heavyCache: { cold: coldCache, warm: warmCache, localResources },
     screenshot: screenshotPath,
     screenshotBytes: png.length,
   }, null, 2) + '\n');
@@ -291,6 +371,10 @@ try {
     throw new Error(`Could not clear the P28-A5 low-visibility QA grade: ${String(restoreState)}`);
   }
 
+  console.log('P28_F6_FLAGSHIP_HEAVY_CACHE_PASS coldLoads=' + coldCache.loads
+    + ' warmLoads=' + warmCache.loads + ' hits=' + warmCache.hits
+    + ' cached=' + warmCache.cached + ' active=' + warmCache.active
+    + ' localRequests=' + localResources.localCount + ' fallback=0 lateDisposed=0');
   console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-d7-elite-enemy-lod0 catalog=${normal.enemyCatalogAssets} lods=${normal.enemyCatalogLod} telegraphs=${normal.enemyTelegraphs} protocol=${normal.protocolStatusVisuals} lifecycle=${normal.enemyLifecycleTracked} normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
   socket.close();

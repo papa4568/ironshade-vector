@@ -308,6 +308,22 @@ assert(reflectionRendererSource.includes('this.canvas.dataset.refineryDressingIn
   && reflectionRendererSource.includes('node.isPickable = false'),
   'P28-F4 must expose concrete model placements and non-pickable premium PBR presentation without taking combat cues.');
 
+// P28-F6 browser/Android Flagship captures must expose the real asset-cache
+// lifecycle rather than only presenting aggregate mesh/texture counts.
+const f6CacheMetrics = [
+  'cachedAssets', 'activeInstances', 'activeNativeMeshInstances',
+  'inFlightLoads', 'sourceLoadAttempts', 'sourceLoadFailures',
+  'cacheHits', 'cacheEvictions', 'staleLoadDisposals', 'estimatedCachedCompressedBytes',
+];
+assert(f5RendererSource.includes('this.canvas.dataset.babylonAssetCacheTelemetry = ['),
+  'P28-F6 renderer must surface cache status to deterministic Flagship captures.');
+for (const metric of f6CacheMetrics) {
+  assert(f5RendererSource.includes(`assetStats.${metric}`),
+    `P28-F6 Flagship cache telemetry must report measured ${metric}`);
+}
+console.log('P28_F6_FLAGSHIP_CACHE_TELEMETRY_PASS metrics=' + f6CacheMetrics.length
+  + ' scenes=live coldWarmReuse=observable teardown=observable');
+
 console.log(
   'P27_D4_BABYLON_EFFECTS_QUALITY_PASS phoneDefault=high tiers=high>balanced>performance shadows=1024>512>off transparency=1.00>0.68>0.40 reflection=1.00>0.70>0.38 vfx=1.00>0.72>0.45 secondary=1.00>0.68>0.42 critical=1.00 degrade=performance recover=high ambient=240-pooled measured-pressure=101 refinery-art-direction=21-zones contexts=machinery+vents+damaged-service+open-industrial center-clearance=x38-62+z38-62 gameplay-independent=1.00 teardown=clean frame-evidence=browser-runtime',
 );

@@ -20,6 +20,13 @@ const navigationUrl = (() => {
   return url.toString();
 })();
 const timeoutMs = Number(process.env.BROWSER_E2E_TIMEOUT_MS ?? 75_000);
+// On the heavy Babylon comparison route a SwiftShader GLB decode/shader frame
+// may monopolize Chrome CDP beyond the legacy 20s response budget, despite
+// readiness and gameplay succeeding. Bound that *protocol* wait to 45s for
+// Babylon only; retain every route assertion and 20s non-Babylon default.
+const cdpRequestTimeoutMs = process.env.BROWSER_E2E_CDP_TIMEOUT_MS
+  ? Math.max(20_000, Math.min(45_000, Number(process.env.BROWSER_E2E_CDP_TIMEOUT_MS)))
+  : requestedGraphicsPath === 'babylon' ? 45_000 : 20_000;
 const startedAt = Date.now();
 const viewportMode = process.env.BROWSER_E2E_VIEWPORT ?? 'desktop';
 const targetLocation = process.env.BROWSER_E2E_LOCATION ?? 'asteroid-refinery';
@@ -150,7 +157,7 @@ function call(method, params = {}) {
     const timer = setTimeout(() => {
       pending.delete(id);
       reject(new Error(`Timed out waiting for CDP ${method}`));
-    }, 20_000);
+    }, cdpRequestTimeoutMs);
     pending.set(id, {
       resolve: value => { clearTimeout(timer); resolve(value); },
       reject: error => { clearTimeout(timer); reject(error); },
@@ -718,6 +725,21 @@ async function p27C2BabylonDamagedVesselAudit() {
     5_000,
   );
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonDamagedPlayerPosition ?? ''");
+
+  // Moving through a fresh authored scene can schedule one more asynchronous
+  // enemy placement pass under slow software decoding. Assert the final
+  // post-movement state only after that pass settles; never credit fallback or
+  // missing enemies as success, and retain the bounded failure timeout.
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.babylonScenario === 'damaged-vessel'"
+      + " && canvas?.dataset.babylonEnemyCatalogState === 'ready'"
+      + " && canvas?.dataset.babylonEnemyState === 'ready'"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0;"
+      + " })()",
+    'P28-F6 Damaged Vessel post-movement authored-enemy readiness',
+    15_000,
+  );
 
   const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
     + " selection: canvas?.dataset.graphicsPathSelection ?? '',"
@@ -2070,7 +2092,9 @@ async function p27A2BabylonBackendAudit() {
     await waitFor(
       `Number(document.querySelector('canvas')?.dataset.babylonFrames ?? 0) > ${frameAtProbe}`,
       'P27-B1 Babylon camera retarget frame',
-      5_000,
+      // Six actual rendered frames are still mandatory; the enlarged authored
+      // refinery needs a bounded SwiftShader compilation/frame budget.
+      requestedGraphicsPath === 'babylon' ? 25_000 : 5_000,
     );
   }
   const parseDirection = value => value.split(',').map(Number);

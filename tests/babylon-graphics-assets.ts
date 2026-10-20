@@ -7,6 +7,7 @@ import { LoadAssetContainerAsync, SceneLoader } from '@babylonjs/core/Loading/sc
 import { KhronosTextureContainer2 } from '@babylonjs/core/Misc/khronosTextureContainer2';
 import { MeshoptCompression } from '@babylonjs/core/Meshes/Compression/meshoptCompression';
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine';
+import type { AssetContainer } from '@babylonjs/core/assetContainer';
 import { Scene } from '@babylonjs/core/scene';
 import {
   BABYLON_GRAPHICS_CODEC_PATHS,
@@ -310,6 +311,19 @@ async function run() {
     const instance = await raceRuntime.instantiate(spec);
     instance.release();
   }
+  const warmBefore = raceRuntime.stats();
+  const [warmA, warmB] = await Promise.all([
+    raceRuntime.instantiate(operatorLod1),
+    raceRuntime.instantiate(operatorLod1),
+  ]);
+  const warmAfter = raceRuntime.stats();
+  assert(warmAfter.sourceLoadAttempts === warmBefore.sourceLoadAttempts,
+    'warm concurrent heavy-asset requests must reuse the decoded source without another GLB load');
+  assert(warmAfter.cacheHits === warmBefore.cacheHits + 2,
+    'warm concurrent asset reuse must be visible in cache-hit telemetry');
+  assert(warmAfter.activeInstances === 2, 'warm concurrent clones must each retain their own ownership');
+  warmA.release();
+  warmB.release();
   const raceControls = raceRuntime as unknown as {
     budget: { maxCachedCompressedBytes: number; maxTextureAnisotropy: number; maxCachedAssets: number };
     enforceCacheBudget: () => Promise<void>;
@@ -330,6 +344,37 @@ async function run() {
   await raceRuntime.dispose();
   raceScene.dispose();
   raceEngine.dispose();
+
+  // A pending decoder/network completion must not revive assets after a scene
+  // has been torn down, even when the caller is only preloading.
+  const lateEngine = new NullEngine();
+  const lateScene = new Scene(lateEngine);
+  let fulfillLateLoad!: (container: AssetContainer) => void;
+  const deferredLoad = new Promise<AssetContainer>(resolve => { fulfillLateLoad = resolve; });
+  let notifyLoadStarted!: () => void;
+  const loadStarted = new Promise<void>(resolve => { notifyLoadStarted = resolve; });
+  const lateRuntime = new BabylonGraphicsAssetRuntime(lateScene, async () => {
+    notifyLoadStarted();
+    return deferredLoad;
+  });
+  const latePreload = lateRuntime.preload([operatorLod1]);
+  await loadStarted;
+  assert(lateRuntime.stats().inFlightLoads === 1, 'cold heavy-asset preload must expose one in-flight decode');
+  lateRuntime.disposeForSceneTeardown();
+  let lateDisposals = 0;
+  fulfillLateLoad({
+    textures: [],
+    dispose: () => { lateDisposals += 1; },
+  } as unknown as AssetContainer);
+  const lateResult = await latePreload;
+  assert(lateResult.requested === 1 && lateResult.loaded === 0 && lateResult.failed === 1,
+    'preload must report a post-teardown decode as failed, never as a successful warm asset');
+  assert(lateDisposals === 1 && lateRuntime.stats().staleLoadDisposals === 1,
+    'post-teardown source completion must dispose the orphaned container exactly once');
+  assert(lateRuntime.stats().cachedAssets === 0 && lateRuntime.stats().sourceLoadFailures === 1,
+    'teardown must not retain a pending heavy-art cache entry or suppress failure telemetry');
+  lateScene.dispose();
+  lateEngine.dispose();
 
   const teardownEngine = new NullEngine();
   const teardownScene = new Scene(teardownEngine);
@@ -355,7 +400,7 @@ async function run() {
 
   console.log(`P28_PLOAD1_REFINERY_PLACEMENT_BATCH_PASS batchSize=${placementBatchSize} schedule=${batchProbeSizes.join('+')} sourceDedup=shared-cache instancing=native transforms=preserved cancellation=fulfilled-release`);
   console.log(
-    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} flagshipFloor=${refineryFloorLod0.id} flagshipGrate=${refineryGrateLod0.id} flagshipBulkhead=${refineryBulkheadLod0.id} flagshipWall=${refineryWallPanelLod0.id} flagshipPipe=${refineryPipeRackLod0.id} flagshipCable=${refineryCableTrayLod0.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native lod0ReuseVertices=${floorVerticesB} lod0Reentry=true cacheTrim=count+bytes cacheReactivation=protected cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
+    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} flagshipFloor=${refineryFloorLod0.id} flagshipGrate=${refineryGrateLod0.id} flagshipBulkhead=${refineryBulkheadLod0.id} flagshipWall=${refineryWallPanelLod0.id} flagshipPipe=${refineryPipeRackLod0.id} flagshipCable=${refineryCableTrayLod0.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native lod0ReuseVertices=${floorVerticesB} lod0Reentry=true cacheTrim=count+bytes cacheReactivation=protected warmReuse=concurrent latePreload=disposed cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
   );
 
 }

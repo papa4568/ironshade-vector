@@ -1026,7 +1026,18 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.releaseRefineryEnvironment('renderer-dispose');
     this.refineryPremiumSurfaceLibrary?.dispose();
     this.refineryPremiumSurfaceLibrary = null;
+    // Snapshot ownership after disposing the scene-local cache; Android
+    // re-entry QA reads this on the exited canvas and must see zero retained
+    // native instances, owners and pending loads.
+    const assetRuntime = getBabylonGraphicsAssetRuntime(this.scene);
     void disposeBabylonGraphicsAssetRuntime(this.scene);
+    const releasedStats = assetRuntime.stats();
+    this.canvas.dataset.babylonAssetCacheTeardown = [
+      `cached:${releasedStats.cachedAssets}`,
+      `active:${releasedStats.activeInstances}`,
+      `native:${releasedStats.activeNativeMeshInstances}`,
+      `loading:${releasedStats.inFlightLoads}`,
+    ].join('|');
     this.scene.dispose();
     this.engine.dispose();
     this.canvas.dataset.babylonScene = 'disposed';
@@ -2587,6 +2598,20 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   }
 
   private updateSceneTelemetry() {
+    const assetStats = getBabylonGraphicsAssetRuntime(this.scene).stats();
+    // Stable, observable cold/warm and re-entry evidence for Flagship route QA.
+    this.canvas.dataset.babylonAssetCacheTelemetry = [
+      `cached:${assetStats.cachedAssets}`,
+      `active:${assetStats.activeInstances}`,
+      `native:${assetStats.activeNativeMeshInstances}`,
+      `loading:${assetStats.inFlightLoads}`,
+      `loads:${assetStats.sourceLoadAttempts}`,
+      `failures:${assetStats.sourceLoadFailures}`,
+      `hits:${assetStats.cacheHits}`,
+      `evictions:${assetStats.cacheEvictions}`,
+      `late-disposed:${assetStats.staleLoadDisposals}`,
+      `bytes:${assetStats.estimatedCachedCompressedBytes}`,
+    ].join('|');
     this.canvas.dataset.babylonSceneTelemetry = [
       `meshes:${this.scene.meshes.length}`,
       `materials:${this.scene.materials.length}`,

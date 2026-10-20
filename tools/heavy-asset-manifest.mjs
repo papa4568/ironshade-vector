@@ -321,7 +321,7 @@ export async function createHeavyManifest({ root = ROOT, assetRoot = resolve(roo
   return { schema: 'ironshade-heavy-art-v1', interpretation: 'Reported bytes are measured; only referenced, nonduplicate, texture-complete, non-box LOD0 and validated KTX2 contribute to qualified premium source bytes. Missing/procedural VFX is recorded as zero, never projected. Flags are a baseline for P28-F1 through F7, not an assertion that existing placeholder LOD0 art is already premium.', categories, assets };
 }
 
-export function measureApkFromRows(manifest, rows) {
+export function measureApkFromRows(manifest, rows, { apkBytes = null, apkSha256 = null, requiredRuntimeFiles = [] } = {}) {
   const byPath = new Map();
   for (const row of rows) {
     check(row.name.startsWith('assets/public/'), 'unexpected APK asset path ' + row.name);
@@ -335,8 +335,24 @@ export function measureApkFromRows(manifest, rows) {
     check(row.sha256 === asset.fileSha256 && row.bytes === asset.onDiskBytes, 'APK asset bytes mismatch ' + asset.path);
     return { path: asset.path, category: asset.category, uncompressedBytes: row.bytes, compressedBytes: row.compressedBytes, zipMethod: row.method };
   });
+  const runtimeFiles = requiredRuntimeFiles.map(required => {
+    const row = byPath.get(required.path);
+    check(row, 'APK missing required local runtime dependency ' + required.path);
+    check(row.sha256 === required.sha256 && row.bytes === required.bytes,
+      'APK local runtime dependency bytes mismatch ' + required.path);
+    return { path: required.path, uncompressedBytes: row.bytes, compressedBytes: row.compressedBytes, zipMethod: row.method };
+  });
   return {
     schema: 'ironshade-heavy-art-apk-v1',
+    apkBytes,
+    apkSha256,
+    totals: {
+      artUncompressedBytes: assets.reduce((sum, asset) => sum + asset.uncompressedBytes, 0),
+      artCompressedBytes: assets.reduce((sum, asset) => sum + asset.compressedBytes, 0),
+      runtimeDependencyUncompressedBytes: runtimeFiles.reduce((sum, asset) => sum + asset.uncompressedBytes, 0),
+      runtimeDependencyCompressedBytes: runtimeFiles.reduce((sum, asset) => sum + asset.compressedBytes, 0),
+    },
+    runtimeFiles,
     assets,
     categories: Object.fromEntries(CATEGORIES.map(c => [c, {
       uncompressedBytes: assets.filter(a => a.category === c).reduce((n, a) => n + a.uncompressedBytes, 0),
@@ -345,7 +361,7 @@ export function measureApkFromRows(manifest, rows) {
   };
 }
 
-export async function measureApk(manifest, apkPath) {
+export async function measureApk(manifest, apkPath, { requiredRuntimeFiles = [] } = {}) {
   const apk = await readFile(apkPath);
   const endOfCentralSignature = 0x06054b50;
   let eocd = -1;
@@ -361,7 +377,10 @@ export async function measureApk(manifest, apkPath) {
   const centralOffset = apk.readUInt32LE(eocd + 16);
   check(apk.readUInt16LE(eocd + 4) === 0 && apk.readUInt16LE(eocd + 6) === 0 && total !== 65535 && centralSize !== 0xffffffff, 'split/ZIP64 APK not supported');
   check(centralOffset + centralSize <= eocd, 'APK central directory extends out of bounds');
-  const wanted = new Set(manifest.assets.map(a => 'assets/public/' + a.path));
+  const wanted = new Set([
+    ...manifest.assets.map(a => 'assets/public/' + a.path),
+    ...requiredRuntimeFiles.map(file => 'assets/public/' + file.path),
+  ]);
   const rows = [];
   let cursor = centralOffset;
   for (let i = 0; i < total; i++) {
@@ -390,7 +409,11 @@ export async function measureApk(manifest, apkPath) {
     rows.push({ name, bytes, compressedBytes, method, sha256: SHA(source) });
   }
   check(cursor === centralOffset + centralSize, 'APK central directory byte count mismatch');
-  return measureApkFromRows(manifest, rows);
+  return measureApkFromRows(manifest, rows, {
+    apkBytes: apk.length,
+    apkSha256: SHA(apk),
+    requiredRuntimeFiles,
+  });
 }
 
 export async function runHeavyAssetManifest(mode = 'write', { root = ROOT, apkPath, output } = {}) {
@@ -404,10 +427,28 @@ export async function runHeavyAssetManifest(mode = 'write', { root = ROOT, apkPa
     const recorded = JSON.parse(await readFile(path, 'utf8'));
     check(JSON.stringify(recorded) === JSON.stringify(generated), mode + ': generated manifest differs from delivered file');
     if (mode === 'apk') {
-      const apkReport = await measureApk(generated, apkPath ?? resolve(root, 'Ironshade-Vector-Android-Debug.apk'));
+      // Offline Android delivery requires more than shipping GLBs and KTX2:
+      // every decoder selected by Babylon must also exist in the APK, byte-for-byte.
+      const codecDir = resolve(root, 'dist/assets/codecs/babylon');
+      const codecManifest = JSON.parse(await readFile(resolve(codecDir, 'manifest.json'), 'utf8'));
+      check(codecManifest.codec === 'babylon-glb-ktx2-meshopt'
+        && Array.isArray(codecManifest.files) && codecManifest.files.length > 0,
+        'APK missing valid packaged Babylon decoder inventory');
+      const requiredRuntimeFiles = await Promise.all([
+        'manifest.json', ...codecManifest.files.map(file => file.name),
+      ].map(async name => {
+        check(typeof name === 'string' && /^[a-zA-Z0-9._-]+$/.test(name),
+          'invalid packaged Babylon codec name');
+        const bytes = await readFile(resolve(codecDir, name));
+        return { path: 'assets/codecs/babylon/' + name, bytes: bytes.length, sha256: SHA(bytes) };
+      }));
+      const apkReport = await measureApk(generated,
+        apkPath ?? resolve(root, 'Ironshade-Vector-Android-Debug.apk'), { requiredRuntimeFiles });
       const reportPath = output ?? resolve(root, 'p28-f0-heavy-asset-apk.json');
       await writeFile(reportPath, JSON.stringify(apkReport, null, 2) + '\n');
-      console.log('P28_F0_APK_ART_PASS assets=' + apkReport.assets.length + ' report=' + reportPath);
+      console.log('P28_F6_APK_OFFLINE_ART_PASS apkBytes=' + apkReport.apkBytes
+        + ' apkSha256=' + apkReport.apkSha256 + ' assets=' + apkReport.assets.length
+        + ' offlineCodecs=' + apkReport.runtimeFiles.length + ' report=' + reportPath);
       return apkReport;
     }
   }

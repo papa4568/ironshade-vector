@@ -10,6 +10,7 @@ on:
       - 'tests/babylon-refinery-post-processing.ts'
       - 'tests/babylon-effects-quality.ts'
       - 'tests/refinery-atmosphere.ts'
+      - 'scripts/browser-runtime-smoke.mjs'
       - 'scripts/p28a5-image-grade-capture.mjs'
       - 'scripts/p28d8-boss-capture.mjs'
       - 'scripts/p28e1-ambient-particles-capture.mjs'
@@ -24,8 +25,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - name: Check out source
+      - name: Check out exact candidate source
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Verify visual capture checkout identity
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
 
       - name: Set up Node 22
         uses: actions/setup-node@v7
@@ -123,6 +132,7 @@ jobs:
           BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
           BROWSER_E2E_VIEWPORT: desktop
           BROWSER_E2E_GRAPHICS_PATH: babylon
+          BROWSER_E2E_CDP_TIMEOUT_MS: '45000'
           BROWSER_E2E_SKIP_SYNTHETIC_CONTROLLER: '1'
           BROWSER_E2E_SCREENSHOT: browser-p28a5-normal.png
           BROWSER_E2E_P28A5_LOW_VISIBILITY_SCREENSHOT: browser-p28a5-low-visibility.png
