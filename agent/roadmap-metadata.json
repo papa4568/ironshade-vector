@@ -155,34 +155,15 @@
     }
   ],
   "overrides": {
-    "P28-G0A": {
-      "affectedDomains": [
-        "graphics",
-        "location-presentation",
-        "navigation",
-        "wayfinding"
-      ]
-    },
+    "P28-G0A": {},
     "P28-G0B": {
       "dependsOn": [
         "P28-G0A"
-      ],
-      "affectedDomains": [
-        "graphics",
-        "location-presentation",
-        "assets",
-        "world-objects"
       ]
     },
     "P28-G0C": {
       "dependsOn": [
         "P28-G0B"
-      ],
-      "affectedDomains": [
-        "graphics",
-        "location-presentation",
-        "visual-qa",
-        "android"
       ]
     },
     "P28-G2": {
