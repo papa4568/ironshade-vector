@@ -81,7 +81,7 @@ assert(
     && androidCapture.includes("Number(d.orbitalGroundedProps || 0) === 25")
     && androidCapture.includes("d.environmentIbl === 'shared-prefiltered:ready'")
     && androidCapture.includes("d.objectiveWorldCue === 'beacon+navigation-path'")
-    && androidCapture.includes('Page.captureScreenshot')
+    && androidCapture.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
     && androidCaptureRunner.includes('adb exec-out screencap -p')
     && androidCaptureRunner.includes('ANDROID_P28G1_FLAGSHIP_CAPTURE_PASS'),
   'P28-G1 must archive real APK-backed Android WebView and device-screen Orbital Station visual captures, not refinery images.',
