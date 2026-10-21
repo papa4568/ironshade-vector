@@ -215,7 +215,7 @@ assert(
 );
 
 assert(
-  read('scripts/android-babylon-lifecycle-smoke.mjs').includes("if (phase !== 'cache-resume')")
+  read('scripts/android-babylon-lifecycle-smoke.mjs').includes("if (phase !== 'cache-resume' && !resumed)")
     && read('scripts/android-babylon-lifecycle-smoke.mjs').includes("const matches = targets.filter")
     && read('scripts/android-p28f6-heavy-cache-smoke.sh').includes('android-p28f6-resume-diagnostics.txt')
     && read('.github/workflows/pr-android-apk.yml').includes('android-p28f6-resume-logcat.txt'),
