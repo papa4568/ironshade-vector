@@ -4,31 +4,13 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { auditGameplayFrame, decodeScreenshotPng } from './verify-p28g2-gameplay-frames.mjs';
+import { quickstepWaitPoint, needsQuickstepRecovery } from './android-quickstep-dialog-policy.mjs';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 function adb(...args) {
   return execFileSync('adb', args, { encoding: 'utf8', timeout: 15_000, maxBuffer: 4 * 1024 * 1024 });
 }
 
-export function quickstepWaitPoint(xml) {
-  const nodes = [...String(xml).matchAll(/<node\b[^>]*>/g)].map(match => {
-    const attrs = Object.fromEntries([...match[0].matchAll(/([\w:-]+)="([^"]*)"/g)]
-      .map(([, name, value]) => [name, value.replaceAll('&apos;', "'").replaceAll('&#39;', "'")]));
-    return attrs;
-  });
-  if (!nodes.some(node => /quickstep/i.test(node.text ?? node['content-desc'] ?? '')
-      && /(?:isn.t responding|not responding)/i.test(node.text ?? node['content-desc'] ?? ''))) return null;
-  const wait = nodes.find(node => /^(?:wait|wait for app)$/i.test(node.text ?? '') && node.clickable === 'true');
-  const match = wait?.bounds?.match(/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/);
-  if (!match) return null;
-  const [left, top, right, bottom] = match.slice(1).map(Number);
-  if (!(right > left && bottom > top && right < 10000 && bottom < 10000)) return null;
-  return { x: Math.floor((left + right) / 2), y: Math.floor((top + bottom) / 2) };
-}
-
-export function needsQuickstepRecovery(frame) {
-  return frame.valid === false && frame.paleBandRowsRatio >= 0.4;
-}
 
 function dismissObservedQuickstepDialog() {
   // Require actual native UI hierarchy proof of Quickstep ANR and an

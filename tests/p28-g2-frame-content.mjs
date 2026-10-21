@@ -1,6 +1,6 @@
 // Synthetic negative controls for the APK screenshot-content gate.
 import { deflateSync } from 'node:zlib';
-import { quickstepWaitPoint, needsQuickstepRecovery } from '../scripts/android-quickstep-frame-recovery.mjs';
+import { quickstepWaitPoint, needsQuickstepRecovery } from '../scripts/android-quickstep-dialog-policy.mjs';
 import { decodeScreenshotPng, auditGameplayFrame, auditGameplayPair, auditAuthoredVisualProvenance } from '../scripts/verify-p28g2-gameplay-frames.mjs';
 
 function assert(condition, message) { if (!condition) throw new Error(message); }
