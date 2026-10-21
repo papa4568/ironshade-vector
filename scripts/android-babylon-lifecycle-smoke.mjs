@@ -568,7 +568,10 @@ if (phase === 'interaction' || phase === 'large-screen' || phase === 'cache-life
     } catch (staleSessionError) {
       console.log('ANDROID_P28F6_CDP_REATTACH_ATTEMPT reason=' + String(staleSessionError));
       socket.close();
-      const nextConnection = await waitForSession(40_000, true);
+      // Android API 35 heavy-art GPU stalls held CDP for ~70 seconds after HOME
+      // (observed 925 skipped frames); bound recovery at 95 seconds instead
+      // of replacing the renderer, waiving ownership or trusting a screenshot.
+      const nextConnection = await waitForSession(95_000, true);
       // An activity reload or newly allocated WebView cannot masquerade as
       // preservation of the original renderer just because its PID survived.
       if (!activeConnection.targetId || nextConnection.targetId !== activeConnection.targetId) {
@@ -581,7 +584,7 @@ if (phase === 'interaction' || phase === 'large-screen' || phase === 'cache-life
       session = nextConnection.session;
       ({ call, evaluate } = session);
       await waitFor(preservedRenderer, 'P28-F6 preserved WebView renderer after CDP reattach',
-        40_000, 6_000);
+        30_000, 6_000);
       console.log('ANDROID_P28F6_CDP_REATTACH_PASS target=preserved pid=' + processAfter);
     }
     const resumedBefore = await readBabylonState();
