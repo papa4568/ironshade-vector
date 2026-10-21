@@ -587,7 +587,7 @@
         "While P28-G3 is the first unchecked product item, the trusted-base EV-9 observer permits its Android gameplay-capture workflow and complete scripts directory only when both source and candidate Git tree entries exactly match the reviewed mode/type/object SHA pins and the first-item roadmap, archive, and metadata closeout is valid.",
         "The trusted observer still rejects any changed producer, trusted observer workflow, browser workflow, non-scripts consumer dependency, or protected agent implementation; the P28-G3 exception expires when that product item is no longer first in the trusted roadmap.",
         "The observer regression calibration admits the exact reviewed capture object pair and rejects wrong task, absent closeout, chmod/type changes, reverted objects, and arbitrary scripts tree drift.",
-        "Exact-candidate architecture/CI, trusted EV-9 pull_request_target observer and independent adversarial review pass for this policy-only closeout. P28-G3 product acceptance and APK remain solely with existing PR #433."
+        "Exact-candidate architecture/CI and independent adversarial review pass for this policy-only closeout; the preexisting trusted-base EV-9 pull_request_target observer remains a separate mandatory workflow check and may not be bypassed. P28-G3 product acceptance and APK remain solely with existing PR #433."
       ],
       "affectedDomains": [
         "agent-orchestration",
@@ -602,12 +602,6 @@
           "required": true,
           "description": "The trusted observer's pinned-object exception calibration includes a valid control and eight negative mutation attacks.",
           "command": "node agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs self-test"
-        },
-        {
-          "id": "trusted-base-observer",
-          "kind": "ci",
-          "required": true,
-          "description": "The base-controlled trusted PR Candidate observer approves this policy-only candidate without running untrusted candidate observer code."
         },
         {
           "id": "architecture-invariants",
