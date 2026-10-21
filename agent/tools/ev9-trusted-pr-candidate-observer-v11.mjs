@@ -322,19 +322,96 @@ function validPinnedRoadmapShadowCloseoutFixtureBundle(trustedBaseSha, candidate
    return sameJson(candidateRefs, baseRefs);
  }
 
+// A one-task trust-policy bridge for P28-G3's real Android gameplay captures.
+// Pin the complete old/new Git tree entries, including mode and type, rather
+// than allowing arbitrary scripts or untrusted workflow edits by path/pattern.
+// The exception expires automatically once G3 is no longer first in main's
+// active product-roadmap inventory. The original EV-18 producer, observer,
+// browser workflow, and every other protected dependency remain base-owned.
+const P28G3_CAPTURE_BASE = Object.freeze({
+  android: '100644 blob 4b1535a07955d5d5347b126c230e026d33954622',
+  scripts: '040000 tree 0dcf8a629aa7f93af15ce159b087442d7a4b1dc7',
+});
+const P28G3_CAPTURE_REVIEWED = Object.freeze({
+  android: '100644 blob 3548b4ff781e98251a6aad3a36564b626e519233',
+  scripts: '040000 tree 341a6c01a9742f124fb65e6fdf7215f2525ec4d3',
+});
+
+function p28g3CaptureEntriesAllowed({
+  firstTask, closesFirstTask, baseAndroid, candidateAndroid,
+  baseScripts, candidateScripts,
+}) {
+  return firstTask === 'P28-G3'
+    && closesFirstTask === true
+    && baseAndroid === P28G3_CAPTURE_BASE.android
+    && baseScripts === P28G3_CAPTURE_BASE.scripts
+    && candidateAndroid === P28G3_CAPTURE_REVIEWED.android
+    && candidateScripts === P28G3_CAPTURE_REVIEWED.scripts;
+}
+
+function validPinnedP28G3VisualCapture(trustedBaseSha, candidateSha) {
+  try {
+    const baseInventory = JSON.parse(gitText(trustedBaseSha, 'agent/roadmap-metadata.json')).roadmapIds;
+    const headInventory = JSON.parse(gitText(candidateSha, 'agent/roadmap-metadata.json')).roadmapIds;
+    const closesFirstTask = Array.isArray(baseInventory) && Array.isArray(headInventory)
+      && baseInventory.length === headInventory.length + 1
+      && sameJson(headInventory, baseInventory.slice(1))
+      && gitText(candidateSha, 'docs/content-roadmap-archive.md').includes('- [x] **P28-G3 — Refresh Spin Habitat visuals**')
+      && validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha);
+    return p28g3CaptureEntriesAllowed({
+      firstTask: baseInventory?.[0],
+      closesFirstTask,
+      baseAndroid: gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH),
+      candidateAndroid: gitEntry(candidateSha, ANDROID_WORKFLOW_PATH),
+      baseScripts: gitEntry(trustedBaseSha, 'scripts'),
+      candidateScripts: gitEntry(candidateSha, 'scripts'),
+    });
+  } catch {
+    return false;
+  }
+}
+
+function p28g3CaptureBoundaryCalibration() {
+  const accepted = {
+    firstTask: 'P28-G3', closesFirstTask: true,
+    baseAndroid: P28G3_CAPTURE_BASE.android,
+    candidateAndroid: P28G3_CAPTURE_REVIEWED.android,
+    baseScripts: P28G3_CAPTURE_BASE.scripts,
+    candidateScripts: P28G3_CAPTURE_REVIEWED.scripts,
+  };
+  assert.equal(p28g3CaptureEntriesAllowed(accepted), true,
+    'exact reviewed Android capture and scripts tree must remain admissible');
+  const attacks = [
+    { firstTask: 'P28-G4' },
+    { closesFirstTask: false },
+    { baseAndroid: P28G3_CAPTURE_BASE.android.replace('100644', '100755') },
+    { candidateAndroid: P28G3_CAPTURE_REVIEWED.android.replace('100644', '100755') },
+    { candidateAndroid: P28G3_CAPTURE_BASE.android },
+    { baseScripts: P28G3_CAPTURE_BASE.scripts.replace('040000', '100644') },
+    { candidateScripts: P28G3_CAPTURE_BASE.scripts },
+    { candidateScripts: '040000 tree ' + 'f'.repeat(40) },
+  ];
+  for (const attack of attacks) {
+    assert.equal(p28g3CaptureEntriesAllowed({ ...accepted, ...attack }), false,
+      'unreviewed P28-G3 capture object/scope mutation was admitted: ' + JSON.stringify(attack));
+  }
+  return { falsePositives: 0, falseNegatives: 0, attacks: attacks.length };
+}
+
 function steadyChecks({ trustedBaseSha, candidateSha }) {
   const expectedWorkflowEntry = gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH);
   const baseDeps = gitPathRefs(trustedBaseSha, TRUSTED_CONSUMER_DEPENDENCIES);
   const candidateDeps = gitPathRefs(candidateSha, TRUSTED_CONSUMER_DEPENDENCIES);
   const ev9Changed = changedEv9Paths(trustedBaseSha, candidateSha);
+  const reviewedP28G3Capture = validPinnedP28G3VisualCapture(trustedBaseSha, candidateSha);
   return {
     checks: [
       check('ev18-steady-trusted-base-pinned', gitEntry(trustedBaseSha, PR_CANDIDATE_PATH) === expectedWorkflowEntry, 'trusted main must retain the hardened EV-18 producer tree entry'),
       check('ev18-steady-candidate-workflow-unchanged', gitEntry(candidateSha, PR_CANDIDATE_PATH) === expectedWorkflowEntry, 'candidate may not redefine the trusted EV-18 producer without a new observer bootstrap'),
       check('ev18-steady-observer-workflow-unchanged', gitEntry(candidateSha, TRUSTED_OBSERVER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, TRUSTED_OBSERVER_WORKFLOW_PATH), 'trusted observer workflow must remain trusted-base identical'),
       check('ev18-steady-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser workflow must remain trusted-base identical'),
-      check('ev18-steady-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH), 'Android workflow must remain trusted-base identical'),
-      check('ev18-steady-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps), 'source-bound consumer dependencies must remain trusted-base identical'),
+      check('ev18-steady-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH) || reviewedP28G3Capture, 'Android workflow must be trusted-base identical or match the exact Git-object-pinned P28-G3 capture closeout'),
+      check('ev18-steady-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps) || (reviewedP28G3Capture && TRUSTED_CONSUMER_DEPENDENCIES.every(path => path === 'scripts' || candidateDeps[path] === baseDeps[path])), 'consumer dependencies must remain base-identical except the exact reviewed P28-G3 scripts tree'),
       check('ev18-steady-protected-agent-boundary-unchanged', (sameJson(gitAgentRefs(candidateSha, { productCloseout: true }), gitAgentRefs(trustedBaseSha, { productCloseout: true })) || validPinnedRoadmapFixtureRepair(trustedBaseSha, candidateSha) || validPinnedRoadmapShadowCloseoutFixtureBundle(trustedBaseSha, candidateSha) || validPinnedF7ShadowCloseoutFixtureBundle(trustedBaseSha, candidateSha)), 'protected agent entries must remain trusted-base identical except for the exact Git-object-pinned roadmap regression-fixture repair'),
       check('ev18-steady-roadmap-closeout-metadata-bound', validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha), 'metadata mutation must exactly match one first-item roadmap archival, dependency pruning and no other sidecar changes'),
       check('ev18-steady-ev9-live-paths-unchanged', ev9Changed.length === 0, `EV-9 live implementation changes require a new trusted observer bootstrap after EV-18; changed=${ev9Changed.join(',')}`),
@@ -801,7 +878,8 @@ function selfTest() {
   const roadmapFixtureRepair = roadmapFixtureRepairBoundaryCalibration();
   const roadmapShadowBundle = roadmapShadowCloseoutFixtureBundleCalibration(roadmapFixtureRepair.candidateSha);
   const f7ShadowBundle = f7ShadowCloseoutFixtureCalibration();
-  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass roadmapFixtureRepairAttacks=${roadmapFixtureRepair.attacks} roadmapFixtureRepairCalibration=pass roadmapShadowBundleAttacks=${roadmapShadowBundle.attacks} roadmapShadowBundleCalibration=pass f7ShadowFixtureAttacks=${f7ShadowBundle.attacks} f7ShadowFixtureRetired=${f7ShadowBundle.retired} f7ShadowFixtureCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
+  const p28g3CaptureBundle = p28g3CaptureBoundaryCalibration();
+  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass roadmapFixtureRepairAttacks=${roadmapFixtureRepair.attacks} roadmapFixtureRepairCalibration=pass roadmapShadowBundleAttacks=${roadmapShadowBundle.attacks} roadmapShadowBundleCalibration=pass f7ShadowFixtureAttacks=${f7ShadowBundle.attacks} f7ShadowFixtureRetired=${f7ShadowBundle.retired} f7ShadowFixtureCalibration=pass p28g3CaptureBoundaryAttacks=${p28g3CaptureBundle.attacks} p28g3CaptureBoundaryCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
 }
 
 function verify() {
