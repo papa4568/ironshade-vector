@@ -95,9 +95,10 @@ function createSession(socket) {
   return { call, evaluate };
 }
 
-async function waitForSession() {
+async function waitForSession(maxWaitMs = timeoutMs, resumed = false) {
+  const probeStartedAt = Date.now();
   let lastError = null;
-  while (Date.now() - startedAt < timeoutMs) {
+  while (Date.now() - probeStartedAt < maxWaitMs) {
     try {
       const targets = await listTargets();
       // Android can retain a DevTools target from a paused renderer while a
@@ -113,12 +114,12 @@ async function waitForSession() {
         let accepted = false;
         try {
           const session = createSession(socket);
-          const remaining = () => Math.max(1, Math.min(6_000, timeoutMs - (Date.now() - startedAt)));
+          const remaining = () => Math.max(1, Math.min(6_000, maxWaitMs - (Date.now() - probeStartedAt)));
           // On a preserved WebView after HOME, Runtime.enable may stall while
           // replaying contexts, even though direct Runtime.evaluate is usable.
           // The real resume contract still requires a live document, renderer,
           // cache ownership, and post-resume input; no telemetry is synthesized.
-          if (phase !== 'cache-resume') {
+          if (phase !== 'cache-resume' && !resumed) {
             await session.call('Runtime.enable', {}, remaining());
             await session.call('Page.enable', {}, remaining());
           }
@@ -127,7 +128,7 @@ async function waitForSession() {
           }, remaining());
           if (ready.result?.value === 'complete' || ready.result?.value === 'interactive') {
             accepted = true;
-            return { socket, session };
+            return { socket, session, targetId: target.id };
           }
         } finally {
           // Only release a successfully initialized socket to the caller.
@@ -146,20 +147,33 @@ async function waitForSession() {
   throw new Error('Timed out waiting for Ironshade Vector WebView' + (lastError ? ': ' + String(lastError) : ''));
 }
 
-const { socket, session } = await waitForSession();
-const { call, evaluate } = session;
+let activeConnection = await waitForSession();
+let { socket, session } = activeConnection;
+let { call, evaluate } = session;
 
-async function waitFor(expression, label, timeout = 45_000) {
+async function waitFor(expression, label, timeout = 45_000, pollTimeoutMs = null) {
   const deadline = Date.now() + timeout;
   let lastValue = null;
+  let lastError = null;
   while (Date.now() < deadline) {
     try {
-      lastValue = await evaluate(expression);
+      if (pollTimeoutMs) {
+        // Bound each individual CDP evaluation. A frozen pre-HOME session
+        // must not consume the whole reattach window with one pending call.
+        const result = await call('Runtime.evaluate', {
+          expression, awaitPromise: true, returnByValue: true,
+        }, Math.min(pollTimeoutMs, Math.max(1, deadline - Date.now())));
+        if (result.exceptionDetails) throw new Error(result.exceptionDetails.text ?? 'Runtime.evaluate failed');
+        lastValue = result.result?.value;
+      } else {
+        lastValue = await evaluate(expression);
+      }
       if (lastValue) return lastValue;
-    } catch {}
+    } catch (error) { lastError = String(error); }
     await sleep(200);
   }
-  throw new Error('Timed out waiting for ' + label + '; last=' + JSON.stringify(lastValue));
+  throw new Error('Timed out waiting for ' + label + '; last='
+    + JSON.stringify(lastValue) + (lastError ? '; lastError=' + lastError : ''));
 }
 
 async function elementCenter(selector) {
@@ -530,10 +544,9 @@ if (phase === 'interaction' || phase === 'large-screen' || phase === 'cache-life
     console.log('ANDROID_P27D5_INTERACTION_PASS backend=webgl2 touch=move+aim+fire+ability controller=dodge rendererReentry=verified missionExitReentry=verified report=' + reportPath);
   }
   if (phase === 'cache-lifecycle') {
-    // Keep the *same* inspector connection through HOME and foreground resume.
-    // Reattaching after a long-lived WebView has been frozen can stall CDP
-    // Runtime.evaluate even when Android has correctly resumed its Activity.
-    // This still probes the unmodified live scene and the preserved PID/canvas.
+    // Preserve the same Android PID, renderer, authored-cache ownership and
+    // post-resume real input. If CDP was frozen by HOME, reconnect ONLY to the
+    // same WebView target, never substitute screenshot or stale telemetry.
     const adb = (...args) => execFileSync('adb', args, {
       timeout: 30_000, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
     }).trim();
@@ -548,8 +561,29 @@ if (phase === 'interaction' || phase === 'large-screen' || phase === 'cache-life
     }
     writeFileSync('android-p28f6-resume-screen.png',
       execFileSync('adb', ['exec-out', 'screencap', '-p'], { timeout: 30_000, maxBuffer: 16 * 1024 * 1024 }));
-    await waitFor('(() => { const canvas = document.querySelector("canvas"); return Boolean(canvas && canvas.dataset.babylonBackendLoaded === "webgl2" && canvas.dataset.babylonScene === "active" && canvas.dataset.babylonDisposed === "false"); })()',
-      'P28-F6 preserved WebView renderer after HOME', 45_000);
+    const preservedRenderer = '(() => { const canvas = document.querySelector("canvas"); return Boolean(canvas && canvas.dataset.babylonBackendLoaded === "webgl2" && canvas.dataset.babylonScene === "active" && canvas.dataset.babylonDisposed === "false"); })()';
+    try {
+      await waitFor(preservedRenderer, 'P28-F6 preserved WebView renderer after HOME',
+        12_000, 5_000);
+    } catch (staleSessionError) {
+      console.log('ANDROID_P28F6_CDP_REATTACH_ATTEMPT reason=' + String(staleSessionError));
+      socket.close();
+      const nextConnection = await waitForSession(40_000, true);
+      // An activity reload or newly allocated WebView cannot masquerade as
+      // preservation of the original renderer just because its PID survived.
+      if (!activeConnection.targetId || nextConnection.targetId !== activeConnection.targetId) {
+        nextConnection.socket.close();
+        throw new Error('P28-F6 WebView CDP target was replaced across HOME: '
+          + activeConnection.targetId + ' -> ' + nextConnection.targetId);
+      }
+      activeConnection = nextConnection;
+      socket = nextConnection.socket;
+      session = nextConnection.session;
+      ({ call, evaluate } = session);
+      await waitFor(preservedRenderer, 'P28-F6 preserved WebView renderer after CDP reattach',
+        40_000, 6_000);
+      console.log('ANDROID_P28F6_CDP_REATTACH_PASS target=preserved pid=' + processAfter);
+    }
     const resumedBefore = await readBabylonState();
     requireBabylonState(resumedBefore, 'P28-F6 Android resume');
     const resumedHeavy = await assertHeavyRoute('preserved-process-resume');
@@ -567,7 +601,7 @@ if (phase === 'interaction' || phase === 'large-screen' || phase === 'cache-life
       schema: 'p27-d5-babylon-android-v1', phase: 'cache-resume',
       process: 'preserved', processBefore, processAfter,
       webView: 'preserved', renderer: 'preserved', backend: 'webgl2',
-      inspection: 'single-CDP-connection-across-HOME',
+      inspection: 'same-WebView-target-CDP-across-HOME-with-bounded-reattach',
       inputAfterResume: 'real-touch-fire-and-shot-counter',
       before: resumedBefore, after: resumedAfter, resumedHeavy,
     };
