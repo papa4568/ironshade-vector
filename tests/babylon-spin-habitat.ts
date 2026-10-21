@@ -108,15 +108,6 @@ assert(
 );
 
 assert(
-  workflow.includes("BROWSER_WEBGPU_FRESH_BROWSER_RETRY reason=runtime-device-lost next=1/1")
-    && workflow.includes("grep -Fq 'webgpu->webgl2:runtime-device-lost'")
-    && workflow.includes("remote-debugging-port=9224")
-    && workflow.includes("CDP_ENDPOINT=http://127.0.0.1:9224 BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_BABYLON_BACKEND=webgpu")
-    && workflow.includes("BROWSER_WEBGPU_FRESH_BROWSER_PASS backend=webgpu"),
-  'Lost headed WebGPU devices must receive one fresh real WebGPU browser retry without waiving the renderer parity gate.',
-);
-
-assert(
   browser.includes('BROWSER_P27C3_BABYLON_SPIN_HABITAT_PASS')
     && workflow.includes('BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=spin-habitat'),
   'P27-C3 must remain covered by the headed Babylon browser route on desktop and mobile-landscape.',

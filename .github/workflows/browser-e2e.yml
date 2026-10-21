@@ -322,43 +322,7 @@ jobs:
           node scripts/verify-authored-refinery.mjs
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27a2-babylon.png node scripts/browser-runtime-smoke-retry.mjs
           if [[ "${{ matrix.viewport }}" == "desktop" ]]; then
-            # A lost Vulkan/WebGPU device cannot recover through a new page
-            # in the same Chrome GPU process. Only that exact failure earns
-            # one fresh headed browser context; the WebGPU assertions remain
-            # mandatory, with no WebGL2 substitution or proof waiver.
-            if BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_BABYLON_BACKEND=webgpu BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27d1-babylon-webgpu.png node scripts/browser-runtime-smoke-retry.mjs > browser-webgpu-first.log 2>&1; then
-              cat browser-webgpu-first.log
-            else
-              cat browser-webgpu-first.log
-              if ! grep -Fq 'webgpu->webgl2:runtime-device-lost' browser-webgpu-first.log; then
-                echo "::error::WebGPU presentation failed without a recoverable GPU device-loss signature."
-                exit 1
-              fi
-              echo 'BROWSER_WEBGPU_FRESH_BROWSER_RETRY reason=runtime-device-lost next=1/1'
-              sed -e 's/ironshade-browser-e2e/ironshade-browser-e2e-fresh-context/g' \
-                -e 's/remote-debugging-port=9223/remote-debugging-port=9224/g' \
-                .babylon-webgpu-puppeteer-launch.mjs > .babylon-webgpu-puppeteer-fresh.mjs
-              lavapipe_icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 \( -name 'lvp_icd.json' -o -name 'lvp_icd.x86_64.json' \) -print -quit)"
-              test -n "$lavapipe_icd"
-              CHROME_PATH="${{ steps.setup-chrome.outputs.chrome-path }}" BABYLON_LAVAPIPE_ICD="$lavapipe_icd" \
-                xvfb-run -a -s "-screen 0 1280x720x24" node .babylon-webgpu-puppeteer-fresh.mjs > browser-chrome-fresh.log 2>&1 &
-              fresh_browser_ready=0
-              for attempt in {1..90}; do
-                if curl --fail --silent http://127.0.0.1:9224/json/version >/dev/null; then
-                  fresh_browser_ready=1
-                  break
-                fi
-                sleep 0.5
-              done
-              if [[ "$fresh_browser_ready" != 1 ]]; then
-                cat browser-chrome-fresh.log
-                echo "::error::Fresh WebGPU Chrome CDP endpoint did not become ready."
-                exit 1
-              fi
-              CDP_ENDPOINT=http://127.0.0.1:9224 BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_BABYLON_BACKEND=webgpu \
-                BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27d1-babylon-webgpu.png node scripts/browser-runtime-smoke-retry.mjs
-              echo 'BROWSER_WEBGPU_FRESH_BROWSER_PASS backend=webgpu'
-            fi
+            BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_BABYLON_BACKEND=webgpu BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27d1-babylon-webgpu.png node scripts/browser-runtime-smoke-retry.mjs
           fi
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=orbital-station BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c1-orbital-station.png node scripts/browser-runtime-smoke-retry.mjs
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c2-damaged-vessel.png node scripts/browser-runtime-smoke-retry.mjs

@@ -50,7 +50,6 @@ Each rollout below reuses the P28 lighting/material/grounding/detail systems and
 
 All remaining P28-G/H work must meet the [campaign visual acceptance contract](./product-constraints.md#campaign-visual-acceptance-contract); screenshots must be inspected for image content rather than accepted by metadata or PNG validation alone.
 
-
 - [ ] **P28-G4 — Refresh Jovian Harvester visuals** — Adopt the shared P28 stack in Jovian Harvester and tune its industrial/atmospheric profile. **Done when:** the route gains premium authored depth and identity while storm/hazard tells remain dominant, and standard build/APK gates pass; the campaign visual acceptance contract passes on real normal/action screenshots, with no unexplained bare placeholders, oversized route-band visuals, or missing material bindings.
 
 - [ ] **P28-G5 — Refresh Ice Mine visuals** — Adopt the shared P28 stack in Ice Mine and tune ice/metal roughness, occlusion, refraction/reflection, and cold-light parameters while preserving fracture/hazard readability. **Done when:** ice and machinery no longer read as flat-color geometry on the flagship target and standard build/APK gates pass; the campaign visual acceptance contract passes on real normal/action screenshots, with no unexplained bare placeholders, oversized route-band visuals, or missing material bindings.
