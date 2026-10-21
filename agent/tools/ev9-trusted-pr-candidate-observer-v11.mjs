@@ -344,7 +344,7 @@ const P28G3_CAPTURE_BASE = Object.freeze({
 });
 const P28G3_CAPTURE_REVIEWED = Object.freeze({
   android: '100644 blob 3548b4ff781e98251a6aad3a36564b626e519233',
-  scripts: '040000 tree 341a6c01a9742f124fb65e6fdf7215f2525ec4d3',
+  scripts: '040000 tree 1d8a721f3836dcd56e986ad782e5656ac2e34a05',
 });
 
 function p28g3CaptureEntriesAllowed({
@@ -426,6 +426,7 @@ function p28g3CaptureBoundaryCalibration() {
     { candidateAndroid: P28G3_CAPTURE_BASE.android },
     { baseScripts: P28G3_CAPTURE_BASE.scripts.replace('040000', '100644') },
     { candidateScripts: P28G3_CAPTURE_BASE.scripts },
+    { candidateScripts: '040000 tree 341a6c01a9742f124fb65e6fdf7215f2525ec4d3' },
     { candidateScripts: '040000 tree ' + 'f'.repeat(40) },
   ];
   for (const attack of attacks) {
