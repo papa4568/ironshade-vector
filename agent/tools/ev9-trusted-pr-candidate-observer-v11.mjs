@@ -112,6 +112,39 @@ function changedEv9Paths(baseSha, candidateSha) {
   return changedPaths(baseSha, candidateSha).filter(path => EV9_LIVE_AGENT_PATHS.has(path));
 }
 
+ // The bootstrap allowlist excludes versioned verifier implementations from
+ // generic agent-tree comparisons, but after a bootstrap reaches trusted main
+ // candidate changes to any observer source version must always fail closed.
+ // Diff-by-path detects new files and removals as well as blob/mode changes.
+function observerImplementationRefs(revision) {
+  const output = execFileSync('/usr/bin/git', ['ls-tree', '-r', '-z', revision, '--', 'agent/tools'], {
+    encoding: 'buffer',
+    env: baseGitEnv(),
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).toString('utf8');
+  const refs = {};
+  for (const entry of output.split('\0').filter(Boolean)) {
+    const match = entry.match(/^(\d+)\s+(\w+)\s+([a-f0-9]{40})\t(.+)$/s);
+    ok(match, 'Malformed observer-source Git tree entry');
+    const [, mode, type, sha, path] = match;
+    if (/^agent\/tools\/ev9-trusted-pr-candidate-observer(?:-v\d+)?\.mjs$/.test(path)) {
+      refs[path] = mode + ' ' + type + ' ' + sha;
+    }
+  }
+  return refs;
+}
+
+function changedObserverImplementations(baseSha, candidateSha) {
+  // Compare full Git tree entry sets, not git diff --name-only. Diff rename
+  // heuristics otherwise hide the deleted observer source when its blob is
+  // moved outside agent/. This also rejects chmod, add, edit and deletion.
+  const base = observerImplementationRefs(baseSha);
+  const candidate = observerImplementationRefs(candidateSha);
+  return [...new Set([...Object.keys(base), ...Object.keys(candidate)])]
+    .filter(path => base[path] !== candidate[path])
+    .sort((a, b) => a.localeCompare(b));
+}
+
 function isAncestor(ancestor, descendant) {
   return git(['merge-base', '--is-ancestor', ancestor, descendant], { allowFailure: true }).status === 0;
 }
@@ -193,6 +226,7 @@ function legacySteadyChecks({ trustedBaseSha, candidateSha }) {
     checks: [
       check('legacy-producer-workflow-unchanged', gitEntry(candidateSha, PR_CANDIDATE_PATH) === gitEntry(trustedBaseSha, PR_CANDIDATE_PATH), 'pre-EV-18 producer workflow must remain trusted-base identical'),
       check('legacy-observer-workflow-unchanged', gitEntry(candidateSha, TRUSTED_OBSERVER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, TRUSTED_OBSERVER_WORKFLOW_PATH), 'trusted observer workflow must remain trusted-base identical outside a reviewed observer bootstrap'),
+      check('legacy-observer-implementation-unchanged', changedObserverImplementations(trustedBaseSha, candidateSha).length === 0, 'versioned trusted observer implementation source must remain trusted-base identical'),
       check('legacy-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser workflow must remain trusted-base identical'),
       check('legacy-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH), 'Android workflow must remain trusted-base identical'),
       check('legacy-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps), 'source-bound consumer dependencies must remain trusted-base identical'),
@@ -322,19 +356,157 @@ function validPinnedRoadmapShadowCloseoutFixtureBundle(trustedBaseSha, candidate
    return sameJson(candidateRefs, baseRefs);
  }
 
+// A one-task trust-policy bridge for P28-G3's real Android gameplay captures.
+// Pin the complete old/new Git tree entries, including mode and type, rather
+// than allowing arbitrary scripts or untrusted workflow edits by path/pattern.
+// The exception expires automatically once G3 is no longer first in main's
+// active product-roadmap inventory. The original EV-18 producer, observer,
+// browser workflow, and every other protected dependency remain base-owned.
+const P28G3_CAPTURE_BASE = Object.freeze({
+  android: '100644 blob 4b1535a07955d5d5347b126c230e026d33954622',
+  scripts: '040000 tree 0dcf8a629aa7f93af15ce159b087442d7a4b1dc7',
+});
+const P28G3_CAPTURE_REVIEWED = Object.freeze({
+  android: '100644 blob 3548b4ff781e98251a6aad3a36564b626e519233',
+  scripts: '040000 tree 48f363f371cd6d30e0c48059ca298384a2d9b291',
+});
+
+function p28g3CaptureEntriesAllowed({
+  firstTask, closesFirstTask, baseAndroid, candidateAndroid,
+  baseScripts, candidateScripts,
+}) {
+  return firstTask === 'P28-G3'
+    && closesFirstTask === true
+    && baseAndroid === P28G3_CAPTURE_BASE.android
+    && baseScripts === P28G3_CAPTURE_BASE.scripts
+    && candidateAndroid === P28G3_CAPTURE_REVIEWED.android
+    && candidateScripts === P28G3_CAPTURE_REVIEWED.scripts;
+}
+
+function validPinnedP28G3VisualCapture(trustedBaseSha, candidateSha) {
+  try {
+    const baseInventory = JSON.parse(gitText(trustedBaseSha, 'agent/roadmap-metadata.json')).roadmapIds;
+    const headInventory = JSON.parse(gitText(candidateSha, 'agent/roadmap-metadata.json')).roadmapIds;
+    const closesFirstTask = Array.isArray(baseInventory) && Array.isArray(headInventory)
+      && baseInventory.length === headInventory.length + 1
+      && sameJson(headInventory, baseInventory.slice(1))
+      && gitText(candidateSha, 'docs/content-roadmap-archive.md').includes('- [x] **P28-G3 — Refresh Spin Habitat visuals**')
+      && validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha);
+    return p28g3CaptureEntriesAllowed({
+      firstTask: baseInventory?.[0],
+      closesFirstTask,
+      baseAndroid: gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH),
+      candidateAndroid: gitEntry(candidateSha, ANDROID_WORKFLOW_PATH),
+      baseScripts: gitEntry(trustedBaseSha, 'scripts'),
+      candidateScripts: gitEntry(candidateSha, 'scripts'),
+    });
+  } catch {
+    return false;
+  }
+}
+
+// Real Git-tree negative controls exercise the source boundary, rather than
+// only testing a predicate against synthetic in-memory strings.
+function observerImplementationBoundaryCalibration() {
+  const base = git(['rev-parse', 'HEAD']);
+  assert.deepEqual(changedObserverImplementations(base, base), [],
+    'unmodified trusted observer source must not trigger the new boundary');
+  const attacks = [
+    { id: 'observer-v11-source-edit', path: 'agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs' },
+    { id: 'observer-v10-source-edit', path: 'agent/tools/ev9-trusted-pr-candidate-observer-v10.mjs' },
+    { id: 'observer-v99-injection', path: 'agent/tools/ev9-trusted-pr-candidate-observer-v99.mjs' },
+  ];
+  for (const attack of attacks) {
+    const existing = git(['cat-file', '-e', `${base}:${attack.path}`], { allowFailure: true }).status === 0;
+    const content = (existing ? gitText(base, attack.path) : '// new untrusted observer source') + '\n// adversarial tampering\n';
+    const candidate = createSyntheticRoadmapCandidate({
+      id: attack.id, baseSha: base,
+      changes: [{ path: attack.path, content }],
+    });
+    assert.deepEqual(changedObserverImplementations(base, candidate), [attack.path],
+      'observer-source mutation must be detected from immutable Git trees: ' + attack.id);
+    const checkResult = steadyChecks({ trustedBaseSha: base, candidateSha: candidate })
+      .checks.find(item => item.id === 'ev18-steady-observer-implementation-unchanged');
+    assert.equal(checkResult?.pass, false, 'steady-state gate admitted observer source attack: ' + attack.id);
+  }
+  // A Git R100 rename outside agent/ must be rejected even though
+  // git diff --name-only with rename heuristics can omit the source path.
+  syntheticCommitCounter += 1;
+  const indexPath = '/tmp/ironshade-observer-rename-' + process.pid + '-' + syntheticCommitCounter;
+  const env = {
+    GIT_INDEX_FILE: indexPath,
+    GIT_AUTHOR_NAME: 'Observer Rename Calibration',
+    GIT_AUTHOR_EMAIL: 'observer-rename@example.invalid',
+    GIT_COMMITTER_NAME: 'Observer Rename Calibration',
+    GIT_COMMITTER_EMAIL: 'observer-rename@example.invalid',
+    GIT_AUTHOR_DATE: '2000-01-01T00:00:00Z',
+    GIT_COMMITTER_DATE: '2000-01-01T00:00:00Z',
+  };
+  const sourcePath = 'agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs';
+  const movedPath = 'docs/untrusted-observer-renamed.mjs';
+  let renamed;
+  try {
+    gitWithEnv(['read-tree', base], env);
+    const sourceBlob = git(['rev-parse', base + ':' + sourcePath]);
+    gitWithEnv(['update-index', '--force-remove', sourcePath], env);
+    gitWithEnv(['update-index', '--add', '--cacheinfo', '100644', sourceBlob, movedPath], env);
+    const tree = gitWithEnv(['write-tree'], env);
+    renamed = gitWithEnv(['commit-tree', tree, '-p', base, '-m', 'observer-rename-outside-agent-attack'], env);
+  } finally {
+    rmSync(indexPath, { force: true });
+  }
+  assert.deepEqual(changedObserverImplementations(base, renamed), [sourcePath],
+    'observer-source removal must be detected even if Git treats the move as a rename');
+  const renamedGate = steadyChecks({ trustedBaseSha: base, candidateSha: renamed })
+    .checks.find(item => item.id === 'ev18-steady-observer-implementation-unchanged');
+  assert.equal(renamedGate?.pass, false, 'real Git-tree observer rename escaped the trusted boundary');
+  return { attacks: attacks.length + 1, falsePositives: 0, falseNegatives: 0 };
+}
+
+function p28g3CaptureBoundaryCalibration() {
+  const accepted = {
+    firstTask: 'P28-G3', closesFirstTask: true,
+    baseAndroid: P28G3_CAPTURE_BASE.android,
+    candidateAndroid: P28G3_CAPTURE_REVIEWED.android,
+    baseScripts: P28G3_CAPTURE_BASE.scripts,
+    candidateScripts: P28G3_CAPTURE_REVIEWED.scripts,
+  };
+  assert.equal(p28g3CaptureEntriesAllowed(accepted), true,
+    'exact reviewed Android capture and scripts tree must remain admissible');
+  const attacks = [
+    { firstTask: 'P28-G4' },
+    { closesFirstTask: false },
+    { baseAndroid: P28G3_CAPTURE_BASE.android.replace('100644', '100755') },
+    { candidateAndroid: P28G3_CAPTURE_REVIEWED.android.replace('100644', '100755') },
+    { candidateAndroid: P28G3_CAPTURE_BASE.android },
+    { baseScripts: P28G3_CAPTURE_BASE.scripts.replace('040000', '100644') },
+    { candidateScripts: P28G3_CAPTURE_BASE.scripts },
+    { candidateScripts: '040000 tree 341a6c01a9742f124fb65e6fdf7215f2525ec4d3' },
+    { candidateScripts: '040000 tree 1d8a721f3836dcd56e986ad782e5656ac2e34a05' },
+    { candidateScripts: '040000 tree ' + 'f'.repeat(40) },
+  ];
+  for (const attack of attacks) {
+    assert.equal(p28g3CaptureEntriesAllowed({ ...accepted, ...attack }), false,
+      'unreviewed P28-G3 capture object/scope mutation was admitted: ' + JSON.stringify(attack));
+  }
+  return { falsePositives: 0, falseNegatives: 0, attacks: attacks.length };
+}
+
 function steadyChecks({ trustedBaseSha, candidateSha }) {
   const expectedWorkflowEntry = gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH);
   const baseDeps = gitPathRefs(trustedBaseSha, TRUSTED_CONSUMER_DEPENDENCIES);
   const candidateDeps = gitPathRefs(candidateSha, TRUSTED_CONSUMER_DEPENDENCIES);
   const ev9Changed = changedEv9Paths(trustedBaseSha, candidateSha);
+  const reviewedP28G3Capture = validPinnedP28G3VisualCapture(trustedBaseSha, candidateSha);
   return {
     checks: [
       check('ev18-steady-trusted-base-pinned', gitEntry(trustedBaseSha, PR_CANDIDATE_PATH) === expectedWorkflowEntry, 'trusted main must retain the hardened EV-18 producer tree entry'),
       check('ev18-steady-candidate-workflow-unchanged', gitEntry(candidateSha, PR_CANDIDATE_PATH) === expectedWorkflowEntry, 'candidate may not redefine the trusted EV-18 producer without a new observer bootstrap'),
       check('ev18-steady-observer-workflow-unchanged', gitEntry(candidateSha, TRUSTED_OBSERVER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, TRUSTED_OBSERVER_WORKFLOW_PATH), 'trusted observer workflow must remain trusted-base identical'),
+      check('ev18-steady-observer-implementation-unchanged', changedObserverImplementations(trustedBaseSha, candidateSha).length === 0, 'candidate may not alter any trusted observer implementation source version, including via new files or mode changes'),
       check('ev18-steady-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser workflow must remain trusted-base identical'),
-      check('ev18-steady-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH), 'Android workflow must remain trusted-base identical'),
-      check('ev18-steady-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps), 'source-bound consumer dependencies must remain trusted-base identical'),
+      check('ev18-steady-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH) || reviewedP28G3Capture, 'Android workflow must be trusted-base identical or match the exact Git-object-pinned P28-G3 capture closeout'),
+      check('ev18-steady-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps) || (reviewedP28G3Capture && TRUSTED_CONSUMER_DEPENDENCIES.every(path => path === 'scripts' || candidateDeps[path] === baseDeps[path])), 'consumer dependencies must remain base-identical except the exact reviewed P28-G3 scripts tree'),
       check('ev18-steady-protected-agent-boundary-unchanged', (sameJson(gitAgentRefs(candidateSha, { productCloseout: true }), gitAgentRefs(trustedBaseSha, { productCloseout: true })) || validPinnedRoadmapFixtureRepair(trustedBaseSha, candidateSha) || validPinnedRoadmapShadowCloseoutFixtureBundle(trustedBaseSha, candidateSha) || validPinnedF7ShadowCloseoutFixtureBundle(trustedBaseSha, candidateSha)), 'protected agent entries must remain trusted-base identical except for the exact Git-object-pinned roadmap regression-fixture repair'),
       check('ev18-steady-roadmap-closeout-metadata-bound', validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha), 'metadata mutation must exactly match one first-item roadmap archival, dependency pruning and no other sidecar changes'),
       check('ev18-steady-ev9-live-paths-unchanged', ev9Changed.length === 0, `EV-9 live implementation changes require a new trusted observer bootstrap after EV-18; changed=${ev9Changed.join(',')}`),
@@ -801,7 +973,9 @@ function selfTest() {
   const roadmapFixtureRepair = roadmapFixtureRepairBoundaryCalibration();
   const roadmapShadowBundle = roadmapShadowCloseoutFixtureBundleCalibration(roadmapFixtureRepair.candidateSha);
   const f7ShadowBundle = f7ShadowCloseoutFixtureCalibration();
-  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass roadmapFixtureRepairAttacks=${roadmapFixtureRepair.attacks} roadmapFixtureRepairCalibration=pass roadmapShadowBundleAttacks=${roadmapShadowBundle.attacks} roadmapShadowBundleCalibration=pass f7ShadowFixtureAttacks=${f7ShadowBundle.attacks} f7ShadowFixtureRetired=${f7ShadowBundle.retired} f7ShadowFixtureCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
+  const p28g3CaptureBundle = p28g3CaptureBoundaryCalibration();
+  const observerSourceBundle = observerImplementationBoundaryCalibration();
+  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass roadmapFixtureRepairAttacks=${roadmapFixtureRepair.attacks} roadmapFixtureRepairCalibration=pass roadmapShadowBundleAttacks=${roadmapShadowBundle.attacks} roadmapShadowBundleCalibration=pass f7ShadowFixtureAttacks=${f7ShadowBundle.attacks} f7ShadowFixtureRetired=${f7ShadowBundle.retired} f7ShadowFixtureCalibration=pass p28g3CaptureBoundaryAttacks=${p28g3CaptureBundle.attacks} p28g3CaptureBoundaryCalibration=pass observerSourceBoundaryAttacks=${observerSourceBundle.attacks} observerSourceBoundaryCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
 }
 
 function verify() {
