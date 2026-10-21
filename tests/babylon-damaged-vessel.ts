@@ -200,7 +200,7 @@ assert(
   lifecycleTransport.includes('Math.min(6_000, maxWaitMs - (Date.now() - probeStartedAt))')
     && lifecycleTransport.includes('if (!accepted) socket.close()')
     && lifecycleTransport.includes("session.call('Runtime.enable', {}, remaining())")
-    && lifecycleTransport.includes('await waitForSession(40_000, true)')
+    && lifecycleTransport.includes('await waitForSession(95_000, true)')
     && lifecycleTransport.includes('nextConnection.targetId !== activeConnection.targetId')
     && lifecycleTransport.includes('ANDROID_P28F6_CDP_REATTACH_PASS')
     && lifecycleTransport.includes('await fireAfterResume(900)'),
