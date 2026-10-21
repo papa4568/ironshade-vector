@@ -1,5 +1,6 @@
 // Synthetic negative controls for the APK screenshot-content gate.
 import { deflateSync } from 'node:zlib';
+import { quickstepWaitPoint, needsQuickstepRecovery } from '../scripts/android-quickstep-frame-recovery.mjs';
 import { decodeScreenshotPng, auditGameplayFrame, auditGameplayPair, auditAuthoredVisualProvenance } from '../scripts/verify-p28g2-gameplay-frames.mjs';
 
 function assert(condition, message) { if (!condition) throw new Error(message); }
@@ -85,3 +86,23 @@ for (const [label, injection] of [
     'Injected ' + label + ' must be rejected by the visual source contract');
 }
 console.log('P28G2_PIXEL_NEGATIVE_CONTROLS_PASS cases=textured+black+pale-band+stale-action');
+
+const quickstepDialog = '<hierarchy><node text="Quickstep isn&apos;t responding" clickable="false" />'
+  + '<node text="Close app" clickable="true" bounds="[350,400][530,450]" />'
+  + '<node text="Wait" clickable="true" bounds="[440,460][540,510]" /></hierarchy>';
+const quickstepPoint = quickstepWaitPoint(quickstepDialog);
+assert(quickstepPoint?.x === 490 && quickstepPoint?.y === 485,
+  'Quickstep ANR recovery must use only the native Wait button bounds');
+for (const spoof of [
+  '<node text="Wait" clickable="true" bounds="[440,460][540,510]" />',
+  '<node text="Quickstep isn&apos;t responding" /><node text="Wait" clickable="false" bounds="[440,460][540,510]" />',
+  '<node text="Quickstep isn&apos;t responding" /><node text="Wait" clickable="true" bounds="[1,2][0,10]" />',
+  '<node text="This game is not responding" /><node text="Wait" clickable="true" bounds="[440,460][540,510]" />',
+]) assert(quickstepWaitPoint(spoof) === null, 'Unverified or non-clickable system dialog must not trigger tap');
+assert(!needsQuickstepRecovery(auditGameplayFrame(normal)),
+  'Valid gameplay must never trigger system-dialog recovery');
+assert(!needsQuickstepRecovery(auditGameplayFrame(decodeScreenshotPng(makeFrame('blank')))),
+  'Black or empty gameplay must fail rather than be dismissed as Quickstep');
+assert(needsQuickstepRecovery({ valid: false, paleBandRowsRatio: 0.64094 }),
+  'Proven 0.64094 pale-band Quickstep signature must trigger recovery investigation');
+console.log('ANDROID_QUICKSTEP_NEGATIVE_CONTROLS_PASS cases=dialog+no-dialog+disabled-wait+bad-bounds+wrong-app+valid+blank');

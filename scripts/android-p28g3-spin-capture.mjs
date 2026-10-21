@@ -2,6 +2,7 @@
 // Screenshots and telemetry are captured from the live, deployed combat scene.
 import { writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { captureVerifiedAndroidGameplay } from './android-quickstep-frame-recovery.mjs';
 
 const endpoint = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -80,14 +81,7 @@ async function clickButton(label) {
   if (!found) throw new Error('P28-G3 Android action unavailable: ' + label);
 }
 async function capture(path) {
-  // Render evidence comes from the Android device framebuffer, not a synthetic
-  // canvas export or a desktop browser masquerading as an Android screen.
-  const png = execFileSync('adb', ['exec-out', 'screencap', '-p'], { maxBuffer: 16 * 1024 * 1024 });
-  if (png.length < 20_000 || png.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') {
-    throw new Error('P28-G3 screenshot blank or invalid: ' + path + ' bytes=' + png.length);
-  }
-  writeFileSync(path, png);
-  return png.length;
+  return await captureVerifiedAndroidGameplay(path, 'P28-G3');
 }
 
 try {
