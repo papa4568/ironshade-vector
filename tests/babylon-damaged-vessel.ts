@@ -138,7 +138,11 @@ assert(
     && androidG2.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
     && androidG2.includes("before === result.playerPosition")
     && read('scripts/android-p28g1-orbital-capture.mjs').includes("d.babylonSharedWorldArtState === 'ready'")
-    && androidG2.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && androidG2.includes("captureVerifiedAndroidGameplay(path, 'P28-G2')")
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('auditGameplayFrame(decodeScreenshotPng(png))')
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('writeFileSync(path, png)')
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('!dismissObservedQuickstepDialog()')
     && androidG2Runner.includes('adb exec-out screencap -p')
     && androidWorkflow.includes('bash scripts/android-p28g2-damaged-capture.sh'),
   'P28-G2 must generate APK-backed normal/action Damaged Vessel frames with authored/route provenance.',

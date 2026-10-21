@@ -168,7 +168,11 @@ assert(
     && androidCapture.includes("d.environmentIbl === 'shared-prefiltered:ready'")
     && androidCapture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
     && androidCapture.includes('before === result.playerPosition')
-    && androidCapture.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && androidCapture.includes("captureVerifiedAndroidGameplay(path, 'P28-G3')")
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('auditGameplayFrame(decodeScreenshotPng(png))')
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('writeFileSync(path, png)')
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('!dismissObservedQuickstepDialog()')
     && androidCaptureRunner.includes('CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-p28g3-spin-capture.mjs')
     && androidCaptureRunner.includes('adb exec-out screencap -p')
     && androidWorkflow.includes('bash scripts/android-p28g3-spin-capture.sh'),
