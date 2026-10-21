@@ -585,8 +585,8 @@
       ],
       "acceptance": [
         "The AO-13 candidate commits a strictly pinned, fail-closed EV-9 v11 observer exception for future P28-G3 product closeout, which activates only after this policy change becomes trusted main. The exception requires the exact source/head Android workflow and complete scripts Git entries (mode, type, SHA), valid first-task roadmap/archive/metadata closeout, and P28-G3 as the trusted-base first item; candidate-authored observer code must not authorize itself.",
-        "The trusted observer still rejects any changed producer, trusted observer workflow, browser workflow, non-scripts consumer dependency, or protected agent implementation; the P28-G3 exception expires when that product item is no longer first in the trusted roadmap.",
-        "The observer regression calibration admits the exact reviewed capture object pair and rejects wrong task, absent closeout, chmod/type changes, reverted objects, and arbitrary scripts tree drift.",
+        "After the bootstrap is on trusted main, the observer rejects candidate changes to every versioned trusted-observer source file (including newly added versions), the producer, trusted observer workflow, browser workflow, all non-scripts consumer dependencies and protected agent sources. The reviewed P28-G3 capture exception retires when G3 is no longer first in the active product roadmap.",
+        "The trusted observer calibration admits only the exact reviewed P28-G3 capture pair, rejects the eight scope/object attacks, and rejects three real Git-tree observer implementation tampering attacks (old/current/new version).",
         "The exact AO-13 policy-bootstrap candidate passes architecture invariants, authoritative full build, required CI/Android/APK proofs, and independent adversarial review of the pinned future-activation semantics. No AO-13 proof grants product P28-G3 acceptance: the P28-G3 implementation must independently satisfy its own exact-candidate gates after this prerequisite reaches trusted main."
       ],
       "affectedDomains": [
@@ -600,7 +600,7 @@
           "id": "p28g3-capture-trust-regressions",
           "kind": "test",
           "required": true,
-          "description": "The trusted observer's pinned-object exception calibration includes a valid control and eight negative mutation attacks.",
+          "description": "Trusted observer self-test proves the exact P28-G3 pair and eight negative capture mutations, plus real Git-tree controls rejecting three observer-source tampering attempts.",
           "command": "node agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs self-test"
         },
         {
@@ -613,7 +613,7 @@
           "id": "candidate-ci",
           "kind": "ci",
           "required": true,
-          "description": "The exact AO-13 candidate passes the authoritative build, browser, Android and repository CI gates."
+          "description": "Exact-head full production build, source-bound Android APK/API 35/API 36, architecture, and required repository CI pass; browser E2E may be scope-skipped by the authoritative workflow for a policy-only candidate."
         },
         {
           "id": "independent-review-verdict",
