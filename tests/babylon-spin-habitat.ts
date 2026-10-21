@@ -23,6 +23,7 @@ const renderer = read('src/game/babylonCombatRenderer.ts');
 const habitat = read('src/game/babylonSpinHabitatPresentation.ts');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');
+const browserRetry = read('scripts/browser-runtime-smoke-retry.mjs');
 const workflow = read('.github/workflows/browser-e2e.yml');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 
@@ -172,6 +173,20 @@ assert(
     && androidCaptureRunner.includes('adb exec-out screencap -p')
     && androidWorkflow.includes('bash scripts/android-p28g3-spin-capture.sh'),
   'P28-G3 must require real high-tier APK normal/action frames, shared LOD0, loaded surfaces and source provenance.',
+);
+
+
+assert(
+  browserRetry.includes("const lostDevicePattern = /webgpu->webgl2:runtime-device-lost/")
+    && browserRetry.includes("process.env.BROWSER_E2E_VIEWPORT === 'desktop'")
+    && browserRetry.includes("process.env.BROWSER_E2E_BABYLON_BACKEND === 'webgpu'")
+    && browserRetry.includes("writeFileSync(newPath, original")
+    && browserRetry.includes("remote-debugging-port=9224")
+    && browserRetry.includes("ironshade-browser-e2e-fresh")
+    && browserRetry.includes("CDP_ENDPOINT: 'http://127.0.0.1:9224'")
+    && browserRetry.includes("BROWSER_WEBGPU_FRESH_BROWSER_PASS backend=webgpu")
+    && browserRetry.includes("return await runSmoke({ ...process.env, CDP_ENDPOINT: 'http://127.0.0.1:9224' })"),
+  'P28-G3 CI device-loss recovery must launch one fresh genuine headed WebGPU context and retain the strict render gate.',
 );
 
 console.log('BABYLON_SPIN_HABITAT_PASS identity=ring-and-spokes+habitat-alloy+cool-green+habitat-service spindown=shared-gravity navigation=shared boss=sable-voss world=shared-cues browser=headed');
