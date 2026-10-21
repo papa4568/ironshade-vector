@@ -584,10 +584,10 @@
         "AO-12"
       ],
       "acceptance": [
-        "While P28-G3 is the first unchecked product item, the trusted-base EV-9 observer permits its Android gameplay-capture workflow and complete scripts directory only when both source and candidate Git tree entries exactly match the reviewed mode/type/object SHA pins and the first-item roadmap, archive, and metadata closeout is valid.",
+        "The AO-13 candidate commits a strictly pinned, fail-closed EV-9 v11 observer exception for future P28-G3 product closeout, which activates only after this policy change becomes trusted main. The exception requires the exact source/head Android workflow and complete scripts Git entries (mode, type, SHA), valid first-task roadmap/archive/metadata closeout, and P28-G3 as the trusted-base first item; candidate-authored observer code must not authorize itself.",
         "The trusted observer still rejects any changed producer, trusted observer workflow, browser workflow, non-scripts consumer dependency, or protected agent implementation; the P28-G3 exception expires when that product item is no longer first in the trusted roadmap.",
         "The observer regression calibration admits the exact reviewed capture object pair and rejects wrong task, absent closeout, chmod/type changes, reverted objects, and arbitrary scripts tree drift.",
-        "Exact-candidate architecture/CI and independent adversarial review pass for this policy-only closeout; the preexisting trusted-base EV-9 pull_request_target observer remains a separate mandatory workflow check and may not be bypassed. P28-G3 product acceptance and APK remain solely with existing PR #433."
+        "The exact AO-13 candidate passes architecture checks, full build and required CI/Android/APK gates, and an independent adversarial review of its pinned future-activation policy; the separately running trusted-base pull_request_target observer must also pass as a real GitHub gate before merge, and the P28-G3 implementation remains subject to its own fresh exact-SHA proof after this prerequisite is merged."
       ],
       "affectedDomains": [
         "agent-orchestration",
