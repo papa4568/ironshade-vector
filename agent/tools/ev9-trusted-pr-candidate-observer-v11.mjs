@@ -116,9 +116,33 @@ function changedEv9Paths(baseSha, candidateSha) {
  // generic agent-tree comparisons, but after a bootstrap reaches trusted main
  // candidate changes to any observer source version must always fail closed.
  // Diff-by-path detects new files and removals as well as blob/mode changes.
+function observerImplementationRefs(revision) {
+  const output = execFileSync('/usr/bin/git', ['ls-tree', '-r', '-z', revision, '--', 'agent/tools'], {
+    encoding: 'buffer',
+    env: baseGitEnv(),
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).toString('utf8');
+  const refs = {};
+  for (const entry of output.split('\0').filter(Boolean)) {
+    const match = entry.match(/^(\d+)\s+(\w+)\s+([a-f0-9]{40})\t(.+)$/s);
+    ok(match, 'Malformed observer-source Git tree entry');
+    const [, mode, type, sha, path] = match;
+    if (/^agent\/tools\/ev9-trusted-pr-candidate-observer(?:-v\d+)?\.mjs$/.test(path)) {
+      refs[path] = mode + ' ' + type + ' ' + sha;
+    }
+  }
+  return refs;
+}
+
 function changedObserverImplementations(baseSha, candidateSha) {
-  return changedPaths(baseSha, candidateSha)
-    .filter(path => /^agent\/tools\/ev9-trusted-pr-candidate-observer(?:-v\d+)?\.mjs$/.test(path));
+  // Compare full Git tree entry sets, not git diff --name-only. Diff rename
+  // heuristics otherwise hide the deleted observer source when its blob is
+  // moved outside agent/. This also rejects chmod, add, edit and deletion.
+  const base = observerImplementationRefs(baseSha);
+  const candidate = observerImplementationRefs(candidateSha);
+  return [...new Set([...Object.keys(base), ...Object.keys(candidate)])]
+    .filter(path => base[path] !== candidate[path])
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function isAncestor(ancestor, descendant) {
@@ -405,7 +429,38 @@ function observerImplementationBoundaryCalibration() {
       .checks.find(item => item.id === 'ev18-steady-observer-implementation-unchanged');
     assert.equal(checkResult?.pass, false, 'steady-state gate admitted observer source attack: ' + attack.id);
   }
-  return { attacks: attacks.length, falsePositives: 0, falseNegatives: 0 };
+  // A Git R100 rename outside agent/ must be rejected even though
+  // git diff --name-only with rename heuristics can omit the source path.
+  syntheticCommitCounter += 1;
+  const indexPath = '/tmp/ironshade-observer-rename-' + process.pid + '-' + syntheticCommitCounter;
+  const env = {
+    GIT_INDEX_FILE: indexPath,
+    GIT_AUTHOR_NAME: 'Observer Rename Calibration',
+    GIT_AUTHOR_EMAIL: 'observer-rename@example.invalid',
+    GIT_COMMITTER_NAME: 'Observer Rename Calibration',
+    GIT_COMMITTER_EMAIL: 'observer-rename@example.invalid',
+    GIT_AUTHOR_DATE: '2000-01-01T00:00:00Z',
+    GIT_COMMITTER_DATE: '2000-01-01T00:00:00Z',
+  };
+  const sourcePath = 'agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs';
+  const movedPath = 'docs/untrusted-observer-renamed.mjs';
+  let renamed;
+  try {
+    gitWithEnv(['read-tree', base], env);
+    const sourceBlob = git(['rev-parse', base + ':' + sourcePath]);
+    gitWithEnv(['update-index', '--force-remove', sourcePath], env);
+    gitWithEnv(['update-index', '--add', '--cacheinfo', '100644', sourceBlob, movedPath], env);
+    const tree = gitWithEnv(['write-tree'], env);
+    renamed = gitWithEnv(['commit-tree', tree, '-p', base, '-m', 'observer-rename-outside-agent-attack'], env);
+  } finally {
+    rmSync(indexPath, { force: true });
+  }
+  assert.deepEqual(changedObserverImplementations(base, renamed), [sourcePath],
+    'observer-source removal must be detected even if Git treats the move as a rename');
+  const renamedGate = steadyChecks({ trustedBaseSha: base, candidateSha: renamed })
+    .checks.find(item => item.id === 'ev18-steady-observer-implementation-unchanged');
+  assert.equal(renamedGate?.pass, false, 'real Git-tree observer rename escaped the trusted boundary');
+  return { attacks: attacks.length + 1, falsePositives: 0, falseNegatives: 0 };
 }
 
 function p28g3CaptureBoundaryCalibration() {
