@@ -237,12 +237,13 @@ assert(
 );
 
 assert(
-  read('scripts/android-babylon-lifecycle-smoke.mjs').includes("inspection: 'single-CDP-connection-across-HOME'")
+  read('scripts/android-babylon-lifecycle-smoke.mjs').includes("inspection: 'same-WebView-target-CDP-across-HOME-with-bounded-reattach'")
+    && read('scripts/android-babylon-lifecycle-smoke.mjs').includes('nextConnection.targetId !== activeConnection.targetId')
     && read('scripts/android-babylon-lifecycle-smoke.mjs').includes('await fireAfterResume(900)')
     && read('scripts/android-babylon-lifecycle-smoke.mjs').includes('processAfter !== processBefore')
     && read('scripts/android-p28f6-heavy-cache-smoke.sh').includes('if ! ANDROID_P27D5_PHASE=cache-lifecycle')
     && read('scripts/android-p28f6-heavy-cache-smoke.sh').includes('android-p28f6-resume-diagnostics.txt'),
-  'P28-G2 must prove true process-preserving post-HOME gameplay from one continuous Android CDP session with failure forensics.',
+  'P28-G2 must prove true process-preserving post-HOME gameplay on the same Android WebView target, with bounded CDP recovery, live touch and failure forensics.',
 );
 
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');
