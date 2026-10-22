@@ -114,8 +114,9 @@ try {
   }
   await waitFor(`[...document.querySelectorAll('button')].some(b =>
     (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations')`, 'Command Deck');
-  // Rotating Jovian Harvester is a cycle-one campaign contract. Keep the same
-  // campaign state precondition as the headed browser route; do not loosen
+  // Rotating Jovian Harvester appears in cycle two: the seven-location
+  // standard rotation yields slots 2, 3, 4, including Jovian at index 4. Keep the same
+  // campaign state precondition from generateStandardContracts; do not loosen
   // the production unlock rule or forge a contract DOM node for QA.
   const seeded = await evaluate(`(() => {
     const stateKey = 'ironshade-vector-state-v1';
@@ -128,23 +129,23 @@ try {
     if (stateRaw) {
       const state = JSON.parse(stateRaw);
       if (state?.campaign) {
-        state.campaign.cycle = 1;
+        state.campaign.cycle = 2;
         localStorage.setItem(stateKey, JSON.stringify(state));
         updated = true;
       }
     }
     if (campaignRaw) {
       const campaign = JSON.parse(campaignRaw);
-      campaign.cycle = 1;
+      campaign.cycle = 2;
       localStorage.setItem(campaignKey, JSON.stringify(campaign));
       updated = true;
     }
     return updated;
   })()`);
-  if (!seeded) throw new Error('P28-G4 could not seed the persisted cycle-one campaign for Jovian Harvester.');
+  if (!seeded) throw new Error('P28-G4 could not seed the persisted cycle-two campaign for Jovian Harvester.');
   await call('Page.reload', { ignoreCache: true });
   await waitFor(`[...document.querySelectorAll('button')].some(b =>
-    (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations')`, 'cycle-one Command Deck');
+    (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations')`, 'cycle-two Command Deck');
   await clickButton('Operations');
   await waitFor(`[...document.querySelectorAll('button')].some(b =>
     (b.textContent || '').trim().toLowerCase() === 'contracts')`, 'Operations');
