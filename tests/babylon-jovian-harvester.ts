@@ -10,6 +10,7 @@ import {
   jovianHarvesterStormState,
 } from '../src/game/jovianHarvesterVisualLanguage';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { auditAuthoredVisualProvenance } from '../scripts/verify-p28g2-gameplay-frames.mjs';
 import { createDefaultCampaign, generateStandardContracts } from '../src/game/campaign';
 import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
 
@@ -195,6 +196,36 @@ assert(
       .some(contract => contract.location === 'jovian-harvester'),
   'P28-G4 Android visual QA must use the actual cycle-two rotating Jovian contract rather than the cycle-one Spin precondition.',
 );
+
+// G4's real API 35 capture is consumed by the same fail-closed pixel/provenance
+// gate as G2/G3; preserve negative controls for every new map-specific bound.
+const jovianProvenance = {
+  capturedRoute: 'jovian-harvester', backend: 'webgl2',
+  tier: 'high', captureMode: 'high-tier-qa-visual-only',
+  assetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0',
+  beforeAssetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0',
+  mappedObjects: 18, authoredObjects: 18, fallbackObjects: 0,
+  artState: 'ready', beforeArtState: 'ready',
+  premium: 'ready', beforePremium: 'ready', premiumBindings: 141,
+  ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
+  routeStyle: 'jovian-recessed-deck-inlay', routeMaxWidth: 0.16,
+  objectiveCue: 'beacon+navigation-path', worldObjects: 18, groundProps: 4,
+};
+assert(auditAuthoredVisualProvenance(jovianProvenance).valid,
+  'P28-G4 real Android provenance must pass the shared independent audit.');
+for (const [name, mutation, expectedProblem] of [
+  ['wrong-backend', { backend: 'webgl' }, 'wrong-map-or-backend'],
+  ['downshift', { tier: 'performance' }, 'not-authored-lod0-flagship-visual'],
+  ['fallback-world', { fallbackObjects: 1 }, 'procedural-box-or-unresolved-world-slot'],
+  ['missing-premium', { premiumBindings: 79 }, 'missing-or-unready-premium-material'],
+  ['broad-route', { routeMaxWidth: 0.21 }, 'oversized-route-material'],
+  ['missing-contact', { groundProps: 3 }, 'missing-asset-provenance'],
+  ['late-pop-in', { beforeArtState: 'loading' }, 'late-asset-pop-in'],
+] as const) {
+  const audit = auditAuthoredVisualProvenance({ ...jovianProvenance, ...mutation });
+  assert(!audit.valid && audit.problems.includes(expectedProblem),
+    'P28-G4 provenance negative control admitted ' + name);
+}
 
 const androidWorkflow = read('.github/workflows/pr-android-apk.yml');
 const androidCapture = read('scripts/android-p28g4-jovian-capture.mjs');
