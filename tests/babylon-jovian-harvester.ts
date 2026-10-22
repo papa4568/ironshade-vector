@@ -10,6 +10,7 @@ import {
   jovianHarvesterStormState,
 } from '../src/game/jovianHarvesterVisualLanguage';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { createDefaultCampaign, generateStandardContracts } from '../src/game/campaign';
 import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
 
 function read(path: string) {
@@ -187,13 +188,23 @@ assert(
 );
 
 
+const jovianRotation = generateStandardContracts({ ...createDefaultCampaign(), cycle: 2 });
+assert(
+  jovianRotation.some(contract => contract.location === 'jovian-harvester')
+    && !generateStandardContracts({ ...createDefaultCampaign(), cycle: 1 })
+      .some(contract => contract.location === 'jovian-harvester'),
+  'P28-G4 Android visual QA must use the actual cycle-two rotating Jovian contract rather than the cycle-one Spin precondition.',
+);
+
 const androidWorkflow = read('.github/workflows/pr-android-apk.yml');
 const androidCapture = read('scripts/android-p28g4-jovian-capture.mjs');
 const androidShell = read('scripts/android-p28g4-jovian-capture.sh');
 const androidVerifier = read('scripts/verify-p28g4-gameplay-frames.mjs');
 const captureHelper = read('scripts/android-quickstep-frame-recovery.mjs');
 assert(
-  androidCapture.includes("d?.babylonScenario === 'jovian-harvester'")
+  androidCapture.includes('state.campaign.cycle = 2')
+    && androidCapture.includes('campaign.cycle = 2')
+    && androidCapture.includes("d?.babylonScenario === 'jovian-harvester'")
     && androidCapture.includes("d.jovianPremiumAssetState === 'ready'")
     && androidCapture.includes("Number(d.jovianPremiumBindings || 0) >= 80")
     && androidCapture.includes("d.environmentIbl === 'shared-prefiltered:ready'")
