@@ -143,6 +143,7 @@ export function auditAuthoredVisualProvenance(state) {
     'orbital-station': { profile: 'orbital-recessed-deck-inlay', bindings: 40, contacts: 25 },
     'damaged-vessel': { profile: 'damaged-recessed-deck-inlay', bindings: 35, contacts: 11 },
     'spin-habitat': { profile: 'spin-recessed-deck-inlay', bindings: 35, contacts: 4 },
+    'jovian-harvester': { profile: 'jovian-recessed-deck-inlay', bindings: 80, contacts: 4 },
   }[state?.capturedRoute];
   const problems = [];
   if (!expected || state?.backend !== 'webgl2') problems.push('wrong-map-or-backend');
