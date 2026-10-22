@@ -1,17 +1,23 @@
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
+import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Scene } from '@babylonjs/core/scene';
 import { getMapNavigationPlan } from './mapNavigation';
 import { babylonRouteMarkingWidth, BABYLON_ROUTE_MARKING_WIDTHS } from './babylonRouteMarkings';
+import { createBabylonPremiumPbrSurfaceLibrary, type BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
+import { createRefineryContactDepthAlphaData } from './refineryContactDepth';
+import { REFINERY_ACTOR_GROUNDING_PROFILE, refineryActorGroundingScale } from './babylonRefineryLighting';
 import type { RenderBudgetSnapshot } from './renderQuality';
 import {
   spinHabitatArchitectureState,
@@ -20,6 +26,9 @@ import {
 import { getWorldSize, type CombatObject, type SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
+export const BABYLON_SPIN_PREMIUM_SURFACES = [
+  'deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture',
+] as const;
 
 export const BABYLON_SPIN_HABITAT_IDENTITY = Object.freeze({
   silhouette: 'ring-and-spokes',
@@ -118,6 +127,16 @@ export class BabylonSpinHabitatPresentation {
   private readonly machineryRoot: TransformNode;
   private readonly bossCueRoot: TransformNode;
   private readonly materials: PBRMaterial[];
+  private readonly ownedMaterials: PBRMaterial[];
+  private readonly premiumSurfaces: BabylonPremiumPbrSurfaceLibrary;
+  private readonly premiumBindingCount: number;
+  private readonly staticPropGroundingCount: number;
+  private readonly iblTexture: CubeTexture;
+  private iblReady = false;
+  private readonly groundingTexture: RawTexture;
+  private readonly groundingMaterial: StandardMaterial;
+  private readonly groundingSource: Mesh;
+  private readonly enemyGrounding = new Map<number, InstancedMesh>();
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
   private readonly machineryMaterial: PBRMaterial;
   private readonly warningMaterial: StandardMaterial;
@@ -152,14 +171,19 @@ export class BabylonSpinHabitatPresentation {
     const cx = worldW / 2;
     const cz = worldH / 2;
 
-    const floor = material(scene, 'p27-c3-spin-floor-material', 0x0d1c1d, 0.62, 0.58);
-    const rim = material(scene, 'p27-c3-spin-rim-material', 0x587168, 0.72, 0.42, 0x102c20, 0.14);
-    const spoke = material(scene, 'p27-c3-spin-spoke-material', 0x14262d, 0.90, 0.30, 0x0b4051, 0.28);
-    const axis = material(scene, 'p27-c3-spin-axis-material', 0x98aaa6, 0.76, 0.28, 0x315b60, 0.22);
-    const service = material(scene, 'p27-c3-spin-service-material', 0x64513e, 0.78, 0.38, 0xd49a59, 0.12);
+    // Spin, spoke and bearing meshes use the same shipped KTX2 PBR families
+    // as the earlier premium locations, with no synthetic diffuse-only stand-ins.
+    this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
+    const floor = this.premiumSurfaces.get('deck-plate');
+    const rim = this.premiumSurfaces.get('painted-metal');
+    const spoke = this.premiumSurfaces.get('bare-metal');
+    const axis = this.premiumSurfaces.get('bare-metal');
+    const service = this.premiumSurfaces.get('polymer-rubber');
+    const fixture = this.premiumSurfaces.get('emissive-fixture');
     const routePrimary = material(scene, 'p27-c3-spin-route-primary-material', 0x17302f, 0.64, 0.50, 0x79d8c8, 0.18);
     const routeSecondary = material(scene, 'p27-c3-spin-route-secondary-material', 0x112328, 0.70, 0.54, 0x8dc7d0, 0.07);
-    this.materials = [floor, rim, spoke, axis, service, routePrimary, routeSecondary];
+    this.ownedMaterials = [routePrimary, routeSecondary];
+    this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.routeMaterials = [routePrimary, routeSecondary];
     this.machineryMaterial = service;
 
@@ -203,6 +227,24 @@ export class BabylonSpinHabitatPresentation {
       ring.parent = this.rotorRoot;
       ring.material = rim;
       ring.isPickable = false;
+      // Two inset torque rails and regularly spaced joint shoes give the
+      // silhouette actual depth at combat zoom, not another flat ring decal.
+      for (const [railIndex, inset] of [0.28, -0.28].entries()) {
+        const rail = MeshBuilder.CreateTorus('p28-g3-spin-torque-rail-' + index + '-' + railIndex, {
+          diameter: (radius + inset) * 2, thickness: 0.075, tessellation: 72,
+        }, scene);
+        rail.parent = this.rotorRoot;
+        rail.position.y = railIndex === 0 ? 0.12 : -0.09;
+        rail.material = spoke;
+        rail.isPickable = false;
+      }
+      for (let shoe = 0; shoe < 12; shoe += 1) {
+        const angle = shoe / 12 * Math.PI * 2;
+        const joint = box(scene, this.rotorRoot, 'p28-g3-spin-ring-joint-' + index + '-' + shoe,
+          shoe % 3 === 0 ? fixture : rim,
+          Math.cos(angle) * radius, 0.19, Math.sin(angle) * radius, 0.46, 0.18, 0.22);
+        joint.rotation.y = -angle;
+      }
     }
 
     const spokeLengths = [22, 22, 18, 18];
@@ -210,6 +252,13 @@ export class BabylonSpinHabitatPresentation {
     for (let index = 0; index < 4; index += 1) {
       const arm = box(scene, this.rotorRoot, 'p27-c3-spin-spoke-' + index, spoke, 0, 0.06, 0, spokeLengths[index], 0.20, 0.20);
       arm.rotation.y = spokeRotations[index];
+      for (const [ribIndex, distance] of [-7, -3.5, 3.5, 7].entries()) {
+        const rib = box(scene, this.rotorRoot, 'p28-g3-spin-spoke-cross-rib-' + index + '-' + ribIndex,
+          ribIndex % 2 ? rim : spoke,
+          Math.cos(spokeRotations[index]) * distance, 0.18,
+          -Math.sin(spokeRotations[index]) * distance, 0.19, 0.26, 0.82);
+        rib.rotation.y = spokeRotations[index];
+      }
     }
 
     const rotationWitness = box(scene, this.rotorRoot, 'p27-c3-spin-rotation-witness', service, 8.5, 0.36, 0, 0.72, 0.52, 0.72);
@@ -224,7 +273,15 @@ export class BabylonSpinHabitatPresentation {
     servicePlacements.forEach(([x, z, rotationY], index) => {
       const bay = box(scene, this.rotorRoot, 'p27-c3-spin-service-bay-' + index, service, x, 0.54, z, 1.45, 1.08, 0.74);
       bay.rotation.y = rotationY;
-      box(scene, this.rotorRoot, 'p27-c3-spin-service-status-' + index, axis, x, 1.10, z, 0.46, 0.12, 0.50).rotation.y = rotationY;
+      box(scene, this.rotorRoot, 'p27-c3-spin-service-status-' + index, fixture, x, 1.10, z, 0.46, 0.12, 0.50).rotation.y = rotationY;
+      for (const side of [-1, 1]) {
+        const rail = box(scene, this.rotorRoot, 'p28-g3-spin-service-brace-' + index + '-' + side,
+          rim, x + side * 0.47, 0.72, z, 0.11, 1.28, 0.79);
+        rail.rotation.y = rotationY;
+      }
+      const hatch = box(scene, this.rotorRoot, 'p28-g3-spin-service-hatch-' + index,
+        spoke, x, 1.16, z, 0.66, 0.08, 0.58);
+      hatch.rotation.y = rotationY;
     });
 
     const axisHub = MeshBuilder.CreateCylinder('p27-c3-spin-axis-hub', {
@@ -246,6 +303,17 @@ export class BabylonSpinHabitatPresentation {
     axisCollar.position.set(cx, 3.25, cz);
     axisCollar.material = axis;
     axisCollar.isPickable = false;
+    for (let index = 0; index < 8; index += 1) {
+      const angle = index / 8 * Math.PI * 2;
+      const foot = box(scene, this.root, 'p28-g3-spin-axis-bearing-foot-' + index, rim,
+        cx + Math.cos(angle) * 1.75, 0.24, cz + Math.sin(angle) * 1.75,
+        0.54, 0.48, 0.30);
+      foot.rotation.y = -angle;
+      const bolt = box(scene, this.root, 'p28-g3-spin-axis-bearing-bolt-' + index, fixture,
+        cx + Math.cos(angle) * 1.75, 0.5, cz + Math.sin(angle) * 1.75,
+        0.16, 0.08, 0.14);
+      bolt.rotation.y = -angle;
+    }
 
     const navigation = getMapNavigationPlan('spin-habitat');
     navigation.routes.forEach(route => {
@@ -369,8 +437,51 @@ export class BabylonSpinHabitatPresentation {
     }
     this.bossCueRoot.setEnabled(false);
 
+    const sharedMaterials = new Set(this.premiumSurfaces.materials.values());
+    this.premiumBindingCount = this.root.getChildMeshes(false)
+      .filter(mesh => mesh.material instanceof PBRMaterial && sharedMaterials.has(mesh.material)).length;
+
+    // A single shared contact atlas grounds the player, nearby enemies and
+    // rotating service bays, retaining the existing gameplay transform owners.
+    const groundingSize = REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize;
+    this.groundingTexture = RawTexture.CreateRGBATexture(
+      createRefineryContactDepthAlphaData(groundingSize), groundingSize, groundingSize, scene, false, false,
+    );
+    this.groundingTexture.hasAlpha = true;
+    this.groundingMaterial = new StandardMaterial('p28-g3-spin-contact-material', scene);
+    this.groundingMaterial.diffuseColor = new Color3(0.012, 0.027, 0.025);
+    this.groundingMaterial.specularColor = Color3.Black();
+    this.groundingMaterial.diffuseTexture = this.groundingTexture;
+    this.groundingMaterial.useAlphaFromDiffuseTexture = true;
+    this.groundingMaterial.disableLighting = true;
+    this.groundingMaterial.disableDepthWrite = true;
+    this.groundingMaterial.backFaceCulling = false;
+    this.groundingMaterial.alpha = 0.28;
+    this.groundingSource = MeshBuilder.CreatePlane('p28-g3-spin-player-contact',
+      { width: 1, height: 1, sideOrientation: Mesh.DOUBLESIDE }, scene);
+    this.groundingSource.parent = this.root;
+    this.groundingSource.material = this.groundingMaterial;
+    this.groundingSource.isPickable = false;
+    this.groundingSource.alphaIndex = -300;
+    this.groundingSource.rotation.x = Math.PI / 2;
+    servicePlacements.forEach(([x, z], index) => {
+      const shadow = this.groundingSource.createInstance('p28-g3-spin-service-contact-' + index);
+      shadow.parent = this.rotorRoot;
+      shadow.position.set(x, -0.078, z);
+      shadow.rotation.x = Math.PI / 2;
+      shadow.scaling.set(1.75, 1.04, 1);
+      shadow.isPickable = false;
+      shadow.alphaIndex = -300;
+    });
+    this.staticPropGroundingCount = servicePlacements.length;
     this.meshCount = this.root.getChildMeshes(false).length;
     this.root.setEnabled(false);
+
+    this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env',
+      scene, undefined, false, undefined,
+      () => { this.iblReady = true; }, () => { this.iblReady = false; }, undefined, true);
+    this.iblTexture.name = 'p28-g3-spin-shared-prefiltered-ibl';
+    this.iblTexture.gammaSpace = false;
 
     const lighting = BABYLON_SPIN_HABITAT_LIGHTING;
     this.hemisphere = new HemisphericLight('p27-c3-spin-hemisphere', new Vector3(-0.28, 1, 0.24), scene);
@@ -479,6 +590,36 @@ export class BabylonSpinHabitatPresentation {
 
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
+    this.groundingMaterial.alpha = renderBudget.tierName === 'performance' ? 0.19 : 0.28;
+    this.groundingSource.position.set(px, 0.044, pz);
+    this.groundingSource.scaling.set(1.06, 0.72, 1);
+    const nearby = new Set<number>();
+    const radiusSq = REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius ** 2;
+    for (const enemy of state.enemies) {
+      if (!enemy.active || enemy.dead) continue;
+      const dx = enemy.x - state.player.x;
+      const dz = enemy.y - state.player.y;
+      if (dx * dx + dz * dz > radiusSq) continue;
+      nearby.add(enemy.id);
+      let contact = this.enemyGrounding.get(enemy.id);
+      if (!contact) {
+        contact = this.groundingSource.createInstance('p28-g3-spin-enemy-contact-' + enemy.id);
+        contact.parent = this.root;
+        contact.isPickable = false;
+        contact.alphaIndex = -300;
+        this.enemyGrounding.set(enemy.id, contact);
+      }
+      const size = refineryActorGroundingScale(enemy.role);
+      contact.position.set(scaled(enemy.x), 0.043, scaled(enemy.y));
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(1.06 * size, 0.72 * size, 1);
+    }
+    for (const [id, contact] of this.enemyGrounding) {
+      if (!nearby.has(id)) {
+        contact.dispose();
+        this.enemyGrounding.delete(id);
+      }
+    }
     let readabilityX = px;
     let readabilityZ = pz;
     let nearestDistanceSq = Number.POSITIVE_INFINITY;
@@ -514,8 +655,8 @@ export class BabylonSpinHabitatPresentation {
     this.routeMaterials[0].emissiveColor = colorFromHex(0x79d8c8).scale(0.18 * routePulse);
     this.routeMaterials[1].emissiveColor = colorFromHex(0x8dc7d0).scale(0.07 * routePulse);
 
-    this.scene.environmentTexture = null;
-    this.scene.environmentIntensity = 0;
+    this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
+    this.scene.environmentIntensity = this.iblReady ? 0.28 * tierScale : 0;
     this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
     this.scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.scene.imageProcessingConfiguration.exposure = lighting.exposure * (lowVisibility ? 1.03 : 1);
@@ -529,7 +670,7 @@ export class BabylonSpinHabitatPresentation {
     this.canvas.dataset.environmentInstances = String(this.meshCount + this.machineryCues.size);
     this.canvas.dataset.environmentLandmark = 'central-axis-hub';
     this.canvas.dataset.environmentServiceDetails = 'service-bay:4+machinery-cues:' + machineCount;
-    this.canvas.dataset.environmentSurfaceDetail = 'ring:3+spoke:4+axis:2+ambient-bands:' + visibleBands;
+    this.canvas.dataset.environmentSurfaceDetail = 'ring:3+torque-rails:6+joint-shoes:36+cross-ribs:16+axis-feet:8+ambient-bands:' + visibleBands;
     this.canvas.dataset.environmentComposition = 'rotating-ring-arc+rotating-cross-spokes+stationary-axis+service-bays';
     this.canvas.dataset.environmentMotion = 'gravity-coupled-rigid-rotation';
     this.canvas.dataset.environmentSpinMode = motion.mode;
@@ -574,9 +715,22 @@ export class BabylonSpinHabitatPresentation {
     this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary);
     this.canvas.dataset.babylonSpinLandmarks = navigation.landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;
-    this.canvas.dataset.babylonMaterialIntent = 'procedural-habitat-alloy-pbr+shared-world-pbr';
+    this.canvas.dataset.babylonMaterialIntent = 'premium-ktx2-habitat-alloy-pbr+shared-world-pbr';
+    const premiumReady = BABYLON_SPIN_PREMIUM_SURFACES.every(id => {
+      const pbr = this.premiumSurfaces.get(id);
+      return pbr.albedoTexture?.isReady() === true
+        && pbr.bumpTexture?.isReady() === true
+        && pbr.metallicTexture?.isReady() === true
+        && (!pbr.emissiveTexture || pbr.emissiveTexture.isReady());
+    });
+    this.canvas.dataset.spinPremiumAssetState = premiumReady ? 'ready' : 'loading';
+    this.canvas.dataset.spinPremiumBindings = String(this.premiumBindingCount);
+    this.canvas.dataset.spinPremiumSurfaces = BABYLON_SPIN_PREMIUM_SURFACES.join(',');
+    this.canvas.dataset.spinGrounding = 'player+enemies:soft-contact';
+    this.canvas.dataset.spinGroundedEnemies = String(nearby.size);
+    this.canvas.dataset.spinGroundedProps = String(this.staticPropGroundingCount);
     this.canvas.dataset.babylonLightingBudget = 'tier:' + renderBudget.tierName + '|practical:' + practicalCount + '|shadows:off';
-    this.canvas.dataset.environmentIbl = 'off:spin-habitat';
+    this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading';
     this.canvas.dataset.environmentLighting = 'spin-habitat-cool-green:axis+rim+contact:player+enemy+practical:' + practicalCount + '+shadow:off';
     this.canvas.dataset.environmentShadowBudget = 'off:spin-habitat-babylon';
     this.canvas.dataset.environmentTone = 'aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2);
@@ -597,9 +751,16 @@ export class BabylonSpinHabitatPresentation {
 
   dispose() {
     this.release('renderer-dispose');
+    for (const contact of this.enemyGrounding.values()) contact.dispose();
+    this.enemyGrounding.clear();
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose());
     this.root.dispose();
-    this.materials.forEach(item => item.dispose());
+    this.groundingMaterial.dispose();
+    this.groundingTexture.dispose();
+    if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
+    this.iblTexture.dispose();
+    this.ownedMaterials.forEach(item => item.dispose());
+    this.premiumSurfaces.dispose();
     this.warningMaterial.dispose();
     this.ambientMaterial.dispose();
     this.bossCueMaterial.dispose();

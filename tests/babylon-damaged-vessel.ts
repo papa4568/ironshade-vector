@@ -138,7 +138,11 @@ assert(
     && androidG2.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
     && androidG2.includes("before === result.playerPosition")
     && read('scripts/android-p28g1-orbital-capture.mjs').includes("d.babylonSharedWorldArtState === 'ready'")
-    && androidG2.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && androidG2.includes("captureVerifiedAndroidGameplay(path, 'P28-G2')")
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('auditGameplayFrame(decodeScreenshotPng(png))')
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('writeFileSync(path, png)')
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('!dismissObservedQuickstepDialog()')
     && androidG2Runner.includes('adb exec-out screencap -p')
     && androidWorkflow.includes('bash scripts/android-p28g2-damaged-capture.sh'),
   'P28-G2 must generate APK-backed normal/action Damaged Vessel frames with authored/route provenance.',
@@ -193,9 +197,13 @@ assert(
 
 const lifecycleTransport = read('scripts/android-babylon-lifecycle-smoke.mjs');
 assert(
-  lifecycleTransport.includes('Math.min(6_000, timeoutMs - (Date.now() - startedAt))')
+  lifecycleTransport.includes('Math.min(6_000, maxWaitMs - (Date.now() - probeStartedAt))')
     && lifecycleTransport.includes('if (!accepted) socket.close()')
-    && lifecycleTransport.includes("session.call('Runtime.enable', {}, remaining())"),
+    && lifecycleTransport.includes("session.call('Runtime.enable', {}, remaining())")
+    && lifecycleTransport.includes('await waitForSession(95_000, true)')
+    && lifecycleTransport.includes('nextConnection.targetId !== activeConnection.targetId')
+    && lifecycleTransport.includes('ANDROID_P28F6_CDP_REATTACH_PASS')
+    && lifecycleTransport.includes('await fireAfterResume(900)'),
   'P28-G2 Android heavy-art resume CDP recovery must retry closed sockets within its overall timeout instead of hanging on one command.',
 );
 
@@ -207,7 +215,7 @@ assert(
 );
 
 assert(
-  read('scripts/android-babylon-lifecycle-smoke.mjs').includes("if (phase !== 'cache-resume')")
+  read('scripts/android-babylon-lifecycle-smoke.mjs').includes("if (phase !== 'cache-resume' && !resumed)")
     && read('scripts/android-babylon-lifecycle-smoke.mjs').includes("const matches = targets.filter")
     && read('scripts/android-p28f6-heavy-cache-smoke.sh').includes('android-p28f6-resume-diagnostics.txt')
     && read('.github/workflows/pr-android-apk.yml').includes('android-p28f6-resume-logcat.txt'),
@@ -229,12 +237,13 @@ assert(
 );
 
 assert(
-  read('scripts/android-babylon-lifecycle-smoke.mjs').includes("inspection: 'single-CDP-connection-across-HOME'")
+  read('scripts/android-babylon-lifecycle-smoke.mjs').includes("inspection: 'same-WebView-target-CDP-across-HOME-with-bounded-reattach'")
+    && read('scripts/android-babylon-lifecycle-smoke.mjs').includes('nextConnection.targetId !== activeConnection.targetId')
     && read('scripts/android-babylon-lifecycle-smoke.mjs').includes('await fireAfterResume(900)')
     && read('scripts/android-babylon-lifecycle-smoke.mjs').includes('processAfter !== processBefore')
     && read('scripts/android-p28f6-heavy-cache-smoke.sh').includes('if ! ANDROID_P27D5_PHASE=cache-lifecycle')
     && read('scripts/android-p28f6-heavy-cache-smoke.sh').includes('android-p28f6-resume-diagnostics.txt'),
-  'P28-G2 must prove true process-preserving post-HOME gameplay from one continuous Android CDP session with failure forensics.',
+  'P28-G2 must prove true process-preserving post-HOME gameplay on the same Android WebView target, with bounded CDP recovery, live touch and failure forensics.',
 );
 
 console.log('BABYLON_DAMAGED_VESSEL_PASS identity=broken-ribs+scarred-hull+emergency-amber+salvage-cases breach=procedural navigation=shared world=shared-cues browser=headed');

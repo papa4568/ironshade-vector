@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import {
   BABYLON_SPIN_HABITAT_IDENTITY,
   BABYLON_SPIN_HABITAT_LIGHTING,
+  BABYLON_SPIN_PREMIUM_SURFACES,
 } from '../src/game/babylonSpinHabitatPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 import {
@@ -22,6 +23,7 @@ const renderer = read('src/game/babylonCombatRenderer.ts');
 const habitat = read('src/game/babylonSpinHabitatPresentation.ts');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');
+const browserRetry = read('scripts/browser-runtime-smoke-retry.mjs');
 const workflow = read('.github/workflows/browser-e2e.yml');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 
@@ -116,6 +118,79 @@ assert(
   pkg.scripts?.['test:babylon-spin-habitat']?.includes('tests/babylon-spin-habitat.ts')
     && pkg.scripts?.build?.includes('npm run test:babylon-spin-habitat'),
   'P27-C3 unit/source regression must be wired into the full production build.',
+);
+
+
+const androidWorkflow = read('.github/workflows/pr-android-apk.yml');
+const androidCapture = read('scripts/android-p28g3-spin-capture.mjs');
+const androidCaptureRunner = read('scripts/android-p28g3-spin-capture.sh');
+const readiness = read('src/game/babylonRefineryMissionReadiness.ts');
+assert(
+  BABYLON_SPIN_PREMIUM_SURFACES.join(',') === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
+    && habitat.includes('this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene)')
+    && habitat.includes("this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env'")
+    && habitat.includes('this.canvas.dataset.spinPremiumBindings = String(this.premiumBindingCount)')
+    && habitat.includes("this.canvas.dataset.spinPremiumAssetState = premiumReady ? 'ready' : 'loading'")
+    && habitat.includes('this.groundingSource.createInstance')
+    && habitat.includes('this.enemyGrounding.delete(id)')
+    && habitat.includes('this.premiumSurfaces.dispose()')
+    && habitat.includes('this.iblTexture.dispose()')
+    && habitat.includes('this.groundingTexture.dispose()'),
+  'P28-G3 Spin Habitat must bind real KTX2 premium surfaces, IBL and grounded props/actors with cleanup.',
+);
+assert(
+  habitat.includes('p28-g3-spin-torque-rail-')
+    && habitat.includes('p28-g3-spin-ring-joint-')
+    && habitat.includes('p28-g3-spin-spoke-cross-rib-')
+    && habitat.includes('p28-g3-spin-service-brace-')
+    && habitat.includes('p28-g3-spin-axis-bearing-foot-')
+    && habitat.includes('this.rotorRoot.rotation.y = this.rotationY')
+    && world.includes("|| mission.location === 'spin-habitat'")
+    && readiness.includes("|| mission.location === 'spin-habitat'"),
+  'P28-G3 must keep the rotating frame linked to gravity, add visible mechanical detail, and prevent bare world fallbacks.',
+);
+assert(
+  browser.includes("canvas?.dataset.spinPremiumAssetState === 'ready'")
+    && browser.includes("state.environmentIbl !== 'shared-prefiltered:ready'")
+    && browser.includes("state.authoredWorld !== state.mappedWorld")
+    && browser.includes("state.materialIntent !== 'premium-ktx2-habitat-alloy-pbr+shared-world-pbr'")
+    && androidCapture.includes("campaign.cycle = 1")
+    && androidCapture.includes("state.campaign.cycle = 1")
+    && androidCapture.includes("let updated = false")
+    && androidCapture.includes("if (campaignRaw)")
+    && androidCapture.includes("return updated;")
+    && !androidCapture.includes("if (!campaignRaw) return false;")
+    && androidCapture.includes("await call('Page.reload', { ignoreCache: true })")
+    && androidCapture.includes("could not seed the persisted cycle-one campaign")
+    && androidCapture.includes("d?.babylonScenario === 'spin-habitat'")
+    && androidCapture.includes("d.babylonSharedWorldArtState === 'ready'")
+    && androidCapture.includes("d.spinPremiumAssetState === 'ready'")
+    && androidCapture.includes("d.environmentIbl === 'shared-prefiltered:ready'")
+    && androidCapture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
+    && androidCapture.includes('before === result.playerPosition')
+    && androidCapture.includes("captureVerifiedAndroidGameplay(path, 'P28-G3')")
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('auditGameplayFrame(decodeScreenshotPng(png))')
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('writeFileSync(path, png)')
+    && read('scripts/android-quickstep-frame-recovery.mjs').includes('!dismissObservedQuickstepDialog()')
+    && androidCaptureRunner.includes('CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-p28g3-spin-capture.mjs')
+    && androidCaptureRunner.includes('adb exec-out screencap -p')
+    && androidWorkflow.includes('bash scripts/android-p28g3-spin-capture.sh'),
+  'P28-G3 must require real high-tier APK normal/action frames, shared LOD0, loaded surfaces and source provenance.',
+);
+
+
+assert(
+  browserRetry.includes("const lostDevicePattern = /webgpu->webgl2:runtime-device-lost/")
+    && browserRetry.includes("process.env.BROWSER_E2E_VIEWPORT === 'desktop'")
+    && browserRetry.includes("process.env.BROWSER_E2E_BABYLON_BACKEND === 'webgpu'")
+    && browserRetry.includes("writeFileSync(newPath, original")
+    && browserRetry.includes("remote-debugging-port=9224")
+    && browserRetry.includes("ironshade-browser-e2e-fresh")
+    && browserRetry.includes("CDP_ENDPOINT: 'http://127.0.0.1:9224'")
+    && browserRetry.includes("BROWSER_WEBGPU_FRESH_BROWSER_PASS backend=webgpu")
+    && browserRetry.includes("return await runSmoke({ ...process.env, CDP_ENDPOINT: 'http://127.0.0.1:9224' })"),
+  'P28-G3 CI device-loss recovery must launch one fresh genuine headed WebGPU context and retain the strict render gate.',
 );
 
 console.log('BABYLON_SPIN_HABITAT_PASS identity=ring-and-spokes+habitat-alloy+cool-green+habitat-service spindown=shared-gravity navigation=shared boss=sable-voss world=shared-cues browser=headed');
