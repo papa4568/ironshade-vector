@@ -414,7 +414,7 @@ const P28G4_CAPTURE_BASE = Object.freeze({
 });
 const P28G4_CAPTURE_REVIEWED = Object.freeze({
   android: '100644 blob 1f6182d00785b9d5f77c12891fc0ab739fb62b4e',
-  scripts: '040000 tree 45524a9f6de5e749555654fdb80ab83b1655a61d',
+  scripts: '040000 tree c5971729b17ca469343d8395d268b5b8d533ac4e',
 });
 
 function p28g4CaptureEntriesAllowed({
