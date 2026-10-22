@@ -3,12 +3,14 @@ import { resolve } from 'node:path';
 import {
   BABYLON_JOVIAN_HARVESTER_IDENTITY,
   BABYLON_JOVIAN_HARVESTER_LIGHTING,
+  BABYLON_JOVIAN_PREMIUM_SURFACES,
 } from '../src/game/babylonJovianHarvesterPresentation';
 import {
   jovianHarvesterRenderProfile,
   jovianHarvesterStormState,
 } from '../src/game/jovianHarvesterVisualLanguage';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
 
 function read(path: string) {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
@@ -136,6 +138,52 @@ assert(
   pkg.scripts?.['test:babylon-jovian-harvester']?.includes('tests/babylon-jovian-harvester.ts')
     && pkg.scripts?.build?.includes('npm run test:babylon-jovian-harvester'),
   'P27-C4 unit/source regression must be wired into the full production build.',
+);
+
+
+const readiness = read('src/game/babylonRefineryMissionReadiness.ts');
+assert(
+  BABYLON_JOVIAN_PREMIUM_SURFACES.join(',') === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
+    && jovian.includes("this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene)")
+    && jovian.includes("new CubeTexture('/assets/environments/refinery-prefiltered.env'")
+    && jovian.includes("this.canvas.dataset.jovianPremiumAssetState = premiumReady ? 'ready' : 'loading'")
+    && jovian.includes("this.canvas.dataset.jovianPremiumBindings = String(this.premiumBindingCount)")
+    && jovian.includes('this.premiumSurfaces.dispose()')
+    && jovian.includes('this.iblTexture.dispose()'),
+  'P28-G4 Jovian industrial materials must use shipped KTX2 PBR textures and live shared IBL with cleanup.',
+);
+assert(
+  ['p28-g4-deck-inset-rail-', 'p28-g4-deck-cross-shoe-', 'p28-g4-skimmer-condenser-collar-',
+    'p28-g4-skimmer-braced-condenser-', 'p28-g4-skimmer-storm-duct-', 'p28-g4-bridge-cable-tray-',
+    'p28-g4-bridge-lattice-foot-', 'p28-g4-ballast-pressure-collar-', 'p28-g4-ballast-saddle-']
+    .every(name => jovian.includes(name))
+    && jovian.includes('babylonRouteMarkingWidth(route.kind)')
+    && BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.2
+    && !jovian.includes("scaled(route.kind === 'primary' ? 72")
+    && jovian.includes('this.groundingSource.createInstance')
+    && jovian.includes('this.enemyGrounding.delete(id)')
+    && jovian.includes('this.groundingTexture.dispose()'),
+  'P28-G4 industrial depth, grounding and recessed route guides cannot regress to bare boxes or broad route bands.',
+);
+assert(
+  world.includes("|| mission.location === 'spin-habitat' || mission.location === 'jovian-harvester'")
+    && readiness.includes("|| mission.location === 'spin-habitat' || mission.location === 'jovian-harvester'")
+    && browser.includes("canvas?.dataset.jovianPremiumAssetState === 'ready'")
+    && browser.includes("canvas?.dataset.environmentIbl === 'shared-prefiltered:ready'")
+    && browser.includes("canvas?.dataset.babylonSharedWorldArtState === 'ready'")
+    && browser.includes("canvas?.dataset.missionVisualReadiness === 'ready'")
+    && browser.includes('state.authoredWorld !== state.mappedWorld')
+    && browser.includes('state.fallbackWorld !== 0')
+    && browser.includes('BROWSER_P28G4_JOVIAN_HARVESTER_PREMIUM_PASS'),
+  'P28-G4 must block entry until authored LOD0 world, all premium maps, IBL and real gameplay cues are ready.',
+);
+assert(
+  jovian.includes('this.stormChargeSweeps.forEach(')
+    && jovian.includes('this.pressureShearBands.forEach(')
+    && jovian.includes('this.reliefMaterial.alpha')
+    && jovian.includes("this.canvas.dataset.environmentStormSource = 'live-sector-pressure+service-breach+contract-conditions'")
+    && jovian.includes('this.bossCueRoot.setEnabled(Boolean(activeBoss))'),
+  'P28-G4 must preserve storm and relief hazard precedence and live boss-state visuals.',
 );
 
 console.log('BABYLON_JOVIAN_HARVESTER_PASS identity=skimmer-towers+weathered-condenser+storm-orange+compressor-service storm=shared-pressure navigation=shared boss=stormline-foreman-ilex world=shared-cues browser=headed');
