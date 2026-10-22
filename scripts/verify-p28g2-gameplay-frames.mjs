@@ -166,7 +166,8 @@ export function auditAuthoredVisualProvenance(state) {
   return { valid: problems.length === 0, problems };
 }
 
-if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+if (process.argv[1] && /(?:^|[/\\])verify-p28g2-gameplay-frames\.mjs$/.test(process.argv[1])
+  && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   const [normalPath, actionPath, reportPath, provenancePath] = process.argv.slice(2);
   assert(normalPath && actionPath && reportPath && provenancePath, 'Provide normal/action PNG, pixel-report and captured provenance JSON');
   const report = auditGameplayPair(
