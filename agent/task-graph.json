@@ -623,6 +623,54 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-14",
+      "title": "Authorize pinned P28-G4 Android screenshot consumer closeout",
+      "priority": 140,
+      "status": "verifying",
+      "dependsOn": [
+        "AO-13"
+      ],
+      "acceptance": [
+        "Only after AO-14 becomes trusted main, allow P28-G4's Android capture wiring through a fail-closed exact Git-object pin for the Android workflow and full scripts tree, conditional on G4 being the trusted-base first product task and the strict first-item roadmap/archive/metadata closeout.",
+        "Reject any drift of the reviewed base or candidate Android workflow/scripts Git mode, type or SHA, including unauthorized scripts/consumer changes, altered or missing roadmap closeout, other map/task, and any source-bound dependency outside scripts. Retain trusted producer, browser, observer/workflow, observer implementation, architecture, metadata, and independent-review boundaries.",
+        "Self-test proves exactly one accepted G4 pair and multiple negative controls (changed map, closeout, script and Android object, and Git mode/type) while preserving AO-13/EV-9 checks. This prerequisite does not itself certify P28-G4; its separate PR must receive exact-SHA CI and independent reviewer PASS, and G4 must run its own proofs afterward."
+      ],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "ci",
+        "android"
+      ],
+      "proofs": [
+        {
+          "id": "p28g4-consumer-trust-regressions",
+          "kind": "test",
+          "required": true,
+          "description": "Trusted EV-9 observer self-test validates pinned P28-G4 Android/screenshots consumer pair and mutation rejections.",
+          "command": "node agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs self-test"
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Exact-SHA candidate architecture and graph validations remain intact."
+        },
+        {
+          "id": "candidate-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Authoritative full build, required affected CI, Android/APK, and trusted observer gates pass for AO-14."
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "Independent read-only verifier reviews AO-14's precise policy, negative controls and trusted-boundary non-regressions before merging."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }
