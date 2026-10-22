@@ -186,4 +186,36 @@ assert(
   'P28-G4 must preserve storm and relief hazard precedence and live boss-state visuals.',
 );
 
+
+const androidWorkflow = read('.github/workflows/pr-android-apk.yml');
+const androidCapture = read('scripts/android-p28g4-jovian-capture.mjs');
+const androidShell = read('scripts/android-p28g4-jovian-capture.sh');
+const androidVerifier = read('scripts/verify-p28g4-gameplay-frames.mjs');
+const captureHelper = read('scripts/android-quickstep-frame-recovery.mjs');
+assert(
+  androidCapture.includes("d?.babylonScenario === 'jovian-harvester'")
+    && androidCapture.includes("d.jovianPremiumAssetState === 'ready'")
+    && androidCapture.includes("Number(d.jovianPremiumBindings || 0) >= 80")
+    && androidCapture.includes("d.environmentIbl === 'shared-prefiltered:ready'")
+    && androidCapture.includes("d.environmentStormSource === 'live-sector-pressure+service-breach+contract-conditions'")
+    && androidCapture.includes("d.babylonSharedWorldArtState === 'ready'")
+    && androidCapture.includes("d.missionVisualReadiness === 'ready'")
+    && androidCapture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
+    && androidCapture.includes("Number(d.babylonSharedWorldFallbackCount || 0) === 0")
+    && androidCapture.includes("captureVerifiedAndroidGameplay(path, 'P28-G4')")
+    && androidCapture.includes('before === result.playerPosition')
+    && captureHelper.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
+    && captureHelper.includes('auditGameplayFrame(decodeScreenshotPng(png))')
+    && captureHelper.includes('writeFileSync(path, png)')
+    && captureHelper.includes('!dismissObservedQuickstepDialog()')
+    && androidVerifier.includes('auditGameplayPair(')
+    && androidVerifier.includes('auditAuthoredVisualProvenance(')
+    && androidVerifier.includes("state.capturedRoute !== 'jovian-harvester'")
+    && androidShell.includes('CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-p28g4-jovian-capture.mjs')
+    && androidShell.includes('adb exec-out screencap -p')
+    && androidWorkflow.includes('bash scripts/android-p28g4-jovian-capture.sh')
+    && androidWorkflow.includes('android-p28g4-jovian-harvester-pixel-report.json'),
+  'P28-G4 requires actual APK Android screenshots, independent pixel/provenance audit and storm-readability contract.',
+);
+
 console.log('BABYLON_JOVIAN_HARVESTER_PASS identity=skimmer-towers+weathered-condenser+storm-orange+compressor-service storm=shared-pressure navigation=shared boss=stormline-foreman-ilex world=shared-cues browser=headed');
