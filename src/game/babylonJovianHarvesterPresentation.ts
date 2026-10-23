@@ -1,12 +1,15 @@
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
+import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Scene } from '@babylonjs/core/scene';
@@ -15,10 +18,17 @@ import {
   jovianHarvesterStormState,
 } from './jovianHarvesterVisualLanguage';
 import { getMapNavigationPlan } from './mapNavigation';
+import { babylonRouteMarkingWidth, BABYLON_ROUTE_MARKING_WIDTHS } from './babylonRouteMarkings';
+import { createBabylonPremiumPbrSurfaceLibrary, type BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
+import { createRefineryContactDepthAlphaData } from './refineryContactDepth';
+import { REFINERY_ACTOR_GROUNDING_PROFILE, refineryActorGroundingScale } from './babylonRefineryLighting';
 import type { RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize, type CombatObject, type SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
+export const BABYLON_JOVIAN_PREMIUM_SURFACES = [
+  'deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture',
+] as const;
 
 export const BABYLON_JOVIAN_HARVESTER_IDENTITY = Object.freeze({
   silhouette: 'skimmer-towers',
@@ -117,6 +127,16 @@ export class BabylonJovianHarvesterPresentation {
   private readonly bridgeMeshes: Mesh[] = [];
   private readonly ballastMeshes: Mesh[] = [];
   private readonly materials: PBRMaterial[];
+  private readonly ownedMaterials: PBRMaterial[];
+  private readonly premiumSurfaces: BabylonPremiumPbrSurfaceLibrary;
+  private readonly premiumBindingCount: number;
+  private readonly iblTexture: CubeTexture;
+  private iblReady = false;
+  private readonly groundingTexture: RawTexture;
+  private readonly groundingMaterial: StandardMaterial;
+  private readonly groundingSource: Mesh;
+  private readonly enemyGrounding = new Map<number, InstancedMesh>();
+  private readonly staticPropGroundingCount: number;
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
   private readonly machineryMaterial: PBRMaterial;
   private readonly stormRoot: TransformNode;
@@ -160,14 +180,20 @@ export class BabylonJovianHarvesterPresentation {
     const cx = worldW / 2;
     const cz = worldH / 2;
 
-    const floor = material(scene, 'p27-c4-jovian-floor-material', 0x1a120c, 0.62, 0.60);
-    const weathered = material(scene, 'p27-c4-jovian-weathered-material', 0x6d5138, 0.76, 0.50);
-    const tower = material(scene, 'p27-c4-jovian-tower-material', 0x7d5b3d, 0.82, 0.42);
-    const truss = material(scene, 'p27-c4-jovian-truss-material', 0x25201c, 0.88, 0.34);
-    const ballast = material(scene, 'p27-c4-jovian-ballast-material', 0xb7a88f, 0.72, 0.34, 0x8fb8bd, 0.08);
+    // Reuse actual KTX2 base/normal/ORM/emissive payloads already shipped by
+    // P28-F1. Geometry detail is authored here for each industrial location
+    // family, not replaced with flat diffuse-color boxes.
+    this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
+    const floor = this.premiumSurfaces.get('deck-plate');
+    const weathered = this.premiumSurfaces.get('painted-metal');
+    const tower = this.premiumSurfaces.get('bare-metal');
+    const truss = this.premiumSurfaces.get('bare-metal');
+    const ballast = this.premiumSurfaces.get('polymer-rubber');
+    const fixture = this.premiumSurfaces.get('emissive-fixture');
     const routePrimary = material(scene, 'p27-c4-jovian-route-primary-material', 0x4f3523, 0.62, 0.48, 0xf0aa55, 0.19);
     const routeSecondary = material(scene, 'p27-c4-jovian-route-secondary-material', 0x262a29, 0.68, 0.52, 0x78c9d6, 0.07);
-    this.materials = [floor, weathered, tower, truss, ballast, routePrimary, routeSecondary];
+    this.ownedMaterials = [routePrimary, routeSecondary];
+    this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.routeMaterials = [routePrimary, routeSecondary];
     this.machineryMaterial = weathered;
 
@@ -193,6 +219,19 @@ export class BabylonJovianHarvesterPresentation {
       );
       deck.rotation.y = rotationY;
       this.deckMeshes.push(deck);
+      // A recessed paired channel and bolt-shoe hardware give every skimmer
+      // deck an independent depth silhouette without covering combat lanes.
+      for (const side of [-1, 1]) {
+        box(scene, this.root, 'p28-g4-deck-inset-rail-' + index + '-' + side,
+          truss, worldW * fx, 0.535, worldH * fz + side * 0.84,
+          4.2, 0.045, 0.075).rotation.y = rotationY;
+      }
+      for (const inset of [-1.65, -0.55, 0.55, 1.65]) {
+        const join = box(scene, this.root, 'p28-g4-deck-cross-shoe-' + index + '-' + inset,
+          inset > 0 ? weathered : tower, worldW * fx + inset, 0.55, worldH * fz,
+          0.18, 0.095, 1.78);
+        join.rotation.y = rotationY;
+      }
     });
 
     const towerPlacements = [
@@ -220,6 +259,28 @@ export class BabylonJovianHarvesterPresentation {
       crown.material = ballast;
       crown.isPickable = false;
       this.towerMeshes.push(crown);
+      for (const ringIndex of [0, 1, 2]) {
+        const collar = MeshBuilder.CreateTorus('p28-g4-skimmer-condenser-collar-' + index + '-' + ringIndex, {
+          diameter: 1.45 * scale, thickness: 0.085 * scale, tessellation: 32,
+        }, scene);
+        collar.parent = this.root;
+        collar.position.set(worldW * fx, (1.2 + ringIndex * 1.65) * scale, worldH * fz);
+        collar.material = ringIndex === 1 ? fixture : weathered;
+        collar.isPickable = false;
+      }
+      for (const [side, angle] of [0, Math.PI / 2, Math.PI, Math.PI * 1.5].entries()) {
+        const strut = box(scene, this.root, 'p28-g4-skimmer-braced-condenser-' + index + '-' + side,
+          truss, worldW * fx + Math.cos(angle) * 0.60 * scale,
+          2.45 * scale, worldH * fz + Math.sin(angle) * 0.60 * scale,
+          0.13 * scale, 4.15 * scale, 0.13 * scale);
+        strut.rotation.y = angle;
+      }
+      for (const xSide of [-1, 1]) {
+        const transfer = box(scene, this.root, 'p28-g4-skimmer-storm-duct-' + index + '-' + xSide,
+          ballast, worldW * fx + xSide * 1.16 * scale, 0.48 * scale, worldH * fz,
+          1.45 * scale, 0.42 * scale, 0.28 * scale);
+        transfer.rotation.y = xSide * 0.12;
+      }
     });
 
     const bridgePlacements = [
@@ -239,6 +300,14 @@ export class BabylonJovianHarvesterPresentation {
         0.72,
       );
       this.bridgeMeshes.push(bridge);
+      for (const side of [-1, 1]) {
+        box(scene, this.root, 'p28-g4-bridge-cable-tray-' + index + '-' + side,
+          weathered, worldW * fx, 0.73, worldH * fz + side * 0.37,
+          4.6, 0.12, 0.11);
+        box(scene, this.root, 'p28-g4-bridge-lattice-foot-' + index + '-' + side,
+          ballast, worldW * fx, 0.27, worldH * fz + side * 0.27,
+          4.3, 0.25, 0.14);
+      }
     });
 
     const ballastPlacements = [
@@ -258,6 +327,18 @@ export class BabylonJovianHarvesterPresentation {
       pod.material = ballast;
       pod.isPickable = false;
       this.ballastMeshes.push(pod);
+      for (const offset of [-0.74, 0.74]) {
+        const collar = MeshBuilder.CreateTorus('p28-g4-ballast-pressure-collar-' + index + '-' + offset, {
+          diameter: 1.02, thickness: 0.085, tessellation: 32,
+        }, scene);
+        collar.parent = this.root;
+        collar.position.set(worldW * fx + offset, 1.15, worldH * fz);
+        collar.rotation.z = Math.PI / 2;
+        collar.material = fixture;
+        collar.isPickable = false;
+      }
+      box(scene, this.root, 'p28-g4-ballast-saddle-' + index, truss,
+        worldW * fx, 0.36, worldH * fz, 1.54, 0.22, 1.10);
     });
 
     const navigation = getMapNavigationPlan('jovian-harvester');
@@ -274,7 +355,7 @@ export class BabylonJovianHarvesterPresentation {
           scaled(a.y),
           scaled(b.x),
           scaled(b.y),
-          scaled(route.kind === 'primary' ? 72 : route.kind === 'secondary' ? 48 : 34),
+          babylonRouteMarkingWidth(route.kind),
         );
       }
     });
@@ -451,8 +532,51 @@ export class BabylonJovianHarvesterPresentation {
     }
     this.bossCueRoot.setEnabled(false);
 
+
+    const sharedMaterials = new Set(this.premiumSurfaces.materials.values());
+    this.premiumBindingCount = this.root.getChildMeshes(false)
+      .filter(mesh => mesh.material instanceof PBRMaterial && sharedMaterials.has(mesh.material)).length;
+
+    // Grounding uses the same proven alpha atlas as refinery and Spin. The
+    // soft contacts sit below game hazards/telegraphs and never alter physics.
+    const contactSize = REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize;
+    this.groundingTexture = RawTexture.CreateRGBATexture(
+      createRefineryContactDepthAlphaData(contactSize), contactSize, contactSize, scene, false, false,
+    );
+    this.groundingTexture.hasAlpha = true;
+    this.groundingMaterial = new StandardMaterial('p28-g4-jovian-grounding', scene);
+    this.groundingMaterial.diffuseColor = new Color3(0.028, 0.017, 0.011);
+    this.groundingMaterial.specularColor = Color3.Black();
+    this.groundingMaterial.diffuseTexture = this.groundingTexture;
+    this.groundingMaterial.useAlphaFromDiffuseTexture = true;
+    this.groundingMaterial.disableLighting = true;
+    this.groundingMaterial.disableDepthWrite = true;
+    this.groundingMaterial.backFaceCulling = false;
+    this.groundingMaterial.alpha = 0.27;
+    this.groundingSource = MeshBuilder.CreatePlane('p28-g4-jovian-player-contact',
+      { width: 1, height: 1, sideOrientation: Mesh.DOUBLESIDE }, scene);
+    this.groundingSource.parent = this.root;
+    this.groundingSource.material = this.groundingMaterial;
+    this.groundingSource.rotation.x = Math.PI / 2;
+    this.groundingSource.alphaIndex = -300;
+    this.groundingSource.isPickable = false;
+    ballastPlacements.forEach(([fx, fz], index) => {
+      const contact = this.groundingSource.createInstance('p28-g4-jovian-ballast-contact-' + index);
+      contact.parent = this.root;
+      contact.position.set(worldW * fx, 0.045, worldH * fz);
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(1.50, 0.82, 1);
+      contact.alphaIndex = -300;
+      contact.isPickable = false;
+    });
+    this.staticPropGroundingCount = ballastPlacements.length;
     this.meshCount = this.root.getChildMeshes(false).length;
     this.root.setEnabled(false);
+    this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env',
+      scene, undefined, false, undefined,
+      () => { this.iblReady = true; }, () => { this.iblReady = false; }, undefined, true);
+    this.iblTexture.name = 'p28-g4-jovian-shared-prefiltered-ibl';
+    this.iblTexture.gammaSpace = false;
 
     const lighting = BABYLON_JOVIAN_HARVESTER_LIGHTING;
     this.hemisphere = new HemisphericLight('p27-c4-jovian-hemisphere', new Vector3(-0.32, 1, 0.22), scene);
@@ -625,6 +749,36 @@ export class BabylonJovianHarvesterPresentation {
 
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
+    this.groundingMaterial.alpha = renderBudget.tierName === 'performance' ? 0.19 : 0.27;
+    this.groundingSource.position.set(px, 0.044, pz);
+    this.groundingSource.scaling.set(1.05, 0.72, 1);
+    const nearby = new Set<number>();
+    const nearbySq = REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius ** 2;
+    for (const enemy of state.enemies) {
+      if (!enemy.active || enemy.dead) continue;
+      const dx = enemy.x - state.player.x;
+      const dz = enemy.y - state.player.y;
+      if (dx * dx + dz * dz > nearbySq) continue;
+      nearby.add(enemy.id);
+      let contact = this.enemyGrounding.get(enemy.id);
+      if (!contact) {
+        contact = this.groundingSource.createInstance('p28-g4-jovian-enemy-contact-' + enemy.id);
+        contact.parent = this.root;
+        contact.isPickable = false;
+        contact.alphaIndex = -300;
+        this.enemyGrounding.set(enemy.id, contact);
+      }
+      const size = refineryActorGroundingScale(enemy.role);
+      contact.position.set(scaled(enemy.x), 0.043, scaled(enemy.y));
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(1.05 * size, 0.72 * size, 1);
+    }
+    for (const [id, contact] of this.enemyGrounding) {
+      if (!nearby.has(id)) {
+        contact.dispose();
+        this.enemyGrounding.delete(id);
+      }
+    }
     let readabilityX = px;
     let readabilityZ = pz;
     let nearestDistanceSq = Number.POSITIVE_INFINITY;
@@ -658,8 +812,10 @@ export class BabylonJovianHarvesterPresentation {
     this.routeMaterials[0].emissiveColor = colorFromHex(0xf0aa55).scale(0.19 * routePulse);
     this.routeMaterials[1].emissiveColor = colorFromHex(0x78c9d6).scale(0.07 * routePulse);
 
-    this.scene.environmentTexture = null;
-    this.scene.environmentIntensity = 0;
+    this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
+    this.scene.environmentIntensity = this.iblReady
+      ? (renderBudget.tierName === 'performance' ? 0.19 : 0.29)
+      : 0;
     this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
     this.scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.scene.imageProcessingConfiguration.exposure = lighting.exposure * (lowVisibility ? 1.03 : 1);
@@ -684,7 +840,8 @@ export class BabylonJovianHarvesterPresentation {
     this.canvas.dataset.environmentShadowCasters = 'off';
     this.canvas.dataset.environmentLandmark = 'five-skimmer-tower-spine';
     this.canvas.dataset.environmentServiceDetails = 'transfer-bridge:' + bridgeCount + '+ballast-pod:' + ballastCount + '+machinery-cues:' + machineCount;
-    this.canvas.dataset.environmentSurfaceDetail = 'deck-span:' + deckCount + '+skimmer-tower:' + profile.towerInstances;
+    this.canvas.dataset.environmentSurfaceDetail = 'deck-span:' + deckCount
+      + '+deck-rails:12+deck-shoes:24+condenser-collars:15+skimmer-braces:20+bridge-trays:8+ballast-collars:8';
     this.canvas.dataset.environmentComposition = 'elevated-skimmer-decks+five-tower-spine+transfer-bridges+ballast-pods';
     this.canvas.dataset.environmentMaterials = 'weathered-shell+dark-truss+amber-wayfinding+bright-ballast-shell';
     this.canvas.dataset.environmentZoneIdentity = 'deck:weathered-plate|tower:vertical-skimmer-spine|bridge:dark-transfer-truss|ballast:light-suspended-pod';
@@ -727,9 +884,24 @@ export class BabylonJovianHarvesterPresentation {
     this.canvas.dataset.babylonJovianRoutes = String(navigation.routes.length);
     this.canvas.dataset.babylonJovianLandmarks = navigation.landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;
-    this.canvas.dataset.babylonMaterialIntent = 'procedural-weathered-condenser-pbr+shared-world-pbr';
+    this.canvas.dataset.babylonMaterialIntent = 'premium-ktx2-industrial-condenser-pbr+shared-world-pbr';
+    const premiumReady = BABYLON_JOVIAN_PREMIUM_SURFACES.every(id => {
+      const pbr = this.premiumSurfaces.get(id);
+      return pbr.albedoTexture?.isReady() === true
+        && pbr.bumpTexture?.isReady() === true
+        && pbr.metallicTexture?.isReady() === true
+        && (!pbr.emissiveTexture || pbr.emissiveTexture.isReady());
+    });
+    this.canvas.dataset.jovianPremiumAssetState = premiumReady ? 'ready' : 'loading';
+    this.canvas.dataset.jovianPremiumBindings = String(this.premiumBindingCount);
+    this.canvas.dataset.jovianPremiumSurfaces = BABYLON_JOVIAN_PREMIUM_SURFACES.join(',');
+    this.canvas.dataset.jovianGrounding = 'player+enemies:soft-contact';
+    this.canvas.dataset.jovianGroundedEnemies = String(nearby.size);
+    this.canvas.dataset.jovianGroundedProps = String(this.staticPropGroundingCount);
+    this.canvas.dataset.babylonRouteMarkingProfile = 'jovian-recessed-deck-inlay';
+    this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary);
     this.canvas.dataset.babylonLightingBudget = 'tier:' + renderBudget.tierName + '|practical:' + practicalCount + '|shadows:off';
-    this.canvas.dataset.environmentIbl = 'off:jovian-harvester';
+    this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading';
     this.canvas.dataset.environmentLighting = 'jovian-harvester-storm-orange:tower+relief+contact:player+enemy+practical:' + practicalCount + '+shadow:off';
     this.canvas.dataset.environmentShadowBudget = 'off:jovian-harvester-babylon';
     this.canvas.dataset.environmentTone = 'aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2);
@@ -749,9 +921,16 @@ export class BabylonJovianHarvesterPresentation {
 
   dispose() {
     this.release('renderer-dispose');
+    for (const contact of this.enemyGrounding.values()) contact.dispose();
+    this.enemyGrounding.clear();
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose());
     this.root.dispose();
-    this.materials.forEach(item => item.dispose());
+    this.groundingMaterial.dispose();
+    this.groundingTexture.dispose();
+    if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
+    this.iblTexture.dispose();
+    this.ownedMaterials.forEach(item => item.dispose());
+    this.premiumSurfaces.dispose();
     this.chargeMaterial.dispose();
     this.pressureMaterial.dispose();
     this.reliefMaterial.dispose();

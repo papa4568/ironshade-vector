@@ -1,0 +1,134 @@
+name: P28-G4 Exact APK Jovian Visual QA
+
+# Supplemental real gameplay screenshots only. The unchanged trusted PR Candidate
+# producer and Android API35/36 gates remain independently mandatory.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/game/babylonJovianHarvesterPresentation.ts'
+      - 'src/game/babylonWorldPresentation.ts'
+      - 'src/game/babylonRefineryMissionReadiness.ts'
+      - 'tests/babylon-jovian-harvester.ts'
+      - 'tools/android-p28g4-jovian-capture.mjs'
+      - 'tools/android-p28g4-jovian-capture.sh'
+      - 'tools/p28g4-jovian-provenance.mjs'
+      - 'tools/verify-p28g4-gameplay-frames.mjs'
+      - '.github/workflows/p28-g4-jovian-visual-qa.yml'
+      - 'docs/content-roadmap.md'
+      - 'docs/content-roadmap-archive.md'
+      - 'agent/roadmap-metadata.json'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: p28g4-visual-qa-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  exact-apk-jovian-frames:
+    name: G4 Real Android Gameplay Pixels and Provenance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Find authoritative exact-candidate APK
+        id: producer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          for attempt in $(seq 1 150); do
+            run_id="$(gh api "/repos/$REPO/actions/runs?event=pull_request&head_sha=$CANDIDATE_SHA&per_page=100" --jq ".workflow_runs | map(select(.name == \"PR Candidate Verification\" and .head_sha == \"$CANDIDATE_SHA\")) | first | .id // empty")"
+            if [[ -n "$run_id" ]]; then
+              artifact="$(gh api "/repos/$REPO/actions/runs/$run_id/artifacts?per_page=100" --jq '.artifacts[] | select(.name == "ironshade-vector-pr-android-apk") | .id' | head -n 1)"
+              if [[ "$artifact" =~ ^[0-9]+$ ]]; then
+                echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+                echo "P28G4_EXACT_APK_PRODUCER_READY sha=$CANDIDATE_SHA run=$run_id"
+                exit 0
+              fi
+              status="$(gh api "/repos/$REPO/actions/runs/$run_id" --jq '.status')"
+              if [[ "$status" == completed ]]; then
+                echo "Producer completed without exact candidate APK" >&2
+                exit 1
+              fi
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for the authoritative APK" >&2
+          exit 1
+
+      - name: Download exact-candidate APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-pr-android-apk
+          run-id: ${{ steps.producer.outputs.run_id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+
+      - name: Verify APK checksum and source identity
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -s Ironshade-Vector-Android-Smoke.apk
+          sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+          printf '%s\n' "$CANDIDATE_SHA" > android-p28g4-candidate-sha.txt
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Preinstall API 35 emulator image
+        run: bash scripts/install-android-system-image.sh 35 default x86_64
+
+      - name: Capture exact APK normal and action frames on API 35
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh && bash tools/android-p28g4-jovian-capture.sh'
+
+      - name: Publish exact-head visual proof
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: p28-g4-exact-apk-jovian-${{ github.event.pull_request.head.sha }}
+          path: |
+            android-p28g4-candidate-sha.txt
+            android-p28g4-jovian-harvester-normal.png
+            android-p28g4-jovian-harvester-action.png
+            android-p28g4-jovian-harvester-device.png
+            android-p28g4-jovian-harvester.json
+            android-p28g4-jovian-harvester-pixel-report.json
+            android-p28g4-jovian-harvester-logcat.txt
+            android-p28g4-jovian-harvester-activity.txt
+            android-fast-logcat.txt
+            android-fast-smoke.png
+          if-no-files-found: warn
+          retention-days: 30
