@@ -569,6 +569,115 @@ function p28g4CaptureBoundaryCalibration() {
   return { falsePositives: 0, falseNegatives: 0, attacks: attacks.length };
 }
 
+// AO-14 trusted-source calibration: use the exact reviewed G4 consumer Git
+// commit, then synthesize immutable Git commits for real roadmap closeout
+// mutations. No candidate-defined predicates or fixtures grant authorization.
+function p28g4CaptureGitBoundaryCalibration() {
+  const g4SourceSha = 'c6ce807b803264b2818564787824950a6ebf2bf0';
+  const base = git(['merge-base', 'HEAD', g4SourceSha]);
+  assert.equal(gitEntry(base, ANDROID_WORKFLOW_PATH), P28G4_CAPTURE_BASE.android,
+    'G4 Git calibration base must use the reviewed trusted Android entry');
+  assert.equal(gitEntry(base, 'scripts'), P28G4_CAPTURE_BASE.scripts,
+    'G4 Git calibration base must use the reviewed trusted scripts tree');
+  assert.equal(gitEntry(g4SourceSha, ANDROID_WORKFLOW_PATH), P28G4_CAPTURE_REVIEWED.android,
+    'G4 Git calibration candidate must use the exact reviewed Android entry');
+  assert.equal(gitEntry(g4SourceSha, 'scripts'), P28G4_CAPTURE_REVIEWED.scripts,
+    'G4 Git calibration candidate must use the exact reviewed scripts tree');
+
+  const roadmapPath = 'docs/content-roadmap.md';
+  const archivePath = 'docs/content-roadmap-archive.md';
+  const metadataPath = 'agent/roadmap-metadata.json';
+  const roadmap = gitText(base, roadmapPath);
+  const archive = gitText(base, archivePath);
+  const metadata = JSON.parse(gitText(base, metadataPath));
+  for (const path of [roadmapPath, archivePath, metadataPath]) {
+    assert.equal(gitEntry(g4SourceSha, path), gitEntry(base, path),
+      'reviewed G4 source may not pre-author its closeout: ' + path);
+  }
+  assert.equal(metadata.roadmapIds[0], 'P28-G4', 'G4 must be the first trusted product task');
+  const taskLine = roadmap.split('\n').find(line => line.startsWith('- [ ] **'));
+  assert(taskLine?.startsWith('- [ ] **P28-G4 — Refresh Jovian Harvester visuals**'),
+    'reviewed G4 closeout must select the actual first roadmap task');
+  const title = taskLine.match(/^- \[ \] \*\*(.+?)\*\*/)?.[1];
+  assert(title, 'reviewed G4 closeout must retain the exact task title');
+  const heading = '## P28 — Babylon flagship visual-quality overhaul\n\n';
+  assert(archive.includes(heading), 'trusted G4 archive heading missing');
+  const expectedRoadmap = roadmap.replace(taskLine + '\n\n', '');
+  assert.notEqual(expectedRoadmap, roadmap, 'trusted G4 roadmap closeout must remove the first item');
+  const expectedArchive = archive.replace(heading, heading
+    + '- [x] **' + title + '** — Completed in immutable Git-tree acceptance calibration.\n'
+    + '  - Synthetic proof: source pin, roadmap closeout and adverse mutations.\n\n');
+  const expectedMetadata = structuredClone(metadata);
+  expectedMetadata.roadmapIds.shift();
+  const remaining = new Set(expectedMetadata.roadmapIds);
+  for (const id of Object.keys(expectedMetadata.overrides ?? {})) {
+    if (!remaining.has(id)) delete expectedMetadata.overrides[id];
+    else if (Array.isArray(expectedMetadata.overrides[id].dependsOn)) {
+      expectedMetadata.overrides[id].dependsOn = expectedMetadata.overrides[id].dependsOn.filter(dep => remaining.has(dep));
+      if (!expectedMetadata.overrides[id].dependsOn.length) delete expectedMetadata.overrides[id].dependsOn;
+    }
+  }
+  const changes = [
+    { path: roadmapPath, content: expectedRoadmap },
+    { path: archivePath, content: expectedArchive },
+    { path: metadataPath, content: JSON.stringify(expectedMetadata, null, 2) + '\n' },
+  ];
+  const accepted = createSyntheticRoadmapCandidate({
+    id: 'g4-reviewed-source-valid-git-closeout', baseSha: g4SourceSha, changes,
+  });
+  assert.equal(validPinnedP28G4VisualCapture(base, g4SourceSha), false,
+    'reviewed G4 source without closeout must remain ineligible');
+  assert.equal(validPinnedP28G4VisualCapture(base, accepted), true,
+    'the exact reviewed G4 consumer objects plus legitimate Git-tree closeout must pass');
+
+  const reorderedMetadata = structuredClone(expectedMetadata);
+  [reorderedMetadata.roadmapIds[0], reorderedMetadata.roadmapIds[1]] =
+    [reorderedMetadata.roadmapIds[1], reorderedMetadata.roadmapIds[0]];
+  const attacks = [
+    { id: 'missing-metadata', changes: changes.slice(0, 2) },
+    { id: 'missing-archive', changes: [changes[0], changes[2]] },
+    { id: 'missing-roadmap', changes: changes.slice(1) },
+    { id: 'wrong-archive-title', changes: [changes[0], {
+      path: archivePath,
+      content: expectedArchive.replace('- [x] **' + title + '**', '- [x] **P28-G4 — Impostor**'),
+    }, changes[2]] },
+    { id: 'wrong-roadmap-order', changes: [{ path: roadmapPath,
+      content: expectedRoadmap.replace('- [ ] **', '- [ ] **UNAUTHORIZED-'),
+    }, changes[1], changes[2]] },
+    { id: 'reordered-inventory', changes: [changes[0], changes[1], {
+      path: metadataPath, content: JSON.stringify(reorderedMetadata, null, 2) + '\n',
+    }] },
+    { id: 'unrelated-metadata-change', changes: [changes[0], changes[1], {
+      path: metadataPath, content: JSON.stringify({ ...expectedMetadata, schemaVersion: 999 }, null, 2) + '\n',
+    }] },
+  ];
+  for (const attack of attacks) {
+    const dishonest = createSyntheticRoadmapCandidate({
+      id: 'g4-git-' + attack.id, baseSha: g4SourceSha, changes: attack.changes,
+    });
+    assert.equal(validPinnedP28G4VisualCapture(base, dishonest), false,
+      'G4 Git-backed closeout gate admitted attack: ' + attack.id);
+  }
+  const entryAttacks = [
+    { id: 'metadata-chmod', path: metadataPath, content: changes[2].content, mode: '100755' },
+    { id: 'android-chmod', path: ANDROID_WORKFLOW_PATH,
+      content: gitText(accepted, ANDROID_WORKFLOW_PATH), mode: '100755' },
+    { id: 'android-unreviewed-blob', path: ANDROID_WORKFLOW_PATH,
+      content: gitText(accepted, ANDROID_WORKFLOW_PATH) + '\n# unauthorized\n' },
+    { id: 'scripts-unreviewed-tree', path: 'scripts/verify-p28g2-gameplay-frames.mjs',
+      content: gitText(accepted, 'scripts/verify-p28g2-gameplay-frames.mjs') + '\n// unauthorized\n' },
+  ];
+  for (const attack of entryAttacks) {
+    const dishonest = createSyntheticRoadmapCandidate({
+      id: 'g4-git-' + attack.id, baseSha: accepted, changes: [attack],
+    });
+    assert.equal(validPinnedP28G4VisualCapture(base, dishonest), false,
+      'G4 Git-backed trusted object gate admitted attack: ' + attack.id);
+  }
+  return { accepted: true, attacks: attacks.length + entryAttacks.length + 1,
+    falsePositives: 0, falseNegatives: 0 };
+}
+
 function steadyChecks({ trustedBaseSha, candidateSha }) {
   const expectedWorkflowEntry = gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH);
   const baseDeps = gitPathRefs(trustedBaseSha, TRUSTED_CONSUMER_DEPENDENCIES);
@@ -1054,8 +1163,9 @@ function selfTest() {
   const f7ShadowBundle = f7ShadowCloseoutFixtureCalibration();
   const p28g3CaptureBundle = p28g3CaptureBoundaryCalibration();
   const p28g4CaptureBundle = p28g4CaptureBoundaryCalibration();
+  const p28g4GitCaptureBundle = p28g4CaptureGitBoundaryCalibration();
   const observerSourceBundle = observerImplementationBoundaryCalibration();
-  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass roadmapFixtureRepairAttacks=${roadmapFixtureRepair.attacks} roadmapFixtureRepairCalibration=pass roadmapShadowBundleAttacks=${roadmapShadowBundle.attacks} roadmapShadowBundleCalibration=pass f7ShadowFixtureAttacks=${f7ShadowBundle.attacks} f7ShadowFixtureRetired=${f7ShadowBundle.retired} f7ShadowFixtureCalibration=pass p28g3CaptureBoundaryAttacks=${p28g3CaptureBundle.attacks} p28g3CaptureBoundaryCalibration=pass p28g4CaptureBoundaryAttacks=${p28g4CaptureBundle.attacks} p28g4CaptureBoundaryCalibration=pass observerSourceBoundaryAttacks=${observerSourceBundle.attacks} observerSourceBoundaryCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
+  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass roadmapFixtureRepairAttacks=${roadmapFixtureRepair.attacks} roadmapFixtureRepairCalibration=pass roadmapShadowBundleAttacks=${roadmapShadowBundle.attacks} roadmapShadowBundleCalibration=pass f7ShadowFixtureAttacks=${f7ShadowBundle.attacks} f7ShadowFixtureRetired=${f7ShadowBundle.retired} f7ShadowFixtureCalibration=pass p28g3CaptureBoundaryAttacks=${p28g3CaptureBundle.attacks} p28g3CaptureBoundaryCalibration=pass p28g4CaptureBoundaryAttacks=${p28g4CaptureBundle.attacks} p28g4CaptureBoundaryCalibration=pass p28g4GitCaptureBoundaryAttacks=${p28g4GitCaptureBundle.attacks} p28g4GitCaptureBoundaryCalibration=pass observerSourceBoundaryAttacks=${observerSourceBundle.attacks} observerSourceBoundaryCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
 }
 
 function verify() {
