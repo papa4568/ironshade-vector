@@ -225,6 +225,7 @@ for (const [name, mutation, expectedProblem] of [
 }
 
 const androidWorkflow = read('.github/workflows/p28-g4-jovian-visual-qa.yml');
+const g4FrameHelper = read('tools/p28g4-android-frame.mjs');
 const androidCapture = read('tools/android-p28g4-jovian-capture.mjs');
 const androidShell = read('tools/android-p28g4-jovian-capture.sh');
 const androidVerifier = read('tools/verify-p28g4-gameplay-frames.mjs');
@@ -241,7 +242,13 @@ assert(
     && androidCapture.includes("d.missionVisualReadiness === 'ready'")
     && androidCapture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
     && androidCapture.includes("Number(d.babylonSharedWorldFallbackCount || 0) === 0")
-    && androidCapture.includes("captureVerifiedAndroidGameplay(path, 'P28-G4')")
+    && androidCapture.includes("captureAcceptedG4Frame(path, 'P28-G4')")
+    && g4FrameHelper.includes("captureVerifiedAndroidGameplay(path, label)")
+    && g4FrameHelper.includes("auditGameplayFrame(decodeScreenshotPng(png))")
+    && g4FrameHelper.includes("needsQuickstepRecovery(frame)")
+    && g4FrameHelper.includes("if (verdict === 'reject') throw new Error")
+    && androidShell.includes('await captureAcceptedG4Frame("android-p28g4-jovian-harvester-device.png"')
+
     && androidWorkflow.includes('ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh')
     && androidCapture.includes('const target = await waitForTarget()')
     && androidCapture.includes('WebView target was replaced during startup')

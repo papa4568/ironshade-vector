@@ -21,9 +21,10 @@ trap capture_diagnostics EXIT
 CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g4-jovian-capture.mjs
 node tools/verify-p28g4-gameplay-frames.mjs android-p28g4-jovian-harvester-normal.png android-p28g4-jovian-harvester-action.png android-p28g4-jovian-harvester-pixel-report.json android-p28g4-jovian-harvester.json
 # Capture the actual Android display in addition to the Chrome WebView frames.
-adb exec-out screencap -p > android-p28g4-jovian-harvester-device.png
 node --input-type=module -e '
   import { readFileSync } from "node:fs";
+  import { captureAcceptedG4Frame } from "./tools/p28g4-android-frame.mjs";
+  await captureAcceptedG4Frame("android-p28g4-jovian-harvester-device.png", "P28-G4-device");
   const png = readFileSync("android-p28g4-jovian-harvester-device.png");
   if (png.length < 20000 || png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
     throw new Error("P28-G4 actual Android screencap was blank or invalid");

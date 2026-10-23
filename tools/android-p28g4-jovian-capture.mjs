@@ -2,7 +2,7 @@
 // Screenshots and telemetry are captured from the live, deployed combat scene.
 import { writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { captureVerifiedAndroidGameplay } from '../scripts/android-quickstep-frame-recovery.mjs';
+import { captureAcceptedG4Frame } from './p28g4-android-frame.mjs';
 
 const endpoint = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -102,7 +102,7 @@ async function clickButton(label) {
   if (!found) throw new Error('P28-G4 Android action unavailable: ' + label);
 }
 async function capture(path) {
-  return await captureVerifiedAndroidGameplay(path, 'P28-G4');
+  return await captureAcceptedG4Frame(path, 'P28-G4');
 }
 
 try {
