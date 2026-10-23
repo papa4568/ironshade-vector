@@ -2,7 +2,7 @@
 // Screenshots and telemetry are captured from the live, deployed combat scene.
 import { writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { captureVerifiedAndroidGameplay } from './android-quickstep-frame-recovery.mjs';
+import { captureVerifiedAndroidGameplay } from '../scripts/android-quickstep-frame-recovery.mjs';
 
 const endpoint = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));

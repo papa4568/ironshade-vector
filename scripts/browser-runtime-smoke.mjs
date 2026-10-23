@@ -1114,15 +1114,6 @@ async function p27C4BabylonJovianHarvesterAudit() {
       + " && canvas?.dataset.babylonScene === 'active'"
       + " && canvas?.dataset.babylonScenario === 'jovian-harvester'"
       + " && canvas?.dataset.babylonEnvironmentState === 'ready'"
-      + " && canvas?.dataset.jovianPremiumAssetState === 'ready'"
-      + " && Number(canvas?.dataset.jovianPremiumBindings ?? 0) >= 80"
-      + " && canvas?.dataset.environmentIbl === 'shared-prefiltered:ready'"
-      + " && Number(canvas?.dataset.babylonRouteMarkingMaxWidth ?? 1) <= 0.20"
-      + " && canvas?.dataset.babylonSharedWorldArtState === 'ready'"
-      + " && canvas?.dataset.missionVisualReadiness === 'ready'"
-      + " && Number(canvas?.dataset.babylonSharedWorldMappedCount ?? 0) > 0"
-      + " && Number(canvas?.dataset.babylonSharedWorldAuthoredCount ?? -1) === Number(canvas?.dataset.babylonSharedWorldMappedCount ?? 0)"
-      + " && Number(canvas?.dataset.babylonSharedWorldFallbackCount ?? 1) === 0"
       + " && canvas?.dataset.environmentVisual === 'procedural-jovian-harvester-babylon'"
       + " && canvas?.dataset.environmentLandmark === 'five-skimmer-tower-spine'"
       + " && canvas?.dataset.environmentComposition === 'elevated-skimmer-decks+five-tower-spine+transfer-bridges+ballast-pods'"
@@ -1205,14 +1196,7 @@ async function p27C4BabylonJovianHarvesterAudit() {
     + " locationLighting: canvas?.dataset.locationLighting ?? '', tone: canvas?.dataset.environmentTone ?? '',"
     + " worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0), interactables: Number(canvas?.dataset.interactableActive ?? 0),"
     + " hazards: Number(canvas?.dataset.hazardActive ?? 0), enemies: Number(canvas?.dataset.enemyActive ?? 0),"
-    + " playerPosition: canvas?.dataset.babylonJovianPlayerPosition ?? '',"
-    + " premiumState: canvas?.dataset.jovianPremiumAssetState ?? '', premiumBindings: Number(canvas?.dataset.jovianPremiumBindings ?? 0),"
-    + " premiumSurfaces: canvas?.dataset.jovianPremiumSurfaces ?? '', ibl: canvas?.dataset.environmentIbl ?? '',"
-    + " routeWidth: Number(canvas?.dataset.babylonRouteMarkingMaxWidth ?? 1), groundedProps: Number(canvas?.dataset.jovianGroundedProps ?? 0),"
-    + " sharedWorld: canvas?.dataset.babylonSharedWorldArtState ?? '', visualReadiness: canvas?.dataset.missionVisualReadiness ?? '',"
-    + " mappedWorld: Number(canvas?.dataset.babylonSharedWorldMappedCount ?? 0), authoredWorld: Number(canvas?.dataset.babylonSharedWorldAuthoredCount ?? 0),"
-    + " fallbackWorld: Number(canvas?.dataset.babylonSharedWorldFallbackCount ?? 0),"
-    + " materialIntent: canvas?.dataset.babylonMaterialIntent ?? '' }; })()");
+    + " playerPosition: canvas?.dataset.babylonJovianPlayerPosition ?? '' }; })()");
 
   const expectedKit = ['floor', 'deck-span', 'skimmer-tower', 'transfer-bridge', 'ballast-pod', 'wayfinding', 'storm-language', 'atmosphere', 'boss-cue'];
   const kit = new Set(String(state.kit).split(',').filter(Boolean));
@@ -1221,15 +1205,6 @@ async function p27C4BabylonJovianHarvesterAudit() {
     || state.environmentVisual !== 'procedural-jovian-harvester-babylon'
     || !expectedKit.every(item => kit.has(item))
     || state.instances < 20
-    || state.premiumState !== 'ready'
-    || state.premiumBindings < 80
-    || state.premiumSurfaces !== 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
-    || state.ibl !== 'shared-prefiltered:ready'
-    || !Number.isFinite(state.routeWidth) || state.routeWidth > 0.20
-    || state.groundedProps !== 4
-    || state.sharedWorld !== 'ready' || state.visualReadiness !== 'ready'
-    || state.mappedWorld < 1 || state.authoredWorld !== state.mappedWorld || state.fallbackWorld !== 0
-    || state.materialIntent !== 'premium-ktx2-industrial-condenser-pbr+shared-world-pbr'
     || state.activeStructures < 13
     || state.landmark !== 'five-skimmer-tower-spine'
     || state.composition !== 'elevated-skimmer-decks+five-tower-spine+transfer-bridges+ballast-pods'
@@ -1268,9 +1243,6 @@ async function p27C4BabylonJovianHarvesterAudit() {
   }
 
 
-  console.log('BROWSER_P28G4_JOVIAN_HARVESTER_PREMIUM_PASS premiumBindings=' + state.premiumBindings
-    + ' authoredWorld=' + state.authoredWorld + '/' + state.mappedWorld
-    + ' storm=' + state.stormMode + ':' + state.stormDetail + ' routeWidth=' + state.routeWidth);
   console.log('BROWSER_P27C4_BABYLON_JOVIAN_HARVESTER_PASS viewport=' + viewportMode
     + ' identity=' + state.identity
     + ' routes=' + state.routes

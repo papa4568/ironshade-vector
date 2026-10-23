@@ -11,8 +11,8 @@ PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
 test -n "$PID"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:webview_devtools_remote_${PID}"
-CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-p28g4-jovian-capture.mjs
-node scripts/verify-p28g4-gameplay-frames.mjs android-p28g4-jovian-harvester-normal.png android-p28g4-jovian-harvester-action.png android-p28g4-jovian-harvester-pixel-report.json android-p28g4-jovian-harvester.json
+CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g4-jovian-capture.mjs
+node tools/verify-p28g4-gameplay-frames.mjs android-p28g4-jovian-harvester-normal.png android-p28g4-jovian-harvester-action.png android-p28g4-jovian-harvester-pixel-report.json android-p28g4-jovian-harvester.json
 # Capture the actual Android display in addition to the Chrome WebView frames.
 adb exec-out screencap -p > android-p28g4-jovian-harvester-device.png
 node --input-type=module -e '

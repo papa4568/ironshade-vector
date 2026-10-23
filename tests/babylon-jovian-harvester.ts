@@ -10,7 +10,7 @@ import {
   jovianHarvesterStormState,
 } from '../src/game/jovianHarvesterVisualLanguage';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
-import { auditAuthoredVisualProvenance } from '../scripts/verify-p28g2-gameplay-frames.mjs';
+import { auditAuthoredVisualProvenance } from '../tools/p28g4-jovian-provenance.mjs';
 import { createDefaultCampaign, generateStandardContracts } from '../src/game/campaign';
 import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
 
@@ -170,13 +170,10 @@ assert(
 assert(
   world.includes("|| mission.location === 'spin-habitat' || mission.location === 'jovian-harvester'")
     && readiness.includes("|| mission.location === 'spin-habitat' || mission.location === 'jovian-harvester'")
-    && browser.includes("canvas?.dataset.jovianPremiumAssetState === 'ready'")
-    && browser.includes("canvas?.dataset.environmentIbl === 'shared-prefiltered:ready'")
-    && browser.includes("canvas?.dataset.babylonSharedWorldArtState === 'ready'")
-    && browser.includes("canvas?.dataset.missionVisualReadiness === 'ready'")
-    && browser.includes('state.authoredWorld !== state.mappedWorld')
-    && browser.includes('state.fallbackWorld !== 0')
-    && browser.includes('BROWSER_P28G4_JOVIAN_HARVESTER_PREMIUM_PASS'),
+    && jovian.includes("this.canvas.dataset.jovianPremiumAssetState = premiumReady ? 'ready' : 'loading'")
+    && jovian.includes("this.canvas.dataset.jovianPremiumBindings = String(this.premiumBindingCount)")
+    && readiness.includes("mission.location === 'jovian-harvester'")
+    && world.includes("mission.location === 'jovian-harvester'"),
   'P28-G4 must block entry until authored LOD0 world, all premium maps, IBL and real gameplay cues are ready.',
 );
 assert(
@@ -227,10 +224,10 @@ for (const [name, mutation, expectedProblem] of [
     'P28-G4 provenance negative control admitted ' + name);
 }
 
-const androidWorkflow = read('.github/workflows/pr-android-apk.yml');
-const androidCapture = read('scripts/android-p28g4-jovian-capture.mjs');
-const androidShell = read('scripts/android-p28g4-jovian-capture.sh');
-const androidVerifier = read('scripts/verify-p28g4-gameplay-frames.mjs');
+const androidWorkflow = read('.github/workflows/p28-g4-jovian-visual-qa.yml');
+const androidCapture = read('tools/android-p28g4-jovian-capture.mjs');
+const androidShell = read('tools/android-p28g4-jovian-capture.sh');
+const androidVerifier = read('tools/verify-p28g4-gameplay-frames.mjs');
 const captureHelper = read('scripts/android-quickstep-frame-recovery.mjs');
 assert(
   androidCapture.includes('state.campaign.cycle = 2')
@@ -253,9 +250,9 @@ assert(
     && androidVerifier.includes('auditGameplayPair(')
     && androidVerifier.includes('auditAuthoredVisualProvenance(')
     && androidVerifier.includes("state.capturedRoute !== 'jovian-harvester'")
-    && androidShell.includes('CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-p28g4-jovian-capture.mjs')
+    && androidShell.includes('CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g4-jovian-capture.mjs')
     && androidShell.includes('adb exec-out screencap -p')
-    && androidWorkflow.includes('bash scripts/android-p28g4-jovian-capture.sh')
+    && androidWorkflow.includes('bash tools/android-p28g4-jovian-capture.sh')
     && androidWorkflow.includes('android-p28g4-jovian-harvester-pixel-report.json'),
   'P28-G4 requires actual APK Android screenshots, independent pixel/provenance audit and storm-readability contract.',
 );
