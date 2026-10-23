@@ -24,12 +24,33 @@ async function waitForTarget() {
   throw new Error('P28-G4 Android WebView CDP target did not start.');
 }
 
-const target = await waitForTarget();
-const socket = await new Promise((resolve, reject) => {
-  const ws = new WebSocket(target.webSocketDebuggerUrl);
-  ws.addEventListener('open', () => resolve(ws), { once: true });
-  ws.addEventListener('error', () => reject(new Error('P28-G4 Android WebView CDP connection failed')), { once: true });
-});
+// Android may replace the first WebView target while landscape/immersive mode
+// settles. Always re-query the live target after a bounded socket failure.
+const socket = await (async () => {
+  let lastError = '';
+  while (Date.now() - start < deadlineMs) {
+    const target = await waitForTarget();
+    try {
+      return await new Promise((resolve, reject) => {
+        const ws = new WebSocket(target.webSocketDebuggerUrl);
+        const timer = setTimeout(() => reject(new Error('WebView socket handshake timeout')), 7_500);
+        ws.addEventListener('open', () => { clearTimeout(timer); resolve(ws); }, { once: true });
+        ws.addEventListener('error', () => {
+          clearTimeout(timer);
+          reject(new Error('WebView target closed during startup'));
+        }, { once: true });
+        ws.addEventListener('close', () => {
+          clearTimeout(timer);
+          reject(new Error('WebView target was replaced during startup'));
+        }, { once: true });
+      });
+    } catch (error) {
+      lastError = String(error);
+      await sleep(500);
+    }
+  }
+  throw new Error('P28-G4 Android WebView CDP connection never stabilized: ' + lastError);
+})();
 const pending = new Map();
 let nextId = 0;
 socket.addEventListener('message', event => {

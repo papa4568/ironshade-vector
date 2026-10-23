@@ -109,7 +109,7 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          script: bash -lc 'adb install -r Ironshade-Vector-Android-Smoke.apk && bash tools/android-p28g4-jovian-capture.sh'
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh && bash tools/android-p28g4-jovian-capture.sh'
 
       - name: Publish exact-head visual proof
         if: always()
@@ -125,5 +125,7 @@ jobs:
             android-p28g4-jovian-harvester-pixel-report.json
             android-p28g4-jovian-harvester-logcat.txt
             android-p28g4-jovian-harvester-activity.txt
+            android-fast-logcat.txt
+            android-fast-smoke.png
           if-no-files-found: warn
           retention-days: 30
