@@ -15,6 +15,9 @@ on:
       - 'tools/p28g4-jovian-provenance.mjs'
       - 'tools/verify-p28g4-gameplay-frames.mjs'
       - '.github/workflows/p28-g4-jovian-visual-qa.yml'
+      - 'docs/content-roadmap.md'
+      - 'docs/content-roadmap-archive.md'
+      - 'agent/roadmap-metadata.json'
 
 permissions:
   contents: read
