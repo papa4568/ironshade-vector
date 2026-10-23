@@ -54,8 +54,8 @@ jobs:
           for attempt in $(seq 1 150); do
             run_id="$(gh api "/repos/$REPO/actions/runs?event=pull_request&head_sha=$CANDIDATE_SHA&per_page=100" --jq ".workflow_runs | map(select(.name == \"PR Candidate Verification\" and .head_sha == \"$CANDIDATE_SHA\")) | first | .id // empty")"
             if [[ -n "$run_id" ]]; then
-              artifact="$(gh api "/repos/$REPO/actions/runs/$run_id/artifacts?per_page=100" --jq '[.artifacts[].name] | index("ironshade-vector-pr-android-apk")')"
-              if [[ "$artifact" != "null" ]]; then
+              artifact="$(gh api "/repos/$REPO/actions/runs/$run_id/artifacts?per_page=100" --jq '.artifacts[] | select(.name == "ironshade-vector-pr-android-apk") | .id' | head -n 1)"
+              if [[ "$artifact" =~ ^[0-9]+$ ]]; then
                 echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
                 echo "P28G4_EXACT_APK_PRODUCER_READY sha=$CANDIDATE_SHA run=$run_id"
                 exit 0
