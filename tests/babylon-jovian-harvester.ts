@@ -246,6 +246,8 @@ assert(
     && androidCapture.includes('const target = await waitForTarget()')
     && androidCapture.includes('WebView target was replaced during startup')
     && androidCapture.includes("waitFor('location.href', 'initial cold WebView URL', 120_000)")
+    && /^  const current = await waitFor\('location\\.href', 'initial cold WebView URL', 120_000\);$/m.test(androidCapture)
+    && !androidCapture.includes('flagship client.\\\\n  //')
     && androidShell.includes('trap capture_diagnostics EXIT')
     && androidShell.includes('android-p28g4-jovian-harvester-activity.txt')
     && androidCapture.includes('before === result.playerPosition')

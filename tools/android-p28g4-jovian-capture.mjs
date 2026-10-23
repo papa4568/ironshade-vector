@@ -108,7 +108,9 @@ async function capture(path) {
 try {
   await call('Runtime.enable');
   await call('Page.enable');
-  // The first evaluation can stall while a cold Android WebView compiles the\n  // heavyweight flagship client. Retry only the initial probe; every actual\n  // route/pixel/provenance assertion remains strict and separately bounded.\n  const current = await waitFor('location.href', 'initial cold WebView URL', 120_000);
+  // A cold Android WebView can stall while compiling the flagship client.
+  // Retry only startup; all route, pixel and asset assertions remain strict.
+  const current = await waitFor('location.href', 'initial cold WebView URL', 120_000);
   const url = new URL(current);
   url.search = '';
   url.searchParams.set('graphicsCompare', '1');
