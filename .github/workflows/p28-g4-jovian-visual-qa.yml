@@ -124,5 +124,6 @@ jobs:
             android-p28g4-jovian-harvester.json
             android-p28g4-jovian-harvester-pixel-report.json
             android-p28g4-jovian-harvester-logcat.txt
+            android-p28g4-jovian-harvester-activity.txt
           if-no-files-found: warn
           retention-days: 30
