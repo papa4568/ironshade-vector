@@ -201,7 +201,7 @@ assert(
     && capture.includes("d.babylonSharedWorldArtState === 'ready'")
     && capture.includes("d.missionVisualReadiness === 'ready'")
     && capture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
-    && shell.includes('android-p28g5-ice-normal.png')
+    && shell.includes('android-p28g5-ice-mine-normal.png')
     && verifier.includes('auditGameplayPair')
     && iceVisualWorkflow.includes('ironshade-vector-pr-android-apk')
     && iceVisualWorkflow.includes('github.event.pull_request.head.sha'),
