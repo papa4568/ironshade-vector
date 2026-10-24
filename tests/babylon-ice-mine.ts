@@ -188,7 +188,7 @@ for (const [name, change, expected] of [
 // Exact-APK normal/action proof must exercise genuine Ice Mine cycle-three
 // deployment and reject missing textures, fallback slots and pale route bands.
 const capture = read('tools/android-p28g5-ice-capture.mjs');
-const workflow = read('.github/workflows/p28-g5-ice-visual-qa.yml');
+const iceVisualWorkflow = read('.github/workflows/p28-g5-ice-visual-qa.yml');
 const shell = read('tools/android-p28g5-ice-capture.sh');
 const verifier = read('tools/verify-p28g5-gameplay-frames.mjs');
 assert(
@@ -203,8 +203,8 @@ assert(
     && capture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
     && shell.includes('android-p28g5-ice-normal.png')
     && verifier.includes('auditGameplayPair')
-    && workflow.includes('ironshade-vector-pr-android-apk')
-    && workflow.includes('github.event.pull_request.head.sha'),
+    && iceVisualWorkflow.includes('ironshade-vector-pr-android-apk')
+    && iceVisualWorkflow.includes('github.event.pull_request.head.sha'),
   'P28-G5 exact-APK Ice Mine proof must enforce real textures/LOD0/route/frame content.');
 
 console.log('BABYLON_ICE_MINE_PASS identity=bore-crystals+frosted-industrial+ice-cyan+drill-service fracture=state-linked navigation=shared boss=rhea-kade world=shared-cues browser=headed');
