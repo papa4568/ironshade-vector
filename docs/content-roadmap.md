@@ -50,7 +50,6 @@ Each rollout below reuses the P28 lighting/material/grounding/detail systems and
 
 All remaining P28-G/H work must meet the [campaign visual acceptance contract](./product-constraints.md#campaign-visual-acceptance-contract); screenshots must be inspected for image content rather than accepted by metadata or PNG validation alone.
 
-
 - [ ] **P28-G6 — Refresh Lattice Annex visuals** — Adopt the shared P28 stack in Lattice Annex and tune its reference-pylon/survey visual profile. **Done when:** the route is visually distinct and grounded on the flagship target with unchanged gameplay cues, and standard build/APK gates pass; the campaign visual acceptance contract passes on real normal/action screenshots, with no unexplained bare placeholders, oversized route-band visuals, or missing material bindings.
 
 - [ ] **P28-G7 — Refresh Momentum Exchange visuals** — Adopt the shared P28 stack in Momentum Exchange and tune its flywheel/transfer machinery visual profile. **Done when:** the route has premium mechanical layering without masking motion/hazard cues, and standard build/APK gates pass; the campaign visual acceptance contract passes on real normal/action screenshots, with no unexplained bare placeholders, oversized route-band visuals, or missing material bindings.
