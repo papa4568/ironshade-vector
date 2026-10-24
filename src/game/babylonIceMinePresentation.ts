@@ -326,6 +326,7 @@ export class BabylonIceMinePresentation {
           support, worldW * fx + side * 0.54, 0.25, worldH * fz,
           0.18, 0.42, 1.16 * scale);
       }
+    });
 
     const manifoldPlacements = [
       [0.46, 0.32, 0.86], [0.62, 0.50, 0.90], [0.74, 0.70, 0.84],
@@ -346,6 +347,7 @@ export class BabylonIceMinePresentation {
           support, worldW * fx + side * 0.69 * scale, 0.40, worldH * fz,
           0.18, 0.22, 1.20 * scale);
       }
+    });
 
     const compressorPlacements = [
       [0.72, 0.34, 0.94], [0.80, 0.60, 0.90],
@@ -401,6 +403,7 @@ export class BabylonIceMinePresentation {
         seam.material = frost;
         seam.isPickable = false;
       }
+    });
 
     const navigation = getMapNavigationPlan('ice-mine');
     navigation.routes.forEach(route => {
