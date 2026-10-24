@@ -136,7 +136,7 @@ assert(
   'P28-G5 must deliver premium KTX2/IBL readiness, frosted translucency and owned resource cleanup.',
 );
 assert(
-  ['p28-g5-frost-wall-strata-', 'p28-g5-frost-wall-buttress-', 'p28-g5-frame-diagonal-brace-',
+  ['p28-g5-frost-wall-strata-', 'p28-g5-frost-wall-buttress-', 'p28-g5-bore-wall-crystal-facet-', 'p28-g5-frost-wall-footing-', 'p28-g5-frost-wall-cap-', 'p28-g5-frame-diagonal-brace-',
     'p28-g5-service-recessed-rail-', 'p28-g5-service-deck-crossbar-', 'p28-g5-cryo-pump-collar-',
     'p28-g5-manifold-feed-', 'p28-g5-compressor-cooling-bank-', 'p28-g5-ice-pillar-facet-seam-']
     .every(name => ice.includes(name))
@@ -145,7 +145,12 @@ assert(
     && !ice.includes("scaled(route.kind === 'primary' ? 72")
     && ice.includes('this.groundingSource.createInstance')
     && ice.includes('this.enemyGrounding.delete(id)')
-    && ice.includes('this.groundingTexture.dispose()'),
+    && ice.includes('this.groundingTexture.dispose()')
+    && ice.includes("this.canvas.dataset.environmentSurfaceDetail = 'frost-wall:10+ice-pillar:5'")
+    && ice.includes('this.canvas.dataset.icePremiumSurfaceDetail')
+    && ice.includes('crystal-facets:40')
+    && ice.includes("0x24485f, 0.03, 0.48")
+    && ice.includes("0x438da4, 0.02, 0.21"),
   'P28-G5 scene depth, grounding and narrow route inlays must not regress.',
 );
 assert(

@@ -210,11 +210,11 @@ export class BabylonIceMinePresentation {
     const machinery = this.premiumSurfaces.get('painted-metal');
     const polymer = this.premiumSurfaces.get('polymer-rubber');
     const fixture = this.premiumSurfaces.get('emissive-fixture');
-    const frost = material(scene, 'p28-g5-ice-frost-material', 0x719baa, 0.08, 0.36, 0x7ec9df, 0.06);
+    const frost = material(scene, 'p28-g5-ice-frost-material', 0x24485f, 0.03, 0.48, 0x4d91a9, 0.015);
     frost.clearCoat.isEnabled = true;
     frost.clearCoat.intensity = 0.32;
-    frost.clearCoat.roughness = 0.31;
-    const ice = material(scene, 'p28-g5-ice-crystal-material', 0x8fc8d8, 0.04, 0.19, 0x7ec9df, 0.12);
+    frost.clearCoat.roughness = 0.46;
+    const ice = material(scene, 'p28-g5-ice-crystal-material', 0x438da4, 0.02, 0.21, 0x70b3c6, 0.085);
     ice.clearCoat.isEnabled = true;
     ice.clearCoat.intensity = 0.73;
     ice.clearCoat.roughness = 0.15;
@@ -248,13 +248,38 @@ export class BabylonIceMinePresentation {
         0.64,
       );
       wall.rotation.y = index < 5 ? 0.015 : -0.015;
+      // The Ice Mine is mineral, not a lineup of white box placeholders:
+      // a cold dark cut face, offset glassy prism ridges, faceted bore teeth
+      // and structural steel footings give the light something to articulate.
+      box(scene, this.root, 'p28-g5-frost-wall-footing-' + index, support,
+        worldW * fx, 0.15, worldH * fz + 0.38,
+        4.65 * scale, 0.24, 0.35);
+      box(scene, this.root, 'p28-g5-frost-wall-cap-' + index, support,
+        worldW * fx, 1.86 * scale, worldH * fz + 0.14,
+        4.46 * scale, 0.13, 0.28);
       for (const side of [-1, 1]) {
-        box(scene, this.root, 'p28-g5-frost-wall-strata-' + index + '-' + side, frost,
-          worldW * fx + side * 0.72 * scale, 0.84 * scale, worldH * fz + 0.34,
-          0.18 * scale, 1.52 * scale, 0.10);
+        box(scene, this.root, 'p28-g5-frost-wall-strata-' + index + '-' + side, ice,
+          worldW * fx + side * 0.72 * scale, 0.84 * scale, worldH * fz + 0.36,
+          0.15 * scale, 1.46 * scale, 0.14);
         box(scene, this.root, 'p28-g5-frost-wall-buttress-' + index + '-' + side, support,
-          worldW * fx + side * 1.82 * scale, 0.26, worldH * fz + 0.30,
-          0.24, 0.52, 0.34);
+          worldW * fx + side * 1.82 * scale, 0.42, worldH * fz + 0.38,
+          0.24, 0.76, 0.34);
+      }
+      for (let facet = 0; facet < 4; facet += 1) {
+        const offset = (facet - 1.5) * 0.84 * scale;
+        const height = (facet % 2 === 0 ? 1.42 : 1.68) * scale;
+        const shard = MeshBuilder.CreateCylinder(
+          'p28-g5-bore-wall-crystal-facet-' + index + '-' + facet,
+          { height, diameterBottom: 0.52 * scale, diameterTop: 0.05,
+            tessellation: 5 }, scene,
+        );
+        shard.parent = this.root;
+        shard.position.set(worldW * fx + offset, height * 0.56,
+          worldH * fz + 0.39 + (facet % 2) * 0.05);
+        shard.rotation.z = (facet % 2 === 0 ? -0.16 : 0.18);
+        shard.rotation.x = facet % 2 === 0 ? 0.13 : -0.11;
+        shard.material = ice;
+        shard.isPickable = false;
       }
     });
 
@@ -806,7 +831,10 @@ export class BabylonIceMinePresentation {
     this.canvas.dataset.environmentLandmark = 'subglacial-vault-ice-pillars';
     this.canvas.dataset.environmentServiceDetails = 'support-frame:6+service-deck:4+cryo-machinery:7+machinery-cues:' + machineCount;
     this.canvas.dataset.environmentMachineDetail = 'cryo-pump:2+coolant-manifold:3+freeze-compressor:2';
-    this.canvas.dataset.environmentSurfaceDetail = 'frost-wall:10+ice-pillar:5+strata:20+buttresses:20+frame-braces:24+deck-hardware:28+pump-collars:4+compressor-vents:4';
+    // Preserve the P27-C5 compatibility surface contract; P28-G5 adds its
+    // higher-resolution inventory under a distinct field.
+    this.canvas.dataset.environmentSurfaceDetail = 'frost-wall:10+ice-pillar:5';
+    this.canvas.dataset.icePremiumSurfaceDetail = 'frost-wall:10+ice-pillar:5+crystal-facets:40+strata:20+buttresses:20+steel-footings:10+caps:10+frame-braces:24+deck-hardware:28+pump-collars:4+compressor-vents:4';
     this.canvas.dataset.environmentComposition = 'access-bore+reinforced-extraction-tunnel+subglacial-vault';
     this.canvas.dataset.environmentTunnelSequence = 'access-bore>extraction-tunnel>subglacial-vault';
     this.canvas.dataset.environmentMaterials = 'frozen-rock+support-steel+frost-ice+cold-cyan';
