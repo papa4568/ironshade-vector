@@ -1,21 +1,31 @@
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
+import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Scene } from '@babylonjs/core/scene';
 import { getMapNavigationPlan } from './mapNavigation';
+import { babylonRouteMarkingWidth, BABYLON_ROUTE_MARKING_WIDTHS } from './babylonRouteMarkings';
+import { createBabylonPremiumPbrSurfaceLibrary, type BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
+import { createRefineryContactDepthAlphaData } from './refineryContactDepth';
+import { REFINERY_ACTOR_GROUNDING_PROFILE, refineryActorGroundingScale } from './babylonRefineryLighting';
 import type { RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize, type CombatObject, type SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
 const BRITTLE_SUPPORT_IDS = ['ice-brittle-gate-a', 'ice-brittle-gate-b'] as const;
+export const BABYLON_ICE_MINE_PREMIUM_SURFACES = [
+  'deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture',
+] as const;
 
 export const BABYLON_ICE_MINE_IDENTITY = Object.freeze({
   silhouette: 'bore-crystals',
@@ -128,12 +138,29 @@ function createSupportFrame(
   box(scene, root, name + '-left', support, -width / 2, 1.18, 0, 0.22, 2.36, 0.32);
   box(scene, root, name + '-right', support, width / 2, 1.18, 0, 0.22, 2.36, 0.32);
   box(scene, root, name + '-header', support, 0, 2.28, 0, width + 0.22, 0.24, 0.34);
+  for (const side of [-1, 1]) {
+    const brace = box(scene, root, 'p28-g5-frame-diagonal-brace-' + name + '-' + side,
+      support, side * (width * 0.39), 1.50, 0.04, 0.13, 1.58, 0.13);
+    brace.rotation.z = side * 0.38;
+    box(scene, root, 'p28-g5-frame-anchor-' + name + '-' + side,
+      support, side * width / 2, 0.18, 0.02, 0.60, 0.24, 0.62);
+  }
   return root;
 }
 
 export class BabylonIceMinePresentation {
   private readonly root: TransformNode;
   private readonly materials: PBRMaterial[];
+  private readonly ownedMaterials: PBRMaterial[];
+  private readonly premiumSurfaces: BabylonPremiumPbrSurfaceLibrary;
+  private readonly premiumBindingCount: number;
+  private readonly iblTexture: CubeTexture;
+  private iblReady = false;
+  private readonly groundingTexture: RawTexture;
+  private readonly groundingMaterial: StandardMaterial;
+  private readonly groundingSource: Mesh;
+  private readonly enemyGrounding = new Map<number, InstancedMesh>();
+  private readonly staticPropGroundingCount: number;
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
   private readonly machineryMaterial: PBRMaterial;
   private readonly machineryRoot: TransformNode;
@@ -174,15 +201,29 @@ export class BabylonIceMinePresentation {
     const cx = worldW / 2;
     const cz = worldH / 2;
 
-    const floor = material(scene, 'p27-c5-ice-floor-material', 0x0b1820, 0.40, 0.72);
-    const frost = material(scene, 'p27-c5-ice-frost-material', 0x719baa, 0.08, 0.34, 0x7ec9df, 0.08);
-    const support = material(scene, 'p27-c5-ice-support-material', 0x465864, 0.82, 0.44);
-    const service = material(scene, 'p27-c5-ice-service-material', 0x355f6e, 0.68, 0.42, 0x76cde9, 0.07);
-    const ice = material(scene, 'p27-c5-ice-crystal-material', 0x8fc8d8, 0.04, 0.20, 0x7ec9df, 0.16);
-    const machinery = material(scene, 'p27-c5-ice-machinery-material', 0x4d7888, 0.76, 0.38, 0x76cde9, 0.06);
+    // Metal is real KTX2 PBR; frosted crystal preserves its own translucent
+    // clear-coat response instead of borrowing a steel material.
+    this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
+    const floor = this.premiumSurfaces.get('deck-plate');
+    const support = this.premiumSurfaces.get('bare-metal');
+    const service = this.premiumSurfaces.get('painted-metal');
+    const machinery = this.premiumSurfaces.get('painted-metal');
+    const polymer = this.premiumSurfaces.get('polymer-rubber');
+    const fixture = this.premiumSurfaces.get('emissive-fixture');
+    const frost = material(scene, 'p28-g5-ice-frost-material', 0x24485f, 0.03, 0.48, 0x4d91a9, 0.015);
+    frost.clearCoat.isEnabled = true;
+    frost.clearCoat.intensity = 0.32;
+    frost.clearCoat.roughness = 0.46;
+    const ice = material(scene, 'p28-g5-ice-crystal-material', 0x438da4, 0.02, 0.21, 0x70b3c6, 0.085);
+    ice.clearCoat.isEnabled = true;
+    ice.clearCoat.intensity = 0.73;
+    ice.clearCoat.roughness = 0.15;
+    ice.subSurface.isTranslucencyEnabled = true;
+    ice.subSurface.translucencyIntensity = 0.20;
     const routePrimary = material(scene, 'p27-c5-ice-route-primary-material', 0x244551, 0.58, 0.48, 0x8fdcf0, 0.18);
     const routeSecondary = material(scene, 'p27-c5-ice-route-secondary-material', 0x1b2930, 0.64, 0.54, 0x608f9f, 0.07);
-    this.materials = [floor, frost, support, service, ice, machinery, routePrimary, routeSecondary];
+    this.ownedMaterials = [frost, ice, routePrimary, routeSecondary];
+    this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.routeMaterials = [routePrimary, routeSecondary];
     this.machineryMaterial = machinery;
 
@@ -207,6 +248,39 @@ export class BabylonIceMinePresentation {
         0.64,
       );
       wall.rotation.y = index < 5 ? 0.015 : -0.015;
+      // The Ice Mine is mineral, not a lineup of white box placeholders:
+      // a cold dark cut face, offset glassy prism ridges, faceted bore teeth
+      // and structural steel footings give the light something to articulate.
+      box(scene, this.root, 'p28-g5-frost-wall-footing-' + index, support,
+        worldW * fx, 0.15, worldH * fz + 0.38,
+        4.65 * scale, 0.24, 0.35);
+      box(scene, this.root, 'p28-g5-frost-wall-cap-' + index, support,
+        worldW * fx, 1.86 * scale, worldH * fz + 0.14,
+        4.46 * scale, 0.13, 0.28);
+      for (const side of [-1, 1]) {
+        box(scene, this.root, 'p28-g5-frost-wall-strata-' + index + '-' + side, ice,
+          worldW * fx + side * 0.72 * scale, 0.84 * scale, worldH * fz + 0.36,
+          0.15 * scale, 1.46 * scale, 0.14);
+        box(scene, this.root, 'p28-g5-frost-wall-buttress-' + index + '-' + side, support,
+          worldW * fx + side * 1.82 * scale, 0.42, worldH * fz + 0.38,
+          0.24, 0.76, 0.34);
+      }
+      for (let facet = 0; facet < 4; facet += 1) {
+        const offset = (facet - 1.5) * 0.84 * scale;
+        const height = (facet % 2 === 0 ? 1.42 : 1.68) * scale;
+        const shard = MeshBuilder.CreateCylinder(
+          'p28-g5-bore-wall-crystal-facet-' + index + '-' + facet,
+          { height, diameterBottom: 0.52 * scale, diameterTop: 0.05,
+            tessellation: 5 }, scene,
+        );
+        shard.parent = this.root;
+        shard.position.set(worldW * fx + offset, height * 0.56,
+          worldH * fz + 0.39 + (facet % 2) * 0.05);
+        shard.rotation.z = (facet % 2 === 0 ? -0.16 : 0.18);
+        shard.rotation.x = facet % 2 === 0 ? 0.13 : -0.11;
+        shard.material = ice;
+        shard.isPickable = false;
+      }
     });
 
     const supportPlacements = [
@@ -232,7 +306,19 @@ export class BabylonIceMinePresentation {
 
     const serviceDeckPlacements = [0.25, 0.40, 0.55, 0.70] as const;
     serviceDeckPlacements.forEach((fx, index) => {
-      box(scene, this.root, 'p27-c5-ice-service-deck-' + index, service, worldW * fx, 0.16, worldH * 0.50, 5.0, 0.26, 1.62);
+      const deckX = worldW * fx;
+      const deckZ = worldH * 0.50;
+      box(scene, this.root, 'p27-c5-ice-service-deck-' + index, service, deckX, 0.16, deckZ, 5.0, 0.26, 1.62);
+      for (const side of [-1, 1]) {
+        box(scene, this.root, 'p28-g5-service-recessed-rail-' + index + '-' + side,
+          support, deckX, 0.305, deckZ + side * 0.66, 4.80, 0.035, 0.07);
+        box(scene, this.root, 'p28-g5-service-deck-foot-' + index + '-' + side,
+          polymer, deckX + side * 2.20, 0.045, deckZ, 0.35, 0.11, 1.52);
+      }
+      for (const offset of [-1.5, 0, 1.5]) {
+        box(scene, this.root, 'p28-g5-service-deck-crossbar-' + index + '-' + offset,
+          support, deckX + offset, 0.31, deckZ, 0.12, 0.04, 1.26);
+      }
     });
 
     const cryoPumpPlacements = [
@@ -251,6 +337,20 @@ export class BabylonIceMinePresentation {
       pump.rotation.y = rotationY;
       pump.material = machinery;
       pump.isPickable = false;
+      for (const ring of [-0.44, 0.44]) {
+        const collar = MeshBuilder.CreateTorus('p28-g5-cryo-pump-collar-' + index + '-' + ring,
+          { diameter: 1.08 * scale, thickness: 0.085, tessellation: 24 }, scene);
+        collar.parent = this.root;
+        collar.position.set(worldW * fx + ring, 0.76, worldH * fz);
+        collar.rotation.y = Math.PI / 2;
+        collar.material = ring > 0 ? fixture : support;
+        collar.isPickable = false;
+      }
+      for (const side of [-1, 1]) {
+        box(scene, this.root, 'p28-g5-cryo-pump-saddle-' + index + '-' + side,
+          support, worldW * fx + side * 0.54, 0.25, worldH * fz,
+          0.18, 0.42, 1.16 * scale);
+      }
     });
 
     const manifoldPlacements = [
@@ -267,6 +367,11 @@ export class BabylonIceMinePresentation {
       manifold.rotation.x = Math.PI / 2;
       manifold.material = machinery;
       manifold.isPickable = false;
+      for (const side of [-1, 1]) {
+        box(scene, this.root, 'p28-g5-manifold-feed-' + index + '-' + side,
+          support, worldW * fx + side * 0.69 * scale, 0.40, worldH * fz,
+          0.18, 0.22, 1.20 * scale);
+      }
     });
 
     const compressorPlacements = [
@@ -286,6 +391,16 @@ export class BabylonIceMinePresentation {
         1.72 * scale,
       );
       compressor.rotation.y = index === 0 ? Math.PI / 2 : -Math.PI / 2;
+      for (const side of [-1, 1]) {
+        box(scene, this.root, 'p28-g5-compressor-cooling-bank-' + index + '-' + side,
+          support, worldW * fx + side * 0.44, 1.25, worldH * fz,
+          0.20, 0.16, 1.40 * scale);
+        box(scene, this.root, 'p28-g5-compressor-vibration-foot-' + index + '-' + side,
+          polymer, worldW * fx + side * 0.47, 0.11, worldH * fz,
+          0.22, 0.22, 1.60 * scale);
+      }
+      box(scene, this.root, 'p28-g5-compressor-status-fixture-' + index, fixture,
+        worldW * fx, 1.27, worldH * fz, 0.70, 0.08, 0.20);
     });
 
     const icePillarPlacements = [
@@ -305,6 +420,14 @@ export class BabylonIceMinePresentation {
       pillar.rotation.y = index * 0.41;
       pillar.material = ice;
       pillar.isPickable = false;
+      for (const height of [0.30, 0.64]) {
+        const seam = MeshBuilder.CreateTorus('p28-g5-ice-pillar-facet-seam-' + index + '-' + height,
+          { diameter: (0.94 - height * 0.60) * scale, thickness: 0.045, tessellation: 7 }, scene);
+        seam.parent = pillar;
+        seam.position.y = (height - 0.5) * 2.8 * scale;
+        seam.material = frost;
+        seam.isPickable = false;
+      }
     });
 
     const navigation = getMapNavigationPlan('ice-mine');
@@ -321,7 +444,7 @@ export class BabylonIceMinePresentation {
           scaled(a.y),
           scaled(b.x),
           scaled(b.y),
-          scaled(route.kind === 'primary' ? 72 : route.kind === 'secondary' ? 48 : 34),
+          babylonRouteMarkingWidth(route.kind),
         );
       }
     });
@@ -479,8 +602,48 @@ export class BabylonIceMinePresentation {
     ram.rotation.x = -0.08;
     this.bossCueRoot.setEnabled(false);
 
+    const sharedMaterials = new Set(this.premiumSurfaces.materials.values());
+    this.premiumBindingCount = this.root.getChildMeshes(false)
+      .filter(mesh => mesh.material instanceof PBRMaterial && sharedMaterials.has(mesh.material)).length;
+
+    const contactSize = REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize;
+    this.groundingTexture = RawTexture.CreateRGBATexture(
+      createRefineryContactDepthAlphaData(contactSize), contactSize, contactSize, scene, false, false,
+    );
+    this.groundingTexture.hasAlpha = true;
+    this.groundingMaterial = new StandardMaterial('p28-g5-ice-grounding', scene);
+    this.groundingMaterial.diffuseColor = new Color3(0.012, 0.035, 0.048);
+    this.groundingMaterial.specularColor = Color3.Black();
+    this.groundingMaterial.diffuseTexture = this.groundingTexture;
+    this.groundingMaterial.useAlphaFromDiffuseTexture = true;
+    this.groundingMaterial.disableLighting = true;
+    this.groundingMaterial.disableDepthWrite = true;
+    this.groundingMaterial.backFaceCulling = false;
+    this.groundingMaterial.alpha = 0.24;
+    this.groundingSource = MeshBuilder.CreatePlane('p28-g5-ice-player-contact',
+      { width: 1, height: 1, sideOrientation: Mesh.DOUBLESIDE }, scene);
+    this.groundingSource.parent = this.root;
+    this.groundingSource.material = this.groundingMaterial;
+    this.groundingSource.rotation.x = Math.PI / 2;
+    this.groundingSource.alphaIndex = -300;
+    this.groundingSource.isPickable = false;
+    for (const [index, placement] of [...cryoPumpPlacements, ...compressorPlacements].entries()) {
+      const contact = this.groundingSource.createInstance('p28-g5-ice-machinery-contact-' + index);
+      contact.parent = this.root;
+      contact.position.set(worldW * placement[0], 0.042, worldH * placement[1]);
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(1.45, 0.88, 1);
+      contact.alphaIndex = -300;
+      contact.isPickable = false;
+    }
+    this.staticPropGroundingCount = cryoPumpPlacements.length + compressorPlacements.length;
     this.meshCount = this.root.getChildMeshes(false).length;
     this.root.setEnabled(false);
+    this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env',
+      scene, undefined, false, undefined,
+      () => { this.iblReady = true; }, () => { this.iblReady = false; }, undefined, true);
+    this.iblTexture.name = 'p28-g5-ice-shared-prefiltered-ibl';
+    this.iblTexture.gammaSpace = false;
 
     const lighting = BABYLON_ICE_MINE_LIGHTING;
     this.hemisphere = new HemisphericLight('p27-c5-ice-hemisphere', new Vector3(-0.28, 1, 0.18), scene);
@@ -567,6 +730,36 @@ export class BabylonIceMinePresentation {
 
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
+    this.groundingMaterial.alpha = renderBudget.tierName === 'performance' ? 0.17 : 0.24;
+    this.groundingSource.position.set(px, 0.044, pz);
+    this.groundingSource.scaling.set(1.04, 0.74, 1);
+    const nearby = new Set<number>();
+    const nearbySq = REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius ** 2;
+    for (const enemy of state.enemies) {
+      if (!enemy.active || enemy.dead) continue;
+      const dx = enemy.x - state.player.x;
+      const dz = enemy.y - state.player.y;
+      if (dx * dx + dz * dz > nearbySq) continue;
+      nearby.add(enemy.id);
+      let contact = this.enemyGrounding.get(enemy.id);
+      if (!contact) {
+        contact = this.groundingSource.createInstance('p28-g5-ice-enemy-contact-' + enemy.id);
+        contact.parent = this.root;
+        contact.isPickable = false;
+        contact.alphaIndex = -300;
+        this.enemyGrounding.set(enemy.id, contact);
+      }
+      const size = refineryActorGroundingScale(enemy.role);
+      contact.position.set(scaled(enemy.x), 0.043, scaled(enemy.y));
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(1.04 * size, 0.74 * size, 1);
+    }
+    for (const [id, contact] of this.enemyGrounding) {
+      if (!nearby.has(id)) {
+        contact.dispose();
+        this.enemyGrounding.delete(id);
+      }
+    }
     let readabilityX = px;
     let readabilityZ = pz;
     let nearestDistanceSq = Number.POSITIVE_INFINITY;
@@ -600,8 +793,9 @@ export class BabylonIceMinePresentation {
     this.routeMaterials[0].emissiveColor = colorFromHex(0x8fdcf0).scale(0.18 * routePulse);
     this.routeMaterials[1].emissiveColor = colorFromHex(0x608f9f).scale(0.07 * routePulse);
 
-    this.scene.environmentTexture = null;
-    this.scene.environmentIntensity = 0;
+    this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
+    this.scene.environmentIntensity = this.iblReady
+      ? (renderBudget.tierName === 'performance' ? 0.20 : 0.32) : 0;
     this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
     this.scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.scene.imageProcessingConfiguration.exposure = lighting.exposure * (lowVisibility ? 1.03 : 1);
@@ -611,7 +805,22 @@ export class BabylonIceMinePresentation {
     const pbrCount = this.scene.materials.filter(item => item instanceof PBRMaterial).length;
     const profileName = renderBudget.tierName;
 
-    this.canvas.dataset.babylonEnvironmentState = 'ready';
+    const premiumReady = BABYLON_ICE_MINE_PREMIUM_SURFACES.every(id => {
+      const pbr = this.premiumSurfaces.get(id);
+      return pbr.albedoTexture?.isReady() === true
+        && pbr.bumpTexture?.isReady() === true
+        && pbr.metallicTexture?.isReady() === true
+        && (!pbr.emissiveTexture || pbr.emissiveTexture.isReady());
+    });
+    this.canvas.dataset.icePremiumAssetState = premiumReady ? 'ready' : 'loading';
+    this.canvas.dataset.icePremiumBindings = String(this.premiumBindingCount);
+    this.canvas.dataset.icePremiumSurfaces = BABYLON_ICE_MINE_PREMIUM_SURFACES.join(',');
+    this.canvas.dataset.iceGrounding = 'player+enemies:soft-contact';
+    this.canvas.dataset.iceGroundedEnemies = String(nearby.size);
+    this.canvas.dataset.iceGroundedProps = String(this.staticPropGroundingCount);
+    this.canvas.dataset.babylonRouteMarkingProfile = 'ice-recessed-bore-inlay';
+    this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary);
+    this.canvas.dataset.babylonEnvironmentState = premiumReady && this.iblReady ? 'ready' : 'loading';
     this.canvas.dataset.environmentVisual = 'procedural-ice-mine-babylon';
     this.canvas.dataset.environmentKit = 'floor,frost-wall,support-frame,service-deck,ice-pillar,cryo-pump,coolant-manifold,freeze-compressor,wayfinding,fracture-vfx,boss-cue';
     this.canvas.dataset.environmentInstances = String(this.meshCount + this.machineryCues.size);
@@ -622,7 +831,10 @@ export class BabylonIceMinePresentation {
     this.canvas.dataset.environmentLandmark = 'subglacial-vault-ice-pillars';
     this.canvas.dataset.environmentServiceDetails = 'support-frame:6+service-deck:4+cryo-machinery:7+machinery-cues:' + machineCount;
     this.canvas.dataset.environmentMachineDetail = 'cryo-pump:2+coolant-manifold:3+freeze-compressor:2';
+    // Preserve the P27-C5 compatibility surface contract; P28-G5 adds its
+    // higher-resolution inventory under a distinct field.
     this.canvas.dataset.environmentSurfaceDetail = 'frost-wall:10+ice-pillar:5';
+    this.canvas.dataset.icePremiumSurfaceDetail = 'frost-wall:10+ice-pillar:5+crystal-facets:40+strata:20+buttresses:20+steel-footings:10+caps:10+frame-braces:24+deck-hardware:28+pump-collars:4+compressor-vents:4';
     this.canvas.dataset.environmentComposition = 'access-bore+reinforced-extraction-tunnel+subglacial-vault';
     this.canvas.dataset.environmentTunnelSequence = 'access-bore>extraction-tunnel>subglacial-vault';
     this.canvas.dataset.environmentMaterials = 'frozen-rock+support-steel+frost-ice+cold-cyan';
@@ -660,9 +872,9 @@ export class BabylonIceMinePresentation {
     this.canvas.dataset.babylonIceMineRoutes = String(navigation.routes.length);
     this.canvas.dataset.babylonIceMineLandmarks = navigation.landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;
-    this.canvas.dataset.babylonMaterialIntent = 'procedural-frosted-industrial-pbr+shared-world-pbr';
+    this.canvas.dataset.babylonMaterialIntent = 'frosted-crystal-clearcoat+premium-ktx2-industrial-pbr+shared-world-pbr';
     this.canvas.dataset.babylonLightingBudget = 'tier:' + renderBudget.tierName + '|practical:' + practicalCount + '|shadows:off';
-    this.canvas.dataset.environmentIbl = 'off:ice-mine';
+    this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading';
     this.canvas.dataset.environmentLighting = 'ice-mine-ice-cyan:tunnel+vault+contact:player+enemy+practical:' + practicalCount + '+shadow:off';
     this.canvas.dataset.environmentShadowBudget = 'off:ice-mine-babylon';
     this.canvas.dataset.environmentTone = 'aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2);
@@ -682,9 +894,16 @@ export class BabylonIceMinePresentation {
 
   dispose() {
     this.release('renderer-dispose');
+    for (const contact of this.enemyGrounding.values()) contact.dispose();
+    this.enemyGrounding.clear();
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose());
     this.root.dispose();
-    this.materials.forEach(item => item.dispose());
+    this.groundingMaterial.dispose();
+    this.groundingTexture.dispose();
+    if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
+    this.iblTexture.dispose();
+    this.ownedMaterials.forEach(item => item.dispose());
+    this.premiumSurfaces.dispose();
     this.fractureMaterial.dispose();
     this.fractureShardMaterial.dispose();
     this.frostMoteMaterial.dispose();
