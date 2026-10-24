@@ -137,7 +137,7 @@ try {
   }
   await waitFor(`[...document.querySelectorAll('button')].some(b =>
     (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations')`, 'Command Deck');
-  // Rotating Ice Mine appears in cycle two: the eleven-location
+  // Rotating Ice Mine appears in cycle three: the eleven-location
   // standard rotation yields slots 3, 4, 5, including Ice at index 5. Keep the same
   // campaign state precondition from generateStandardContracts; do not loosen
   // the production unlock rule or forge a contract DOM node for QA.
@@ -203,7 +203,7 @@ try {
       && d.environmentFractureVfx === 'support-cracks+shard-burst+frost-pulse'
       && d.iceGrounding === 'player+enemies:soft-contact'
       && Number(d.iceGroundedProps) === 4
-      && d.babylonRouteMarkingProfile === 'ice-recessed-deck-inlay'
+      && d.babylonRouteMarkingProfile === 'ice-recessed-bore-inlay'
       && Number(d.babylonRouteMarkingMaxWidth) > 0
       && Number(d.babylonRouteMarkingMaxWidth) <= 0.20
       && d.babylonSharedWorldArtState === 'ready'
@@ -271,7 +271,7 @@ try {
     beforeAssetIds: beforeVisual.assetIds, beforeArtState: beforeVisual.artState,
     beforePremium: beforeVisual.premium, beforeIbl: beforeVisual.ibl, ...result,
   }, null, 2) + '\n');
-  console.log('ANDROID_P28G5_JOVIAN_VISUAL_CAPTURE_PASS route=ice-mine authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
+  console.log('ANDROID_P28G5_ICE_VISUAL_CAPTURE_PASS route=ice-mine authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
 } finally {
   socket.close();
 }

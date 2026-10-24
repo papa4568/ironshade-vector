@@ -39,4 +39,4 @@ if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-p28g5-ice-m
   echo 'P28-G5 Android capture suffered a fatal exception.' >&2
   exit 1
 fi
-echo "ANDROID_P28G5_FLAGSHIP_CAPTURE_PASS device=pixel_7_pro emulator=api35 captures=webview-normal+webview-action+android-display route=ice-mine assets=authored-world+deck-inlays"
+echo "ANDROID_P28G5_FLAGSHIP_CAPTURE_PASS device=pixel_7_pro emulator=api35 captures=webview-normal+webview-action+android-display route=ice-mine assets=authored-world+bore-inlays"
