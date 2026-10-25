@@ -340,9 +340,10 @@ export class BabylonIceMinePresentation {
       for (const ring of [-0.44, 0.44]) {
         const collar = MeshBuilder.CreateTorus('p28-g5-cryo-pump-collar-' + index + '-' + ring,
           { diameter: 1.08 * scale, thickness: 0.085, tessellation: 24 }, scene);
-        collar.parent = this.root;
-        collar.position.set(worldW * fx + ring, 0.76, worldH * fz);
-        collar.rotation.y = Math.PI / 2;
+        // The torus' XZ plane already encircles the cylinder's local Y axis.
+        // Inherit both pump rotations and position the collars along its bore.
+        collar.parent = pump;
+        collar.position.set(0, ring * scale, 0);
         collar.material = ring > 0 ? fixture : support;
         collar.isPickable = false;
       }

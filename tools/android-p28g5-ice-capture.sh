@@ -13,7 +13,16 @@ adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:webview_devtools_remote_${PID}"
 # Preserve independent failure evidence even when a cold emulator/WebView stalls.
 capture_diagnostics() {
-  adb exec-out screencap -p > android-p28g5-ice-mine-device.png 2>/dev/null || true
+  # The accepted framebuffer is already validated. Capture fallback diagnostics
+  # only if it is absent, and never truncate it on a failed screencap.
+  if [[ ! -s android-p28g5-ice-mine-device.png ]]; then
+    local diagnostic_frame="android-p28g5-ice-mine-device-diagnostic.png"
+    if adb exec-out screencap -p > "$diagnostic_frame" 2>/dev/null && [[ -s "$diagnostic_frame" ]]; then
+      mv "$diagnostic_frame" android-p28g5-ice-mine-device.png
+    else
+      rm -f "$diagnostic_frame"
+    fi
+  fi
   adb logcat -d > android-p28g5-ice-mine-logcat.txt 2>/dev/null || true
   adb shell dumpsys activity activities > android-p28g5-ice-mine-activity.txt 2>/dev/null || true
 }

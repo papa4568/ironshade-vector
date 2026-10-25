@@ -154,6 +154,13 @@ assert(
   'P28-G5 scene depth, grounding and narrow route inlays must not regress.',
 );
 assert(
+  ice.includes('collar.parent = pump;')
+    && ice.includes('collar.position.set(0, ring * scale, 0);')
+    && !ice.includes('collar.parent = this.root;')
+    && !ice.includes('collar.rotation.y = Math.PI / 2;'),
+  'P28-G5 cryo pump collars must inherit pump bore orientation and local axis offset.',
+);
+assert(
   world.includes("|| mission.location === 'ice-mine';")
     && readiness.includes("|| mission.location === 'ice-mine');")
     && ice.includes('this.syncBrittleSupports(state, renderBudget)')
@@ -207,6 +214,9 @@ assert(
     && capture.includes("d.missionVisualReadiness === 'ready'")
     && capture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
     && shell.includes('android-p28g5-ice-mine-normal.png')
+    && shell.includes('if [[ ! -s android-p28g5-ice-mine-device.png ]]; then')
+    && shell.includes('mv "$diagnostic_frame" android-p28g5-ice-mine-device.png')
+    && !shell.includes('screencap -p > android-p28g5-ice-mine-device.png')
     && verifier.includes('auditGameplayPair')
     && iceVisualWorkflow.includes('ironshade-vector-pr-android-apk')
     && iceVisualWorkflow.includes('github.event.pull_request.head.sha'),
