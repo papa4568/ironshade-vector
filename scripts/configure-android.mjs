@@ -155,6 +155,9 @@ public class MainActivity extends BridgeActivity {
         // Full-screen Pixel 7 Pro landscape should not leave a bright letterbox beside
         // the display cutout. Preserve the existing responsive HUD/touch layouts.
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.rgb(5, 9, 10)));
+        getWindow().getDecorView().setBackgroundColor(Color.rgb(5, 9, 10));
+        getWindow().setNavigationBarColor(Color.rgb(5, 9, 10));
+        getWindow().setStatusBarColor(Color.rgb(5, 9, 10));
         WindowManager.LayoutParams params = getWindow().getAttributes();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
@@ -168,6 +171,9 @@ public class MainActivity extends BridgeActivity {
         WebView webView = getBridge().getWebView();
         boolean debuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
         if (debuggable) WebView.setWebContentsDebuggingEnabled(true);
+        // WebView's own otherwise-light backing can show through the landscape
+        // cutout when a QA/game route reloads inside the existing activity.
+        webView.setBackgroundColor(Color.rgb(5, 9, 10));
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setHorizontalScrollBarEnabled(false);
         webView.setVerticalScrollBarEnabled(false);
