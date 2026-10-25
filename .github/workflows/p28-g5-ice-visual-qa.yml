@@ -202,7 +202,7 @@ jobs:
             --attachment android-p28g5-ice-mine-normal.png \
             --attachment android-p28g5-ice-mine-action.png \
             --attachment android-p28g5-ice-mine-device.png \
-            --model gpt-5.4 --no-ask-user --no-custom-instructions \
+            --model auto --no-ask-user --no-custom-instructions \
             --disable-builtin-mcps --deny-tool=write --deny-tool=shell \
             --deny-tool=url --deny-tool=memory --no-remote --no-remote-export \
             --stream=off > p28g5-copilot-visual-review.txt

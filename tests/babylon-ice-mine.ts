@@ -229,6 +229,7 @@ assert(
     && !iceVisualWorkflow.includes('name: p28-g5-exact-apk-ice-${{ github.event.pull_request.head.sha }}\n\n      - name: Verify screenshot origin')
     && iceVisualWorkflow.includes('--attachment android-p28g5-ice-mine-normal.png')
     && iceVisualWorkflow.includes('--attachment android-p28g5-ice-mine-action.png')
+    && iceVisualWorkflow.includes('--model auto --no-ask-user')
     && iceVisualWorkflow.includes('imagesActuallyViewed !== true')
     && iceVisualWorkflow.includes('p28g5-copilot-visual-review.json')
     && iceVisualWorkflow.includes('github.event.pull_request.head.sha'),
