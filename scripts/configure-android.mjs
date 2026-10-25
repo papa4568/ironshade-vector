@@ -102,9 +102,13 @@ writeFileSync(activityPath, `package app.ironshade.vector;
 
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.os.Build;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowManager;
 import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -117,6 +121,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        configureGameWindow();
         configureGameOrientation();
         configureGameWebView();
         enterImmersiveMode();
@@ -125,6 +130,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        configureGameWindow();
         configureGameOrientation();
         enterImmersiveMode();
     }
@@ -143,6 +149,19 @@ public class MainActivity extends BridgeActivity {
         if (getRequestedOrientation() != requestedOrientation) {
             setRequestedOrientation(requestedOrientation);
         }
+    }
+
+    private void configureGameWindow() {
+        // Full-screen Pixel 7 Pro landscape should not leave a bright letterbox beside
+        // the display cutout. Preserve the existing responsive HUD/touch layouts.
+        getWindow().setBackgroundDrawable(new ColorDrawable(Color.rgb(5, 9, 10)));
+        WindowManager.LayoutParams params = getWindow().getAttributes();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        getWindow().setAttributes(params);
     }
 
     private void configureGameWebView() {

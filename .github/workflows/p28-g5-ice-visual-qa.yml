@@ -17,6 +17,8 @@ on:
       - 'tools/p28g5-android-frame.mjs'
       - 'tools/p28g5-ice-provenance.mjs'
       - 'tools/verify-p28g5-gameplay-frames.mjs'
+      - 'tools/p28g5-bright-edge.mjs'
+      - 'scripts/configure-android.mjs'
       - '.github/workflows/p28-g5-ice-visual-qa.yml'
       - 'docs/content-roadmap.md'
       - 'docs/content-roadmap-archive.md'
@@ -197,7 +199,7 @@ jobs:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          prompt="You are an independent read-only visual acceptance reviewer of THREE ATTACHED ACTUAL PNG GAMEPLAY FRAMES, in order: NORMAL, ACTION, DEVICE. Do not read code or rely on image filenames, telemetry or earlier reviewers. LOOK DIRECTLY at the image pixel content. If images are not visually accessible, return verdict unavailable. Inspect whether the sci-fi Ice Mine scene has real textured and geometrically detailed ice and metal machinery rather than flat colors/placeholder cubes; whether thin navigation guides avoid oversized opaque bands; whether players, hazards, objective, HUD and touch controls remain readable; whether action visibly differs from normal; whether screenshots have missing geometry, overlays or late-loading defects. Be adversarial and describe concrete visual details from EACH image, not generic claims. Return ONLY a valid JSON object with candidateSha '$CANDIDATE_SHA', verdict (pass/fail/unavailable), imagesActuallyViewed (boolean), normalObservation, actionObservation, deviceObservation, materialAndGeometryAssessment, combatReadabilityAssessment, and issues (array of strings). All observations and assessments must reflect pixels rather than metadata. Pass only when all relevant visual checks satisfy; fail on concrete defects. Do not write or edit files or tools."
+          prompt="You are an independent read-only visual acceptance reviewer of THREE ATTACHED ACTUAL PNG GAMEPLAY FRAMES, in order: NORMAL, ACTION, DEVICE. Do not read code or rely on image filenames, telemetry or earlier reviewers. LOOK DIRECTLY at the image pixel content. If images are not visually accessible, return verdict unavailable. Inspect whether the sci-fi Ice Mine scene has real textured and geometrically detailed ice and metal machinery rather than flat colors/placeholder cubes; whether blue navigation guides avoid oversized opaque bands; amber lines and target markers are enemy attack danger telegraphs (not route guides), and MUST remain legible without obstructing combat; whether there are any bright white margins outside the game scene, and whether players, hazards, objective, HUD and touch controls remain readable; whether action visibly differs from normal; whether screenshots have missing geometry, overlays or late-loading defects. Be adversarial and describe concrete visual details from EACH image, not generic claims. Return ONLY a valid JSON object with candidateSha '$CANDIDATE_SHA', verdict (pass/fail/unavailable), imagesActuallyViewed (boolean), normalObservation, actionObservation, deviceObservation, materialAndGeometryAssessment, combatReadabilityAssessment, and issues (array of strings). All observations and assessments must reflect pixels rather than metadata. Pass only when all relevant visual checks satisfy; fail on concrete defects. Do not write or edit files or tools."
           copilot -s -p "$prompt" \
             --attachment android-p28g5-ice-mine-normal.png \
             --attachment android-p28g5-ice-mine-action.png \
@@ -217,7 +219,11 @@ jobs:
           const output = readFileSync('p28g5-copilot-visual-review.txt', 'utf8').trim();
           const match = output.match(/\{[\s\S]*\}/);
           if (!match) throw new Error('No JSON independent image verdict');
-          const result = JSON.parse(match[0]);
+          // Models may hard-wrap JSON string text with unescaped newlines. Escape only
+          // literal CR/LF *inside quoted strings*; do not change the verdict or issues.
+          const repaired = match[0].replace(/"(?:\\.|[^"\\])*"/gs, quoted =>
+            quoted.replace(/\r/g, '\\r').replace(/\n/g, '\\n'));
+          const result = JSON.parse(repaired);
           if (result.candidateSha !== process.env.CANDIDATE_SHA) throw new Error('Stale image review SHA');
           if (result.imagesActuallyViewed !== true) throw new Error('Reviewer could not view PNG pixels');
           if (!['pass', 'fail', 'unavailable'].includes(result.verdict)) throw new Error('Invalid image verdict');

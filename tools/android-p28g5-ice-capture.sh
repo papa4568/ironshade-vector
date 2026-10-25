@@ -33,11 +33,15 @@ node tools/verify-p28g5-gameplay-frames.mjs android-p28g5-ice-mine-normal.png an
 node --input-type=module -e '
   import { readFileSync } from "node:fs";
   import { captureAcceptedG5Frame } from "./tools/p28g5-android-frame.mjs";
+  import { decodeScreenshotPng } from "./scripts/verify-p28g2-gameplay-frames.mjs";
+  import { auditBrightEdgeMargins } from "./tools/p28g5-bright-edge.mjs";
   await captureAcceptedG5Frame("android-p28g5-ice-mine-device.png", "P28-G5-device");
   const png = readFileSync("android-p28g5-ice-mine-device.png");
   if (png.length < 20000 || png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
     throw new Error("P28-G5 actual Android screencap was blank or invalid");
   }
+  const margins = auditBrightEdgeMargins(decodeScreenshotPng(png));
+  if (!margins.valid) throw new Error("P28-G5 Android display has a bright outer letterbox: " + JSON.stringify(margins));
   const report = JSON.parse(readFileSync("android-p28g5-ice-mine.json", "utf8"));
   if (report.capturedRoute !== "ice-mine" || report.artState !== "ready" || report.fallbackObjects !== 0 || report.authoredObjects !== report.mappedObjects) {
     throw new Error("P28-G5 Android capture report is incomplete");

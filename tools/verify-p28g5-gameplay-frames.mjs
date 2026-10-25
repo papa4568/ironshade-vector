@@ -2,15 +2,21 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { decodeScreenshotPng, auditGameplayPair } from '../scripts/verify-p28g2-gameplay-frames.mjs';
 import { auditAuthoredVisualProvenance } from './p28g5-ice-provenance.mjs';
+import { auditBrightEdgeMargins } from './p28g5-bright-edge.mjs';
 
 const [normalPath, actionPath, reportPath, provenancePath] = process.argv.slice(2);
 if (!normalPath || !actionPath || !reportPath || !provenancePath)
   throw new Error('Provide Ice normal/action PNGs, pixel report, and provenance JSON');
-const pixels = auditGameplayPair(decodeScreenshotPng(readFileSync(normalPath)), decodeScreenshotPng(readFileSync(actionPath)));
+const normal = decodeScreenshotPng(readFileSync(normalPath));
+const action = decodeScreenshotPng(readFileSync(actionPath));
+const pixels = auditGameplayPair(normal, action);
+const margins = { normal: auditBrightEdgeMargins(normal), action: auditBrightEdgeMargins(action) };
 const state = JSON.parse(readFileSync(provenancePath, 'utf8'));
 const provenance = auditAuthoredVisualProvenance(state);
-const report = { task: 'P28-G5', ...pixels, provenance };
+const report = { task: 'P28-G5', ...pixels,
+  valid: pixels.valid && margins.normal.valid && margins.action.valid,
+  margins, provenance };
 writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');
-if (state.capturedRoute !== 'ice-mine' || !pixels.valid || !provenance.valid)
+if (state.capturedRoute !== 'ice-mine' || !report.valid || !provenance.valid)
   throw new Error('P28-G5 exact-APK screenshot acceptance failed: ' + JSON.stringify(report));
 console.log('P28G5_GAMEPLAY_PIXEL_CONTENT_PASS route=ice-mine change=' + pixels.changedRatio);

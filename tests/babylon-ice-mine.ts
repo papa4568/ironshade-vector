@@ -10,6 +10,7 @@ import { getMapNavigationPlan } from '../src/game/mapNavigation';
 import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
 import { createDefaultCampaign, generateStandardContracts } from '../src/game/campaign';
 import { auditAuthoredVisualProvenance } from '../tools/p28g5-ice-provenance.mjs';
+import { auditBrightEdgeMargins } from '../tools/p28g5-bright-edge.mjs';
 
 function read(path: string) {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
@@ -197,6 +198,21 @@ for (const [name, change, expected] of [
 }
 
 
+// The shared center crop misses edge-to-edge Android landscape letterboxing.
+const marginFrame = (margin: number, right = false) => {
+  const width = 200, height = 100, pixels = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const p = (y * width + x) * 4;
+    const bright = right ? x >= width - margin : x < margin;
+    pixels[p] = pixels[p + 1] = pixels[p + 2] = bright ? 250 : 15;
+    pixels[p + 3] = 255;
+  }
+  return { width, height, pixels };
+};
+assert(auditBrightEdgeMargins(marginFrame(0)).valid, 'Dark full-bleed gameplay must pass edge audit.');
+assert(!auditBrightEdgeMargins(marginFrame(16)).valid, 'P28-G5 must reject a white left Android letterbox.');
+assert(!auditBrightEdgeMargins(marginFrame(16, true)).valid, 'P28-G5 must reject a white right Android letterbox.');
+
 // Exact-APK normal/action proof must exercise genuine Ice Mine cycle-three
 // deployment and reject missing textures, fallback slots and pale route bands.
 const capture = read('tools/android-p28g5-ice-capture.mjs');
@@ -218,11 +234,15 @@ assert(
     && shell.includes('mv "$diagnostic_frame" android-p28g5-ice-mine-device.png')
     && !shell.includes('screencap -p > android-p28g5-ice-mine-device.png')
     && verifier.includes('auditGameplayPair')
+    && verifier.includes('auditBrightEdgeMargins')
+    && shell.includes('P28-G5 Android display has a bright outer letterbox')
     && iceVisualWorkflow.includes('ironshade-vector-pr-android-apk')
     && iceVisualWorkflow.includes("'tools/p28g5-android-frame.mjs'")
     && iceVisualWorkflow.includes("'src/game/babylonRouteMarkings.ts'")
     && iceVisualWorkflow.includes("'src/game/babylonPremiumPbrSurfaceLibrary.ts'")
     && iceVisualWorkflow.includes('G5 Independent Copilot PNG Inspection')
+    && iceVisualWorkflow.includes("'tools/p28g5-bright-edge.mjs'")
+    && iceVisualWorkflow.includes('const repaired = match[0].replace')
     && iceVisualWorkflow.includes('id: visual_evidence_upload')
     && iceVisualWorkflow.includes('artifact-ids:')
     && iceVisualWorkflow.includes('screenshot_artifact_id')
