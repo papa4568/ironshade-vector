@@ -219,6 +219,9 @@ assert(
     && !shell.includes('screencap -p > android-p28g5-ice-mine-device.png')
     && verifier.includes('auditGameplayPair')
     && iceVisualWorkflow.includes('ironshade-vector-pr-android-apk')
+    && iceVisualWorkflow.includes("'tools/p28g5-android-frame.mjs'")
+    && iceVisualWorkflow.includes("'src/game/babylonRouteMarkings.ts'")
+    && iceVisualWorkflow.includes("'src/game/babylonPremiumPbrSurfaceLibrary.ts'")
     && iceVisualWorkflow.includes('github.event.pull_request.head.sha'),
   'P28-G5 exact-APK Ice Mine proof must enforce real textures/LOD0/route/frame content.');
 
