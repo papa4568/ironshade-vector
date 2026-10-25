@@ -222,6 +222,11 @@ assert(
     && iceVisualWorkflow.includes("'tools/p28g5-android-frame.mjs'")
     && iceVisualWorkflow.includes("'src/game/babylonRouteMarkings.ts'")
     && iceVisualWorkflow.includes("'src/game/babylonPremiumPbrSurfaceLibrary.ts'")
+    && iceVisualWorkflow.includes('G5 Independent Copilot PNG Inspection')
+    && iceVisualWorkflow.includes('--attachment android-p28g5-ice-mine-normal.png')
+    && iceVisualWorkflow.includes('--attachment android-p28g5-ice-mine-action.png')
+    && iceVisualWorkflow.includes('imagesActuallyViewed !== true')
+    && iceVisualWorkflow.includes('p28g5-copilot-visual-review.json')
     && iceVisualWorkflow.includes('github.event.pull_request.head.sha'),
   'P28-G5 exact-APK Ice Mine proof must enforce real textures/LOD0/route/frame content.');
 

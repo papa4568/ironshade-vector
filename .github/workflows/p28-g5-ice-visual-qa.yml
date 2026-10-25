@@ -135,3 +135,108 @@ jobs:
             android-fast-smoke.png
           if-no-files-found: warn
           retention-days: 30
+
+
+  independent-image-review:
+    name: G5 Independent Copilot PNG Inspection
+    needs: exact-apk-ice-frames
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+      copilot-requests: write
+    steps:
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Download actual exact-SHA gameplay screenshots
+        uses: actions/download-artifact@v8
+        with:
+          name: p28-g5-exact-apk-ice-${{ github.event.pull_request.head.sha }}
+
+      - name: Verify screenshot origin and image signatures
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(tr -d '\r\n' < android-p28g5-candidate-sha.txt)" = "$CANDIDATE_SHA"
+          for image in android-p28g5-ice-mine-normal.png android-p28g5-ice-mine-action.png android-p28g5-ice-mine-device.png; do
+            test -s "$image"
+          done
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          for (const name of ['normal', 'action', 'device']) {
+            const file = readFileSync('android-p28g5-ice-mine-' + name + '.png');
+            if (file.length < 20000 || file.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') {
+              throw new Error('Invalid actual device PNG: ' + name);
+            }
+          }
+          NODE
+
+      - name: Install pinned vision-capable Copilot CLI
+        shell: bash
+        run: |
+          npm install --global @github/copilot@1.0.88
+          copilot --version
+          copilot help | grep -- '--attachment'
+
+      - name: Independently inspect actual screenshot pixels
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          prompt="You are an independent read-only visual acceptance reviewer of THREE ATTACHED ACTUAL PNG GAMEPLAY FRAMES, in order: NORMAL, ACTION, DEVICE. Do not read code or rely on image filenames, telemetry or earlier reviewers. LOOK DIRECTLY at the image pixel content. If images are not visually accessible, return verdict unavailable. Inspect whether the sci-fi Ice Mine scene has real textured and geometrically detailed ice and metal machinery rather than flat colors/placeholder cubes; whether thin navigation guides avoid oversized opaque bands; whether players, hazards, objective, HUD and touch controls remain readable; whether action visibly differs from normal; whether screenshots have missing geometry, overlays or late-loading defects. Be adversarial and describe concrete visual details from EACH image, not generic claims. Return ONLY a valid JSON object with candidateSha '$CANDIDATE_SHA', verdict (pass/fail/unavailable), imagesActuallyViewed (boolean), normalObservation, actionObservation, deviceObservation, materialAndGeometryAssessment, combatReadabilityAssessment, and issues (array of strings). All observations and assessments must reflect pixels rather than metadata. Pass only when all relevant visual checks satisfy; fail on concrete defects. Do not write or edit files or tools."
+          copilot -s -p "$prompt" \
+            --attachment android-p28g5-ice-mine-normal.png \
+            --attachment android-p28g5-ice-mine-action.png \
+            --attachment android-p28g5-ice-mine-device.png \
+            --model gpt-5.4 --no-ask-user --no-custom-instructions \
+            --disable-builtin-mcps --deny-tool=write --deny-tool=shell \
+            --deny-tool=url --deny-tool=memory --no-remote --no-remote-export \
+            --stream=off > p28g5-copilot-visual-review.txt
+
+      - name: Validate the independent direct-image verdict
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const output = readFileSync('p28g5-copilot-visual-review.txt', 'utf8').trim();
+          const match = output.match(/\{[\s\S]*\}/);
+          if (!match) throw new Error('No JSON independent image verdict');
+          const result = JSON.parse(match[0]);
+          if (result.candidateSha !== process.env.CANDIDATE_SHA) throw new Error('Stale image review SHA');
+          if (result.imagesActuallyViewed !== true) throw new Error('Reviewer could not view PNG pixels');
+          if (!['pass', 'fail', 'unavailable'].includes(result.verdict)) throw new Error('Invalid image verdict');
+          for (const field of ['normalObservation', 'actionObservation', 'deviceObservation', 'materialAndGeometryAssessment', 'combatReadabilityAssessment']) {
+            if (typeof result[field] !== 'string' || result[field].trim().length < 35) {
+              throw new Error('Missing substantive direct pixel observation: ' + field);
+            }
+          }
+          if (!Array.isArray(result.issues)) throw new Error('Missing visual issues list');
+          writeFileSync('p28g5-copilot-visual-review.json', JSON.stringify(result, null, 2) + '\n');
+          if (result.verdict !== 'pass' || result.issues.length > 0) {
+            throw new Error('Independent image reviewer did not approve: ' + result.verdict);
+          }
+          console.log('P28G5_INDEPENDENT_DIRECT_PNG_REVIEW_PASS sha=' + result.candidateSha);
+          NODE
+
+      - name: Retain direct-image reviewer evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: p28-g5-copilot-image-review-${{ github.event.pull_request.head.sha }}
+          path: |
+            p28g5-copilot-visual-review.txt
+            p28g5-copilot-visual-review.json
+            android-p28g5-candidate-sha.txt
+          if-no-files-found: warn
+          retention-days: 30
