@@ -35,6 +35,8 @@ jobs:
     name: G5 Real Android Gameplay Pixels and Provenance
     runs-on: ubuntu-24.04
     timeout-minutes: 55
+    outputs:
+      screenshot_artifact_id: ${{ steps.visual_evidence_upload.outputs['artifact-id'] }}
     steps:
       - name: Check out exact candidate revision
         uses: actions/checkout@v7
@@ -118,6 +120,7 @@ jobs:
           script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh && bash tools/android-p28g5-ice-capture.sh'
 
       - name: Publish exact-head visual proof
+        id: visual_evidence_upload
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -156,7 +159,9 @@ jobs:
       - name: Download actual exact-SHA gameplay screenshots
         uses: actions/download-artifact@v8
         with:
-          name: p28-g5-exact-apk-ice-${{ github.event.pull_request.head.sha }}
+          # Bind to the *current successful producer job's* immutable artifact ID.
+          # Downloading by name may pick a stale diagnostic artifact from a retry.
+          artifact-ids: ${{ needs['exact-apk-ice-frames'].outputs.screenshot_artifact_id }}
 
       - name: Verify screenshot origin and image signatures
         env:
