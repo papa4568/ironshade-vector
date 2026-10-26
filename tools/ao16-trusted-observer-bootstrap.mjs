@@ -146,7 +146,7 @@ async function promote({ request, event, checkoutSha }) {
     base_tree: old.tree.sha,
     tree: [
       { path: OBSERVER, mode: '100644', type: 'blob', sha: REVIEWED_OBSERVER },
-      { path: HELPER, sha: null },
+      { path: HELPER, mode: '100644', type: 'blob', sha: null },
     ],
   });
   const commit = await request('POST', '/git/commits', {
@@ -238,7 +238,7 @@ async function selfTest() {
           assert.equal(data.base_tree, oldTree);
           assert.deepEqual(data.tree, [
             { path: OBSERVER, mode: '100644', type: 'blob', sha: REVIEWED_OBSERVER },
-            { path: HELPER, sha: null },
+            { path: HELPER, mode: '100644', type: 'blob', sha: null },
           ], 'promotion must modify only the pinned observer and retire the helper');
           return {sha: promotedTree};
         }
