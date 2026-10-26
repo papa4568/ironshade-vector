@@ -80,7 +80,7 @@ function reviewerEvidence(comments, technicalRunId) {
     && comment.user?.login === 'github-actions[bot]'
     && comment.body?.includes('<!-- ironshade-independent-review:trusted-main-actions:v1 -->'));
   assert.equal(source.length, 1, 'missing or ambiguous pinned trusted Copilot comment');
-  const match = source[0].body.match(/```json\\s*([\\s\\S]*?)\\s*```/);
+  const match = source[0].body.match(/```json\s*([\s\S]*?)\s*```/);
   assert(match, 'trusted reviewer JSON envelope missing');
   const review = JSON.parse(match[1]);
   assert.equal(review.taskId, 'AO-15');
@@ -286,7 +286,7 @@ async function selfTest() {
     reviewerRun = {}, reviewerLogText = reviewerLog, reviewerJob = {}} = {}) {
     const writes = [];
     async function request(method, path, data) {
-      if (method !== 'GET') {
+      if (method !== 'GET' && method !== 'TEXT') {
         writes.push({ method, path, data });
         if (method === 'POST' && path === '/git/trees') {
           assert.equal(data.base_tree, oldTree);
