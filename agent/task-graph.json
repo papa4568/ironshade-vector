@@ -635,7 +635,7 @@
       "acceptance": [
         "A separate reviewable prerequisite adds an owner-only exact-comment-triggered trusted-main bootstrap that executes exclusively from main and never executes pull request code with write privileges.",
         "Promote only the immutable full-Git-object-pinned AO-15 v11 observer blob after checking actual main baseline, exact AO-15 head, complete exact-SHA CI/build and API35/API36 APK proof, trusted self-test, and independent GitHub Copilot finding provenance.",
-        "The one-time promotion atomically deletes its own privileged workflow and helper alongside the observer-blob update, uses a non-force race-protected Git ref update, and aborts on missing/altered evidence or caller identity.",
+        "The one-time promotion atomically deletes the trusted bootstrap executable helper with the observer-blob update, leaving the workflow file inert without requesting unsupported workflow-file write privileges; it uses a non-force race-protected Git ref update and rejects missing or altered evidence or caller identity.",
         "The bootstrap candidate itself passes the unchanged trusted EV-9 observer, full candidate CI, and independent read-only Copilot approval before merge; a user-authorized owner trigger is a separate explicit action after trusted promotion mechanism is verified.",
         "The bootstrap does not merge G5 or AO-15, waive their gates, disable protection, or claim a Copilot policy FAIL is PASS. Their exact candidate proofs must be rerun against the promoted trusted main."
       ],

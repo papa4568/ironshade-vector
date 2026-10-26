@@ -140,12 +140,12 @@ async function promote({ request, event, checkoutSha }) {
   const review = reviewerEvidence(comments, technical.id);
 
   // No candidate code is executed, ever. Promote one exact reviewed blob and
-  // atomically remove the privileged one-use workflow and its helper.
+  // atomically delete its executable helper, leaving the workflow inert.
+  // GitHub's built-in Actions token cannot edit .github/workflows/ files.
   const tree = await request('POST', '/git/trees', {
     base_tree: old.tree.sha,
     tree: [
       { path: OBSERVER, mode: '100644', type: 'blob', sha: REVIEWED_OBSERVER },
-      { path: WORKFLOW, sha: null },
       { path: HELPER, sha: null },
     ],
   });
@@ -153,7 +153,7 @@ async function promote({ request, event, checkoutSha }) {
     message: 'AO-16 trusted one-shot bootstrap: pin reviewed AO-15 observer source\n\n'
       + 'Authorized by ' + OWNER + '; AO-15 candidate ' + CANDIDATE
       + '; CI run ' + technical.id + '; Copilot finding ' + review.sourceRunId
-      + '. The bootstrap workflow and helper are removed atomically.',
+      + '. The trusted executable helper is removed atomically; the workflow is inert.',
     tree: tree.sha,
     parents: [baseSha],
   });
