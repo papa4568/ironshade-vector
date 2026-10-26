@@ -623,6 +623,56 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-15",
+      "title": "Authorize exact P28-G5 Android native cutout source changes",
+      "priority": 150,
+      "status": "verifying",
+      "dependsOn": [
+        "AO-13"
+      ],
+      "acceptance": [
+        "Only after AO-15 reaches trusted main, allow precisely the reviewed P28-G5 scripts tree and Android fast-smoke contract blob, including mode and type, while the trusted base still has P28-G5 first in the product roadmap.",
+        "The exception applies to the unchanged active first-item roadmap or the strictly mechanically validated first-item roadmap/archive/metadata closeout, and retires automatically after G5 advances.",
+        "All other source-bound consumers, exact candidate producer, browser and Android workflows, observer implementations, protected agent boundaries, CI and independent-review gates stay unchanged and fail closed.",
+        "Real Git-tree calibration admits the existing G5 source and a correct one-item closeout and rejects tampered source, unrelated scripts, file modes, missing/reordered/extra closeout inputs and scope mistakes. Independent adversarial review must inspect and pass the policy before promotion.",
+        "The separate trust-policy candidate passes all required exact-SHA repository CI, Android APK/API35/API36, architecture and independent-review gates; no AO-15 proof automatically certifies G5 product acceptance."
+      ],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "android",
+        "repository-governance"
+      ],
+      "proofs": [
+        {
+          "id": "g5-native-boundary-regressions",
+          "kind": "test",
+          "required": true,
+          "description": "Trusted v11 self-test calibrates actual G5 source/object/queue boundaries and negative Git-tree mutations.",
+          "command": "node agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs self-test"
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Architecture and protected-boundary contracts remain fail-closed."
+        },
+        {
+          "id": "candidate-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Authoritative candidate verification, Android/API35/API36 APK and mandatory CI pass."
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "A separate trusted adversarial review returns a PASS for AO-15 exact candidate before merge."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }
