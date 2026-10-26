@@ -58,7 +58,7 @@ jobs:
         with:
           node-version: '22.23.2'
       - name: Bind privileged helper to reviewed immutable Git blob
-        run: test "$(git hash-object tools/ao16-trusted-observer-bootstrap.mjs)" = "a04d38537aa33bad30363b112daaeb28041b0220"
+        run: test "$(git hash-object tools/ao16-trusted-observer-bootstrap.mjs)" = "27c4b8772061665226ca5b79434dab9150fcd5b3"
       - name: Test trusted promotion code before any write
         run: node tools/ao16-trusted-observer-bootstrap.mjs self-test
       - name: Independently authorize exact AO-15 object and atomically retire bootstrap
