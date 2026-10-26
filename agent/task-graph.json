@@ -623,6 +623,56 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-16",
+      "title": "One-shot trusted-base security-reviewed observer bootstrap for AO-15",
+      "priority": 160,
+      "status": "verifying",
+      "dependsOn": [
+        "AO-13"
+      ],
+      "acceptance": [
+        "A separate reviewable prerequisite adds an owner-only exact-comment-triggered trusted-main bootstrap that executes exclusively from main and never executes pull request code with write privileges.",
+        "Promote only the immutable full-Git-object-pinned AO-15 v11 observer blob after checking actual main baseline, exact AO-15 head, complete exact-SHA CI/build and API35/API36 APK proof, trusted self-test, and independent GitHub Copilot finding provenance.",
+        "The one-time promotion atomically deletes its own privileged workflow and helper alongside the observer-blob update, uses a non-force race-protected Git ref update, and aborts on missing/altered evidence or caller identity.",
+        "The bootstrap candidate itself passes the unchanged trusted EV-9 observer, full candidate CI, and independent read-only Copilot approval before merge; a user-authorized owner trigger is a separate explicit action after trusted promotion mechanism is verified.",
+        "The bootstrap does not merge G5 or AO-15, waive their gates, disable protection, or claim a Copilot policy FAIL is PASS. Their exact candidate proofs must be rerun against the promoted trusted main."
+      ],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "ci",
+        "repository-governance"
+      ],
+      "proofs": [
+        {
+          "id": "owner-only-bootstrap-regressions",
+          "kind": "test",
+          "required": true,
+          "description": "Unit-level security controls reject unauthorized events, altered Git entries, bad CI and reviewer provenance.",
+          "command": "node tools/ao16-trusted-observer-bootstrap.mjs self-test"
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Source-bound producer and trusted observer remain unchanged for bootstrap PR."
+        },
+        {
+          "id": "candidate-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Authoritative exact-head build, APK/API35/API36, and trusted EV-9 observer pass without exceptions."
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "Separate trusted Copilot reviewer challenges the privileged bootstrap security controls and exact-head proof before merge."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }

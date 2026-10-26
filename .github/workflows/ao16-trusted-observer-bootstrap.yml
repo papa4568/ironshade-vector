@@ -1,0 +1,65 @@
+name: AO-16 One-Shot Trusted EV-9 Observer Bootstrap
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ao16-trusted-observer-bootstrap.yml'
+      - 'tools/ao16-trusted-observer-bootstrap.mjs'
+      - 'agent/task-graph.json'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-self-test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+      - name: Deny unauthorized promotion, changed provenance, and unreviewed failures
+        run: node tools/ao16-trusted-observer-bootstrap.mjs self-test
+
+  one-shot-trusted-promotion:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      github.event.issue.number == 438 &&
+      github.event.comment.user.login == 'papa4568' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/ao16-promote-observer 438 cbefc548a4478015572e19f74670fba0757e0cac'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+      issues: read
+      pull-requests: read
+    concurrency:
+      group: ao16-trusted-observer-bootstrap
+      cancel-in-progress: false
+    steps:
+      - name: Check out trusted main, never candidate code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+      - name: Test trusted promotion code before any write
+        run: node tools/ao16-trusted-observer-bootstrap.mjs self-test
+      - name: Independently authorize exact AO-15 object and atomically retire bootstrap
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/ao16-trusted-observer-bootstrap.mjs promote
