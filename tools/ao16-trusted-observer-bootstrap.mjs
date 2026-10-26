@@ -15,6 +15,13 @@ const WORKFLOW = '.github/workflows/ao16-trusted-observer-bootstrap.yml';
 const HELPER = 'tools/ao16-trusted-observer-bootstrap.mjs';
 const COMMAND = '/ao16-promote-observer 438 ' + CANDIDATE;
 const REPO_URL = 'https://api.github.com/repos/' + OWNER + '/' + REPO;
+// Immutable provenance of the trusted-main Copilot run that identified only
+// the circular observer-source gate. Bot-shaped JSON alone is not evidence.
+const REVIEW_RUN_ID = 40266218044;
+const REVIEW_COMMENT_ID = 6407849744;
+const REVIEW_WORKFLOW_ID = 380851235;
+const REVIEW_WORKFLOW_PATH = '.github/workflows/ao6-trusted-independent-review.yml';
+const REVIEW_WORKFLOW_SHA = '16ed115f75809abedc84f27959545f0b0188e308';
 
 function authorizedComment(event) {
   return event?.action === 'created'
@@ -69,28 +76,67 @@ function provedJobs(jobs) {
 }
 
 function reviewerEvidence(comments, technicalRunId) {
-  const validated = comments.filter(comment =>
-    comment.user?.login === 'github-actions[bot]'
-    && comment.body?.includes('<!-- ironshade-independent-review:trusted-main-actions:v1 -->'))
-    .map(comment => {
-      const match = comment.body?.match(/```json\s*([\s\S]*?)\s*```/);
-      try { return match ? JSON.parse(match[1]) : null; } catch { return null; }
-    }).filter(x => x?.candidateSha === CANDIDATE && x.taskId === 'AO-15');
-  assert(validated.length > 0, 'no exact-head trusted Copilot review');
-  const latest = validated.at(-1);
-  assert.equal(latest.reviewerKind, 'trusted-main-copilot-actions');
-  assert.equal(latest.verdict, 'fail', 'bootstrap requires the specifically documented circular finding');
-  assert.equal(latest.technicalRunId, technicalRunId);
-  assert(Array.isArray(latest.findings) && latest.findings.length === 1,
+  const source = comments.filter(comment => comment.id === REVIEW_COMMENT_ID
+    && comment.user?.login === 'github-actions[bot]'
+    && comment.body?.includes('<!-- ironshade-independent-review:trusted-main-actions:v1 -->'));
+  assert.equal(source.length, 1, 'missing or ambiguous pinned trusted Copilot comment');
+  const match = source[0].body.match(/```json\s*([\s\S]*?)\s*```/);
+  assert(match, 'trusted reviewer JSON envelope missing');
+  const review = JSON.parse(match[1]);
+  assert.equal(review.taskId, 'AO-15');
+  assert.equal(review.candidateSha, CANDIDATE);
+  assert.equal(review.reviewerKind, 'trusted-main-copilot-actions');
+  assert.equal(review.sourceWorkflow, 'AO-6 Trusted Independent Review');
+  assert.equal(review.sourceRunId, REVIEW_RUN_ID);
+  assert.equal(review.trustedWorkflowSha, REVIEW_WORKFLOW_SHA);
+  assert.equal(review.verdict, 'fail',
+    'bootstrap requires the specifically documented circular finding');
+  assert.equal(review.technicalRunId, technicalRunId);
+  assert(Array.isArray(review.findings) && review.findings.length === 1,
     'unreviewed additional finding blocks bootstrap');
-  const finding = latest.findings[0];
+  const finding = review.findings[0];
   assert.equal(finding.severity, 'major');
   assert(/observer.*(implementation|source)|implementation.*observer/i.test(finding.summary),
     'Copilot finding is not the expected observer self-update conflict');
-  assert(Array.isArray(latest.proofChecks) && latest.proofChecks.every(p =>
+  assert(Array.isArray(review.proofChecks) && review.proofChecks.every(p =>
     p.proofId === 'independent-review-verdict' || p.status === 'credible'),
     'non-review proofs disputed by Copilot');
-  return latest;
+  return review;
+}
+
+// Resolve the independently protected reviewer run through GitHub, including
+// its trusted workflow identity and the exact comment ID in its immutable logs.
+// This prevents a different Actions job from forging a matching bot comment.
+async function trustedReviewerProvenance(request) {
+  const run = await request('GET', '/actions/runs/' + REVIEW_RUN_ID);
+  assert.equal(run.id, REVIEW_RUN_ID);
+  assert.equal(run.workflow_id, REVIEW_WORKFLOW_ID);
+  assert.equal(run.path, REVIEW_WORKFLOW_PATH);
+  assert.equal(run.name, 'AO-6 Trusted Independent Review');
+  assert.equal(run.event, 'issue_comment');
+  assert.equal(run.head_sha, REVIEW_WORKFLOW_SHA);
+  assert.equal(run.actor?.login, OWNER);
+  assert.equal(run.status, 'completed');
+  assert.equal(run.conclusion, 'failure',
+    'the exact trusted review refused the circular candidate');
+  const result = await request('GET', '/actions/runs/' + REVIEW_RUN_ID + '/jobs?per_page=100');
+  assert.equal(result.total_count, result.jobs?.length, 'truncated trusted review jobs');
+  const job = namedJob(result.jobs, 'trusted-review');
+  assert.equal(job.status, 'completed');
+  assert.equal(job.conclusion, 'failure');
+  const failures = (job.steps ?? []).filter(step => step.conclusion === 'failure');
+  assert.equal(failures.length, 1, 'unexpected trusted reviewer job failures');
+  assert.equal(failures[0].name, 'Run trusted exact-SHA adversarial review');
+  const logs = await request('TEXT', '/actions/jobs/' + job.id + '/logs');
+  assert.equal(typeof logs, 'string', 'GitHub reviewer log missing');
+  const requested = 'AO6_TRUSTED_REVIEW_REQUEST_RESOLVED pr=' + PR
+    + ' candidate=' + CANDIDATE + ' task=AO-15';
+  const published = 'TRUSTED_INDEPENDENT_REVIEW_FAIL candidate=' + CANDIDATE
+    + ' comment=' + REVIEW_COMMENT_ID;
+  const first = logs.indexOf(requested);
+  const last = logs.indexOf(published);
+  assert(first >= 0 && last > first && logs.indexOf(published, last + 1) < 0,
+    'trusted Copilot run did not publish the pinned comment ID');
 }
 
 function validateRun(runs, workflow, event = 'pull_request') {
@@ -138,6 +184,7 @@ async function promote({ request, event, checkoutSha }) {
   const comments = await request('GET', '/issues/' + PR + '/comments?per_page=100');
   assert(comments.length < 100, 'refuse truncated review comments');
   const review = reviewerEvidence(comments, technical.id);
+  await trustedReviewerProvenance(request);
 
   // No candidate code is executed, ever. Promote one exact reviewed blob and
   // atomically delete its executable helper, leaving the workflow inert.
@@ -146,7 +193,7 @@ async function promote({ request, event, checkoutSha }) {
     base_tree: old.tree.sha,
     tree: [
       { path: OBSERVER, mode: '100644', type: 'blob', sha: REVIEWED_OBSERVER },
-      { path: HELPER, sha: null },
+      { path: HELPER, mode: '100644', type: 'blob', sha: null },
     ],
   });
   const commit = await request('POST', '/git/commits', {
@@ -200,12 +247,13 @@ async function selfTest() {
   assert.throws(() => pinnedObject({ ...pinTree, truncated: true }, OBSERVER, '100644 blob ' + BASE_OBSERVER));
   const goodReview = {
     taskId: 'AO-15', candidateSha: CANDIDATE, reviewerKind: 'trusted-main-copilot-actions',
-    verdict: 'fail', technicalRunId: 11, sourceRunId: 22,
+    verdict: 'fail', technicalRunId: 11, sourceRunId: REVIEW_RUN_ID,
+    sourceWorkflow: 'AO-6 Trusted Independent Review', trustedWorkflowSha: REVIEW_WORKFLOW_SHA,
     findings: [{ severity: 'major', summary: 'Observer implementation unchanged check blocks policy' }],
     proofChecks: [{ proofId: 'candidate-ci', status: 'credible' },
       { proofId: 'independent-review-verdict', status: 'insufficient' }],
   };
-  const comment = r => [{ user: { login: 'github-actions[bot]' },
+  const comment = r => [{ id: REVIEW_COMMENT_ID, user: { login: 'github-actions[bot]' },
     body: '<!-- ironshade-independent-review:trusted-main-actions:v1 -->\n```json\n' + JSON.stringify(r) + '\n```' }];
   reviewerEvidence(comment(goodReview), 11);
   assert.throws(() => reviewerEvidence(comment({ ...goodReview, findings: [{severity:'major',summary:'Unrelated trust flaw'}] }), 11));
@@ -216,6 +264,11 @@ async function selfTest() {
   const oldSha = 'a'.repeat(40), oldTree = 'b'.repeat(40);
   const candidateTreeSha = 'c'.repeat(40), promotedTree = 'd'.repeat(40);
   const promotedCommit = 'e'.repeat(40);
+  const reviewerJobId = 9922;
+  const reviewerLog = 'AO6_TRUSTED_REVIEW_REQUEST_RESOLVED pr=' + PR
+    + ' candidate=' + CANDIDATE + ' task=AO-15\\n'
+    + 'TRUSTED_INDEPENDENT_REVIEW_FAIL candidate=' + CANDIDATE
+    + ' comment=' + REVIEW_COMMENT_ID;
   const prRun = (id, conclusion) => ({
     id, head_sha: CANDIDATE, event: 'pull_request',
     pull_requests: [{number: PR}], conclusion,
@@ -229,16 +282,17 @@ async function selfTest() {
     { path: OBSERVER, mode: '100644', type: 'blob', sha: REVIEWED_OBSERVER },
   ]};
   function fakeApi({candidateObject = candidateTree, observedJobs = jobs,
-    expectedEvent = event, reviewedComments = comment(goodReview)} = {}) {
+    expectedEvent = event, reviewedComments = comment(goodReview),
+    reviewerRun = {}, reviewerLogText = reviewerLog, reviewerJob = {}} = {}) {
     const writes = [];
     async function request(method, path, data) {
-      if (method !== 'GET') {
+      if (method !== 'GET' && method !== 'TEXT') {
         writes.push({ method, path, data });
         if (method === 'POST' && path === '/git/trees') {
           assert.equal(data.base_tree, oldTree);
           assert.deepEqual(data.tree, [
             { path: OBSERVER, mode: '100644', type: 'blob', sha: REVIEWED_OBSERVER },
-            { path: HELPER, sha: null },
+            { path: HELPER, mode: '100644', type: 'blob', sha: null },
           ], 'promotion must modify only the pinned observer and retire the helper');
           return {sha: promotedTree};
         }
@@ -273,6 +327,21 @@ async function selfTest() {
         return {workflow_runs: [prRun(13, 'success')]};
       }
       if (path === '/issues/' + PR + '/comments?per_page=100') return reviewedComments;
+      if (path === '/actions/runs/' + REVIEW_RUN_ID) {
+        return {id: REVIEW_RUN_ID, workflow_id: REVIEW_WORKFLOW_ID, path: REVIEW_WORKFLOW_PATH,
+          name: 'AO-6 Trusted Independent Review', event: 'issue_comment',
+          head_sha: REVIEW_WORKFLOW_SHA, actor: {login: OWNER}, status:'completed',
+          conclusion:'failure', ...reviewerRun};
+      }
+      if (path === '/actions/runs/' + REVIEW_RUN_ID + '/jobs?per_page=100') {
+        return {total_count: 1, jobs: [{id: reviewerJobId, name:'trusted-review',
+          status:'completed', conclusion:'failure', steps: [
+            {name:'Run trusted exact-SHA adversarial review',conclusion:'failure'},
+          ], ...reviewerJob}]};
+      }
+      if (method === 'TEXT' && path === '/actions/jobs/' + reviewerJobId + '/logs') {
+        return reviewerLogText;
+      }
       throw new Error('unexpected mock read: ' + path);
     }
     return {request, writes, expectedEvent};
@@ -291,12 +360,19 @@ async function selfTest() {
     ['copilot-extra-finding', fakeApi({reviewedComments: comment({
       ...goodReview, findings: [...goodReview.findings, {severity: 'major', summary: 'Another defect'}],
     })}), event],
+    ['copilot-fake-run', fakeApi({reviewerRun:{head_sha: '0'.repeat(40)}}), event],
+    ['copilot-wrong-workflow', fakeApi({reviewerRun:{workflow_id: 42}}), event],
+    ['copilot-fake-comment', fakeApi({reviewerLogText:'no published review'}), event],
+    ['copilot-wrong-job', fakeApi({reviewerJob:{conclusion:'success'}}), event],
+    ['copilot-impersonated-comment', fakeApi({reviewedComments:comment({
+      ...goodReview, sourceRunId: 991,
+    })}), event],
   ]) {
     await assert.rejects(() => promote({request: mock.request, event: incomingEvent,
       checkoutSha: oldSha}), name + ' must be denied');
     assert.equal(mock.writes.length, 0, name + ' caused a privileged mutation');
   }
-  console.log('AO16_BOOTSTRAP_SELF_TEST_PASS unauthorized=7 source-bound=true technical-gates=true reviewer-bound=true transaction-mocked=true failClosedBeforeWrite=4');
+  console.log('AO16_BOOTSTRAP_SELF_TEST_PASS unauthorized=7 source-bound=true technical-gates=true reviewer-bound=true realRunLogBound=true transaction-mocked=true failClosedBeforeWrite=9');
 }
 
 async function main() {
@@ -310,13 +386,13 @@ async function main() {
   const checkoutSha = execFileSync('/usr/bin/git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
   async function request(method, path, data) {
     const response = await fetch(REPO_URL + path, {
-      method,
+      method: method === 'TEXT' ? 'GET' : method,
       headers: { authorization: 'Bearer ' + token, accept: 'application/vnd.github+json',
         'x-github-api-version': '2022-11-28', ...(data ? {'content-type':'application/json'} : {}) },
       ...(data ? {body: JSON.stringify(data)} : {}),
     });
     assert(response.ok, 'GitHub ' + method + ' ' + path + ' status ' + response.status);
-    return response.json();
+    return method === 'TEXT' ? response.text() : response.json();
   }
   await promote({ request, event, checkoutSha });
 }
