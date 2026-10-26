@@ -164,7 +164,7 @@ async function promote({ request, event, checkoutSha }) {
   return commit.sha;
 }
 
-function selfTest() {
+async function selfTest() {
   const event = {
     action: 'created', issue: { number: PR, pull_request: { url: 'x' } },
     comment: { body: COMMAND, user: { login: OWNER }, author_association: 'OWNER' },
@@ -211,12 +211,97 @@ function selfTest() {
   assert.throws(() => reviewerEvidence(comment({ ...goodReview, findings: [{severity:'major',summary:'Unrelated trust flaw'}] }), 11));
   assert.throws(() => reviewerEvidence(comment({ ...goodReview, proofChecks:[{proofId:'candidate-ci',status:'insufficient'}] }), 11));
   assert.throws(() => reviewerEvidence(comment(goodReview), 12));
-  console.log('AO16_BOOTSTRAP_SELF_TEST_PASS unauthorized=7 source-bound=true technical-gates=true reviewer-bound=true');
+  // Full mocked transaction proves the exact Git-tree write and fail-closed
+  // behavior without granting credentials or modifying a real repository.
+  const oldSha = 'a'.repeat(40), oldTree = 'b'.repeat(40);
+  const candidateTreeSha = 'c'.repeat(40), promotedTree = 'd'.repeat(40);
+  const promotedCommit = 'e'.repeat(40);
+  const prRun = (id, conclusion) => ({
+    id, head_sha: CANDIDATE, event: 'pull_request',
+    pull_requests: [{number: PR}], conclusion,
+  });
+  const baseTree = { truncated: false, tree: [
+    { path: OBSERVER, mode: '100644', type: 'blob', sha: BASE_OBSERVER },
+    { path: WORKFLOW, mode: '100644', type: 'blob', sha: 'f'.repeat(40) },
+    { path: HELPER, mode: '100644', type: 'blob', sha: '1'.repeat(40) },
+  ]};
+  const candidateTree = { truncated: false, tree: [
+    { path: OBSERVER, mode: '100644', type: 'blob', sha: REVIEWED_OBSERVER },
+  ]};
+  function fakeApi({candidateObject = candidateTree, observedJobs = jobs,
+    expectedEvent = event, reviewedComments = comment(goodReview)} = {}) {
+    const writes = [];
+    async function request(method, path, data) {
+      if (method !== 'GET') {
+        writes.push({ method, path, data });
+        if (method === 'POST' && path === '/git/trees') {
+          assert.equal(data.base_tree, oldTree);
+          assert.deepEqual(data.tree, [
+            { path: OBSERVER, mode: '100644', type: 'blob', sha: REVIEWED_OBSERVER },
+            { path: HELPER, sha: null },
+          ], 'promotion must modify only the pinned observer and retire the helper');
+          return {sha: promotedTree};
+        }
+        if (method === 'POST' && path === '/git/commits') {
+          assert.equal(data.tree, promotedTree);
+          assert.deepEqual(data.parents, [oldSha]);
+          return {sha: promotedCommit};
+        }
+        if (method === 'PATCH' && path === '/git/refs/heads/main') {
+          assert.deepEqual(data, {sha: promotedCommit, force: false});
+          return {object: {sha: promotedCommit}};
+        }
+        throw new Error('unexpected mock mutation: ' + method + ' ' + path);
+      }
+      if (path === '/git/ref/heads/main') return {object: {sha: oldSha}};
+      if (path === '/pulls/' + PR) return {state: 'open', head: {sha: CANDIDATE,
+        repo: {full_name: OWNER + '/' + REPO}}, base: {ref: 'main'}};
+      if (path === '/git/commits/' + oldSha) return {tree: {sha: oldTree}};
+      if (path === '/git/commits/' + CANDIDATE) return {tree: {sha: candidateTreeSha}};
+      if (path === '/git/trees/' + oldTree + '?recursive=1') return baseTree;
+      if (path === '/git/trees/' + candidateTreeSha + '?recursive=1') return candidateObject;
+      if (path.startsWith('/actions/workflows/pr-candidate.yml/runs?')) {
+        return {workflow_runs: [prRun(11, 'failure')]};
+      }
+      if (path === '/actions/runs/11/jobs?per_page=100') {
+        return {total_count: observedJobs.length, jobs: observedJobs};
+      }
+      if (path.startsWith('/actions/workflows/agent-orchestration.yml/runs?')) {
+        return {workflow_runs: [prRun(12, 'success')]};
+      }
+      if (path.startsWith('/actions/workflows/ev9-trusted-pr-candidate-observer.yml/runs?')) {
+        return {workflow_runs: [prRun(13, 'success')]};
+      }
+      if (path === '/issues/' + PR + '/comments?per_page=100') return reviewedComments;
+      throw new Error('unexpected mock read: ' + path);
+    }
+    return {request, writes, expectedEvent};
+  }
+  const allowed = fakeApi();
+  assert.equal(await promote({request: allowed.request, event, checkoutSha: oldSha}), promotedCommit);
+  assert.deepEqual(allowed.writes.map(x => x.method + ' ' + x.path), [
+    'POST /git/trees', 'POST /git/commits', 'PATCH /git/refs/heads/main',
+  ]);
+  for (const [name, mock, incomingEvent] of [
+    ['unapproved-actor', fakeApi(), { ...event, sender: { login: 'other' } }],
+    ['unreviewed-source', fakeApi({candidateObject: { ...candidateTree,
+      tree: [{...candidateTree.tree[0], sha: '0'.repeat(40)}]}}), event],
+    ['smoke-regression', fakeApi({ observedJobs: jobs.map(j =>
+      j.name === 'Android PR / Android PR API 35 Smoke' ? { ...j, conclusion:'failure' } : j) }), event],
+    ['copilot-extra-finding', fakeApi({reviewedComments: comment({
+      ...goodReview, findings: [...goodReview.findings, {severity: 'major', summary: 'Another defect'}],
+    })}), event],
+  ]) {
+    await assert.rejects(() => promote({request: mock.request, event: incomingEvent,
+      checkoutSha: oldSha}), name + ' must be denied');
+    assert.equal(mock.writes.length, 0, name + ' caused a privileged mutation');
+  }
+  console.log('AO16_BOOTSTRAP_SELF_TEST_PASS unauthorized=7 source-bound=true technical-gates=true reviewer-bound=true transaction-mocked=true failClosedBeforeWrite=4');
 }
 
 async function main() {
   const command = process.argv[2];
-  if (command === 'self-test') { selfTest(); return; }
+  if (command === 'self-test') { await selfTest(); return; }
   assert.equal(command, 'promote', 'usage: ao16-trusted-observer-bootstrap.mjs self-test|promote');
   assert.equal(process.env.GITHUB_REPOSITORY, OWNER + '/' + REPO);
   const token = process.env.GITHUB_TOKEN;
