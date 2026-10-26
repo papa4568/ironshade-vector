@@ -441,7 +441,15 @@ function validPinnedP28G5NativeCutout(trustedBaseSha, candidateSha) {
       || !Array.isArray(candidateInventory)) return false;
     const activeUnchanged = [roadmapPath, archivePath, metadataPath].every(
       path => gitEntry(candidateSha, path) === gitEntry(trustedBaseSha, path));
+    // Git object modes and types must also stay fixed through the closeout.
+    const regularCloseoutFiles = [roadmapPath, archivePath, metadataPath].every(path => {
+      const [baseMode, baseType] = gitEntry(trustedBaseSha, path).split(' ');
+      const [headMode, headType] = gitEntry(candidateSha, path).split(' ');
+      return baseMode === '100644' && baseType === 'blob'
+        && headMode === baseMode && headType === baseType;
+    });
     const validCloseout = !activeUnchanged
+      && regularCloseoutFiles
       && candidateInventory.length === baseInventory.length - 1
       && sameJson(candidateInventory, baseInventory.slice(1))
       && validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha)
@@ -624,6 +632,20 @@ function p28g5NativeCutoutBoundaryCalibration() {
     assert.equal(validPinnedP28G5NativeCutout(base, candidate), false,
       'G5 invalid roadmap/archive/metadata was admitted: ' + attack.id);
   }
+  // Real Git commits with identical file bytes but changed types/modes must fail.
+  const closeoutModeAttacks = [
+    { id: 'roadmap-chmod', path: roadmapPath, content: closedRoadmap, mode: '100755' },
+    { id: 'archive-chmod', path: archivePath, content: closedArchive, mode: '100755' },
+    { id: 'metadata-chmod', path: metadataPath, content: changes[2].content, mode: '100755' },
+    { id: 'archive-symlink', path: archivePath, content: closedArchive, mode: '120000' },
+  ];
+  for (const attack of closeoutModeAttacks) {
+    const candidate = createSyntheticRoadmapCandidate({
+      id: 'g5-' + attack.id, baseSha: accepted, changes: [attack],
+    });
+    assert.equal(validPinnedP28G5NativeCutout(base, candidate), false,
+      'G5 closeout Git mode/type mutation passed: ' + attack.id);
+  }
   const sourceAttacks = [
     { id: 'scripts-mutated', path: 'scripts/configure-android.mjs',
       content: gitText(g5SourceSha, 'scripts/configure-android.mjs') + '\n// altered\n' },
@@ -662,7 +684,7 @@ function p28g5NativeCutoutBoundaryCalibration() {
     'actual reviewed G5 source should pass trusted steady checks: '
       + gate.checks.filter(check => !check.pass).map(x => x.id).join(','));
   return {
-    accepted: true, active, attacks: attacks.length + sourceAttacks.length + predicateAttacks.length,
+    accepted: true, active, attacks: attacks.length + closeoutModeAttacks.length + sourceAttacks.length + predicateAttacks.length,
     falsePositives: 0, falseNegatives: 0,
   };
 }
