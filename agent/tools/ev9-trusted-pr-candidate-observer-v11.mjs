@@ -405,6 +405,60 @@ function validPinnedP28G3VisualCapture(trustedBaseSha, candidateSha) {
   }
 }
 
+// AO-15: permit exactly the independently reviewed G5 Android native-window
+// correction, and only while G5 is the first product-roadmap task. The whole
+// scripts tree and the smoke contract's full file object/mode are pinned;
+// candidate source never decides its own admission. Both the active implementation
+// and a strictly validated one-task archival closeout may consume this grant.
+const P28G5_NATIVE_BASE = Object.freeze({
+  scripts: '040000 tree 48f363f371cd6d30e0c48059ca298384a2d9b291',
+  smoke: '100644 blob b4bae0959f4b0bc927bcf38fd710c7bc1576ffba',
+});
+const P28G5_NATIVE_REVIEWED = Object.freeze({
+  scripts: '040000 tree 4b1f19663e1085cedc869e311ede8e54ce5cd6c5',
+  smoke: '100644 blob 6d21bf2cc6fe84787b8e7bdcf79c97ea84084f51',
+});
+
+function p28g5NativeEntriesAllowed({
+  firstTask, queueState, baseScripts, candidateScripts, baseSmoke, candidateSmoke,
+}) {
+  return firstTask === 'P28-G5'
+    && (queueState === 'active-unchanged' || queueState === 'valid-first-closeout')
+    && baseScripts === P28G5_NATIVE_BASE.scripts
+    && candidateScripts === P28G5_NATIVE_REVIEWED.scripts
+    && baseSmoke === P28G5_NATIVE_BASE.smoke
+    && candidateSmoke === P28G5_NATIVE_REVIEWED.smoke;
+}
+
+function validPinnedP28G5NativeCutout(trustedBaseSha, candidateSha) {
+  try {
+    const roadmapPath = 'docs/content-roadmap.md';
+    const archivePath = 'docs/content-roadmap-archive.md';
+    const metadataPath = 'agent/roadmap-metadata.json';
+    const baseInventory = JSON.parse(gitText(trustedBaseSha, metadataPath)).roadmapIds;
+    const candidateInventory = JSON.parse(gitText(candidateSha, metadataPath)).roadmapIds;
+    if (!Array.isArray(baseInventory) || baseInventory[0] !== 'P28-G5'
+      || !Array.isArray(candidateInventory)) return false;
+    const activeUnchanged = [roadmapPath, archivePath, metadataPath].every(
+      path => gitEntry(candidateSha, path) === gitEntry(trustedBaseSha, path));
+    const validCloseout = !activeUnchanged
+      && candidateInventory.length === baseInventory.length - 1
+      && sameJson(candidateInventory, baseInventory.slice(1))
+      && validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha)
+      && gitText(candidateSha, archivePath).includes('- [x] **P28-G5 — Refresh Ice Mine visuals**');
+    return p28g5NativeEntriesAllowed({
+      firstTask: baseInventory[0],
+      queueState: activeUnchanged ? 'active-unchanged' : validCloseout ? 'valid-first-closeout' : 'invalid',
+      baseScripts: gitEntry(trustedBaseSha, 'scripts'),
+      candidateScripts: gitEntry(candidateSha, 'scripts'),
+      baseSmoke: gitEntry(trustedBaseSha, 'tests/android-fast-smoke-contract.mjs'),
+      candidateSmoke: gitEntry(candidateSha, 'tests/android-fast-smoke-contract.mjs'),
+    });
+  } catch {
+    return false;
+  }
+}
+
 // Real Git-tree negative controls exercise the source boundary, rather than
 // only testing a predicate against synthetic in-memory strings.
 function observerImplementationBoundaryCalibration() {
@@ -492,12 +546,138 @@ function p28g3CaptureBoundaryCalibration() {
   return { falsePositives: 0, falseNegatives: 0, attacks: attacks.length };
 }
 
+function p28g5NativeCutoutBoundaryCalibration() {
+  const g5SourceSha = '9f2274664219799bac3aea58ece4ce67200bad28';
+  const base = git(['merge-base', 'HEAD', g5SourceSha]);
+  const smokePath = 'tests/android-fast-smoke-contract.mjs';
+  assert.equal(gitEntry(base, 'scripts'), P28G5_NATIVE_BASE.scripts, 'G5 base script tree drift');
+  assert.equal(gitEntry(g5SourceSha, 'scripts'), P28G5_NATIVE_REVIEWED.scripts, 'G5 reviewed script tree drift');
+  assert.equal(gitEntry(base, smokePath), P28G5_NATIVE_BASE.smoke, 'G5 base smoke contract drift');
+  assert.equal(gitEntry(g5SourceSha, smokePath), P28G5_NATIVE_REVIEWED.smoke, 'G5 reviewed smoke contract drift');
+
+  const roadmapPath = 'docs/content-roadmap.md';
+  const archivePath = 'docs/content-roadmap-archive.md';
+  const metadataPath = 'agent/roadmap-metadata.json';
+  for (const path of [roadmapPath, archivePath, metadataPath]) {
+    assert.equal(gitEntry(base, path), gitEntry(g5SourceSha, path),
+      'G5 source must not pre-author its own archive: ' + path);
+  }
+  const active = validPinnedP28G5NativeCutout(base, g5SourceSha);
+  assert.equal(active, true, 'real reviewed G5 source must be admissible without pretending it is closed');
+  const baseRoadmap = gitText(base, roadmapPath);
+  const baseArchive = gitText(base, archivePath);
+  const baseMetadata = JSON.parse(gitText(base, metadataPath));
+  assert.equal(baseMetadata.roadmapIds[0], 'P28-G5', 'G5 must remain first in trusted roadmap');
+  const taskLine = baseRoadmap.split('\n').find(line => line.startsWith('- [ ] **'));
+  assert(taskLine?.startsWith('- [ ] **P28-G5 — Refresh Ice Mine visuals**'),
+    'G5 synthetic closeout must originate from the actual first task');
+  const title = taskLine.match(/^- \[ \] \*\*(.+?)\*\*/)?.[1];
+  assert(title, 'G5 title missing');
+  const heading = '## P28 — Babylon flagship visual-quality overhaul\n\n';
+  assert(baseArchive.includes(heading), 'G5 archive heading missing');
+  const closedRoadmap = baseRoadmap.replace(taskLine + '\n\n', '');
+  assert.notEqual(closedRoadmap, baseRoadmap, 'G5 first task not removed');
+  const closedArchive = baseArchive.replace(heading, heading
+    + '- [x] **' + title + '** — Synthetic reviewed Git-tree closeout.\n'
+    + '  - Exact native source pins, no waiver or source substitution.\n\n');
+  const closedMetadata = structuredClone(baseMetadata);
+  closedMetadata.roadmapIds.shift();
+  const remaining = new Set(closedMetadata.roadmapIds);
+  for (const id of Object.keys(closedMetadata.overrides ?? {})) {
+    if (!remaining.has(id)) delete closedMetadata.overrides[id];
+    else if (Array.isArray(closedMetadata.overrides[id].dependsOn)) {
+      closedMetadata.overrides[id].dependsOn = closedMetadata.overrides[id].dependsOn.filter(dep => remaining.has(dep));
+      if (!closedMetadata.overrides[id].dependsOn.length) delete closedMetadata.overrides[id].dependsOn;
+    }
+  }
+  const changes = [
+    { path: roadmapPath, content: closedRoadmap },
+    { path: archivePath, content: closedArchive },
+    { path: metadataPath, content: JSON.stringify(closedMetadata, null, 2) + '\n' },
+  ];
+  const accepted = createSyntheticRoadmapCandidate({
+    id: 'g5-trusted-source-genuine-closeout', baseSha: g5SourceSha, changes,
+  });
+  assert.equal(validPinnedP28G5NativeCutout(base, accepted), true,
+    'exact reviewed G5 source plus strict one-task closeout must pass');
+  const reordered = structuredClone(closedMetadata);
+  [reordered.roadmapIds[0], reordered.roadmapIds[1]] =
+    [reordered.roadmapIds[1], reordered.roadmapIds[0]];
+  const attacks = [
+    { id: 'missing-roadmap', changes: changes.slice(1) },
+    { id: 'missing-archive', changes: [changes[0], changes[2]] },
+    { id: 'missing-metadata', changes: changes.slice(0, 2) },
+    { id: 'archive-impostor', changes: [changes[0], {
+      path: archivePath, content: closedArchive.replace(title, 'P28-G5 — Impostor'),
+    }, changes[2]] },
+    { id: 'reordered-metadata', changes: [changes[0], changes[1], {
+      path: metadataPath, content: JSON.stringify(reordered, null, 2) + '\n',
+    }] },
+    { id: 'extra-archive-mutation', changes: [changes[0], {
+      path: archivePath, content: closedArchive + 'unexpected\n',
+    }, changes[2]] },
+  ];
+  for (const attack of attacks) {
+    const candidate = createSyntheticRoadmapCandidate({
+      id: 'g5-' + attack.id, baseSha: g5SourceSha, changes: attack.changes,
+    });
+    assert.equal(validPinnedP28G5NativeCutout(base, candidate), false,
+      'G5 invalid roadmap/archive/metadata was admitted: ' + attack.id);
+  }
+  const sourceAttacks = [
+    { id: 'scripts-mutated', path: 'scripts/configure-android.mjs',
+      content: gitText(g5SourceSha, 'scripts/configure-android.mjs') + '\n// altered\n' },
+    { id: 'smoke-mutated', path: smokePath,
+      content: gitText(g5SourceSha, smokePath) + '\n// altered\n' },
+    { id: 'smoke-chmod', path: smokePath,
+      content: gitText(g5SourceSha, smokePath), mode: '100755' },
+    { id: 'scripts-extra-file', path: 'scripts/unauthorized-cutout.mjs',
+      content: '// unauthorized\n' },
+  ];
+  for (const attack of sourceAttacks) {
+    const candidate = createSyntheticRoadmapCandidate({
+      id: 'g5-' + attack.id, baseSha: accepted, changes: [attack],
+    });
+    assert.equal(validPinnedP28G5NativeCutout(base, candidate), false,
+      'G5 wrong source Git object passed: ' + attack.id);
+  }
+  const predicate = {
+    firstTask: 'P28-G5', queueState: 'active-unchanged',
+    baseScripts: P28G5_NATIVE_BASE.scripts, candidateScripts: P28G5_NATIVE_REVIEWED.scripts,
+    baseSmoke: P28G5_NATIVE_BASE.smoke, candidateSmoke: P28G5_NATIVE_REVIEWED.smoke,
+  };
+  const predicateAttacks = [
+    { firstTask: 'P28-G4' }, { firstTask: 'P28-G6' }, { queueState: 'invalid' },
+    { baseScripts: P28G5_NATIVE_BASE.scripts.replace('040000', '100644') },
+    { candidateScripts: P28G5_NATIVE_BASE.scripts },
+    { baseSmoke: P28G5_NATIVE_BASE.smoke.replace('100644', '100755') },
+    { candidateSmoke: P28G5_NATIVE_BASE.smoke },
+  ];
+  for (const attack of predicateAttacks) {
+    assert.equal(p28g5NativeEntriesAllowed({ ...predicate, ...attack }), false,
+      'G5 pure Git entry and scope attack passed: ' + JSON.stringify(attack));
+  }
+  const gate = steadyChecks({ trustedBaseSha: base, candidateSha: g5SourceSha });
+  assert(gate.checks.every(check => check.pass),
+    'actual reviewed G5 source should pass trusted steady checks: '
+      + gate.checks.filter(check => !check.pass).map(x => x.id).join(','));
+  return {
+    accepted: true, active, attacks: attacks.length + sourceAttacks.length + predicateAttacks.length,
+    falsePositives: 0, falseNegatives: 0,
+  };
+}
+
 function steadyChecks({ trustedBaseSha, candidateSha }) {
   const expectedWorkflowEntry = gitEntry(EV18_REFERENCE_SHA, PR_CANDIDATE_PATH);
   const baseDeps = gitPathRefs(trustedBaseSha, TRUSTED_CONSUMER_DEPENDENCIES);
   const candidateDeps = gitPathRefs(candidateSha, TRUSTED_CONSUMER_DEPENDENCIES);
   const ev9Changed = changedEv9Paths(trustedBaseSha, candidateSha);
   const reviewedP28G3Capture = validPinnedP28G3VisualCapture(trustedBaseSha, candidateSha);
+  const reviewedP28G5Native = validPinnedP28G5NativeCutout(trustedBaseSha, candidateSha);
+  const permittedNative = reviewedP28G5Native
+    && TRUSTED_CONSUMER_DEPENDENCIES.every(path =>
+      path === 'scripts' || path === 'tests/android-fast-smoke-contract.mjs'
+        || candidateDeps[path] === baseDeps[path]);
   return {
     checks: [
       check('ev18-steady-trusted-base-pinned', gitEntry(trustedBaseSha, PR_CANDIDATE_PATH) === expectedWorkflowEntry, 'trusted main must retain the hardened EV-18 producer tree entry'),
@@ -506,7 +686,7 @@ function steadyChecks({ trustedBaseSha, candidateSha }) {
       check('ev18-steady-observer-implementation-unchanged', changedObserverImplementations(trustedBaseSha, candidateSha).length === 0, 'candidate may not alter any trusted observer implementation source version, including via new files or mode changes'),
       check('ev18-steady-browser-workflow-unchanged', gitEntry(candidateSha, BROWSER_WORKFLOW_PATH) === gitEntry(trustedBaseSha, BROWSER_WORKFLOW_PATH), 'browser workflow must remain trusted-base identical'),
       check('ev18-steady-android-workflow-unchanged', gitEntry(candidateSha, ANDROID_WORKFLOW_PATH) === gitEntry(trustedBaseSha, ANDROID_WORKFLOW_PATH) || reviewedP28G3Capture, 'Android workflow must be trusted-base identical or match the exact Git-object-pinned P28-G3 capture closeout'),
-      check('ev18-steady-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps) || (reviewedP28G3Capture && TRUSTED_CONSUMER_DEPENDENCIES.every(path => path === 'scripts' || candidateDeps[path] === baseDeps[path])), 'consumer dependencies must remain base-identical except the exact reviewed P28-G3 scripts tree'),
+      check('ev18-steady-source-bound-dependencies-unchanged', sameJson(candidateDeps, baseDeps) || permittedNative || (reviewedP28G3Capture && TRUSTED_CONSUMER_DEPENDENCIES.every(path => path === 'scripts' || candidateDeps[path] === baseDeps[path])), 'consumer dependencies must remain base-identical except the exact reviewed P28-G3 scripts tree'),
       check('ev18-steady-protected-agent-boundary-unchanged', (sameJson(gitAgentRefs(candidateSha, { productCloseout: true }), gitAgentRefs(trustedBaseSha, { productCloseout: true })) || validPinnedRoadmapFixtureRepair(trustedBaseSha, candidateSha) || validPinnedRoadmapShadowCloseoutFixtureBundle(trustedBaseSha, candidateSha) || validPinnedF7ShadowCloseoutFixtureBundle(trustedBaseSha, candidateSha)), 'protected agent entries must remain trusted-base identical except for the exact Git-object-pinned roadmap regression-fixture repair'),
       check('ev18-steady-roadmap-closeout-metadata-bound', validProductRoadmapCloseoutMetadata(trustedBaseSha, candidateSha), 'metadata mutation must exactly match one first-item roadmap archival, dependency pruning and no other sidecar changes'),
       check('ev18-steady-ev9-live-paths-unchanged', ev9Changed.length === 0, `EV-9 live implementation changes require a new trusted observer bootstrap after EV-18; changed=${ev9Changed.join(',')}`),
@@ -974,8 +1154,9 @@ function selfTest() {
   const roadmapShadowBundle = roadmapShadowCloseoutFixtureBundleCalibration(roadmapFixtureRepair.candidateSha);
   const f7ShadowBundle = f7ShadowCloseoutFixtureCalibration();
   const p28g3CaptureBundle = p28g3CaptureBoundaryCalibration();
+  const p28g5NativeBundle = p28g5NativeCutoutBoundaryCalibration();
   const observerSourceBundle = observerImplementationBoundaryCalibration();
-  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass roadmapFixtureRepairAttacks=${roadmapFixtureRepair.attacks} roadmapFixtureRepairCalibration=pass roadmapShadowBundleAttacks=${roadmapShadowBundle.attacks} roadmapShadowBundleCalibration=pass f7ShadowFixtureAttacks=${f7ShadowBundle.attacks} f7ShadowFixtureRetired=${f7ShadowBundle.retired} f7ShadowFixtureCalibration=pass p28g3CaptureBoundaryAttacks=${p28g3CaptureBundle.attacks} p28g3CaptureBoundaryCalibration=pass observerSourceBoundaryAttacks=${observerSourceBundle.attacks} observerSourceBoundaryCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
+  console.log(`EV9_TRUSTED_V11_SELF_TEST_PASS task=EV-25 transitionAttacks=${calibration.rows.length} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} compatibilityFalsePositives=${compatibility.falsePositives} compatibilityFalseNegatives=${compatibility.falseNegatives} roadmapCloseoutAttacks=${roadmapCloseout.attacks} roadmapCloseoutCalibration=pass roadmapFixtureRepairAttacks=${roadmapFixtureRepair.attacks} roadmapFixtureRepairCalibration=pass roadmapShadowBundleAttacks=${roadmapShadowBundle.attacks} roadmapShadowBundleCalibration=pass f7ShadowFixtureAttacks=${f7ShadowBundle.attacks} f7ShadowFixtureRetired=${f7ShadowBundle.retired} f7ShadowFixtureCalibration=pass p28g3CaptureBoundaryAttacks=${p28g3CaptureBundle.attacks} p28g3CaptureBoundaryCalibration=pass p28g5NativeBoundaryAttacks=${p28g5NativeBundle.attacks} p28g5NativeBoundaryCalibration=pass observerSourceBoundaryAttacks=${observerSourceBundle.attacks} observerSourceBoundaryCalibration=pass v10LegacyContext=pass v10SupersededFalsePositive=reproduced roadmap=base-owned restoreFallback=pinned treeEntryModes=true reference=${EV18_REFERENCE_SHA}`);
 }
 
 function verify() {
