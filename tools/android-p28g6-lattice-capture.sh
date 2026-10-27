@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Source-verified Pixel 7 Pro emulator visual evidence, never physical QA.
+set -euo pipefail
+PACKAGE=app.ironshade.vector
+ACTIVITY="$PACKAGE/.MainActivity"
+adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
+adb shell pm clear "$PACKAGE" >/dev/null
+adb shell am start -W -n "$ACTIVITY"
+timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
+PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
+test -n "$PID"
+adb forward --remove tcp:9222 >/dev/null 2>&1 || true
+adb forward tcp:9222 "localabstract:webview_devtools_remote_${PID}"
+# Preserve independent failure evidence even when a cold emulator/WebView stalls.
+capture_diagnostics() {
+  # The accepted framebuffer is already validated. Capture fallback diagnostics
+  # only if it is absent, and never truncate it on a failed screencap.
+  if [[ ! -s android-p28g6-lattice-annex-device.png ]]; then
+    local diagnostic_frame="android-p28g6-lattice-annex-device-diagnostic.png"
+    if adb exec-out screencap -p > "$diagnostic_frame" 2>/dev/null && [[ -s "$diagnostic_frame" ]]; then
+      mv "$diagnostic_frame" android-p28g6-lattice-annex-device.png
+    else
+      rm -f "$diagnostic_frame"
+    fi
+  fi
+  adb logcat -d > android-p28g6-lattice-annex-logcat.txt 2>/dev/null || true
+  adb shell dumpsys activity activities > android-p28g6-lattice-annex-activity.txt 2>/dev/null || true
+}
+trap capture_diagnostics EXIT
+CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g6-lattice-capture.mjs
+node tools/verify-p28g6-gameplay-frames.mjs android-p28g6-lattice-annex-normal.png android-p28g6-lattice-annex-action.png android-p28g6-lattice-annex-pixel-report.json android-p28g6-lattice-annex.json
+# Capture the actual Android display in addition to the Chrome WebView frames.
+node --input-type=module -e '
+  import { readFileSync } from "node:fs";
+  import { captureAcceptedG6Frame } from "./tools/p28g6-android-frame.mjs";
+  import { decodeScreenshotPng } from "./scripts/verify-p28g2-gameplay-frames.mjs";
+  import { auditBrightEdgeMargins } from "./tools/p28g5-bright-edge.mjs";
+  await captureAcceptedG6Frame("android-p28g6-lattice-annex-device.png", "P28-G6-device");
+  const png = readFileSync("android-p28g6-lattice-annex-device.png");
+  if (png.length < 20000 || png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
+    throw new Error("P28-G6 actual Android screencap was blank or invalid");
+  }
+  const margins = auditBrightEdgeMargins(decodeScreenshotPng(png));
+  if (!margins.valid) throw new Error("P28-G6 Android display has a bright outer letterbox: " + JSON.stringify(margins));
+  const report = JSON.parse(readFileSync("android-p28g6-lattice-annex.json", "utf8"));
+  if (report.capturedRoute !== "lattice-annex" || report.artState !== "ready" || report.premium !== "ready" || report.fallbackObjects !== 0 || report.authoredObjects !== report.mappedObjects) {
+    throw new Error("P28-G6 Android capture report is incomplete");
+  }
+'
+adb logcat -d > android-p28g6-lattice-annex-logcat.txt
+if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-p28g6-lattice-annex-logcat.txt; then
+  echo 'P28-G6 Android capture suffered a fatal exception.' >&2
+  exit 1
+fi
+echo "ANDROID_P28G6_FLAGSHIP_CAPTURE_PASS device=pixel_7_pro emulator=api35 captures=webview-normal+webview-action+android-display route=lattice-annex assets=authored-world+bore-inlays"

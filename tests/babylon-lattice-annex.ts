@@ -10,6 +10,7 @@ import {
 } from '../src/game/babylonLatticeAnnexPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
+import { auditLatticeVisualProvenance } from '../tools/p28g6-lattice-provenance.mjs';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
@@ -125,5 +126,41 @@ assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
 assert.ok(world.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex';"));
 assert.ok(readiness.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex');"));
+
+
+const g6Proof = {
+  capturedRoute: 'lattice-annex', backend: 'webgl2', tier: 'high', captureMode: 'high-tier-qa-visual-only',
+  assetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0', beforeAssetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0',
+  mappedObjects: 8, authoredObjects: 8, fallbackObjects: 0,
+  artState: 'ready', beforeArtState: 'ready', premium: 'ready', beforePremium: 'ready',
+  premiumBindings: 80, ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
+  routeStyle: 'lattice-recessed-metrology-inlay', routeMaxWidth: 0.16,
+  objectiveCue: 'beacon+navigation-path', worldObjects: 8, groundProps: 5,
+  surfaceDetail: 'reference-pylon:9+sample-cradle:3+indexed-collar:36+survey-brace:12+hall-upright:8',
+  hazardLanguage: 'shared-hazards+calibration-mass-shift+gravity-well+calibration-shutters+reference-network',
+};
+assert.ok(auditLatticeVisualProvenance(g6Proof).valid);
+for (const [id, bad, reason] of [
+  ['route', { capturedRoute: 'ice-mine' }, 'wrong-map-or-backend'],
+  ['fallback', { fallbackObjects: 1 }, 'procedural-box-or-unresolved-world-slot'],
+  ['material', { premiumBindings: 10 }, 'missing-or-unready-premium-material'],
+  ['ribbon', { routeMaxWidth: 0.4 }, 'oversized-route-material'],
+  ['ground', { groundProps: 1 }, 'missing-survey-depth-or-grounding'],
+  ['hazard', { hazardLanguage: 'none' }, 'missing-calibration-hazard-cues'],
+  ['pop-in', { beforeArtState: 'loading' }, 'late-asset-pop-in'],
+] as const) {
+  const audit = auditLatticeVisualProvenance({...g6Proof, ...bad});
+  assert.ok(!audit.valid && audit.problems.includes(reason), 'G6 invalid provenance accepted: ' + id);
+}
+const g6Capture = readFileSync('tools/android-p28g6-lattice-capture.mjs', 'utf8');
+const g6Workflow = readFileSync('.github/workflows/p28-g6-lattice-visual-qa.yml', 'utf8');
+assert.ok(g6Capture.includes('story.step = 13'));
+assert.ok(g6Capture.includes("d?.babylonScenario === 'lattice-annex'"));
+assert.ok(g6Capture.includes("d.latticePremiumAssetState === 'ready'"));
+assert.ok(g6Capture.includes("d.missionVisualReadiness === 'ready'"));
+assert.ok(g6Workflow.includes('G6 Independent Copilot PNG Inspection'));
+assert.ok(g6Workflow.includes('imagesActuallyViewed !== true'));
+assert.ok(g6Workflow.includes('artifact-ids:'));
+assert.ok(g6Workflow.includes('--attachment android-p28g6-lattice-annex-normal.png'));
 
 console.log('BABYLON_LATTICE_ANNEX_PASS identity=reference-pylons|survey-ceramic|metrology-teal|calibration-service routes=' + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' calibration=10s-near-zero-g>20s-shutter-index boss=veyra-senn');
