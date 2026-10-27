@@ -3,9 +3,14 @@ import { resolve } from 'node:path';
 import {
   BABYLON_ICE_MINE_IDENTITY,
   BABYLON_ICE_MINE_LIGHTING,
+  BABYLON_ICE_MINE_PREMIUM_SURFACES,
   iceMineFractureBudget,
 } from '../src/game/babylonIceMinePresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
+import { createDefaultCampaign, generateStandardContracts } from '../src/game/campaign';
+import { auditAuthoredVisualProvenance } from '../tools/p28g5-ice-provenance.mjs';
+import { auditBrightEdgeMargins } from '../tools/p28g5-bright-edge.mjs';
 
 function read(path: string) {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
@@ -118,5 +123,136 @@ assert(
     && pkg.scripts?.build?.includes('npm run test:babylon-ice-mine'),
   'P27-C5 unit/source regression must be wired into the full production build.',
 );
+
+const readiness = read('src/game/babylonRefineryMissionReadiness.ts');
+assert(
+  BABYLON_ICE_MINE_PREMIUM_SURFACES.join(',') === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
+    && ice.includes('this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene)')
+    && ice.includes("new CubeTexture('/assets/environments/refinery-prefiltered.env'")
+    && ice.includes('ice.subSurface.isTranslucencyEnabled = true')
+    && ice.includes('ice.clearCoat.roughness = 0.15')
+    && ice.includes("this.canvas.dataset.babylonEnvironmentState = premiumReady && this.iblReady ? 'ready' : 'loading'")
+    && ice.includes('this.premiumSurfaces.dispose()')
+    && ice.includes('this.iblTexture.dispose()'),
+  'P28-G5 must deliver premium KTX2/IBL readiness, frosted translucency and owned resource cleanup.',
+);
+assert(
+  ['p28-g5-frost-wall-strata-', 'p28-g5-frost-wall-buttress-', 'p28-g5-bore-wall-crystal-facet-', 'p28-g5-frost-wall-footing-', 'p28-g5-frost-wall-cap-', 'p28-g5-frame-diagonal-brace-',
+    'p28-g5-service-recessed-rail-', 'p28-g5-service-deck-crossbar-', 'p28-g5-cryo-pump-collar-',
+    'p28-g5-manifold-feed-', 'p28-g5-compressor-cooling-bank-', 'p28-g5-ice-pillar-facet-seam-']
+    .every(name => ice.includes(name))
+    && ice.includes('babylonRouteMarkingWidth(route.kind)')
+    && BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20
+    && !ice.includes("scaled(route.kind === 'primary' ? 72")
+    && ice.includes('this.groundingSource.createInstance')
+    && ice.includes('this.enemyGrounding.delete(id)')
+    && ice.includes('this.groundingTexture.dispose()')
+    && ice.includes("this.canvas.dataset.environmentSurfaceDetail = 'frost-wall:10+ice-pillar:5'")
+    && ice.includes('this.canvas.dataset.icePremiumSurfaceDetail')
+    && ice.includes('crystal-facets:40')
+    && ice.includes("0x24485f, 0.03, 0.48")
+    && ice.includes("0x438da4, 0.02, 0.21"),
+  'P28-G5 scene depth, grounding and narrow route inlays must not regress.',
+);
+assert(
+  ice.includes('collar.parent = pump;')
+    && ice.includes('collar.position.set(0, ring * scale, 0);')
+    && !ice.includes('collar.parent = this.root;')
+    && !ice.includes('collar.rotation.y = Math.PI / 2;'),
+  'P28-G5 cryo pump collars must inherit pump bore orientation and local axis offset.',
+);
+assert(
+  world.includes("|| mission.location === 'ice-mine';")
+    && readiness.includes("|| mission.location === 'ice-mine');")
+    && ice.includes('this.syncBrittleSupports(state, renderBudget)')
+    && ice.includes('this.fracturePulses.set(id, pulse)')
+    && ice.includes('this.bossCueRoot.setEnabled(Boolean(activeBoss))'),
+  'P28-G5 must await shared-world authored LOD0 and retain live fracture/boss hazard cues.',
+);
+const iceRotation = generateStandardContracts({ ...createDefaultCampaign(), cycle: 3 });
+assert(iceRotation.some(contract => contract.location === 'ice-mine')
+    && !generateStandardContracts({ ...createDefaultCampaign(), cycle: 2 }).some(contract => contract.location === 'ice-mine'),
+  'P28-G5 Android visual QA must use the actual cycle-three rotating Ice Mine contract.');
+const proof = {
+  capturedRoute: 'ice-mine', backend: 'webgl2', tier: 'high', captureMode: 'high-tier-qa-visual-only',
+  assetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0',
+  beforeAssetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0',
+  mappedObjects: 16, authoredObjects: 16, fallbackObjects: 0,
+  artState: 'ready', beforeArtState: 'ready', premium: 'ready', beforePremium: 'ready',
+  premiumBindings: 100, ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
+  routeStyle: 'ice-recessed-bore-inlay', routeMaxWidth: 0.16,
+  objectiveCue: 'beacon+navigation-path', worldObjects: 16, groundProps: 4,
+  fractureLanguage: 'shared-hazards+brittle-support-fracture',
+};
+assert(auditAuthoredVisualProvenance(proof).valid, 'P28-G5 legitimate Ice Mine provenance must pass.');
+for (const [name, change, expected] of [
+  ['wrong-route', {capturedRoute: 'jovian-harvester'}, 'wrong-map-or-backend'],
+  ['fallback', {fallbackObjects: 1}, 'procedural-box-or-unresolved-world-slot'],
+  ['premium', {premiumBindings: 39}, 'missing-or-unready-premium-material'],
+  ['route-band', {routeMaxWidth: 0.24}, 'oversized-route-material'],
+  ['fracture', {fractureLanguage: 'no-fracture'}, 'missing-fracture-cue'],
+  ['late-pop-in', {beforeArtState: 'loading'}, 'late-asset-pop-in'],
+] as const) {
+  const audit = auditAuthoredVisualProvenance({ ...proof, ...change });
+  assert(!audit.valid && audit.problems.includes(expected), 'P28-G5 negative control admitted ' + name);
+}
+
+
+// The shared center crop misses edge-to-edge Android landscape letterboxing.
+const marginFrame = (margin: number, right = false) => {
+  const width = 200, height = 100, pixels = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const p = (y * width + x) * 4;
+    const bright = right ? x >= width - margin : x < margin;
+    pixels[p] = pixels[p + 1] = pixels[p + 2] = bright ? 250 : 15;
+    pixels[p + 3] = 255;
+  }
+  return { width, height, pixels };
+};
+assert(auditBrightEdgeMargins(marginFrame(0)).valid, 'Dark full-bleed gameplay must pass edge audit.');
+assert(!auditBrightEdgeMargins(marginFrame(16)).valid, 'P28-G5 must reject a white left Android letterbox.');
+assert(!auditBrightEdgeMargins(marginFrame(16, true)).valid, 'P28-G5 must reject a white right Android letterbox.');
+
+// Exact-APK normal/action proof must exercise genuine Ice Mine cycle-three
+// deployment and reject missing textures, fallback slots and pale route bands.
+const capture = read('tools/android-p28g5-ice-capture.mjs');
+const iceVisualWorkflow = read('.github/workflows/p28-g5-ice-visual-qa.yml');
+const shell = read('tools/android-p28g5-ice-capture.sh');
+const verifier = read('tools/verify-p28g5-gameplay-frames.mjs');
+assert(
+  capture.includes('state.campaign.cycle = 3')
+    && capture.includes("d?.babylonScenario === 'ice-mine'")
+    && capture.includes("d.icePremiumAssetState === 'ready'")
+    && capture.includes("Number(d.icePremiumBindings || 0) >= 80")
+    && capture.includes("d.environmentIbl === 'shared-prefiltered:ready'")
+    && capture.includes("d.environmentHazardLanguage === 'shared-hazards+brittle-support-fracture'")
+    && capture.includes("d.babylonSharedWorldArtState === 'ready'")
+    && capture.includes("d.missionVisualReadiness === 'ready'")
+    && capture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
+    && shell.includes('android-p28g5-ice-mine-normal.png')
+    && shell.includes('if [[ ! -s android-p28g5-ice-mine-device.png ]]; then')
+    && shell.includes('mv "$diagnostic_frame" android-p28g5-ice-mine-device.png')
+    && !shell.includes('screencap -p > android-p28g5-ice-mine-device.png')
+    && verifier.includes('auditGameplayPair')
+    && verifier.includes('auditBrightEdgeMargins')
+    && shell.includes('P28-G5 Android display has a bright outer letterbox')
+    && iceVisualWorkflow.includes('ironshade-vector-pr-android-apk')
+    && iceVisualWorkflow.includes("'tools/p28g5-android-frame.mjs'")
+    && iceVisualWorkflow.includes("'src/game/babylonRouteMarkings.ts'")
+    && iceVisualWorkflow.includes("'src/game/babylonPremiumPbrSurfaceLibrary.ts'")
+    && iceVisualWorkflow.includes('G5 Independent Copilot PNG Inspection')
+    && iceVisualWorkflow.includes("'tools/p28g5-bright-edge.mjs'")
+    && iceVisualWorkflow.includes('const repaired = match[0].replace')
+    && iceVisualWorkflow.includes('id: visual_evidence_upload')
+    && iceVisualWorkflow.includes('artifact-ids:')
+    && iceVisualWorkflow.includes('screenshot_artifact_id')
+    && !iceVisualWorkflow.includes('name: p28-g5-exact-apk-ice-${{ github.event.pull_request.head.sha }}\n\n      - name: Verify screenshot origin')
+    && iceVisualWorkflow.includes('--attachment android-p28g5-ice-mine-normal.png')
+    && iceVisualWorkflow.includes('--attachment android-p28g5-ice-mine-action.png')
+    && iceVisualWorkflow.includes('--model auto --no-ask-user')
+    && iceVisualWorkflow.includes('imagesActuallyViewed !== true')
+    && iceVisualWorkflow.includes('p28g5-copilot-visual-review.json')
+    && iceVisualWorkflow.includes('github.event.pull_request.head.sha'),
+  'P28-G5 exact-APK Ice Mine proof must enforce real textures/LOD0/route/frame content.');
 
 console.log('BABYLON_ICE_MINE_PASS identity=bore-crystals+frosted-industrial+ice-cyan+drill-service fracture=state-linked navigation=shared boss=rhea-kade world=shared-cues browser=headed');
