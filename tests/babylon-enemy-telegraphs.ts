@@ -111,7 +111,7 @@ assert.equal(
   const before = rendererOwnedSnapshot(state);
   const engine = new NullEngine();
   const scene = new Scene(engine);
-  const canvas = { dataset: {} } as HTMLCanvasElement;
+  const canvas = { dataset: { babylonScenario: 'ice-mine' } } as HTMLCanvasElement;
   const telegraphs = new BabylonEnemyTelegraphs(scene, canvas, false);
   try {
     syncReadOnly(telegraphs, state, 1);
@@ -121,6 +121,10 @@ assert.equal(
     assert.ok((lane?.material?.alpha ?? 1) <= 0.40, 'Warning floor fill must not obscure the Ice Mine operator and machinery.');
     assert.ok((ring?.material?.alpha ?? 0) >= 0.56, 'Source and target warnings must retain strong combat readability.');
     assert.notEqual(lane?.material, ring?.material, 'Floor-fill transparency must not weaken the warning markers.');
+    canvas.dataset.babylonScenario = 'asteroid-refinery';
+    syncReadOnly(telegraphs, state, 1);
+    assert.equal(lane?.material?.alpha, ring?.material?.alpha,
+      'Non-Ice gameplay must retain the original full-opacity attack warning.');
     assert(Math.abs((lane?.scaling.x ?? 0) - 6.6) < 0.001, 'Normal attack lane must scale to 330 simulation units at the shared world scale.');
     assert.equal(canvas.dataset.babylonEnemyTelegraphActive, '1');
     assert.equal(canvas.dataset.babylonEnemyTelegraphModes, 'rifle-line');

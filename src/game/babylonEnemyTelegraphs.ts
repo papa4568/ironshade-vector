@@ -308,12 +308,12 @@ export class BabylonEnemyTelegraphs {
     }, this.scene);
     sideA.parent = root;
     sideA.position.y = 0.012;
-    sideA.material = laneMaterial;
+    sideA.material = attackMaterial;
     sideA.isPickable = false;
 
     const sideB = sideA.clone(`p27-b8-telegraph-side-b-${id}`);
     sideB.parent = root;
-    sideB.material = laneMaterial;
+    sideB.material = attackMaterial;
     sideB.isPickable = false;
 
     const pulseRing = MeshBuilder.CreateTorus(`p27-b8-telegraph-pulse-${id}`, {
@@ -447,7 +447,9 @@ export class BabylonEnemyTelegraphs {
     visual.attackMaterial.alpha = clamp01(0.66 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.1);
     visual.laneMaterial.diffuseColor = signal.scale(0.18);
     visual.laneMaterial.emissiveColor = signal;
-    visual.laneMaterial.alpha = clamp01(0.32 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.06);
+    visual.laneMaterial.alpha = this.canvas.dataset.babylonScenario === 'ice-mine'
+      ? clamp01(0.32 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.06)
+      : visual.attackMaterial.alpha;
 
     const originX = scaled(enemy.x);
     const originZ = scaled(enemy.y);
