@@ -3,13 +3,17 @@ import { readFileSync } from 'node:fs';
 import {
   BABYLON_LATTICE_ANNEX_IDENTITY,
   BABYLON_LATTICE_ANNEX_LIGHTING,
+  BABYLON_LATTICE_ANNEX_PREMIUM_SURFACES,
   latticeAnnexCalibrationMode,
   latticeAnnexRenderProfile,
   latticeAnnexShutterState,
 } from '../src/game/babylonLatticeAnnexPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
+const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
+const readiness = readFileSync('src/game/babylonRefineryMissionReadiness.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonLatticeAnnexPresentation.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
 const director = readFileSync('src/game/director.ts', 'utf8');
@@ -97,5 +101,29 @@ assert.ok(workflow.includes('BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCAT
 assert.ok(workflow.includes('p27c7-lattice-annex.png'));
 assert.ok(pkg.scripts['test:babylon-lattice-annex']);
 assert.ok(pkg.scripts.build.includes('npm run test:babylon-lattice-annex'));
+
+// P28-G6: source-anchored checks reject the previous single-material, ungrounded
+// gallery and enforce actual KTX2/IBL readiness rather than a constant ready flag.
+assert.equal(BABYLON_LATTICE_ANNEX_PREMIUM_SURFACES.join(','),
+  'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture');
+for (const detail of [
+  'p28-g6-pylon-indexed-collar-', 'p28-g6-pylon-scale-tick-',
+  'p28-g6-pylon-dielectric-fin-', 'p28-g6-survey-diagonal-brace-',
+  'p28-g6-survey-optic-rail-', 'p28-g6-metrology-dial-',
+  'p28-g6-cradle-indexed-hinge-', 'p28-g6-survey-hall-upright-',
+]) assert.ok(presentation.includes(detail), 'P28-G6 missing premium mechanical layer: ' + detail);
+assert.ok(presentation.includes('this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene)'));
+assert.ok(presentation.includes("new CubeTexture('/assets/environments/refinery-prefiltered.env'"));
+assert.ok(presentation.includes('this.canvas.dataset.babylonEnvironmentState = premiumReady && this.iblReady'));
+assert.ok(presentation.includes("this.canvas.dataset.latticePremiumBindings = String(this.premiumBindingCount)"));
+assert.ok(presentation.includes('this.premiumSurfaces.dispose()'));
+assert.ok(presentation.includes('this.iblTexture.dispose()'));
+assert.ok(presentation.includes('this.groundingTexture.dispose()'));
+assert.ok(presentation.includes('this.enemyGrounding.delete(id)'));
+assert.ok(presentation.includes('babylonRouteMarkingWidth(route.kind)'));
+assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
+assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
+assert.ok(world.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex';"));
+assert.ok(readiness.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex');"));
 
 console.log('BABYLON_LATTICE_ANNEX_PASS identity=reference-pylons|survey-ceramic|metrology-teal|calibration-service routes=' + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' calibration=10s-near-zero-g>20s-shutter-index boss=veyra-senn');
