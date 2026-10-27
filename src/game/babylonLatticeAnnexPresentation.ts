@@ -227,6 +227,27 @@ export class BabylonLatticeAnnexPresentation {
         box(scene, root, 'p28-g6-pylon-sole-brace-' + index + '-' + side,
           structural, side * 0.52, 0.30, 0.17, 0.22, 0.50, 0.45);
       }
+
+      // Visible lens arrays: the original black glass reference core was
+      // entirely inside opaque white ceramic and could not read at play zoom.
+      // Housing uses the shipped painted-metal KTX2 normal/albedo channels.
+      for (const face of [-1, 1]) {
+        for (const [slot, fraction] of [0.28, 0.50, 0.72].entries()) {
+          const y = height * fraction;
+          box(scene, root, 'p28-g6-pylon-optic-bezel-' + index + '-' + face + '-' + slot,
+            service, 0, y, face * 0.44, 0.58, 0.46, 0.17);
+          box(scene, root, 'p28-g6-pylon-exposed-glass-' + index + '-' + face + '-' + slot,
+            referenceGlass, 0, y, face * 0.552, 0.40, 0.30, 0.075);
+          box(scene, root, 'p28-g6-pylon-optic-reticle-' + index + '-' + face + '-' + slot,
+            fixture, 0, y, face * 0.596, 0.27, 0.034, 0.014);
+          box(scene, root, 'p28-g6-pylon-optic-axis-' + index + '-' + face + '-' + slot,
+            fixture, 0, y, face * 0.605, 0.028, 0.22, 0.014);
+        }
+        for (const side of [-1, 1]) {
+          box(scene, root, 'p28-g6-pylon-front-datum-rail-' + index + '-' + face + '-' + side,
+            service, side * 0.303, height * 0.48, face * 0.377, 0.06, height * 0.70, 0.052);
+        }
+      }
       this.referencePylons.push(root);
     });
 

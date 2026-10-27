@@ -196,4 +196,15 @@ assert.ok(rendererImplementation.includes("this.latticeAnnexPresentation?.releas
 assert.ok(rendererImplementation.includes('this.latticeAnnexPresentation?.dispose()'));
 assert.ok(g6Workflow.includes('--attachment android-p28g6-lattice-annex-normal.png'));
 
+for (const detail of [
+  'p28-g6-pylon-optic-bezel-', 'p28-g6-pylon-exposed-glass-',
+  'p28-g6-pylon-optic-reticle-', 'p28-g6-pylon-optic-axis-',
+  'p28-g6-pylon-front-datum-rail-',
+]) assert.ok(presentation.includes(detail), 'P28-G6 hidden/flat survey optic: ' + detail);
+const g6Hud = readFileSync('src/combatHudGlance.css', 'utf8');
+const g6Controls = readFileSync('src/components/GameCanvas.tsx', 'utf8');
+assert.ok(g6Controls.includes('data-location={activeMission.location}'));
+assert.ok(g6Hud.includes('.game-root[data-location="lattice-annex"] .touch-ability-fan .ability-0'));
+assert.ok(g6Hud.includes('bottom: 172px;'));
+
 console.log('BABYLON_LATTICE_ANNEX_PASS identity=reference-pylons|survey-ceramic|metrology-teal|calibration-service routes=' + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' calibration=10s-near-zero-g>20s-shutter-index boss=veyra-senn');
