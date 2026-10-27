@@ -265,4 +265,15 @@ assert(
   'P27-D8 browser QA must stop exercising retired Three paths while preserving Babylon WebGL2/WebGPU coverage.',
 );
 
+
+const runtimeSmokeSource = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
+const postInputRecovery = runtimeSmokeSource.indexOf('P27-A2 Babylon post-input recovery visual readiness');
+const postFireSettle = runtimeSmokeSource.indexOf('P27-B4 Babylon enemy post-fire settle');
+const parityAssertion = runtimeSmokeSource.indexOf('P27-B2 Babylon authored refinery environment parity invalid');
+assert(postFireSettle >= 0 && postInputRecovery > postFireSettle && parityAssertion > postInputRecovery,
+  'P27-A2 must require authored visual recovery after input and before strict refinery parity.');
+assert(runtimeSmokeSource.includes("canvas?.dataset.babylonEnvironmentState === 'ready'")
+    && runtimeSmokeSource.includes("canvas?.dataset.environmentVisual === 'authored-refinery-babylon'"),
+  'WebGPU fallback must not satisfy P27-A2 readiness with loading or placeholder content.');
+
 console.log('P27-D8 graphics backend retirement + AO-6 snapshot isolation passed');

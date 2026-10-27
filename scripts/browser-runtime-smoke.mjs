@@ -2246,6 +2246,21 @@ async function p27A2BabylonBackendAudit() {
     10_000,
   );
 
+  // Runtime WebGPU device loss can rebuild the fallback authored environment
+  // after the initial ready sample while the input probes are underway.
+  // Wait for real rendered content again, never accepting a loading shell.
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.babylonInit === 'ready'
+      && canvas?.dataset.babylonBackendInitStage === 'ready'
+      && canvas?.dataset.babylonEnvironmentState === 'ready'
+      && canvas?.dataset.environmentVisual === 'authored-refinery-babylon'
+      && !canvas?.dataset.babylonEnvironmentError
+      && canvas?.dataset.babylonPlayerState === 'ready'
+      && /^authored-[012]-babylon$/.test(canvas?.dataset.operatorVisual ?? '')
+      && canvas?.dataset.babylonWorldState === 'ready';
+  })()`, 'P27-A2 Babylon post-input recovery visual readiness', 60_000);
+
   const state = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     return {
