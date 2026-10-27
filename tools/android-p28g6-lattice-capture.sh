@@ -25,16 +25,16 @@ trap capture_diagnostics EXIT
 # Never edit an image or turn an unrelated provenance/pixel failure into PASS.
 run_gameplay_pair() {
   adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
-  adb shell pm clear "$PACKAGE" >/dev/null
-  adb shell am start -W -n "$ACTIVITY"
-  timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
+  adb shell pm clear "$PACKAGE" >/dev/null || return $?
+  adb shell am start -W -n "$ACTIVITY" || return $?
+  timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done' || return $?
   local pid
   pid="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
-  test -n "$pid"
+  test -n "$pid" || return $?
   adb forward --remove tcp:9222 >/dev/null 2>&1 || true
-  adb forward tcp:9222 "localabstract:webview_devtools_remote_${pid}"
-  CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g6-lattice-capture.mjs
-  node tools/verify-p28g6-gameplay-frames.mjs android-p28g6-lattice-annex-normal.png android-p28g6-lattice-annex-action.png android-p28g6-lattice-annex-pixel-report.json android-p28g6-lattice-annex.json
+  adb forward tcp:9222 "localabstract:webview_devtools_remote_${pid}" || return $?
+  CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g6-lattice-capture.mjs || return $?
+  node tools/verify-p28g6-gameplay-frames.mjs android-p28g6-lattice-annex-normal.png android-p28g6-lattice-annex-action.png android-p28g6-lattice-annex-pixel-report.json android-p28g6-lattice-annex.json || return $?
 }
 pair_ok=0
 for attempt in 1 2 3; do

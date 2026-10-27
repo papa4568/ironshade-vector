@@ -213,6 +213,8 @@ assert.ok(g6CaptureShell.includes('r.provenance?.valid !== true'));
 assert.ok(g6CaptureShell.includes('r.margins?.normal?.leftBrightPixels !== 144'));
 assert.ok(g6CaptureShell.includes('r.margins?.action?.leftBrightPixels !== 144'));
 assert.ok(g6CaptureShell.includes('run_gameplay_pair'));
+assert.ok(g6CaptureShell.includes('CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g6-lattice-capture.mjs || return $?'));
+assert.ok(g6CaptureShell.includes('android-p28g6-lattice-annex-pixel-report.json android-p28g6-lattice-annex.json || return $?'));
 assert.ok(g6Workflow.includes('P28-G6 early Android startup retry'));
 assert.ok(g6Workflow.includes('test "$ok" = 1 && bash tools/android-p28g6-lattice-capture.sh'));
 assert.ok(g6Workflow.includes('--attachment android-p28g6-lattice-annex-normal.png'));
