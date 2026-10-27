@@ -2719,12 +2719,18 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const cameraOffset = narrow ? 13.2 : this.coarse ? 11.2 : 9.8;
     const offsetX = cameraFeedback?.worldOffsetX ?? 0;
     const offsetZ = cameraFeedback?.worldOffsetZ ?? 0;
+    // The Annex's active fight extends into the lower-right touch lane.
+    // Aim the camera a little farther into that actual playing field instead
+    // of hiding an enemy danger ring beneath DODGE or clipping its actor at
+    // the bottom edge. Translate eye and target together: preserve FOV,
+    // perspective, player aim, telegraphs, and all other route framing.
+    const annexCombatPan = this.canvas.dataset.babylonScenario === 'lattice-annex' && !narrow ? 3.5 : 0;
 
-    this.camera.position.set(px + cameraOffset + offsetX, cameraHeight, pz + cameraOffset + offsetZ);
+    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan);
     this.cameraTarget.set(
-      px + state.player.aim.x * 1.1 - offsetX * 0.2,
+      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan,
       0.62,
-      pz + state.player.aim.y * 1.1 - offsetZ * 0.2,
+      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan,
     );
     this.camera.setTarget(this.cameraTarget);
     this.camera.getViewMatrix(true);

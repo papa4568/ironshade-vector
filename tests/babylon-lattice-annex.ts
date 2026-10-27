@@ -206,6 +206,10 @@ assert.ok(rendererImplementation.includes('this.latticeAnnexPresentation ??= new
 assert.ok(!rendererImplementation.includes('this.latticeAnnexPresentation = new BabylonLatticeAnnexPresentation(scene, canvas, qualityCoarse)'));
 assert.ok(rendererImplementation.includes("this.latticeAnnexPresentation?.release('scenario-switch')"));
 assert.ok(rendererImplementation.includes('this.latticeAnnexPresentation?.dispose()'));
+assert.ok(rendererImplementation.includes("const annexCombatPan = this.canvas.dataset.babylonScenario === 'lattice-annex' && !narrow ? 3.5 : 0"));
+assert.ok(rendererImplementation.includes('px + cameraOffset + offsetX + annexCombatPan'));
+assert.ok(rendererImplementation.includes('pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan'));
+
 const g6CaptureShell = readFileSync('tools/android-p28g6-lattice-capture.sh', 'utf8');
 assert.ok(g6CaptureShell.includes('for attempt in 1 2 3; do'));
 assert.ok(g6CaptureShell.includes('P28-G6 non-cutout failure is not retryable'));
