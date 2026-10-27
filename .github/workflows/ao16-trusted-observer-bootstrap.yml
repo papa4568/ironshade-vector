@@ -13,6 +13,8 @@ on:
 
 permissions:
   contents: read
+  actions: read
+  issues: read
 
 jobs:
   bootstrap-retirement-self-test:
