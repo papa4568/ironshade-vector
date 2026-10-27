@@ -3,14 +3,6 @@
 set -euo pipefail
 PACKAGE=app.ironshade.vector
 ACTIVITY="$PACKAGE/.MainActivity"
-adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
-adb shell pm clear "$PACKAGE" >/dev/null
-adb shell am start -W -n "$ACTIVITY"
-timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
-PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
-test -n "$PID"
-adb forward --remove tcp:9222 >/dev/null 2>&1 || true
-adb forward tcp:9222 "localabstract:webview_devtools_remote_${PID}"
 # Preserve independent failure evidence even when a cold emulator/WebView stalls.
 capture_diagnostics() {
   # The accepted framebuffer is already validated. Capture fallback diagnostics
@@ -27,8 +19,51 @@ capture_diagnostics() {
   adb shell dumpsys activity activities > android-p28g6-lattice-annex-activity.txt 2>/dev/null || true
 }
 trap capture_diagnostics EXIT
-CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g6-lattice-capture.mjs
-node tools/verify-p28g6-gameplay-frames.mjs android-p28g6-lattice-annex-normal.png android-p28g6-lattice-annex-action.png android-p28g6-lattice-annex-pixel-report.json android-p28g6-lattice-annex.json
+# Only the known device-owned 144px cutout compositor failure may cause
+# another pair capture. Each attempt clears app data, creates a new WebView,
+# re-enters the actual finale, and regenerates both *raw* Android PNGs.
+# Never edit an image or turn an unrelated provenance/pixel failure into PASS.
+run_gameplay_pair() {
+  adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
+  adb shell pm clear "$PACKAGE" >/dev/null
+  adb shell am start -W -n "$ACTIVITY"
+  timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
+  local pid
+  pid="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
+  test -n "$pid"
+  adb forward --remove tcp:9222 >/dev/null 2>&1 || true
+  adb forward tcp:9222 "localabstract:webview_devtools_remote_${pid}"
+  CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g6-lattice-capture.mjs
+  node tools/verify-p28g6-gameplay-frames.mjs android-p28g6-lattice-annex-normal.png android-p28g6-lattice-annex-action.png android-p28g6-lattice-annex-pixel-report.json android-p28g6-lattice-annex.json
+}
+pair_ok=0
+for attempt in 1 2 3; do
+  rm -f android-p28g6-lattice-annex-normal.png android-p28g6-lattice-annex-action.png \
+    android-p28g6-lattice-annex-pixel-report.json android-p28g6-lattice-annex.json \
+    android-p28g6-lattice-annex-device.png
+  if run_gameplay_pair; then pair_ok=1; break; fi
+  if (( attempt >= 3 )); then
+    echo 'P28-G6 no accepted raw cutout-free gameplay pair after bounded retries' >&2
+    exit 1
+  fi
+  # The sole allowable retry is a known valid scene whose only failure is
+  # the real emulator displaying a 144px bright left cutout.
+  node --input-type=module -e '
+    import { readFileSync } from "node:fs";
+    const r = JSON.parse(readFileSync("android-p28g6-lattice-annex-pixel-report.json", "utf8"));
+    if (r.normal?.valid !== true || r.action?.valid !== true ||
+        r.provenance?.valid !== true ||
+        r.margins?.normal?.leftBrightPixels !== 144 ||
+        r.margins?.action?.leftBrightPixels !== 144 ||
+        r.margins?.normal?.rightBrightPixels !== 0 ||
+        r.margins?.action?.rightBrightPixels !== 0) {
+      throw new Error("P28-G6 non-cutout failure is not retryable");
+    }
+  '
+  echo "ANDROID_P28G6_REAL_CUTOUT_RECAPTURE attempt=$attempt action=restart-native-activity"
+  sleep 2
+done
+test "$pair_ok" = 1
 # Capture the actual Android display in addition to the Chrome WebView frames.
 node --input-type=module -e '
   import { readFileSync } from "node:fs";

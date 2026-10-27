@@ -206,6 +206,15 @@ assert.ok(rendererImplementation.includes('this.latticeAnnexPresentation ??= new
 assert.ok(!rendererImplementation.includes('this.latticeAnnexPresentation = new BabylonLatticeAnnexPresentation(scene, canvas, qualityCoarse)'));
 assert.ok(rendererImplementation.includes("this.latticeAnnexPresentation?.release('scenario-switch')"));
 assert.ok(rendererImplementation.includes('this.latticeAnnexPresentation?.dispose()'));
+const g6CaptureShell = readFileSync('tools/android-p28g6-lattice-capture.sh', 'utf8');
+assert.ok(g6CaptureShell.includes('for attempt in 1 2 3; do'));
+assert.ok(g6CaptureShell.includes('P28-G6 non-cutout failure is not retryable'));
+assert.ok(g6CaptureShell.includes('r.provenance?.valid !== true'));
+assert.ok(g6CaptureShell.includes('r.margins?.normal?.leftBrightPixels !== 144'));
+assert.ok(g6CaptureShell.includes('r.margins?.action?.leftBrightPixels !== 144'));
+assert.ok(g6CaptureShell.includes('run_gameplay_pair'));
+assert.ok(g6Workflow.includes('P28-G6 early Android startup retry'));
+assert.ok(g6Workflow.includes('test "$ok" = 1 && bash tools/android-p28g6-lattice-capture.sh'));
 assert.ok(g6Workflow.includes('--attachment android-p28g6-lattice-annex-normal.png'));
 
 for (const detail of [

@@ -119,7 +119,10 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh && bash tools/android-p28g6-lattice-capture.sh'
+          # An emulator CDP startup close can precede any gameplay frame.
+          # Retry the unchanged startup smoke once with a fresh native launch,
+          # then require the complete G6 capture/pixel/visual proof as usual.
+          script: bash -lc 'ok=0; for attempt in 1 2; do if ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh; then ok=1; break; fi; if [[ "$attempt" -lt 2 ]]; then echo "P28-G6 early Android startup retry"; adb shell am force-stop app.ironshade.vector || true; sleep 3; fi; done; test "$ok" = 1 && bash tools/android-p28g6-lattice-capture.sh'
 
       - name: Publish exact-head visual proof
         id: visual_evidence_upload
