@@ -102,9 +102,13 @@ writeFileSync(activityPath, `package app.ironshade.vector;
 
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.os.Build;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowManager;
 import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -117,6 +121,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        configureGameWindow();
         configureGameOrientation();
         configureGameWebView();
         enterImmersiveMode();
@@ -125,6 +130,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        configureGameWindow();
         configureGameOrientation();
         enterImmersiveMode();
     }
@@ -145,10 +151,29 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private void configureGameWindow() {
+        // Full-screen Pixel 7 Pro landscape should not leave a bright letterbox beside
+        // the display cutout. Preserve the existing responsive HUD/touch layouts.
+        getWindow().setBackgroundDrawable(new ColorDrawable(Color.rgb(5, 9, 10)));
+        getWindow().getDecorView().setBackgroundColor(Color.rgb(5, 9, 10));
+        getWindow().setNavigationBarColor(Color.rgb(5, 9, 10));
+        getWindow().setStatusBarColor(Color.rgb(5, 9, 10));
+        WindowManager.LayoutParams params = getWindow().getAttributes();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        getWindow().setAttributes(params);
+    }
+
     private void configureGameWebView() {
         WebView webView = getBridge().getWebView();
         boolean debuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
         if (debuggable) WebView.setWebContentsDebuggingEnabled(true);
+        // WebView's own otherwise-light backing can show through the landscape
+        // cutout when a QA/game route reloads inside the existing activity.
+        webView.setBackgroundColor(Color.rgb(5, 9, 10));
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setHorizontalScrollBarEnabled(false);
         webView.setVerticalScrollBarEnabled(false);
