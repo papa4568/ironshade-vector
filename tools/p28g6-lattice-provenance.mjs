@@ -3,6 +3,7 @@ export function auditLatticeVisualProvenance(state) {
   const finite = key => Number.isFinite(Number(state?.[key])) ? Number(state[key]) : NaN;
   const mapped = finite('mappedObjects'), authored = finite('authoredObjects'), fallback = finite('fallbackObjects');
   const problems = [];
+  if (state?.mapReentry !== 'exit-to-command-and-redeploy:ready') problems.push('missing-map-reentry-proof');
   if (state?.capturedRoute !== 'lattice-annex' || state?.backend !== 'webgl2') problems.push('wrong-map-or-backend');
   if (state?.tier !== 'high' || state?.captureMode !== 'high-tier-qa-visual-only'
       || !state?.assetIds || !state.assetIds.split(',').every(id => id.endsWith('-lod0')))

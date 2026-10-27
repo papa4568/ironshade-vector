@@ -117,6 +117,8 @@ try {
   url.searchParams.set('graphicsPath', 'babylon');
   url.searchParams.set('babylonBackend', 'webgl2');
   url.searchParams.set('p28FlagshipVisualQa', '1');
+  // Re-entry proof uses the existing QA-only bridge, never production UI bypass.
+  url.searchParams.set('p27d5Lifecycle', '1');
   await call('Page.navigate', { url: url.toString() });
   const surface = await waitFor(`(() => {
     if (document.readyState !== 'complete') return '';
@@ -214,6 +216,38 @@ try {
       && d.interactableReadability === 'shape-coded+state-emissive+floor-cue:quality-safe';
   })()`;
   await waitFor(ready, 'Lattice Annex route / authored-world visual readiness', 90_000);
+  // The campaign acceptance contract requires the *captured* normal and action
+  // scenes to be from a real return-to-hub / redeploy cycle. This lifecycle
+  // bridge is enabled only by p27d5Lifecycle=1 and calls the real App exit path.
+  const exitRequested = await evaluate(`(() => {
+    if (!document.querySelector('canvas')) return false;
+    window.dispatchEvent(new Event('ironshade:p27d5-return-to-hub'));
+    return true;
+  })()`);
+  if (!exitRequested) throw new Error('P28-G6 mission exit bridge unavailable.');
+  await waitFor(`(() => !document.querySelector('canvas')
+    && [...document.querySelectorAll('button')].some(b =>
+      (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations'))()`,
+    'returned to Command Deck before map re-entry', 20_000);
+  await clickButton('Operations');
+  await waitFor(`[...document.querySelectorAll('button')].some(b =>
+    (b.textContent || '').trim().toLowerCase() === 'contracts')`,
+    'post-exit Operations');
+  await clickButton('Contracts');
+  await waitFor('Boolean(document.querySelector(\'button[data-location="lattice-annex"]\'))',
+    're-entry Lattice Annex contract');
+  const reselected = await evaluate(`(() => {
+    const contract = document.querySelector('button[data-location="lattice-annex"]');
+    if (!contract || contract.disabled) return false;
+    contract.click();
+    return true;
+  })()`);
+  if (!reselected) throw new Error('P28-G6 real Lattice Annex redeployment unavailable.');
+  await waitFor('document.querySelector(\'button[data-location="lattice-annex"]\')?.classList.contains("selected")',
+    're-entry contract selection');
+  await clickButton('Deploy Selected Contract');
+  await waitFor(ready, 'post-reentry Lattice Annex authored-world readiness', 90_000);
+  console.log('ANDROID_P28G6_LATTICE_REENTRY_PASS exit=command-deck redeploy=lattice-annex state=ready');
   await sleep(650);
   const beforeVisual = await evaluate(`(() => {
     const d = document.querySelector('canvas')?.dataset ?? {};
@@ -260,7 +294,7 @@ try {
     throw new Error('P28-G6 actual Android visual proof incomplete: ' + JSON.stringify(result));
   }
   writeFileSync('android-p28g6-lattice-annex.json', JSON.stringify({
-    task: 'P28-G6', deviceValidation: 'emulator-visual-evidence-not-physical-thermal-acceptance',
+    task: 'P28-G6', mapReentry: 'exit-to-command-and-redeploy:ready', deviceValidation: 'emulator-visual-evidence-not-physical-thermal-acceptance',
     normalScreenshot: 'android-p28g6-lattice-annex-normal.png',
     actionScreenshot: 'android-p28g6-lattice-annex-action.png',
     screenshotsBytes: [normalBytes, actionBytes], beforePosition: before,

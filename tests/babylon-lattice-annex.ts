@@ -130,6 +130,7 @@ assert.ok(readiness.includes("|| mission.location === 'ice-mine' || mission.loca
 
 const g6Proof = {
   capturedRoute: 'lattice-annex', backend: 'webgl2', tier: 'high', captureMode: 'high-tier-qa-visual-only',
+  mapReentry: 'exit-to-command-and-redeploy:ready',
   assetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0', beforeAssetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0',
   mappedObjects: 8, authoredObjects: 8, fallbackObjects: 0,
   artState: 'ready', beforeArtState: 'ready', premium: 'ready', beforePremium: 'ready',
@@ -142,6 +143,7 @@ const g6Proof = {
 assert.ok(auditLatticeVisualProvenance(g6Proof).valid);
 for (const [id, bad, reason] of [
   ['route', { capturedRoute: 'ice-mine' }, 'wrong-map-or-backend'],
+  ['reentry', { mapReentry: '' }, 'missing-map-reentry-proof'],
   ['fallback', { fallbackObjects: 1 }, 'procedural-box-or-unresolved-world-slot'],
   ['material', { premiumBindings: 10 }, 'missing-or-unready-premium-material'],
   ['ribbon', { routeMaxWidth: 0.4 }, 'oversized-route-material'],
@@ -155,6 +157,9 @@ for (const [id, bad, reason] of [
 const g6Capture = readFileSync('tools/android-p28g6-lattice-capture.mjs', 'utf8');
 const g6Workflow = readFileSync('.github/workflows/p28-g6-lattice-visual-qa.yml', 'utf8');
 assert.ok(g6Capture.includes('story.step = 13'));
+assert.ok(g6Capture.includes("url.searchParams.set('p27d5Lifecycle', '1')"));
+assert.ok(g6Capture.includes('ANDROID_P28G6_LATTICE_REENTRY_PASS'));
+assert.ok(g6Capture.includes("await waitFor(ready, 'post-reentry Lattice Annex authored-world readiness'"));
 assert.ok(g6Capture.includes("d?.babylonScenario === 'lattice-annex'"));
 assert.ok(g6Capture.includes("d.latticePremiumAssetState === 'ready'"));
 assert.ok(g6Capture.includes("d.missionVisualReadiness === 'ready'"));
