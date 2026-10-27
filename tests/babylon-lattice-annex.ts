@@ -125,6 +125,18 @@ assert.ok(presentation.includes('this.referencePylons.slice(0, 5)'));
 assert.ok(presentation.includes('contact.position.set(pylon.position.x, 0.042, pylon.position.z)'));
 assert.ok(!presentation.includes('contact.position.set(worldW * fraction, 0.042, cz)'));
 
+// Review-driven visual controls must keep metrology guides dim and
+// telegraph warning teeth/actor contrast distinct, only in the Annex.
+assert.ok(presentation.includes("pbr(scene, 'p27-c7-lattice-route-primary', 0x23403b, 0.08, 0.94"));
+assert.ok(presentation.includes('scale(0.026 * routePulse)'));
+assert.ok(presentation.includes('scale(0.012 * routePulse)'));
+const dangerSource = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
+assert.ok(dangerSource.includes('p28-g6-attack-warning-tick-'));
+assert.ok(dangerSource.includes("this.canvas.dataset.babylonScenario === 'lattice-annex'"));
+assert.ok(dangerSource.includes('for (const tick of visual.annexAttackTicks) tick.setEnabled(false)'));
+const actorSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
+assert.ok(actorSource.includes("const annexContrast = this.canvas.dataset.babylonScenario === 'lattice-annex'"));
+assert.ok(actorSource.includes("const annexActorLift = this.canvas.dataset.babylonScenario === 'lattice-annex'"));
 assert.ok(presentation.includes('babylonRouteMarkingWidth(route.kind)'));
 assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));

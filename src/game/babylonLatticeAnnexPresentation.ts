@@ -187,8 +187,10 @@ export class BabylonLatticeAnnexPresentation {
     referenceGlass.clearCoat.intensity = 0.74;
     referenceGlass.clearCoat.roughness = 0.16;
     const teal = pbr(scene, 'p27-c7-lattice-teal', 0x3f5a58, 0.44, 0.30, 0x88b8ad, 0.26);
-    const routePrimary = pbr(scene, 'p27-c7-lattice-route-primary', 0x496764, 0.35, 0.48, 0x88b8ad, 0.14);
-    const routeSecondary = pbr(scene, 'p27-c7-lattice-route-secondary', 0x293c3a, 0.45, 0.56, 0x546c68, 0.07);
+    // Recessed floor surveying marks should read as fine dark inlays, not
+    // light ribbons competing with amber attack arcs on flagship screens.
+    const routePrimary = pbr(scene, 'p27-c7-lattice-route-primary', 0x23403b, 0.08, 0.94, 0x4a7770, 0.026);
+    const routeSecondary = pbr(scene, 'p27-c7-lattice-route-secondary', 0x172a28, 0.06, 0.95, 0x365a54, 0.012);
     this.ownedMaterials = [ceramic, referenceGlass, teal, routePrimary, routeSecondary];
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.cueMaterial = teal;
@@ -574,8 +576,8 @@ export class BabylonLatticeAnnexPresentation {
     const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
     this.practicalLights.forEach((light, index) => { const enabled = index < practicalCount; light.setEnabled(enabled); light.intensity = enabled ? (index === 0 ? 5.2 : 4.4) * tierScale : 0; });
     const routePulse = 0.86 + Math.sin(state.time * 3.4) * 0.14;
-    this.routeMaterials[0].emissiveColor = colorFromHex(0x88b8ad).scale(0.15 * routePulse);
-    this.routeMaterials[1].emissiveColor = colorFromHex(0x546c68).scale(0.07 * routePulse);
+    this.routeMaterials[0].emissiveColor = colorFromHex(0x4a7770).scale(0.026 * routePulse);
+    this.routeMaterials[1].emissiveColor = colorFromHex(0x365a54).scale(0.012 * routePulse);
 
     this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
     this.scene.environmentIntensity = this.iblReady

@@ -1443,7 +1443,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const operatorColor = operatorFaction ? colorFromHex(factionColors[operatorFaction]) : weaponColor;
 
     this.operatorAccentMaterial.diffuseColor.copyFrom(operatorColor.scale(0.45));
-    this.operatorAccentMaterial.emissiveColor.copyFrom(operatorColor.scale(0.18 + Math.min(0.35, heat * 0.16 + flash * 0.12)));
+    // Keep the operator silhouette separate from the Annex's near-black
+    // patterned floor; this is presentation-only and restores on map exit.
+    const annexActorLift = this.canvas.dataset.babylonScenario === 'lattice-annex' ? 0.24 : 0;
+    this.operatorAccentMaterial.emissiveColor.copyFrom(operatorColor.scale(
+      0.18 + annexActorLift + Math.min(0.35, heat * 0.16 + flash * 0.12),
+    ));
     this.weaponAccentMaterial.diffuseColor.copyFrom(weaponColor.scale(0.5));
     this.weaponAccentMaterial.emissiveColor.copyFrom(weaponColor.scale(
       0.28 + heat * 0.9 + flash * 0.8 + reloadPulse * pulse * 0.25 + thermalLoad * 0.24,
@@ -2028,8 +2033,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     visual.variantCue.rotation.y = silhouette === 'drone' ? state.time * 1.8 : 0;
     visual.variantCue.rotation.z = (silhouette === 'mobile' ? -0.28 : silhouette === 'technical' ? 0.16 : 0)
       + (silhouette === 'mobile' ? Math.sin(state.time * 8 + enemy.id) * 0.08 * speed : 0);
+    const annexContrast = this.canvas.dataset.babylonScenario === 'lattice-annex';
+    visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(annexContrast ? 0.22 : 0.06);
+    visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(annexContrast ? 0.13 : 0);
     visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      0.22 + damage.hit * 0.32 + damage.armorBreak * 0.24,
+      (annexContrast ? 0.42 : 0.22) + damage.hit * 0.32 + damage.armorBreak * 0.24,
     );
   }
 
