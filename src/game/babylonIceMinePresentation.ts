@@ -62,6 +62,31 @@ function colorFromHex(hex: number) {
   return Color3.FromInts((hex >> 16) & 0xff, (hex >> 8) & 0xff, hex & 0xff);
 }
 
+// Deterministic fine-scale glacier striation: one shared, mipmapped surface for all
+// exposed cut-ice faces. Unlike flat tinting, the color veins persist under PBR
+// lighting without using normal/action state or changing collision geometry.
+function createIceVeinTexture(scene: Scene): RawTexture {
+  const size = 512;
+  const pixels = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const ripple = Math.sin(x * 0.047 + y * 0.085 + Math.sin(y * 0.026) * 3.2);
+      const grain = Math.sin(x * 0.19 - y * 0.14) * Math.sin(x * 0.071 + y * 0.11);
+      const seam = Math.abs(Math.sin(x * 0.055 + y * 0.021 + Math.sin(y * 0.045) * 1.8));
+      const shade = Math.max(100, Math.min(248,
+        188 + ripple * 24 + grain * 14 - (seam < 0.065 ? 62 : 0)));
+      const offset = (y * size + x) * 4;
+      pixels[offset] = Math.max(0, shade - 26);
+      pixels[offset + 1] = Math.min(255, shade + 5);
+      pixels[offset + 2] = Math.min(255, shade + 18);
+      pixels[offset + 3] = 255;
+    }
+  }
+  const texture = RawTexture.CreateRGBATexture(pixels, size, size, scene, true, false);
+  texture.name = 'p28-g5-shared-cut-ice-veins-512';
+  return texture;
+}
+
 function material(
   scene: Scene,
   name: string,
@@ -156,6 +181,7 @@ export class BabylonIceMinePresentation {
   private readonly premiumBindingCount: number;
   private readonly iblTexture: CubeTexture;
   private iblReady = false;
+  private readonly iceVeinTexture: RawTexture;
   private readonly groundingTexture: RawTexture;
   private readonly groundingMaterial: StandardMaterial;
   private readonly groundingSource: Mesh;
@@ -204,17 +230,20 @@ export class BabylonIceMinePresentation {
     // Metal is real KTX2 PBR; frosted crystal preserves its own translucent
     // clear-coat response instead of borrowing a steel material.
     this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
+    this.iceVeinTexture = createIceVeinTexture(scene);
     const floor = this.premiumSurfaces.get('deck-plate');
     const support = this.premiumSurfaces.get('bare-metal');
     const service = this.premiumSurfaces.get('painted-metal');
     const machinery = this.premiumSurfaces.get('painted-metal');
     const polymer = this.premiumSurfaces.get('polymer-rubber');
     const fixture = this.premiumSurfaces.get('emissive-fixture');
-    const frost = material(scene, 'p28-g5-ice-frost-material', 0x24485f, 0.03, 0.48, 0x4d91a9, 0.015);
+    const frost = material(scene, 'p28-g5-ice-frost-material', 0x76b9cb, 0.03, 0.48, 0x4d91a9, 0.015);
+    frost.albedoTexture = this.iceVeinTexture;
     frost.clearCoat.isEnabled = true;
     frost.clearCoat.intensity = 0.32;
     frost.clearCoat.roughness = 0.46;
-    const ice = material(scene, 'p28-g5-ice-crystal-material', 0x438da4, 0.02, 0.21, 0x70b3c6, 0.085);
+    const ice = material(scene, 'p28-g5-ice-crystal-material', 0xa6d7eb, 0.02, 0.21, 0x70b3c6, 0.085);
+    ice.albedoTexture = this.iceVeinTexture;
     ice.clearCoat.isEnabled = true;
     ice.clearCoat.intensity = 0.73;
     ice.clearCoat.roughness = 0.15;
@@ -264,6 +293,23 @@ export class BabylonIceMinePresentation {
         box(scene, this.root, 'p28-g5-frost-wall-buttress-' + index + '-' + side, support,
           worldW * fx + side * 1.82 * scale, 0.42, worldH * fz + 0.38,
           0.24, 0.76, 0.34);
+      }
+      // Near-surface mineral bands put non-planar highlights into the broad
+      // ice face while retaining the original wall footprint and fracture path.
+      for (let vein = 0; vein < 7; vein += 1) {
+        const offset = (vein - 3) * 0.57 * scale;
+        const ridgeHeight = (0.54 + (vein % 3) * 0.22) * scale;
+        const ridge = MeshBuilder.CreateCylinder(
+          'p28-g5-frost-wall-relief-vein-' + index + '-' + vein,
+          { height: ridgeHeight, diameterBottom: 0.21 * scale,
+            diameterTop: 0.035 * scale, tessellation: 5 }, scene,
+        );
+        ridge.parent = this.root;
+        ridge.position.set(worldW * fx + offset, 0.66 * scale,
+          worldH * fz + 0.48 + (vein % 2) * 0.045);
+        ridge.rotation.z = (vein % 2 === 0 ? -0.26 : 0.20);
+        ridge.material = vein % 3 === 0 ? frost : ice;
+        ridge.isPickable = false;
       }
       for (let facet = 0; facet < 4; facet += 1) {
         const offset = (facet - 1.5) * 0.84 * scale;
@@ -400,8 +446,20 @@ export class BabylonIceMinePresentation {
           polymer, worldW * fx + side * 0.47, 0.11, worldH * fz,
           0.22, 0.22, 1.60 * scale);
       }
+      // Individually relieved vent fins and a metal-backed instrument rail
+      // break up the otherwise featureless compressor side silhouette.
+      for (let fin = 0; fin < 6; fin += 1) {
+        box(scene, this.root, 'p28-g5-compressor-relief-fin-' + index + '-' + fin,
+          fin % 2 === 0 ? support : service,
+          worldW * fx + (fin - 2.5) * 0.16 * scale,
+          0.90, worldH * fz + 0.89 * scale,
+          0.072, 0.68, 0.11);
+      }
+      box(scene, this.root, 'p28-g5-compressor-instrument-rail-' + index,
+        support, worldW * fx, 1.26, worldH * fz + 0.17,
+        0.88 * scale, 0.18, 0.18);
       box(scene, this.root, 'p28-g5-compressor-status-fixture-' + index, fixture,
-        worldW * fx, 1.27, worldH * fz, 0.70, 0.08, 0.20);
+        worldW * fx, 1.36, worldH * fz + 0.27, 0.70, 0.08, 0.12);
     });
 
     const icePillarPlacements = [
@@ -835,7 +893,7 @@ export class BabylonIceMinePresentation {
     // Preserve the P27-C5 compatibility surface contract; P28-G5 adds its
     // higher-resolution inventory under a distinct field.
     this.canvas.dataset.environmentSurfaceDetail = 'frost-wall:10+ice-pillar:5';
-    this.canvas.dataset.icePremiumSurfaceDetail = 'frost-wall:10+ice-pillar:5+crystal-facets:40+strata:20+buttresses:20+steel-footings:10+caps:10+frame-braces:24+deck-hardware:28+pump-collars:4+compressor-vents:4';
+    this.canvas.dataset.icePremiumSurfaceDetail = 'frost-wall:10+ice-pillar:5+crystal-facets:40+relief-veins:70+strata:20+buttresses:20+steel-footings:10+caps:10+frame-braces:24+deck-hardware:28+pump-collars:4+compressor-vents:12';
     this.canvas.dataset.environmentComposition = 'access-bore+reinforced-extraction-tunnel+subglacial-vault';
     this.canvas.dataset.environmentTunnelSequence = 'access-bore>extraction-tunnel>subglacial-vault';
     this.canvas.dataset.environmentMaterials = 'frozen-rock+support-steel+frost-ice+cold-cyan';
@@ -901,6 +959,7 @@ export class BabylonIceMinePresentation {
     this.root.dispose();
     this.groundingMaterial.dispose();
     this.groundingTexture.dispose();
+    this.iceVeinTexture.dispose();
     if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
     this.iblTexture.dispose();
     this.ownedMaterials.forEach(item => item.dispose());

@@ -133,7 +133,10 @@ assert(
     && ice.includes('ice.clearCoat.roughness = 0.15')
     && ice.includes("this.canvas.dataset.babylonEnvironmentState = premiumReady && this.iblReady ? 'ready' : 'loading'")
     && ice.includes('this.premiumSurfaces.dispose()')
-    && ice.includes('this.iblTexture.dispose()'),
+    && ice.includes('this.iblTexture.dispose()')
+    && ice.includes('this.iceVeinTexture.dispose()')
+    && ice.includes('frost.albedoTexture = this.iceVeinTexture;')
+    && ice.includes('ice.albedoTexture = this.iceVeinTexture;'),
   'P28-G5 must deliver premium KTX2/IBL readiness, frosted translucency and owned resource cleanup.',
 );
 assert(
@@ -150,8 +153,11 @@ assert(
     && ice.includes("this.canvas.dataset.environmentSurfaceDetail = 'frost-wall:10+ice-pillar:5'")
     && ice.includes('this.canvas.dataset.icePremiumSurfaceDetail')
     && ice.includes('crystal-facets:40')
-    && ice.includes("0x24485f, 0.03, 0.48")
-    && ice.includes("0x438da4, 0.02, 0.21"),
+    && ice.includes('relief-veins:70')
+    && ice.includes('p28-g5-frost-wall-relief-vein-')
+    && ice.includes('p28-g5-compressor-relief-fin-')
+    && ice.includes("0x76b9cb, 0.03, 0.48")
+    && ice.includes("0xa6d7eb, 0.02, 0.21"),
   'P28-G5 scene depth, grounding and narrow route inlays must not regress.',
 );
 assert(

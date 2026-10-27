@@ -117,6 +117,10 @@ assert.equal(
     syncReadOnly(telegraphs, state, 1);
     const lane = scene.getMeshByName('p27-b8-telegraph-lane-' + enemy.id);
     assert.ok(lane?.isEnabled(), 'Normal enemy warning must render a live Babylon floor lane.');
+    const ring = scene.getMeshByName('p27-b8-source-ring-' + enemy.id);
+    assert.ok((lane?.material?.alpha ?? 1) <= 0.40, 'Warning floor fill must not obscure the Ice Mine operator and machinery.');
+    assert.ok((ring?.material?.alpha ?? 0) >= 0.56, 'Source and target warnings must retain strong combat readability.');
+    assert.notEqual(lane?.material, ring?.material, 'Floor-fill transparency must not weaken the warning markers.');
     assert(Math.abs((lane?.scaling.x ?? 0) - 6.6) < 0.001, 'Normal attack lane must scale to 330 simulation units at the shared world scale.');
     assert.equal(canvas.dataset.babylonEnemyTelegraphActive, '1');
     assert.equal(canvas.dataset.babylonEnemyTelegraphModes, 'rifle-line');

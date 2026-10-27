@@ -49,6 +49,7 @@ type TelegraphVisual = {
   phaseInner: Mesh;
   phaseSpokes: Mesh[];
   attackMaterial: StandardMaterial;
+  laneMaterial: StandardMaterial;
   phaseMaterial: StandardMaterial;
 };
 
@@ -272,6 +273,10 @@ export class BabylonEnemyTelegraphs {
 
   private createVisual(id: number): TelegraphVisual {
     const attackMaterial = this.createMaterial(`p27-b8-attack-material-${id}`, TELEGRAPH_COLOR);
+    // Preserve the high-contrast perimeter/target warning, but keep the long
+    // solid floor fill see-through over operators, loot, and machinery.
+    const laneMaterial = this.createMaterial(`p28-g5-floor-lane-material-${id}`, TELEGRAPH_COLOR);
+    laneMaterial.alpha = 0.34;
     const phaseMaterial = this.createMaterial(`p27-b8-phase-material-${id}`, BOSS_PHASE_ONE_COLOR);
 
     const root = new TransformNode(`p27-b8-telegraph-root-${id}`, this.scene);
@@ -293,7 +298,7 @@ export class BabylonEnemyTelegraphs {
     }, this.scene);
     lane.parent = root;
     lane.position.y = 0.01;
-    lane.material = attackMaterial;
+    lane.material = laneMaterial;
     lane.isPickable = false;
 
     const sideA = MeshBuilder.CreateBox(`p27-b8-telegraph-side-a-${id}`, {
@@ -303,12 +308,12 @@ export class BabylonEnemyTelegraphs {
     }, this.scene);
     sideA.parent = root;
     sideA.position.y = 0.012;
-    sideA.material = attackMaterial;
+    sideA.material = laneMaterial;
     sideA.isPickable = false;
 
     const sideB = sideA.clone(`p27-b8-telegraph-side-b-${id}`);
     sideB.parent = root;
-    sideB.material = attackMaterial;
+    sideB.material = laneMaterial;
     sideB.isPickable = false;
 
     const pulseRing = MeshBuilder.CreateTorus(`p27-b8-telegraph-pulse-${id}`, {
@@ -406,6 +411,7 @@ export class BabylonEnemyTelegraphs {
       phaseInner,
       phaseSpokes,
       attackMaterial,
+      laneMaterial,
       phaseMaterial,
     };
     this.visuals.set(id, visual);
@@ -439,6 +445,9 @@ export class BabylonEnemyTelegraphs {
     visual.attackMaterial.diffuseColor = signal.scale(0.18);
     visual.attackMaterial.emissiveColor = signal;
     visual.attackMaterial.alpha = clamp01(0.66 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.1);
+    visual.laneMaterial.diffuseColor = signal.scale(0.18);
+    visual.laneMaterial.emissiveColor = signal;
+    visual.laneMaterial.alpha = clamp01(0.32 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.06);
 
     const originX = scaled(enemy.x);
     const originZ = scaled(enemy.y);
@@ -580,6 +589,7 @@ export class BabylonEnemyTelegraphs {
 
   private disposeVisual(visual: TelegraphVisual) {
     visual.attackMaterial.dispose();
+    visual.laneMaterial.dispose();
     visual.phaseMaterial.dispose();
     visual.root.dispose();
     visual.targetRoot.dispose();
