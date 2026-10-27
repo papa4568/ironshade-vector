@@ -402,10 +402,12 @@ export class BabylonLatticeAnnexPresentation {
     this.groundingSource.rotation.x = Math.PI / 2;
     this.groundingSource.alphaIndex = -300;
     this.groundingSource.isPickable = false;
-    for (const [index, fraction] of [0.20, 0.35, 0.50, 0.65, 0.80].entries()) {
+    // Bind the contact footprint to the actual pylon mesh positions, including
+    // their metrology-gallery sinusoidal staggering; not a generic centreline.
+    for (const [index, pylon] of this.referencePylons.slice(0, 5).entries()) {
       const contact = this.groundingSource.createInstance('p28-g6-pylon-floor-contact-' + index);
       contact.parent = this.root;
-      contact.position.set(worldW * fraction, 0.042, cz);
+      contact.position.set(pylon.position.x, 0.042, pylon.position.z);
       contact.rotation.x = Math.PI / 2;
       contact.scaling.set(1.55, 0.96, 1);
       contact.alphaIndex = -300;

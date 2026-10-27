@@ -121,6 +121,10 @@ assert.ok(presentation.includes('this.premiumSurfaces.dispose()'));
 assert.ok(presentation.includes('this.iblTexture.dispose()'));
 assert.ok(presentation.includes('this.groundingTexture.dispose()'));
 assert.ok(presentation.includes('this.enemyGrounding.delete(id)'));
+assert.ok(presentation.includes('this.referencePylons.slice(0, 5)'));
+assert.ok(presentation.includes('contact.position.set(pylon.position.x, 0.042, pylon.position.z)'));
+assert.ok(!presentation.includes('contact.position.set(worldW * fraction, 0.042, cz)'));
+
 assert.ok(presentation.includes('babylonRouteMarkingWidth(route.kind)'));
 assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
