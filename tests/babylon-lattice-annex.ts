@@ -180,8 +180,8 @@ assert.ok(g5VisualReview.includes('imagesActuallyViewed"\\s*:\\s*'), 'G5 visual 
 // A genuine line-wrapped token is recoverable; nearby dishonest tokens and
 // false approvals must remain invalid. The main workflow still demands a
 // full real-image review, PASS verdict and an empty issue list.
-const normalizeViewed = (raw: string) => raw.replace(/("imagesActuallyViewed"\\s*:\\s*)(?:t\\r?\\n+rue|tr\\r?\\n+ue|tru\\r?\\n+e)(?=\\s*[,}])/g, '$1true');
-assert.equal(JSON.parse(normalizeViewed('{"imagesActuallyViewed":t\\nrue}')).imagesActuallyViewed, true);
+const normalizeViewed = (raw: string) => raw.replace(/("imagesActuallyViewed"\s*:\s*)(?:t\r?\n+rue|tr\r?\n+ue|tru\r?\n+e)(?=\s*[,}])/g, '$1true');
+assert.equal(JSON.parse(normalizeViewed('{"imagesActuallyViewed":t\nrue}')).imagesActuallyViewed, true);
 assert.throws(() => JSON.parse(normalizeViewed('{"imagesActuallyViewed":tr\\nxe}')));
 assert.equal(JSON.parse(normalizeViewed('{"imagesActuallyViewed":false}')).imagesActuallyViewed, false);
 
