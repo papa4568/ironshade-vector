@@ -164,6 +164,12 @@ jobs:
           # Bind to the *current successful producer job's* immutable artifact ID.
           # Downloading by name may pick a stale diagnostic artifact from a retry.
           artifact-ids: ${{ needs['exact-apk-lattice-frames'].outputs.screenshot_artifact_id }}
+          # Authenticate against GitHub's immutable artifact-ID API across jobs.
+          # Runtime-only downloads can fail to locate a successfully uploaded
+          # prior-job artifact even though its ID is published by the producer.
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
 
       - name: Verify screenshot origin and image signatures
         env:
