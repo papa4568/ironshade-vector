@@ -174,6 +174,17 @@ assert.ok(g6Capture.includes("const touch = async (type, id, x, y)"));
 assert.ok(g6Capture.includes("actionInput: 'manual-aim+live-touch-fire', shotsBefore, shotsAfter"));
 assert.ok(g6Workflow.includes('G6 Independent Copilot PNG Inspection'));
 assert.ok(g6Workflow.includes('imagesActuallyViewed !== true'));
+assert.ok(g6Workflow.includes('imagesActuallyViewed"\\s*:\\s*'), 'G6 hard-wrapped true token must be repaired narrowly');
+const g5VisualReview = readFileSync('.github/workflows/p28-g5-ice-visual-qa.yml', 'utf8');
+assert.ok(g5VisualReview.includes('imagesActuallyViewed"\\s*:\\s*'), 'G5 visual review must use the same strict boolean repair');
+// A genuine line-wrapped token is recoverable; nearby dishonest tokens and
+// false approvals must remain invalid. The main workflow still demands a
+// full real-image review, PASS verdict and an empty issue list.
+const normalizeViewed = (raw: string) => raw.replace(/("imagesActuallyViewed"\\s*:\\s*)(?:t\\r?\\n+rue|tr\\r?\\n+ue|tru\\r?\\n+e)(?=\\s*[,}])/g, '$1true');
+assert.equal(JSON.parse(normalizeViewed('{"imagesActuallyViewed":t\\nrue}')).imagesActuallyViewed, true);
+assert.throws(() => JSON.parse(normalizeViewed('{"imagesActuallyViewed":tr\\nxe}')));
+assert.equal(JSON.parse(normalizeViewed('{"imagesActuallyViewed":false}')).imagesActuallyViewed, false);
+
 assert.ok(g6Workflow.includes('artifact-ids:'));
 assert.ok(g6Workflow.includes('--attachment android-p28g6-lattice-annex-normal.png'));
 

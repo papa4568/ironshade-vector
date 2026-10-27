@@ -227,8 +227,13 @@ jobs:
           if (!match) throw new Error('No JSON independent image verdict');
           // Models may hard-wrap JSON string text with unescaped newlines. Escape only
           // literal CR/LF *inside quoted strings*; do not change the verdict or issues.
+          // The pinned Copilot CLI can hard-wrap an unquoted boolean token:
+          // "imagesActuallyViewed":t\\nrue. Repair only this exact
+          // line-break corruption of the required true literal, never a false
+          // verdict, a different field, or arbitrary model-supplied syntax.
           const repaired = match[0].replace(/"(?:\\.|[^"\\])*"/gs, quoted =>
-            quoted.replace(/\r/g, '\\r').replace(/\n/g, '\\n'));
+            quoted.replace(/\r/g, '\\r').replace(/\n/g, '\\n'))
+            .replace(/("imagesActuallyViewed"\s*:\s*)(?:t\r?\n+rue|tr\r?\n+ue|tru\r?\n+e)(?=\s*[,}])/g, '$1true');
           const result = JSON.parse(repaired);
           if (result.candidateSha !== process.env.CANDIDATE_SHA) throw new Error('Stale image review SHA');
           if (result.imagesActuallyViewed !== true) throw new Error('Reviewer could not view PNG pixels');
