@@ -207,8 +207,10 @@ assert.ok(!rendererImplementation.includes('this.latticeAnnexPresentation = new 
 assert.ok(rendererImplementation.includes("this.latticeAnnexPresentation?.release('scenario-switch')"));
 assert.ok(rendererImplementation.includes('this.latticeAnnexPresentation?.dispose()'));
 assert.ok(rendererImplementation.includes("const annexCombatPan = this.canvas.dataset.babylonScenario === 'lattice-annex' && !narrow ? 3.5 : 0"));
-assert.ok(rendererImplementation.includes('px + cameraOffset + offsetX + annexCombatPan'));
-assert.ok(rendererImplementation.includes('pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan'));
+assert.ok(rendererImplementation.includes("const annexTouchLanePan = this.canvas.dataset.babylonScenario === 'lattice-annex' && !narrow ? 3.2 : 0"));
+assert.ok(rendererImplementation.includes('px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan'));
+assert.ok(rendererImplementation.includes('pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan'));
+assert.ok(rendererImplementation.includes('pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan'));
 
 const g6CaptureShell = readFileSync('tools/android-p28g6-lattice-capture.sh', 'utf8');
 assert.ok(g6CaptureShell.includes('for attempt in 1 2 3; do'));

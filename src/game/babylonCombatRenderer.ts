@@ -2725,12 +2725,17 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // the bottom edge. Translate eye and target together: preserve FOV,
     // perspective, player aim, telegraphs, and all other route framing.
     const annexCombatPan = this.canvas.dataset.babylonScenario === 'lattice-annex' && !narrow ? 3.5 : 0;
+    // Reserve the screen-right touch lane by moving the camera *toward* that
+    // lane in world space. A shared +/- lateral translation moves world actors
+    // left on screen without changing their true locations, threat footprints,
+    // camera inclination, zoom or touch-target size.
+    const annexTouchLanePan = this.canvas.dataset.babylonScenario === 'lattice-annex' && !narrow ? 3.2 : 0;
 
-    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan);
+    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan);
     this.cameraTarget.set(
-      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan,
+      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan,
       0.62,
-      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan,
+      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan,
     );
     this.camera.setTarget(this.cameraTarget);
     this.camera.getViewMatrix(true);
