@@ -628,7 +628,7 @@
       "id": "AO-16",
       "title": "One-shot trusted-base security-reviewed observer bootstrap for AO-15",
       "priority": 160,
-      "status": "verifying",
+      "status": "verified",
       "dependsOn": [
         "AO-13"
       ],
