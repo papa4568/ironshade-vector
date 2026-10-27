@@ -169,7 +169,7 @@ assert(
 );
 assert(
   world.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex';")
-    && readiness.includes("|| mission.location === 'ice-mine');")
+    && readiness.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex');")
     && ice.includes('this.syncBrittleSupports(state, renderBudget)')
     && ice.includes('this.fracturePulses.set(id, pulse)')
     && ice.includes('this.bossCueRoot.setEnabled(Boolean(activeBoss))'),

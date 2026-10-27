@@ -1,4 +1,4 @@
-name: P28-G6 Exact APK Ice Visual QA
+name: P28-G6 Exact APK Lattice Visual QA
 
 # Supplemental real gameplay screenshots only. The unchanged trusted PR Candidate
 # producer and Android API35/36 gates remain independently mandatory.
@@ -33,7 +33,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  exact-apk-lattlattice-frames:
+  exact-apk-lattice-frames:
     name: G6 Real Android Gameplay Pixels and Provenance
     runs-on: ubuntu-24.04
     timeout-minutes: 55
@@ -126,7 +126,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: p28-g6-exact-apk-lattlattice-${{ github.event.pull_request.head.sha }}
+          name: p28-g6-exact-apk-lattice-${{ github.event.pull_request.head.sha }}
           path: |
             android-p28g6-candidate-sha.txt
             android-p28g6-lattice-annex-normal.png
@@ -144,7 +144,7 @@ jobs:
 
   independent-image-review:
     name: G6 Independent Copilot PNG Inspection
-    needs: exact-apk-lattlattice-frames
+    needs: exact-apk-lattice-frames
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 12
@@ -163,7 +163,7 @@ jobs:
         with:
           # Bind to the *current successful producer job's* immutable artifact ID.
           # Downloading by name may pick a stale diagnostic artifact from a retry.
-          artifact-ids: ${{ needs['exact-apk-lattlattice-frames'].outputs.screenshot_artifact_id }}
+          artifact-ids: ${{ needs['exact-apk-lattice-frames'].outputs.screenshot_artifact_id }}
 
       - name: Verify screenshot origin and image signatures
         env:
