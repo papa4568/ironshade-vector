@@ -141,6 +141,7 @@ const g6Proof = {
   premiumBindings: 80, ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
   routeStyle: 'lattice-recessed-metrology-inlay', routeMaxWidth: 0.16,
   objectiveCue: 'beacon+navigation-path', worldObjects: 8, groundProps: 5,
+  actionInput: 'manual-aim+live-touch-fire', shotsBefore: 0, shotsAfter: 1,
   surfaceDetail: 'reference-pylon:9+sample-cradle:3+indexed-collar:36+survey-brace:12+hall-upright:8',
   hazardLanguage: 'shared-hazards+calibration-mass-shift+gravity-well+calibration-shutters+reference-network',
 };
@@ -154,6 +155,7 @@ for (const [id, bad, reason] of [
   ['ground', { groundProps: 1 }, 'missing-survey-depth-or-grounding'],
   ['hazard', { hazardLanguage: 'none' }, 'missing-calibration-hazard-cues'],
   ['pop-in', { beforeArtState: 'loading' }, 'late-asset-pop-in'],
+  ['no-fire', { shotsAfter: 0 }, 'no-real-combat-action'],
 ] as const) {
   const audit = auditLatticeVisualProvenance({...g6Proof, ...bad});
   assert.ok(!audit.valid && audit.problems.includes(reason), 'G6 invalid provenance accepted: ' + id);
@@ -167,6 +169,9 @@ assert.ok(g6Capture.includes("await waitFor(ready, 'post-reentry Lattice Annex a
 assert.ok(g6Capture.includes("d?.babylonScenario === 'lattice-annex'"));
 assert.ok(g6Capture.includes("d.latticePremiumAssetState === 'ready'"));
 assert.ok(g6Capture.includes("d.missionVisualReadiness === 'ready'"));
+assert.ok(g6Capture.includes("const shotsBefore = await evaluate"));
+assert.ok(g6Capture.includes("const touch = async (type, id, x, y)"));
+assert.ok(g6Capture.includes("actionInput: 'manual-aim+live-touch-fire', shotsBefore, shotsAfter"));
 assert.ok(g6Workflow.includes('G6 Independent Copilot PNG Inspection'));
 assert.ok(g6Workflow.includes('imagesActuallyViewed !== true'));
 assert.ok(g6Workflow.includes('artifact-ids:'));

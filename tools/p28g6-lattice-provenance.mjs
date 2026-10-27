@@ -18,6 +18,8 @@ export function auditLatticeVisualProvenance(state) {
     problems.push('oversized-route-material');
   if (state?.objectiveCue !== 'beacon+navigation-path' || !(finite('worldObjects') >= 1))
     problems.push('missing-or-occluded-objective');
+  if (state?.actionInput !== 'manual-aim+live-touch-fire' || !(finite('shotsAfter') > finite('shotsBefore')))
+    problems.push('no-real-combat-action');
   if (!(finite('groundProps') >= 5) || !state?.surfaceDetail?.includes('indexed-collar:36'))
     problems.push('missing-survey-depth-or-grounding');
   if (state?.hazardLanguage !== 'shared-hazards+calibration-mass-shift+gravity-well+calibration-shutters+reference-network')
