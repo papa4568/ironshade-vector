@@ -488,7 +488,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly orphelineCapstonePresentation: BabylonOrphelineCapstonePresentation;
   private readonly hecateCapstonePresentation: BabylonHecateCapstonePresentation;
   private readonly solarYardPresentation: BabylonSolarYardPresentation;
-  private readonly latticeAnnexPresentation: BabylonLatticeAnnexPresentation;
+  private latticeAnnexPresentation: BabylonLatticeAnnexPresentation | null = null;
   private readonly momentumExchangePresentation: BabylonMomentumExchangePresentation;
   private readonly cryoReservePresentation: BabylonCryoReservePresentation;
   private readonly parallaxArrayPresentation: BabylonParallaxArrayPresentation;
@@ -547,7 +547,6 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.orphelineCapstonePresentation = new BabylonOrphelineCapstonePresentation(scene, canvas, qualityCoarse);
     this.hecateCapstonePresentation = new BabylonHecateCapstonePresentation(scene, canvas, qualityCoarse);
     this.solarYardPresentation = new BabylonSolarYardPresentation(scene, canvas, qualityCoarse);
-    this.latticeAnnexPresentation = new BabylonLatticeAnnexPresentation(scene, canvas, qualityCoarse);
     this.momentumExchangePresentation = new BabylonMomentumExchangePresentation(scene, canvas, qualityCoarse);
     this.cryoReservePresentation = new BabylonCryoReservePresentation(scene, canvas, qualityCoarse);
     this.parallaxArrayPresentation = new BabylonParallaxArrayPresentation(scene, canvas, qualityCoarse);
@@ -744,7 +743,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.jovianHarvesterPresentation.release('scenario-exit');
       this.iceMinePresentation.release('scenario-exit');
       this.solarYardPresentation.release('scenario-exit');
-      this.latticeAnnexPresentation.release('scenario-exit');
+      this.latticeAnnexPresentation?.release('scenario-exit');
       this.momentumExchangePresentation.release('scenario-exit');
       this.cryoReservePresentation.release('scenario-exit');
       this.parallaxArrayPresentation.release('scenario-exit');
@@ -769,7 +768,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.jovianHarvesterPresentation.release('scenario-switch');
       this.iceMinePresentation.release('scenario-switch');
       this.solarYardPresentation.release('scenario-switch');
-      this.latticeAnnexPresentation.release('scenario-switch');
+      this.latticeAnnexPresentation?.release('scenario-switch');
       this.momentumExchangePresentation.release('scenario-switch');
       this.cryoReservePresentation.release('scenario-switch');
       this.parallaxArrayPresentation.release('scenario-switch');
@@ -786,7 +785,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (damagedVesselScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -794,7 +793,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (spinHabitatScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -802,7 +801,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (jovianHarvesterScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -810,7 +809,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.spinHabitatPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (iceMineScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -818,7 +817,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.spinHabitatPresentation.release('scenario-switch');
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (solarYardScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -826,7 +825,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.spinHabitatPresentation.release('scenario-switch');
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (latticeAnnexScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -843,7 +842,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
       } else {
         this.orbitalStationPresentation.release('scenario-switch');
         this.damagedVesselPresentation.release('scenario-switch');
@@ -851,7 +850,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       }
     }
@@ -894,6 +893,10 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     } else if (solarYardScenario) {
       this.solarYardPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     } else if (latticeAnnexScenario) {
+      // The Annex owns heavyweight authored KTX2 textures and an IBL cube.
+      // Do not start their downloads or create hundreds of inactive meshes
+      // on Refinery/other routes; competing GL loads delay playable readiness.
+      this.latticeAnnexPresentation ??= new BabylonLatticeAnnexPresentation(this.scene, this.canvas, false);
       this.latticeAnnexPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     } else if (momentumExchangeScenario) {
       this.momentumExchangePresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
@@ -1016,7 +1019,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.jovianHarvesterPresentation.dispose();
     this.iceMinePresentation.dispose();
     this.solarYardPresentation.dispose();
-    this.latticeAnnexPresentation.dispose();
+    this.latticeAnnexPresentation?.dispose();
     this.momentumExchangePresentation.dispose();
     this.cryoReservePresentation.dispose();
     this.parallaxArrayPresentation.dispose();

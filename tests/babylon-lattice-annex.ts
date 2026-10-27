@@ -185,7 +185,15 @@ assert.equal(JSON.parse(normalizeViewed('{"imagesActuallyViewed":t\nrue}')).imag
 assert.throws(() => JSON.parse(normalizeViewed('{"imagesActuallyViewed":tr\\nxe}')));
 assert.equal(JSON.parse(normalizeViewed('{"imagesActuallyViewed":false}')).imagesActuallyViewed, false);
 
-assert.ok(g6Workflow.includes('artifact-ids:'));
+assert.ok(g6Workflow.includes('actions/artifacts/$ARTIFACT_ID/zip'));
+assert.ok(g6Workflow.includes('actual_name" = "$expected_name"'));
+assert.ok(g6Workflow.includes("gh api \"/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID\""));
+const rendererImplementation = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
+assert.ok(rendererImplementation.includes('private latticeAnnexPresentation: BabylonLatticeAnnexPresentation | null = null'));
+assert.ok(rendererImplementation.includes('this.latticeAnnexPresentation ??= new BabylonLatticeAnnexPresentation(this.scene, this.canvas, false)'));
+assert.ok(!rendererImplementation.includes('this.latticeAnnexPresentation = new BabylonLatticeAnnexPresentation(scene, canvas, qualityCoarse)'));
+assert.ok(rendererImplementation.includes("this.latticeAnnexPresentation?.release('scenario-switch')"));
+assert.ok(rendererImplementation.includes('this.latticeAnnexPresentation?.dispose()'));
 assert.ok(g6Workflow.includes('--attachment android-p28g6-lattice-annex-normal.png'));
 
 console.log('BABYLON_LATTICE_ANNEX_PASS identity=reference-pylons|survey-ceramic|metrology-teal|calibration-service routes=' + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' calibration=10s-near-zero-g>20s-shutter-index boss=veyra-senn');

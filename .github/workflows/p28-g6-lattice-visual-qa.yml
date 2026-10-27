@@ -159,17 +159,25 @@ jobs:
           node-version: '22.23.2'
 
       - name: Download actual exact-SHA gameplay screenshots
-        uses: actions/download-artifact@v8
-        with:
-          # Bind to the *current successful producer job's* immutable artifact ID.
-          # Downloading by name may pick a stale diagnostic artifact from a retry.
-          artifact-ids: ${{ needs['exact-apk-lattice-frames'].outputs.screenshot_artifact_id }}
-          # Authenticate against GitHub's immutable artifact-ID API across jobs.
-          # Runtime-only downloads can fail to locate a successfully uploaded
-          # prior-job artifact even though its ID is published by the producer.
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ github.run_id }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ needs['exact-apk-lattice-frames'].outputs.screenshot_artifact_id }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          # Query the REST artifact by immutable ID. actions/download-artifact
+          # runtime-token lookup can fail after a producer job retry even while
+          # that ID exists in the run; never fall back to a same-name artifact.
+          expected_name="p28-g6-exact-apk-lattice-$CANDIDATE_SHA"
+          actual_name="$(gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" --jq '.name')"
+          test "$actual_name" = "$expected_name"
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" --jq '.expired')" = false
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > .g6-artifact.zip
+          unzip -tq .g6-artifact.zip >/dev/null
+          unzip -oq .g6-artifact.zip
+          rm .g6-artifact.zip
 
       - name: Verify screenshot origin and image signatures
         env:
