@@ -1016,17 +1016,22 @@ export class BabylonRefineryWorldPresentation {
       const visual = this.ensureHazard(count, hazard.kind);
       const radius = Math.max(0.2, scaled(hazard.radius));
       const pulse = 1 + Math.sin(state.time * presentation.pulseHz) * 0.08 * quality.stateMotionScale;
-      const color = colorFromHex(presentation.color);
+      const momentumWash = this.canvas.dataset.babylonScenario === 'momentum-exchange'
+        && hazard.kind === 'vectorWash';
+      // True gameplay hazard radius stays intact. Unlike the permanent teal
+      // rail guides, the active magnetic wash uses an amber, thin, pulsing
+      // perimeter and directional glyph; no giant cyan floor loops.
+      const color = colorFromHex(momentumWash ? 0xf0a876 : presentation.color);
       visual.root.setEnabled(true);
       visual.root.position.set(scaled(hazard.x), 0.08, scaled(hazard.y));
       visual.ringMaterial.diffuseColor = color.scale(0.18);
       visual.ringMaterial.emissiveColor = color;
-      visual.ringMaterial.alpha = (0.4 + Math.sin(state.time * presentation.pulseHz) * 0.1) * quality.hazardCueOpacity;
-      visual.ring.scaling.set(radius * presentation.scaleX * pulse, 1, radius * presentation.scaleZ * pulse);
+      visual.ringMaterial.alpha = (momentumWash ? 0.22 : 0.4 + Math.sin(state.time * presentation.pulseHz) * 0.1) * quality.hazardCueOpacity;
+      visual.ring.scaling.set(radius * presentation.scaleX * pulse, momentumWash ? 0.58 : 1, radius * presentation.scaleZ * pulse);
       visual.ring.rotation.y = state.time * presentation.rotationSpeed * quality.stateMotionScale;
       visual.glyphMaterial.diffuseColor = color.scale(0.2);
       visual.glyphMaterial.emissiveColor = color;
-      visual.glyphMaterial.alpha = quality.hazardCueOpacity;
+      visual.glyphMaterial.alpha = (momentumWash ? 0.62 : 1) * quality.hazardCueOpacity;
       const glyphScale = Math.max(0.34, Math.min(0.86, radius * 0.28));
       visual.glyph.scaling.set(glyphScale * presentation.scaleX, 1, glyphScale * presentation.scaleZ);
       visual.glyph.rotation.y = state.time * presentation.rotationSpeed * 0.7 * quality.stateMotionScale;

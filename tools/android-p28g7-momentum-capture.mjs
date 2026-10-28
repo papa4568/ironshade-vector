@@ -209,11 +209,11 @@ try {
       && d.momentumPremiumSurfaces === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
       && d.environmentIbl === 'shared-prefiltered:ready'
       && d.environmentHazardLanguage === 'shared-hazards+countermass-wash+vector-wash+near-zero-g+magnetic-transfer'
-      && d.environmentSurfaceDetail?.includes('laminated-rim:6') && d.environmentSurfaceDetail?.includes('flux-tooth:48')
+      && d.environmentSurfaceDetail?.includes('laminated-rim:9') && d.environmentSurfaceDetail?.includes('flux-tooth:48')
       && d.momentumGrounding === 'player+enemies:soft-contact'
       && Number(d.momentumGroundedProps) === 6
       && Number(d.momentumWashFootprint) > 0
-      && Number(d.momentumWashFootprint) <= 0.05
+      && Number(d.momentumWashFootprint) <= 0.025
       && d.babylonRouteMarkingProfile === 'momentum-recessed-transfer-inlay'
       && Number(d.babylonRouteMarkingMaxWidth) > 0
       && Number(d.babylonRouteMarkingMaxWidth) <= 0.20

@@ -30,8 +30,8 @@ export const BABYLON_MOMENTUM_EXCHANGE_PREMIUM_SURFACES = [
 
 /** Active wash remains a timed hazard, never an opaque floor-sized route slab. */
 export const BABYLON_MOMENTUM_WASH_FOOTPRINT = {
-  widthFraction: 0.032,
-  lengthFraction: 0.36,
+  widthFraction: 0.014,
+  lengthFraction: 0.085,
 } as const;
 
 export const BABYLON_MOMENTUM_EXCHANGE_IDENTITY = Object.freeze({
@@ -220,26 +220,32 @@ export class BabylonMomentumExchangePresentation {
       hub.isPickable = false;
       for (const spokeRotation of [0, Math.PI / 2]) {
         // Spokes travel with the upright flywheel, rather than floating motionless.
-        const spoke = box(scene, root, 'p27-c8-flywheel-spoke-' + index + '-' + spokeRotation.toFixed(2), structural, 0, 0, 0, 0.20, 4.35, 0.22);
+        const spoke = box(scene, root, 'p27-c8-flywheel-spoke-' + index + '-' + spokeRotation.toFixed(2),
+          edgeMetal, 0, 0, 0, 0.20, 0.22, 4.35);
+        // The torus is upright: its unrotated disc is local XZ, and local Y
+        // is the axle. Rotate spokes around local Y, not the world-facing Z.
         spoke.parent = rotor;
-        spoke.rotation.z = spokeRotation;
+        spoke.position.y = 0.22;
+        spoke.rotation.y = spokeRotation;
       }
       // Layered laminated rim, exposed bearing race, and indexed magnetic
       // segments give the large flywheels readable depth at gameplay zoom.
-      for (const [ringIndex, diameter, thickness] of [[0, 4.75, 0.16], [1, 3.95, 0.10]] as const) {
+      for (const [ringIndex, diameter, thickness] of [[0, 5.05, 0.16], [1, 4.68, 0.12], [2, 4.26, 0.10]] as const) {
         const ring = MeshBuilder.CreateTorus('p28-g7-flywheel-lamination-' + index + '-' + ringIndex,
           { diameter, thickness, tessellation: 48 }, scene);
-        ring.parent = rotor; ring.rotation.x = 0; ring.position.z = 0.34 + ringIndex * 0.10;
-        ring.material = ringIndex ? edgeMetal : structural; ring.isPickable = false;
+        ring.parent = rotor;
+        ring.position.y = 0.26 + ringIndex * 0.13; // axle-depth, not vertical
+        ring.material = ringIndex === 1 ? structural : edgeMetal;
+        ring.isPickable = false;
       }
       for (let tooth = 0; tooth < 16; tooth += 1) {
         const angle = tooth * Math.PI / 8;
         const toothMesh = box(scene, root, 'p28-g7-flywheel-flux-tooth-' + index + '-' + tooth,
           tooth % 4 === 0 ? edgeMetal : tooth % 2 === 0 ? structural : machinery,
-          Math.sin(angle) * 2.36, Math.cos(angle) * 2.36, 0.58,
-          0.23, 0.45, 0.20);
+          Math.sin(angle) * 2.42, 0.45, Math.cos(angle) * 2.42,
+          0.24, 0.22, 0.43);
         toothMesh.parent = rotor;
-        toothMesh.rotation.z = -angle;
+        toothMesh.rotation.y = angle; // visible on the actual upright rotor face
       }
       for (const side of [-1, 1]) {
         const race = MeshBuilder.CreateTorus('p28-g7-bearing-race-' + index + '-' + side,
@@ -536,8 +542,8 @@ export class BabylonMomentumExchangePresentation {
       }
     });
     const washPulse = 0.76 + Math.sin(state.time * 7.2) * 0.22;
-    this.impulseMaterial.alpha = (washMode === 'countermass-wash' ? 0.12 : 0.035) * renderBudget.transparencyScale;
-    this.impulseMaterial.emissiveColor = colorFromHex(0xe8ad7d).scale(0.24 * washPulse);
+    this.impulseMaterial.alpha = (washMode === 'countermass-wash' ? 0.10 : 0.02) * renderBudget.transparencyScale;
+    this.impulseMaterial.emissiveColor = colorFromHex(0xe8ad7d).scale(0.15 * washPulse);
 
     const captureObjects = state.objects.filter(object => object.id === 'capture-drum-a' || object.id === 'capture-drum-b');
     const intactCapture = captureObjects.filter(object => object.hp > 0);
@@ -663,7 +669,7 @@ export class BabylonMomentumExchangePresentation {
     this.canvas.dataset.environmentShadowCasters = 'off';
     this.canvas.dataset.environmentLandmark = 'counter-rotating-flywheel-transfer-lane';
     this.canvas.dataset.environmentServiceDetails = 'transfer-frame:' + profile.serviceFrameInstances + '+capture-cradle:' + profile.captureCradleInstances;
-    this.canvas.dataset.environmentSurfaceDetail = 'flywheel-rig:' + profile.flywheelInstances + '+electromagnetic-rail:' + profile.transferRailInstances + '+laminated-rim:6+flux-tooth:48+bearing-race:6+frame-bus:12+rail-carrier:8';
+    this.canvas.dataset.environmentSurfaceDetail = 'flywheel-rig:' + profile.flywheelInstances + '+electromagnetic-rail:' + profile.transferRailInstances + '+laminated-rim:9+flux-tooth:48+bearing-race:6+frame-bus:12+rail-carrier:8';
     this.canvas.dataset.environmentMachineDetail = 'counter-rotating-flywheel:3+capture-drum:2+countermass-bus:1';
     this.canvas.dataset.environmentComposition = 'brake-deck+near-zero-g-transfer-tunnel+countermass-cradle';
     this.canvas.dataset.environmentMaterials = 'magnetic-machinery+brushed-ferrous+transfer-blue+capture-cyan';
@@ -696,6 +702,9 @@ export class BabylonMomentumExchangePresentation {
     this.canvas.dataset.bossCueState = activeBoss ? 'active-phase-' + activeBoss.bossPhase + ':' + bossPattern : 'queued';
     this.canvas.dataset.babylonMomentumExchangeParity = 'flywheel-transfer-architecture+magnetic-machinery+props+interactables+hazards+countermass-washes+capture-drums+navigation+boss-cues+shared-world-cues';
     this.canvas.dataset.babylonMomentumExchangePlayerPosition = state.player.x.toFixed(1) + ',' + state.player.y.toFixed(1);
+    // Real simulation time is diagnostic-only; the gameplay director owns
+    // both actual 9s/20s wash events and their duration.
+    this.canvas.dataset.momentumSimTime = state.time.toFixed(2);
     this.canvas.dataset.babylonMomentumExchangeRoutes = String(navigation.routes.length);
     this.canvas.dataset.babylonMomentumExchangeLandmarks = navigation.landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;

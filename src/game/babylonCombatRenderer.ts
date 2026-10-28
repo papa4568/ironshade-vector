@@ -2735,12 +2735,16 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // left on screen without changing their true locations, threat footprints,
     // camera inclination, zoom or touch-target size.
     const annexTouchLanePan = this.canvas.dataset.babylonScenario === 'lattice-annex' && !narrow ? 3.2 : 0;
+    // Momentum's near wheel was cropped by the low-right touch lane. Pan
+    // eye and aim together toward the real transfer machinery, retaining
+    // perspective, touch-aim rays and other maps' established framing.
+    const momentumCombatPan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 1.8 : 0;
 
-    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan);
+    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan);
     this.cameraTarget.set(
-      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan,
+      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan,
       0.62,
-      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan,
+      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan,
     );
     this.camera.setTarget(this.cameraTarget);
     this.camera.getViewMatrix(true);

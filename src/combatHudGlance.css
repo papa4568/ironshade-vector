@@ -1129,3 +1129,18 @@
     overflow-wrap: break-word;
   }
 }
+
+/* G7: the Counterforce Broker block is the assisted target readout, not
+   the boss HUD. Keep it in the open central top lane, separate from the
+   right-hand Momentum Capture objective and left-hand vitals. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="momentum-exchange"] .target-readout {
+    position: fixed;
+    top: max(.45rem, env(safe-area-inset-top));
+    left: 50vw;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(25rem, 29vw);
+    z-index: 13;
+  }
+}

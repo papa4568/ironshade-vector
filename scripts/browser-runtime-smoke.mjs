@@ -1699,13 +1699,25 @@ async function p27C8BabylonMomentumExchangeAudit() {
   await waitFor("document.querySelector('canvas')?.dataset.babylonMomentumExchangePlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C8 Momentum Exchange movement', 5_000);
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonMomentumExchangePlayerPosition ?? ''");
 
-  await waitFor(
-    "(() => { const canvas = document.querySelector('canvas'); return"
-      + " canvas?.dataset.environmentHazardMode === 'countermass-wash'"
-      + " && Number(canvas?.dataset.environmentCountermassWashes ?? 0) > 0; })()",
-    'P27-C8 Momentum Exchange authored countermass wash',
-    16_000,
-  );
+  // High-tier IBL/KTX2 decode can finish after the first 9s/6s pulse on
+  // SwiftShader mobile. Preserve actual active-wash evidence, but allow the
+  // second authored 20s pulse to arrive on that slower software renderer.
+  // A failure includes the real sim clock and hazard state to diagnose it.
+  try {
+    await waitFor(
+      "(() => { const canvas = document.querySelector('canvas'); return"
+        + " canvas?.dataset.environmentHazardMode === 'countermass-wash'"
+        + " && Number(canvas?.dataset.environmentCountermassWashes ?? 0) > 0; })()",
+      'P27-C8 Momentum Exchange authored countermass wash',
+      viewportMode === 'mobile-landscape' ? 42_000 : 16_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate("(() => { const d = document.querySelector('canvas')?.dataset ?? {}; return {"
+      + " simTime: d.momentumSimTime, mode: d.environmentHazardMode, washes: d.environmentCountermassWashes,"
+      + " frames: d.babylonFrames, tier: d.renderTier, art: d.babylonEnvironmentState,"
+      + " scenario: d.babylonScenario, premium: d.momentumPremiumAssetState }; })()");
+    throw new Error(String(error) + '; momentum-wash-diagnostic=' + JSON.stringify(diagnostic));
+  }
 
   const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
     + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"

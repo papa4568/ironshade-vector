@@ -113,8 +113,8 @@ assert.ok(pkg.scripts.build.includes('npm run test:babylon-momentum-exchange'));
 
 // P28-G7 is only a visual rollout. Its live authored assets, exact Android
 // pixels, and independent Copilot image inspection must disprove flat/late art.
-assert.equal(BABYLON_MOMENTUM_WASH_FOOTPRINT.widthFraction, 0.032);
-assert.ok(BABYLON_MOMENTUM_WASH_FOOTPRINT.lengthFraction <= 0.36);
+assert.equal(BABYLON_MOMENTUM_WASH_FOOTPRINT.widthFraction, 0.014);
+assert.ok(BABYLON_MOMENTUM_WASH_FOOTPRINT.lengthFraction <= 0.085);
 assert.deepEqual(BABYLON_MOMENTUM_EXCHANGE_PREMIUM_SURFACES,
   ['deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture']);
 for (const premiumDetail of [
@@ -169,10 +169,10 @@ const validG7Proof = {
   artState: 'ready', beforeArtState: 'ready',
   premium: 'ready', beforePremium: 'ready',
   premiumBindings: 130, ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
-  routeStyle: 'momentum-recessed-transfer-inlay', routeMaxWidth: 0.16, washFootprint: 0.032,
+  routeStyle: 'momentum-recessed-transfer-inlay', routeMaxWidth: 0.16, washFootprint: 0.014,
   objectiveCue: 'beacon+navigation-path', worldObjects: 8, groundProps: 6,
   actionInput: 'manual-aim+live-touch-fire', shotsBefore: 0, shotsAfter: 1,
-  surfaceDetail: 'laminated-rim:6+flux-tooth:48+bearing-race:6+rail-carrier:8',
+  surfaceDetail: 'laminated-rim:9+flux-tooth:48+bearing-race:6+rail-carrier:8',
   hazardLanguage: 'shared-hazards+countermass-wash+vector-wash+near-zero-g+magnetic-transfer',
 };
 assert.ok(auditMomentumVisualProvenance(validG7Proof).valid);
@@ -194,6 +194,23 @@ for (const [label, edit, reason] of [
   assert.ok(!result.valid && result.problems.includes(reason), 'P28-G7 accepted invalid ' + label);
 }
 
+const renderWorldSource = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
+const attackSource = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
+assert.ok(presentation.includes('spoke.rotation.y = spokeRotation'));
+assert.ok(presentation.includes('ring.position.y = 0.26 + ringIndex * 0.13'));
+assert.ok(presentation.includes('toothMesh.rotation.y = angle'));
+assert.ok(presentation.includes('this.canvas.dataset.momentumSimTime = state.time.toFixed(2)'));
+assert.ok(presentation.includes('laminated-rim:9+flux-tooth:48'));
+assert.ok(renderWorldSource.includes("this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
+assert.ok(renderWorldSource.includes("hazard.kind === 'vectorWash'"));
+assert.ok(renderWorldSource.includes('momentumWash ? 0xf0a876 : presentation.color'));
+assert.ok(attackSource.includes('visual.sideA.material = momentumWarning ? visual.laneMaterial : visual.attackMaterial'));
+assert.ok(attackSource.includes('tick.setEnabled(annexWarning || momentumWarning)'));
+assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .target-readout'));
+assert.ok(babylon.includes("const momentumCombatPan = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
+assert.ok(smoke.includes("viewportMode === 'mobile-landscape' ? 42_000 : 16_000"));
+assert.ok(smoke.includes("momentum-wash-diagnostic="));
+
 const g7Capture = readFileSync('tools/android-p28g7-momentum-capture.mjs', 'utf8');
 const g7Shell = readFileSync('tools/android-p28g7-momentum-capture.sh', 'utf8');
 const g7Workflow = readFileSync('.github/workflows/p28-g7-momentum-visual-qa.yml', 'utf8');
@@ -202,7 +219,7 @@ assert.ok(g7Capture.includes("!campaign?.story?.interdiction || !campaign?.story
 assert.ok(g7Capture.includes("url.searchParams.set('p27d5Lifecycle', '1')"));
 assert.ok(g7Capture.includes("d?.babylonScenario === 'momentum-exchange'"));
 assert.ok(g7Capture.includes("d.momentumPremiumAssetState === 'ready'"));
-assert.ok(g7Capture.includes("Number(d.momentumWashFootprint) <= 0.05"));
+assert.ok(g7Capture.includes("Number(d.momentumWashFootprint) <= 0.025"));
 assert.ok(g7Capture.includes("d.missionVisualReadiness === 'ready'"));
 assert.ok(g7Capture.includes("await waitFor(ready, 'post-reentry Momentum Exchange authored-world readiness'"));
 assert.ok(g7Capture.includes("const shotsBefore = await evaluate"));

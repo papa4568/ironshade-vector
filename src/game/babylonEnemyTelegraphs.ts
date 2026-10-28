@@ -466,9 +466,16 @@ export class BabylonEnemyTelegraphs {
     visual.attackMaterial.alpha = clamp01(0.66 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.1);
     visual.laneMaterial.diffuseColor = signal.scale(0.18);
     visual.laneMaterial.emissiveColor = signal;
-    visual.laneMaterial.alpha = this.canvas.dataset.babylonScenario === 'ice-mine'
-      ? clamp01(0.32 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.06)
-      : visual.attackMaterial.alpha;
+    const momentumWarning = this.canvas.dataset.babylonScenario === 'momentum-exchange';
+    visual.laneMaterial.alpha = momentumWarning
+      ? clamp01(0.14 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.035)
+      : this.canvas.dataset.babylonScenario === 'ice-mine'
+        ? clamp01(0.32 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.06)
+        : visual.attackMaterial.alpha;
+    // Keep bright, discrete origin/target rings and warning ticks, but not
+    // continuous high-opacity salmon ribbons over moving actors and machinery.
+    visual.sideA.material = momentumWarning ? visual.laneMaterial : visual.attackMaterial;
+    visual.sideB.material = momentumWarning ? visual.laneMaterial : visual.attackMaterial;
 
     const originX = scaled(enemy.x);
     const originZ = scaled(enemy.y);
@@ -479,8 +486,8 @@ export class BabylonEnemyTelegraphs {
     visual.sourceRing.scaling.set(sourceDiameter, sourceDiameter, sourceDiameter);
     const annexWarning = this.canvas.dataset.babylonScenario === 'lattice-annex';
     for (const tick of visual.annexAttackTicks) {
-      tick.setEnabled(annexWarning);
-      tick.scaling.setAll(annexWarning ? 1 + 0.18 * Math.sin(state.time * 10) : 1);
+      tick.setEnabled(annexWarning || momentumWarning);
+      tick.scaling.setAll(annexWarning || momentumWarning ? 1 + 0.18 * Math.sin(state.time * 10) : 1);
     }
 
     let direction = normalizedDirection(enemy.telegraphAim.x, enemy.telegraphAim.y);

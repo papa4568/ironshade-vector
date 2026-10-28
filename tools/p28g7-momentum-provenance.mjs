@@ -13,7 +13,7 @@ export function auditMomentumVisualProvenance(state) {
   if (state?.premium !== 'ready' || !(finite('premiumBindings') >= 100)
       || state?.ibl !== 'shared-prefiltered:ready')
     problems.push('missing-or-unready-premium-material');
-  if (!(finite('washFootprint') > 0 && finite('washFootprint') <= 0.05))
+  if (!(finite('washFootprint') > 0 && finite('washFootprint') <= 0.025))
     problems.push('oversized-countermass-wash');
   if (state?.routeStyle !== 'momentum-recessed-transfer-inlay'
       || !(finite('routeMaxWidth') > 0 && finite('routeMaxWidth') <= 0.20))
@@ -22,7 +22,7 @@ export function auditMomentumVisualProvenance(state) {
     problems.push('missing-or-occluded-objective');
   if (state?.actionInput !== 'manual-aim+live-touch-fire' || !(finite('shotsAfter') > finite('shotsBefore')))
     problems.push('no-real-combat-action');
-  if (!(finite('groundProps') >= 6) || (!state?.surfaceDetail?.includes('laminated-rim:6') || !state?.surfaceDetail?.includes('flux-tooth:48')))
+  if (!(finite('groundProps') >= 6) || (!state?.surfaceDetail?.includes('laminated-rim:9') || !state?.surfaceDetail?.includes('flux-tooth:48')))
     problems.push('missing-transfer-depth-or-grounding');
   if (state?.hazardLanguage !== 'shared-hazards+countermass-wash+vector-wash+near-zero-g+magnetic-transfer')
     problems.push('missing-transfer-hazard-cues');
