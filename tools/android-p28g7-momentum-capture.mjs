@@ -212,6 +212,8 @@ try {
       && d.environmentSurfaceDetail?.includes('laminated-rim:6') && d.environmentSurfaceDetail?.includes('flux-tooth:48')
       && d.momentumGrounding === 'player+enemies:soft-contact'
       && Number(d.momentumGroundedProps) === 6
+      && Number(d.momentumWashFootprint) > 0
+      && Number(d.momentumWashFootprint) <= 0.05
       && d.babylonRouteMarkingProfile === 'momentum-recessed-transfer-inlay'
       && Number(d.babylonRouteMarkingMaxWidth) > 0
       && Number(d.babylonRouteMarkingMaxWidth) <= 0.20
@@ -328,6 +330,7 @@ try {
       backend: d.babylonBackend ?? '',
       routeStyle: d.babylonRouteMarkingProfile ?? '',
       routeMaxWidth: Number(d.babylonRouteMarkingMaxWidth || 0),
+      washFootprint: Number(d.momentumWashFootprint || 0),
       mappedObjects: Number(d.babylonSharedWorldMappedCount || 0),
       authoredObjects: Number(d.babylonSharedWorldAuthoredCount || 0),
       fallbackObjects: Number(d.babylonSharedWorldFallbackCount || 0),
