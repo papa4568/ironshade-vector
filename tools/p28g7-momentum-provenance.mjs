@@ -13,6 +13,8 @@ export function auditMomentumVisualProvenance(state) {
   if (state?.premium !== 'ready' || !(finite('premiumBindings') >= 100)
       || state?.ibl !== 'shared-prefiltered:ready')
     problems.push('missing-or-unready-premium-material');
+  if (!(finite('washFootprint') > 0 && finite('washFootprint') <= 0.05))
+    problems.push('oversized-countermass-wash');
   if (state?.routeStyle !== 'momentum-recessed-transfer-inlay'
       || !(finite('routeMaxWidth') > 0 && finite('routeMaxWidth') <= 0.20))
     problems.push('oversized-route-material');
