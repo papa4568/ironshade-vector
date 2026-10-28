@@ -285,7 +285,7 @@ export class BabylonMomentumExchangePresentation {
         const carrier = box(scene, this.root, 'p28-g7-transfer-rail-carrier-' + index + '-' + side,
           structural, rail.position.x, 0.23, rail.position.z + side * 0.27, length, 0.12, 0.10);
         carrier.rotation.y = rotation;
-        rail.addChild(carrier);
+        carrier.parent = rail;
         carrier.position.set(0, 0.14, side * 0.27);
       }
       this.transferRails.push(rail);
