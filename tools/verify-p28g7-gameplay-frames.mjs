@@ -17,6 +17,6 @@ const report = { task: 'P28-G7', ...pixels,
   valid: pixels.valid && margins.normal.valid && margins.action.valid,
   margins, provenance };
 writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');
-if (state.capturedRoute !== 'momentum-annex' || !report.valid || !provenance.valid)
+if (state.capturedRoute !== 'momentum-exchange' || !report.valid || !provenance.valid)
   throw new Error('P28-G7 exact-APK screenshot acceptance failed: ' + JSON.stringify(report));
-console.log('P28G7_GAMEPLAY_PIXEL_CONTENT_PASS route=momentum-annex change=' + pixels.changedRatio);
+console.log('P28G7_GAMEPLAY_PIXEL_CONTENT_PASS route=momentum-exchange change=' + pixels.changedRatio);
