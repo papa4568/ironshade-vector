@@ -11,7 +11,7 @@ on:
       - 'src/game/babylonRefineryMissionReadiness.ts'
       - 'src/game/babylonRouteMarkings.ts'
       - 'src/game/babylonPremiumPbrSurfaceLibrary.ts'
-      - 'tests/babylon-momentum-annex.ts'
+      - 'tests/babylon-momentum-exchange.ts'
       - 'tools/android-p28g7-momentum-capture.mjs'
       - 'tools/android-p28g7-momentum-capture.sh'
       - 'tools/p28g7-android-frame.mjs'
@@ -132,13 +132,13 @@ jobs:
           name: p28-g7-exact-apk-momentum-${{ github.event.pull_request.head.sha }}
           path: |
             android-p28g7-candidate-sha.txt
-            android-p28g7-momentum-annex-normal.png
-            android-p28g7-momentum-annex-action.png
-            android-p28g7-momentum-annex-device.png
-            android-p28g7-momentum-annex.json
-            android-p28g7-momentum-annex-pixel-report.json
-            android-p28g7-momentum-annex-logcat.txt
-            android-p28g7-momentum-annex-activity.txt
+            android-p28g7-momentum-exchange-normal.png
+            android-p28g7-momentum-exchange-action.png
+            android-p28g7-momentum-exchange-device.png
+            android-p28g7-momentum-exchange.json
+            android-p28g7-momentum-exchange-pixel-report.json
+            android-p28g7-momentum-exchange-logcat.txt
+            android-p28g7-momentum-exchange-activity.txt
             android-fast-logcat.txt
             android-fast-smoke.png
           if-no-files-found: warn
@@ -189,13 +189,13 @@ jobs:
         run: |
           set -euo pipefail
           test "$(tr -d '\r\n' < android-p28g7-candidate-sha.txt)" = "$CANDIDATE_SHA"
-          for image in android-p28g7-momentum-annex-normal.png android-p28g7-momentum-annex-action.png android-p28g7-momentum-annex-device.png; do
+          for image in android-p28g7-momentum-exchange-normal.png android-p28g7-momentum-exchange-action.png android-p28g7-momentum-exchange-device.png; do
             test -s "$image"
           done
           node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs';
           for (const name of ['normal', 'action', 'device']) {
-            const file = readFileSync('android-p28g7-momentum-annex-' + name + '.png');
+            const file = readFileSync('android-p28g7-momentum-exchange-' + name + '.png');
             if (file.length < 20000 || file.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') {
               throw new Error('Invalid actual device PNG: ' + name);
             }
@@ -216,11 +216,11 @@ jobs:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          prompt="You are an independent read-only visual acceptance reviewer of THREE ATTACHED ACTUAL PNG GAMEPLAY FRAMES, in order: NORMAL, ACTION, DEVICE. Do not read code or rely on image filenames, telemetry or earlier reviewers. LOOK DIRECTLY at the image pixel content. If images are not visually accessible, return verdict unavailable. Inspect whether the sci-fi Momentum Annex scene has textured laminated flywheels, exposed bearing races, magnetic flux teeth, rail carriers and capture retainers rather than flat colors/placeholder cubes; whether recessed magnetic transfer navigation guides avoid oversized opaque bands; enemy warning arcs and target markers are gameplay danger cues (not route guides), and MUST remain legible without obstructing combat; whether there are any bright white margins outside the game scene, and whether players, hazards, objective, HUD and touch controls remain readable; whether action visibly differs from normal; whether screenshots have missing geometry, overlays or late-loading defects. Be adversarial and describe concrete visual details from EACH image, not generic claims. Return ONLY a valid JSON object with candidateSha '$CANDIDATE_SHA', verdict (pass/fail/unavailable), imagesActuallyViewed (boolean), normalObservation, actionObservation, deviceObservation, materialAndGeometryAssessment, combatReadabilityAssessment, and issues (array of strings). All observations and assessments must reflect pixels rather than metadata. Pass only when all relevant visual checks satisfy; fail on concrete defects. Do not write or edit files or tools."
+          prompt="You are an independent read-only visual acceptance reviewer of THREE ATTACHED ACTUAL PNG GAMEPLAY FRAMES, in order: NORMAL, ACTION, DEVICE. Do not read code or rely on image filenames, telemetry or earlier reviewers. LOOK DIRECTLY at the image pixel content. If images are not visually accessible, return verdict unavailable. Inspect whether the sci-fi Momentum Exchange scene has textured laminated flywheels, exposed bearing races, magnetic flux teeth, rail carriers and capture retainers rather than flat colors/placeholder cubes; whether recessed magnetic transfer navigation guides avoid oversized opaque bands; enemy warning arcs and target markers are gameplay danger cues (not route guides), and MUST remain legible without obstructing combat; whether there are any bright white margins outside the game scene, and whether players, hazards, objective, HUD and touch controls remain readable; whether action visibly differs from normal; whether screenshots have missing geometry, overlays or late-loading defects. Be adversarial and describe concrete visual details from EACH image, not generic claims. Return ONLY a valid JSON object with candidateSha '$CANDIDATE_SHA', verdict (pass/fail/unavailable), imagesActuallyViewed (boolean), normalObservation, actionObservation, deviceObservation, materialAndGeometryAssessment, combatReadabilityAssessment, and issues (array of strings). All observations and assessments must reflect pixels rather than metadata. Pass only when all relevant visual checks satisfy; fail on concrete defects. Do not write or edit files or tools."
           copilot -s -p "$prompt" \
-            --attachment android-p28g7-momentum-annex-normal.png \
-            --attachment android-p28g7-momentum-annex-action.png \
-            --attachment android-p28g7-momentum-annex-device.png \
+            --attachment android-p28g7-momentum-exchange-normal.png \
+            --attachment android-p28g7-momentum-exchange-action.png \
+            --attachment android-p28g7-momentum-exchange-device.png \
             --model auto --no-ask-user --no-custom-instructions \
             --disable-builtin-mcps --deny-tool=write --deny-tool=shell \
             --deny-tool=url --deny-tool=memory --no-remote --no-remote-export \
