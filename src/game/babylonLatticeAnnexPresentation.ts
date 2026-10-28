@@ -1,20 +1,31 @@
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
+import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Scene } from '@babylonjs/core/scene';
 import { getMapNavigationPlan } from './mapNavigation';
+import { babylonRouteMarkingWidth, BABYLON_ROUTE_MARKING_WIDTHS } from './babylonRouteMarkings';
+import { createBabylonPremiumPbrSurfaceLibrary, type BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
+import { createRefineryContactDepthAlphaData } from './refineryContactDepth';
+import { REFINERY_ACTOR_GROUNDING_PROFILE, refineryActorGroundingScale } from './babylonRefineryLighting';
 import type { RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize, type CombatObject, type SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
+
+export const BABYLON_LATTICE_ANNEX_PREMIUM_SURFACES = [
+  'deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture',
+] as const;
 
 export const BABYLON_LATTICE_ANNEX_IDENTITY = Object.freeze({
   silhouette: 'reference-pylons',
@@ -115,6 +126,16 @@ function enableCount<T extends { setEnabled(value: boolean): void }>(items: read
 export class BabylonLatticeAnnexPresentation {
   private readonly root: TransformNode;
   private readonly materials: PBRMaterial[];
+  private readonly ownedMaterials: PBRMaterial[];
+  private readonly premiumSurfaces: BabylonPremiumPbrSurfaceLibrary;
+  private readonly premiumBindingCount: number;
+  private readonly iblTexture: CubeTexture;
+  private iblReady = false;
+  private readonly groundingTexture: RawTexture;
+  private readonly groundingMaterial: StandardMaterial;
+  private readonly groundingSource: Mesh;
+  private readonly enemyGrounding = new Map<number, InstancedMesh>();
+  private readonly staticGroundingCount: number;
   private readonly cueMaterial: PBRMaterial;
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
   private readonly shutterMaterial: StandardMaterial;
@@ -151,14 +172,27 @@ export class BabylonLatticeAnnexPresentation {
     const cz = worldH * 0.5;
 
     this.root = new TransformNode('p27-c7-lattice-annex-environment', scene);
-    const floor = pbr(scene, 'p27-c7-lattice-floor', 0x111818, 0.36, 0.62);
+    // Existing authored KTX2 material families drive the walkable deck, steel
+    // fixtures and metrology service hardware; the ceramic/glass accents retain
+    // their own restrained identity rather than borrowing a metallic finish.
+    this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
+    const floor = this.premiumSurfaces.get('deck-plate');
     const ceramic = pbr(scene, 'p27-c7-lattice-survey-ceramic', 0xb9c8c5, 0.24, 0.42);
-    const structural = pbr(scene, 'p27-c7-lattice-metrology-steel', 0x34423f, 0.78, 0.34);
+    const structural = this.premiumSurfaces.get('bare-metal');
+    const service = this.premiumSurfaces.get('painted-metal');
+    const polymer = this.premiumSurfaces.get('polymer-rubber');
+    const fixture = this.premiumSurfaces.get('emissive-fixture');
     const referenceGlass = pbr(scene, 'p27-c7-lattice-reference-glass', 0x0b1414, 0.52, 0.20, 0x88b8ad, 0.12);
+    referenceGlass.clearCoat.isEnabled = true;
+    referenceGlass.clearCoat.intensity = 0.74;
+    referenceGlass.clearCoat.roughness = 0.16;
     const teal = pbr(scene, 'p27-c7-lattice-teal', 0x3f5a58, 0.44, 0.30, 0x88b8ad, 0.26);
-    const routePrimary = pbr(scene, 'p27-c7-lattice-route-primary', 0x496764, 0.35, 0.48, 0x88b8ad, 0.14);
-    const routeSecondary = pbr(scene, 'p27-c7-lattice-route-secondary', 0x293c3a, 0.45, 0.56, 0x546c68, 0.07);
-    this.materials = [floor, ceramic, structural, referenceGlass, teal, routePrimary, routeSecondary];
+    // Recessed floor surveying marks should read as fine dark inlays, not
+    // light ribbons competing with amber attack arcs on flagship screens.
+    const routePrimary = pbr(scene, 'p27-c7-lattice-route-primary', 0x23403b, 0.08, 0.94, 0x4a7770, 0.026);
+    const routeSecondary = pbr(scene, 'p27-c7-lattice-route-secondary', 0x172a28, 0.06, 0.95, 0x365a54, 0.012);
+    this.ownedMaterials = [ceramic, referenceGlass, teal, routePrimary, routeSecondary];
+    this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.cueMaterial = teal;
     this.routeMaterials = [routePrimary, routeSecondary];
     box(scene, this.root, 'p27-c7-lattice-floor-mesh', floor, cx, -0.08, cz, worldW, 0.16, worldH);
@@ -177,6 +211,45 @@ export class BabylonLatticeAnnexPresentation {
         const ring = MeshBuilder.CreateTorus('p27-c7-pylon-ring-' + index + '-' + ringY.toFixed(2), { diameter: 1.06, thickness: 0.055, tessellation: 24 }, scene);
         ring.parent = root; ring.position.y = ringY; ring.rotation.x = Math.PI / 2; ring.material = teal; ring.isPickable = false;
       }
+      // Eight-sided indexed collars, scale ticks, and protective dielectric
+      // fins give the silhouette depth from ordinary game zoom.
+      for (let stage = 0; stage < 4; stage += 1) {
+        const y = 0.40 + stage * (height - 0.7) / 3;
+        const collar = MeshBuilder.CreateCylinder('p28-g6-pylon-indexed-collar-' + index + '-' + stage,
+          { height: 0.14, diameter: 1.16, tessellation: 8 }, scene);
+        collar.parent = root; collar.position.y = y; collar.material = stage === 3 ? fixture : service; collar.isPickable = false;
+        for (const side of [-1, 1]) {
+          box(scene, root, 'p28-g6-pylon-scale-tick-' + index + '-' + stage + '-' + side,
+            fixture, side * 0.44, y + 0.11, 0.32, 0.035, 0.075, 0.08);
+        }
+      }
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g6-pylon-dielectric-fin-' + index + '-' + side,
+          polymer, side * 0.43, height * 0.52, 0.28, 0.12, height * 0.73, 0.22);
+        box(scene, root, 'p28-g6-pylon-sole-brace-' + index + '-' + side,
+          structural, side * 0.52, 0.30, 0.17, 0.22, 0.50, 0.45);
+      }
+
+      // Visible lens arrays: the original black glass reference core was
+      // entirely inside opaque white ceramic and could not read at play zoom.
+      // Housing uses the shipped painted-metal KTX2 normal/albedo channels.
+      for (const face of [-1, 1]) {
+        for (const [slot, fraction] of [0.28, 0.50, 0.72].entries()) {
+          const y = height * fraction;
+          box(scene, root, 'p28-g6-pylon-optic-bezel-' + index + '-' + face + '-' + slot,
+            service, 0, y, face * 0.44, 0.58, 0.46, 0.17);
+          box(scene, root, 'p28-g6-pylon-exposed-glass-' + index + '-' + face + '-' + slot,
+            referenceGlass, 0, y, face * 0.552, 0.40, 0.30, 0.075);
+          box(scene, root, 'p28-g6-pylon-optic-reticle-' + index + '-' + face + '-' + slot,
+            fixture, 0, y, face * 0.596, 0.27, 0.034, 0.014);
+          box(scene, root, 'p28-g6-pylon-optic-axis-' + index + '-' + face + '-' + slot,
+            fixture, 0, y, face * 0.605, 0.028, 0.22, 0.014);
+        }
+        for (const side of [-1, 1]) {
+          box(scene, root, 'p28-g6-pylon-front-datum-rail-' + index + '-' + face + '-' + side,
+            service, side * 0.303, height * 0.48, face * 0.377, 0.06, height * 0.70, 0.052);
+        }
+      }
       this.referencePylons.push(root);
     });
 
@@ -193,6 +266,15 @@ export class BabylonLatticeAnnexPresentation {
       top.rotation.z = index % 2 ? -0.10 : 0.10;
       const diamond = MeshBuilder.CreateCylinder('p27-c7-frame-reference-' + index, { height: 0.16, diameter: 0.76, tessellation: 4 }, scene);
       diamond.parent = root; diamond.position.set(0, 1.46, 0); diamond.rotation.x = Math.PI / 2; diamond.rotation.z = Math.PI / 4; diamond.material = index % 2 ? teal : referenceGlass; diamond.isPickable = false;
+      for (const side of [-1, 1]) {
+        const brace = box(scene, root, 'p28-g6-survey-diagonal-brace-' + index + '-' + side,
+          service, side * 0.46, 1.88, -0.12, 0.11, 1.38, 0.12);
+        brace.rotation.z = side * 0.48;
+        box(scene, root, 'p28-g6-survey-optic-rail-' + index + '-' + side,
+          fixture, side * 0.73, 1.54, 0.16, 0.065, 0.92, 0.10);
+      }
+      box(scene, root, 'p28-g6-survey-overhead-baffle-' + index,
+        polymer, 0, 2.53, 0.12, 1.48, 0.12, 0.37);
       this.surveyFrames.push(root);
     });
 
@@ -204,6 +286,13 @@ export class BabylonLatticeAnnexPresentation {
       box(scene, root, 'p27-c7-plinth-top-' + index, ceramic, 0, 0.52, 0, 1.16, 0.18, 0.72);
       const reference = MeshBuilder.CreateCylinder('p27-c7-plinth-standard-' + index, { height: 0.58, diameter: 0.34, tessellation: 8 }, scene);
       reference.parent = root; reference.position.y = 0.90; reference.material = referenceGlass; reference.isPickable = false;
+      for (const rise of [0.70, 1.02]) {
+        const dial = MeshBuilder.CreateTorus('p28-g6-metrology-dial-' + index + '-' + rise,
+          { diameter: 0.53, thickness: 0.045, tessellation: 32 }, scene);
+        dial.parent = root; dial.position.y = rise; dial.material = fixture; dial.isPickable = false;
+      }
+      box(scene, root, 'p28-g6-metrology-service-door-' + index,
+        service, 0, 0.24, 0.48, 0.90, 0.34, 0.075);
       this.metrologyPlinths.push(root);
     });
 
@@ -214,6 +303,14 @@ export class BabylonLatticeAnnexPresentation {
       box(scene, root, 'p27-c7-cradle-bed-' + index, structural, 0, 0.25, 0, 1.76, 0.50, 0.94);
       box(scene, root, 'p27-c7-cradle-sample-' + index, referenceGlass, 0, 0.62, 0, 0.88, 0.24, 0.52);
       for (const side of [-1, 1]) box(scene, root, 'p27-c7-cradle-clamp-' + index + '-' + side, ceramic, side * 0.66, 0.72, 0, 0.16, 0.72, 0.66);
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g6-cradle-indexed-hinge-' + index + '-' + side,
+          service, side * 0.72, 0.52, -0.30, 0.14, 0.52, 0.22);
+        box(scene, root, 'p28-g6-cradle-optic-' + index + '-' + side,
+          fixture, side * 0.52, 0.62, 0.47, 0.26, 0.07, 0.08);
+      }
+      box(scene, root, 'p28-g6-cradle-carriage-track-' + index,
+        structural, 0, 0.08, -0.34, 2.20, 0.14, 0.24);
       this.sampleCradles.push(root);
     });
 
@@ -222,6 +319,21 @@ export class BabylonLatticeAnnexPresentation {
       rail.rotation.y = index === 1 ? 0 : index === 0 ? -0.12 : 0.12;
       this.calibrationRails.push(rail);
     });
+
+    // Perimeter trusses and under-deck metrology datum lines visually anchor
+    // the survey hall without placing opaque route-sized cards over combat.
+    for (const [index, fraction] of [0.12, 0.32, 0.56, 0.79].entries()) {
+      const x = worldW * fraction;
+      for (const side of [-1, 1]) {
+        const z = side === -1 ? 0.82 : worldH - 0.82;
+        box(scene, this.root, 'p28-g6-survey-hall-upright-' + index + '-' + side,
+          structural, x, 1.8, z, 0.24, 3.6, 0.32);
+        box(scene, this.root, 'p28-g6-survey-hall-rail-' + index + '-' + side,
+          service, x, 3.42, z + (side === -1 ? 0.35 : -0.35), 1.65, 0.14, 0.12);
+        box(scene, this.root, 'p28-g6-survey-hall-light-' + index + '-' + side,
+          fixture, x, 3.24, z + (side === -1 ? 0.31 : -0.31), 0.62, 0.075, 0.11);
+      }
+    }
 
     this.massShiftMaterial = new StandardMaterial('p27-c7-mass-shift-material', scene);
     this.massShiftMaterial.diffuseColor = colorFromHex(0x88b8ad).scale(0.18); this.massShiftMaterial.emissiveColor = colorFromHex(0x88b8ad).scale(0.38);
@@ -234,7 +346,7 @@ export class BabylonLatticeAnnexPresentation {
     const navigation = getMapNavigationPlan('lattice-annex');
     navigation.routes.forEach(route => {
       const material = route.kind === 'primary' ? routePrimary : routeSecondary;
-      const width = route.kind === 'primary' ? 0.115 : 0.072;
+      const width = babylonRouteMarkingWidth(route.kind);
       route.points.slice(0, -1).forEach((point, index) => {
         const next = route.points[index + 1];
         routeSegment(scene, this.root, material, 'p27-c7-route-' + route.id + '-' + index, scaled(point.x), scaled(point.y), scaled(next.x), scaled(next.y), width);
@@ -290,8 +402,48 @@ export class BabylonLatticeAnnexPresentation {
     this.bossCore.parent = this.bossCueRoot; this.bossCore.position.y = 0.78; this.bossCore.material = this.bossCueMaterial; this.bossCore.isPickable = false;
     this.bossCueRoot.setEnabled(false);
 
+    const sharedMaterials = new Set(this.premiumSurfaces.materials.values());
+    this.premiumBindingCount = this.root.getChildMeshes(false)
+      .filter(mesh => mesh.material instanceof PBRMaterial && sharedMaterials.has(mesh.material)).length;
+    const size = REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize;
+    this.groundingTexture = RawTexture.CreateRGBATexture(
+      createRefineryContactDepthAlphaData(size), size, size, scene, false, false);
+    this.groundingTexture.hasAlpha = true;
+    this.groundingMaterial = new StandardMaterial('p28-g6-lattice-soft-contact', scene);
+    this.groundingMaterial.diffuseColor = new Color3(0.012, 0.020, 0.018);
+    this.groundingMaterial.specularColor = Color3.Black();
+    this.groundingMaterial.diffuseTexture = this.groundingTexture;
+    this.groundingMaterial.useAlphaFromDiffuseTexture = true;
+    this.groundingMaterial.disableLighting = true;
+    this.groundingMaterial.disableDepthWrite = true;
+    this.groundingMaterial.backFaceCulling = false;
+    this.groundingMaterial.alpha = 0.25;
+    this.groundingSource = MeshBuilder.CreatePlane('p28-g6-lattice-player-contact',
+      { width: 1, height: 1, sideOrientation: Mesh.DOUBLESIDE }, scene);
+    this.groundingSource.parent = this.root;
+    this.groundingSource.material = this.groundingMaterial;
+    this.groundingSource.rotation.x = Math.PI / 2;
+    this.groundingSource.alphaIndex = -300;
+    this.groundingSource.isPickable = false;
+    // Bind the contact footprint to the actual pylon mesh positions, including
+    // their metrology-gallery sinusoidal staggering; not a generic centreline.
+    for (const [index, pylon] of this.referencePylons.slice(0, 5).entries()) {
+      const contact = this.groundingSource.createInstance('p28-g6-pylon-floor-contact-' + index);
+      contact.parent = this.root;
+      contact.position.set(pylon.position.x, 0.042, pylon.position.z);
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(1.55, 0.96, 1);
+      contact.alphaIndex = -300;
+      contact.isPickable = false;
+    }
+    this.staticGroundingCount = 5;
     this.meshCount = this.root.getChildMeshes(false).length;
     this.root.setEnabled(false);
+    this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env',
+      scene, undefined, false, undefined,
+      () => { this.iblReady = true; }, () => { this.iblReady = false; }, undefined, true);
+    this.iblTexture.name = 'p28-g6-lattice-shared-prefiltered-ibl';
+    this.iblTexture.gammaSpace = false;
 
     const lighting = BABYLON_LATTICE_ANNEX_LIGHTING;
     this.hemisphere = new HemisphericLight('p27-c7-lattice-hemisphere', new Vector3(-0.18, 1, 0.08), scene);
@@ -394,16 +546,42 @@ export class BabylonLatticeAnnexPresentation {
     this.keyLight.intensity = lighting.keyIntensity * tierScale * (lowVisibility ? 0.94 : 1);
     this.rimLight.intensity = lighting.rimIntensity * (renderBudget.tierName === 'performance' ? 0.74 : 1);
     const px = scaled(state.player.x), pz = scaled(state.player.y);
+    this.groundingMaterial.alpha = renderBudget.tierName === 'performance' ? 0.17 : 0.25;
+    this.groundingSource.position.set(px, 0.044, pz);
+    this.groundingSource.scaling.set(1.06, 0.78, 1);
+    const nearby = new Set<number>();
+    const nearbySq = REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius ** 2;
+    for (const enemy of state.enemies) {
+      if (!enemy.active || enemy.dead) continue;
+      const dx = enemy.x - state.player.x, dz = enemy.y - state.player.y;
+      if (dx * dx + dz * dz > nearbySq) continue;
+      nearby.add(enemy.id);
+      let contact = this.enemyGrounding.get(enemy.id);
+      if (!contact) {
+        contact = this.groundingSource.createInstance('p28-g6-lattice-enemy-contact-' + enemy.id);
+        contact.parent = this.root; contact.isPickable = false; contact.alphaIndex = -300;
+        this.enemyGrounding.set(enemy.id, contact);
+      }
+      const scale = refineryActorGroundingScale(enemy.role);
+      contact.position.set(scaled(enemy.x), 0.043, scaled(enemy.y));
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(1.06 * scale, 0.78 * scale, 1);
+    }
+    for (const [id, contact] of this.enemyGrounding) {
+      if (!nearby.has(id)) { contact.dispose(); this.enemyGrounding.delete(id); }
+    }
     this.readabilityLight.position.set(px - 0.5, 2.8, pz + 0.7); this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 3.6 : 5.2) * tierScale;
     this.emergencyLight.position.set(px + 1.7, 3.0, pz - 1.5);
     this.emergencyLight.intensity = lighting.emergencyIntensity * (renderBudget.tierName === 'performance' ? 0.72 : 1) * (hazardMode === 'nominal' ? 0.58 : 1.14) * (activeBoss?.bossPhase === 2 ? 1.10 : 1);
     const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
     this.practicalLights.forEach((light, index) => { const enabled = index < practicalCount; light.setEnabled(enabled); light.intensity = enabled ? (index === 0 ? 5.2 : 4.4) * tierScale : 0; });
     const routePulse = 0.86 + Math.sin(state.time * 3.4) * 0.14;
-    this.routeMaterials[0].emissiveColor = colorFromHex(0x88b8ad).scale(0.15 * routePulse);
-    this.routeMaterials[1].emissiveColor = colorFromHex(0x546c68).scale(0.07 * routePulse);
+    this.routeMaterials[0].emissiveColor = colorFromHex(0x4a7770).scale(0.026 * routePulse);
+    this.routeMaterials[1].emissiveColor = colorFromHex(0x365a54).scale(0.012 * routePulse);
 
-    this.scene.environmentTexture = null; this.scene.environmentIntensity = 0;
+    this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
+    this.scene.environmentIntensity = this.iblReady
+      ? (renderBudget.tierName === 'performance' ? 0.20 : 0.32) : 0;
     this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
     this.scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.scene.imageProcessingConfiguration.exposure = lighting.exposure * (lowVisibility ? 1.04 : 1);
@@ -411,7 +589,22 @@ export class BabylonLatticeAnnexPresentation {
 
     const navigation = getMapNavigationPlan('lattice-annex');
     const pbrCount = this.scene.materials.filter(item => item instanceof PBRMaterial).length;
-    this.canvas.dataset.babylonEnvironmentState = 'ready';
+    const premiumReady = BABYLON_LATTICE_ANNEX_PREMIUM_SURFACES.every(id => {
+      const material = this.premiumSurfaces.get(id);
+      return material.albedoTexture?.isReady() === true
+        && material.bumpTexture?.isReady() === true
+        && material.metallicTexture?.isReady() === true
+        && (!material.emissiveTexture || material.emissiveTexture.isReady());
+    });
+    this.canvas.dataset.latticePremiumAssetState = premiumReady ? 'ready' : 'loading';
+    this.canvas.dataset.latticePremiumBindings = String(this.premiumBindingCount);
+    this.canvas.dataset.latticePremiumSurfaces = BABYLON_LATTICE_ANNEX_PREMIUM_SURFACES.join(',');
+    this.canvas.dataset.latticeGrounding = 'player+enemies:soft-contact';
+    this.canvas.dataset.latticeGroundedEnemies = String(nearby.size);
+    this.canvas.dataset.latticeGroundedProps = String(this.staticGroundingCount);
+    this.canvas.dataset.babylonRouteMarkingProfile = 'lattice-recessed-metrology-inlay';
+    this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary);
+    this.canvas.dataset.babylonEnvironmentState = premiumReady && this.iblReady ? 'ready' : 'loading';
     this.canvas.dataset.environmentVisual = 'procedural-lattice-annex-babylon';
     this.canvas.dataset.environmentKit = 'reference-pylon,survey-frame,metrology-plinth,sample-cradle,calibration-rail,calibration-shutter,reference-node,wayfinding,boss-cue';
     this.canvas.dataset.environmentInstances = String(this.meshCount + this.objectCues.size);
@@ -420,7 +613,7 @@ export class BabylonLatticeAnnexPresentation {
     this.canvas.dataset.environmentShadowCasters = 'off';
     this.canvas.dataset.environmentLandmark = 'long-reference-pylon-gallery';
     this.canvas.dataset.environmentServiceDetails = 'survey-frame:' + profile.surveyFrameInstances + '+metrology-plinth:' + profile.metrologyPlinthInstances + '+calibration-rail:' + profile.calibrationRailInstances;
-    this.canvas.dataset.environmentSurfaceDetail = 'reference-pylon:' + profile.referencePylonInstances + '+sample-cradle:' + profile.sampleCradleInstances;
+    this.canvas.dataset.environmentSurfaceDetail = 'reference-pylon:' + profile.referencePylonInstances + '+sample-cradle:' + profile.sampleCradleInstances + '+indexed-collar:36+survey-brace:12+hall-upright:8';
     this.canvas.dataset.environmentMachineDetail = 'sample-cradle:' + profile.sampleCradleInstances + '+calibration-shutter:2+reference-node:3';
     this.canvas.dataset.environmentComposition = 'cold-metrology-ring+long-reference-gallery+sample-vault';
     this.canvas.dataset.environmentMaterials = 'survey-ceramic+brushed-metrology-steel+black-reference-glass+metrology-teal';
@@ -459,8 +652,8 @@ export class BabylonLatticeAnnexPresentation {
     this.canvas.dataset.babylonLightingProfile = lighting.id;
     this.canvas.dataset.babylonMaterialIntent = 'survey-ceramic-pbr+metrology-steel+reference-glass+shared-world-pbr';
     this.canvas.dataset.babylonLightingBudget = 'tier:' + renderBudget.tierName + '|practical:' + practicalCount + '|shadows:off';
-    this.canvas.dataset.environmentIbl = 'off:lattice-annex';
-    this.canvas.dataset.environmentLighting = 'lattice-annex-soft-key+teal-reference-fill+contact:player+enemy+practical:' + practicalCount + '+shadow:off';
+    this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading';
+    this.canvas.dataset.environmentLighting = 'lattice-annex-soft-key+teal-reference-fill+contact:player+enemy+practical:' + practicalCount + '+ibl:shared-prefiltered+shadow:off';
     this.canvas.dataset.environmentShadowBudget = 'off:lattice-annex-babylon';
     this.canvas.dataset.environmentTone = 'aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2) + '+survey-neutral+metrology-teal';
     this.canvas.dataset.locationLighting = 'lattice-annex:metrology-teal:aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2);
@@ -476,8 +669,15 @@ export class BabylonLatticeAnnexPresentation {
 
   dispose() {
     this.release('renderer-dispose');
+    for (const contact of this.enemyGrounding.values()) contact.dispose();
+    this.enemyGrounding.clear();
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose()); this.root.dispose();
-    this.materials.forEach(item => item.dispose());
+    this.groundingMaterial.dispose();
+    this.groundingTexture.dispose();
+    if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
+    this.iblTexture.dispose();
+    this.ownedMaterials.forEach(item => item.dispose());
+    this.premiumSurfaces.dispose();
     this.massShiftMaterial.dispose(); this.shutterMaterial.dispose(); this.referenceMaterial.dispose(); this.bossCueMaterial.dispose();
     this.hemisphere.dispose(); this.keyLight.dispose(); this.rimLight.dispose(); this.emergencyLight.dispose(); this.readabilityLight.dispose(); this.practicalLights.forEach(light => light.dispose());
   }

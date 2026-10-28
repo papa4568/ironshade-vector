@@ -488,7 +488,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly orphelineCapstonePresentation: BabylonOrphelineCapstonePresentation;
   private readonly hecateCapstonePresentation: BabylonHecateCapstonePresentation;
   private readonly solarYardPresentation: BabylonSolarYardPresentation;
-  private readonly latticeAnnexPresentation: BabylonLatticeAnnexPresentation;
+  private latticeAnnexPresentation: BabylonLatticeAnnexPresentation | null = null;
   private readonly momentumExchangePresentation: BabylonMomentumExchangePresentation;
   private readonly cryoReservePresentation: BabylonCryoReservePresentation;
   private readonly parallaxArrayPresentation: BabylonParallaxArrayPresentation;
@@ -547,7 +547,6 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.orphelineCapstonePresentation = new BabylonOrphelineCapstonePresentation(scene, canvas, qualityCoarse);
     this.hecateCapstonePresentation = new BabylonHecateCapstonePresentation(scene, canvas, qualityCoarse);
     this.solarYardPresentation = new BabylonSolarYardPresentation(scene, canvas, qualityCoarse);
-    this.latticeAnnexPresentation = new BabylonLatticeAnnexPresentation(scene, canvas, qualityCoarse);
     this.momentumExchangePresentation = new BabylonMomentumExchangePresentation(scene, canvas, qualityCoarse);
     this.cryoReservePresentation = new BabylonCryoReservePresentation(scene, canvas, qualityCoarse);
     this.parallaxArrayPresentation = new BabylonParallaxArrayPresentation(scene, canvas, qualityCoarse);
@@ -744,7 +743,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.jovianHarvesterPresentation.release('scenario-exit');
       this.iceMinePresentation.release('scenario-exit');
       this.solarYardPresentation.release('scenario-exit');
-      this.latticeAnnexPresentation.release('scenario-exit');
+      this.latticeAnnexPresentation?.release('scenario-exit');
       this.momentumExchangePresentation.release('scenario-exit');
       this.cryoReservePresentation.release('scenario-exit');
       this.parallaxArrayPresentation.release('scenario-exit');
@@ -769,7 +768,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.jovianHarvesterPresentation.release('scenario-switch');
       this.iceMinePresentation.release('scenario-switch');
       this.solarYardPresentation.release('scenario-switch');
-      this.latticeAnnexPresentation.release('scenario-switch');
+      this.latticeAnnexPresentation?.release('scenario-switch');
       this.momentumExchangePresentation.release('scenario-switch');
       this.cryoReservePresentation.release('scenario-switch');
       this.parallaxArrayPresentation.release('scenario-switch');
@@ -786,7 +785,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (damagedVesselScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -794,7 +793,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (spinHabitatScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -802,7 +801,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (jovianHarvesterScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -810,7 +809,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.spinHabitatPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (iceMineScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -818,7 +817,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.spinHabitatPresentation.release('scenario-switch');
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (solarYardScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -826,7 +825,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.spinHabitatPresentation.release('scenario-switch');
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       } else if (latticeAnnexScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
@@ -843,7 +842,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
       } else {
         this.orbitalStationPresentation.release('scenario-switch');
         this.damagedVesselPresentation.release('scenario-switch');
@@ -851,7 +850,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation?.release('scenario-switch');
         this.momentumExchangePresentation.release('scenario-switch');
       }
     }
@@ -894,6 +893,10 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     } else if (solarYardScenario) {
       this.solarYardPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     } else if (latticeAnnexScenario) {
+      // The Annex owns heavyweight authored KTX2 textures and an IBL cube.
+      // Do not start their downloads or create hundreds of inactive meshes
+      // on Refinery/other routes; competing GL loads delay playable readiness.
+      this.latticeAnnexPresentation ??= new BabylonLatticeAnnexPresentation(this.scene, this.canvas, false);
       this.latticeAnnexPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     } else if (momentumExchangeScenario) {
       this.momentumExchangePresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
@@ -1016,7 +1019,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.jovianHarvesterPresentation.dispose();
     this.iceMinePresentation.dispose();
     this.solarYardPresentation.dispose();
-    this.latticeAnnexPresentation.dispose();
+    this.latticeAnnexPresentation?.dispose();
     this.momentumExchangePresentation.dispose();
     this.cryoReservePresentation.dispose();
     this.parallaxArrayPresentation.dispose();
@@ -1440,7 +1443,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const operatorColor = operatorFaction ? colorFromHex(factionColors[operatorFaction]) : weaponColor;
 
     this.operatorAccentMaterial.diffuseColor.copyFrom(operatorColor.scale(0.45));
-    this.operatorAccentMaterial.emissiveColor.copyFrom(operatorColor.scale(0.18 + Math.min(0.35, heat * 0.16 + flash * 0.12)));
+    // Keep the operator silhouette separate from the Annex's near-black
+    // patterned floor; this is presentation-only and restores on map exit.
+    const annexActorLift = this.canvas.dataset.babylonScenario === 'lattice-annex' ? 0.24 : 0;
+    this.operatorAccentMaterial.emissiveColor.copyFrom(operatorColor.scale(
+      0.18 + annexActorLift + Math.min(0.35, heat * 0.16 + flash * 0.12),
+    ));
     this.weaponAccentMaterial.diffuseColor.copyFrom(weaponColor.scale(0.5));
     this.weaponAccentMaterial.emissiveColor.copyFrom(weaponColor.scale(
       0.28 + heat * 0.9 + flash * 0.8 + reloadPulse * pulse * 0.25 + thermalLoad * 0.24,
@@ -2025,8 +2033,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     visual.variantCue.rotation.y = silhouette === 'drone' ? state.time * 1.8 : 0;
     visual.variantCue.rotation.z = (silhouette === 'mobile' ? -0.28 : silhouette === 'technical' ? 0.16 : 0)
       + (silhouette === 'mobile' ? Math.sin(state.time * 8 + enemy.id) * 0.08 * speed : 0);
+    const annexContrast = this.canvas.dataset.babylonScenario === 'lattice-annex';
+    visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(annexContrast ? 0.22 : 0.06);
+    visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(annexContrast ? 0.13 : 0);
     visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      0.22 + damage.hit * 0.32 + damage.armorBreak * 0.24,
+      (annexContrast ? 0.42 : 0.22) + damage.hit * 0.32 + damage.armorBreak * 0.24,
     );
   }
 
@@ -2708,12 +2719,23 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const cameraOffset = narrow ? 13.2 : this.coarse ? 11.2 : 9.8;
     const offsetX = cameraFeedback?.worldOffsetX ?? 0;
     const offsetZ = cameraFeedback?.worldOffsetZ ?? 0;
+    // The Annex's active fight extends into the lower-right touch lane.
+    // Aim the camera a little farther into that actual playing field instead
+    // of hiding an enemy danger ring beneath DODGE or clipping its actor at
+    // the bottom edge. Translate eye and target together: preserve FOV,
+    // perspective, player aim, telegraphs, and all other route framing.
+    const annexCombatPan = this.canvas.dataset.babylonScenario === 'lattice-annex' && !narrow ? 3.5 : 0;
+    // Reserve the screen-right touch lane by moving the camera *toward* that
+    // lane in world space. A shared +/- lateral translation moves world actors
+    // left on screen without changing their true locations, threat footprints,
+    // camera inclination, zoom or touch-target size.
+    const annexTouchLanePan = this.canvas.dataset.babylonScenario === 'lattice-annex' && !narrow ? 3.2 : 0;
 
-    this.camera.position.set(px + cameraOffset + offsetX, cameraHeight, pz + cameraOffset + offsetZ);
+    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan);
     this.cameraTarget.set(
-      px + state.player.aim.x * 1.1 - offsetX * 0.2,
+      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan,
       0.62,
-      pz + state.player.aim.y * 1.1 - offsetZ * 0.2,
+      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan,
     );
     this.camera.setTarget(this.cameraTarget);
     this.camera.getViewMatrix(true);

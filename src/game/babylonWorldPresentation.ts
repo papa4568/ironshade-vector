@@ -189,7 +189,8 @@ export class BabylonRefineryWorldPresentation {
     // Shared authored LOD0 families also serve the Spin Habitat machinery,
     // cover and equipment slots, with explicit readiness and fallback counts.
     this.premiumSharedWorldScenario = mission.location === 'orbital-station' || mission.location === 'damaged-vessel'
-      || mission.location === 'spin-habitat' || mission.location === 'jovian-harvester' || mission.location === 'ice-mine';
+      || mission.location === 'spin-habitat' || mission.location === 'jovian-harvester'
+      || mission.location === 'ice-mine' || mission.location === 'lattice-annex';
     this.syncObjects(state, detailScale);
     this.syncObjective(state, mission);
     this.syncGroundLoot(state, detailScale);

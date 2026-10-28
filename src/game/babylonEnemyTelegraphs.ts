@@ -48,6 +48,7 @@ type TelegraphVisual = {
   phaseOuter: Mesh;
   phaseInner: Mesh;
   phaseSpokes: Mesh[];
+  annexAttackTicks: Mesh[];
   attackMaterial: StandardMaterial;
   laneMaterial: StandardMaterial;
   phaseMaterial: StandardMaterial;
@@ -326,6 +327,22 @@ export class BabylonEnemyTelegraphs {
     pulseRing.material = attackMaterial;
     pulseRing.isPickable = false;
 
+    // Four isolated warning teeth on active Annex attack rings distinguish
+    // enemy danger from the scene's passive metrology and objective circles.
+    const annexAttackTicks: Mesh[] = [];
+    for (let i = 0; i < 4; i += 1) {
+      const angle = (i + 0.5) * Math.PI / 2;
+      const tick = MeshBuilder.CreateBox(`p28-g6-attack-warning-tick-${id}-${i}`,
+        { width: 0.20, height: 0.035, depth: 0.09 }, this.scene);
+      tick.parent = root;
+      tick.position.set(Math.cos(angle) * 0.82, 0.022, Math.sin(angle) * 0.82);
+      tick.rotation.y = -angle;
+      tick.material = attackMaterial;
+      tick.isPickable = false;
+      tick.setEnabled(false);
+      annexAttackTicks.push(tick);
+    }
+
     const targetRoot = new TransformNode(`p27-b8-target-root-${id}`, this.scene);
     targetRoot.position.y = FLOOR_Y + 0.012;
     const targetRing = MeshBuilder.CreateTorus(`p27-b8-target-ring-${id}`, {
@@ -410,6 +427,7 @@ export class BabylonEnemyTelegraphs {
       phaseOuter,
       phaseInner,
       phaseSpokes,
+      annexAttackTicks,
       attackMaterial,
       laneMaterial,
       phaseMaterial,
@@ -426,6 +444,7 @@ export class BabylonEnemyTelegraphs {
     visual.sideA.setEnabled(false);
     visual.sideB.setEnabled(false);
     visual.pulseRing.setEnabled(false);
+    for (const tick of visual.annexAttackTicks) tick.setEnabled(false);
     visual.targetRing.setEnabled(false);
     visual.targetCrossA.setEnabled(false);
     visual.targetCrossB.setEnabled(false);
@@ -458,6 +477,11 @@ export class BabylonEnemyTelegraphs {
     visual.sourceRing.setEnabled(true);
     const sourceDiameter = enemy.role === 'boss' ? 2.3 : enemy.role === 'elite' ? 1.55 : 1.15;
     visual.sourceRing.scaling.set(sourceDiameter, sourceDiameter, sourceDiameter);
+    const annexWarning = this.canvas.dataset.babylonScenario === 'lattice-annex';
+    for (const tick of visual.annexAttackTicks) {
+      tick.setEnabled(annexWarning);
+      tick.scaling.setAll(annexWarning ? 1 + 0.18 * Math.sin(state.time * 10) : 1);
+    }
 
     let direction = normalizedDirection(enemy.telegraphAim.x, enemy.telegraphAim.y);
     let laneRange = profile.range;

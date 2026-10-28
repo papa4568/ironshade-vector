@@ -1094,3 +1094,11 @@
   }
 }
 
+
+/* P28-G6: retain full-size touch hit targets while keeping the Annex
+   lower-right enemy danger rings visible behind a raised RUSH skill. */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 560px) {
+  .game-root[data-location="lattice-annex"] .touch-ability-fan .ability-0 {
+    bottom: 172px;
+  }
+}
