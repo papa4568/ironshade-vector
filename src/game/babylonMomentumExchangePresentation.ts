@@ -28,6 +28,12 @@ export const BABYLON_MOMENTUM_EXCHANGE_PREMIUM_SURFACES = [
   'deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture',
 ] as const;
 
+/** Active wash remains a timed hazard, never an opaque floor-sized route slab. */
+export const BABYLON_MOMENTUM_WASH_FOOTPRINT = {
+  widthFraction: 0.032,
+  lengthFraction: 0.36,
+} as const;
+
 export const BABYLON_MOMENTUM_EXCHANGE_IDENTITY = Object.freeze({
   silhouette: 'flywheel-lane',
   material: 'magnetic-machinery',
@@ -130,6 +136,7 @@ export class BabylonMomentumExchangePresentation {
   private readonly ownedMaterials: PBRMaterial[];
   private readonly premiumSurfaces: BabylonPremiumPbrSurfaceLibrary;
   private readonly premiumBindingCount: number;
+  private readonly performanceDecoration: Mesh[];
   private readonly iblTexture: CubeTexture;
   private iblReady = false;
   private readonly groundingTexture: RawTexture;
@@ -175,12 +182,13 @@ export class BabylonMomentumExchangePresentation {
     const structural = this.premiumSurfaces.get('bare-metal');
     const polymer = this.premiumSurfaces.get('polymer-rubber');
     const fixture = this.premiumSurfaces.get('emissive-fixture');
+    const edgeMetal = pbr(scene, 'p28-g7-exposed-machinery-trim', 0x7c9298, 0.63, 0.34, 0x6cb4bc, 0.075);
     const capture = pbr(scene, 'p27-c8-capture-service', 0x47798c, 0.48, 0.30, 0x67b5d5, 0.22);
     const reference = pbr(scene, 'p27-c8-reference-blue', 0x10252f, 0.42, 0.23, 0x67b5d5, 0.34);
     // Narrow, dark, rough deck inlays: hazards and combat actions own the bright cyan.
     const routePrimary = pbr(scene, 'p27-c8-route-primary', 0x203946, 0.11, 0.91, 0x36677a, 0.026);
     const routeSecondary = pbr(scene, 'p27-c8-route-secondary', 0x152a34, 0.10, 0.94, 0x285363, 0.012);
-    this.ownedMaterials = [capture, reference, routePrimary, routeSecondary];
+    this.ownedMaterials = [edgeMetal, capture, reference, routePrimary, routeSecondary];
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.cueMaterial = capture;
     this.routeMaterials = [routePrimary, routeSecondary];
@@ -222,13 +230,14 @@ export class BabylonMomentumExchangePresentation {
         const ring = MeshBuilder.CreateTorus('p28-g7-flywheel-lamination-' + index + '-' + ringIndex,
           { diameter, thickness, tessellation: 48 }, scene);
         ring.parent = rotor; ring.rotation.x = 0; ring.position.z = 0.34 + ringIndex * 0.10;
-        ring.material = ringIndex ? fixture : structural; ring.isPickable = false;
+        ring.material = ringIndex ? edgeMetal : structural; ring.isPickable = false;
       }
       for (let tooth = 0; tooth < 16; tooth += 1) {
         const angle = tooth * Math.PI / 8;
         const toothMesh = box(scene, root, 'p28-g7-flywheel-flux-tooth-' + index + '-' + tooth,
-          tooth % 4 === 0 ? fixture : machinery, Math.sin(angle) * 2.36, Math.cos(angle) * 2.36, 0.34,
-          0.13, 0.36, 0.22);
+          tooth % 4 === 0 ? edgeMetal : tooth % 2 === 0 ? structural : machinery,
+          Math.sin(angle) * 2.36, Math.cos(angle) * 2.36, 0.58,
+          0.23, 0.45, 0.20);
         toothMesh.parent = rotor;
         toothMesh.rotation.z = -angle;
       }
@@ -236,7 +245,7 @@ export class BabylonMomentumExchangePresentation {
         const race = MeshBuilder.CreateTorus('p28-g7-bearing-race-' + index + '-' + side,
           { diameter: 1.60, thickness: 0.15, tessellation: 28 }, scene);
         race.parent = root; race.position.set(0, 3.25, side * 0.68);
-        race.rotation.x = Math.PI / 2; race.material = polymer; race.isPickable = false;
+        race.rotation.x = Math.PI / 2; race.material = edgeMetal; race.isPickable = false;
         box(scene, root, 'p28-g7-bearing-service-strut-' + index + '-' + side, structural,
           side * 0.68, 1.45, side * 1.20, 0.14, 1.6, 0.14);
       }
@@ -268,7 +277,7 @@ export class BabylonMomentumExchangePresentation {
           fixture, side * 0.88, 1.85, 0.19, 0.052, 0.70, 0.08);
       }
       box(scene, root, 'p28-g7-transfer-frame-header-' + index,
-        machinery, 0, 2.61, 0, 1.76, 0.14, 0.46);
+        edgeMetal, 0, 2.61, 0, 1.76, 0.14, 0.46);
       this.serviceFrames.push(root);
     });
 
@@ -283,7 +292,7 @@ export class BabylonMomentumExchangePresentation {
       rail.rotation.y = rotation;
       for (const side of [-1, 1]) {
         const carrier = box(scene, this.root, 'p28-g7-transfer-rail-carrier-' + index + '-' + side,
-          structural, rail.position.x, 0.23, rail.position.z + side * 0.27, length, 0.12, 0.10);
+          edgeMetal, rail.position.x, 0.23, rail.position.z + side * 0.27, length, 0.12, 0.10);
         carrier.rotation.y = rotation;
         carrier.parent = rail;
         carrier.position.set(0, 0.14, side * 0.27);
@@ -308,7 +317,7 @@ export class BabylonMomentumExchangePresentation {
         box(scene, root, 'p28-g7-cradle-polymer-shoe-' + index + '-' + side,
           polymer, side * 0.47, 0.57, 0, 0.18, 0.20, 0.68);
         box(scene, root, 'p28-g7-cradle-latch-' + index + '-' + side,
-          fixture, side * 0.64, 0.70, 0, 0.09, 0.28, 0.26);
+          edgeMetal, side * 0.64, 0.70, 0, 0.09, 0.28, 0.26);
       }
       this.captureCradles.push(root);
     });
@@ -319,7 +328,7 @@ export class BabylonMomentumExchangePresentation {
       root.position.set(scaled(x), 0, scaled(z));
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g7-drum-retainer-' + id + '-' + side,
-          structural, side * 0.52, 0.88, 0, 0.16, 1.18, 0.84);
+          edgeMetal, side * 0.52, 0.88, 0, 0.16, 1.18, 0.84);
         box(scene, root, 'p28-g7-drum-latch-' + id + '-' + side,
           fixture, side * 0.51, 1.42, 0.33, 0.14, 0.16, 0.12);
       }
@@ -339,14 +348,19 @@ export class BabylonMomentumExchangePresentation {
     }
 
     this.impulseMaterial = new StandardMaterial('p27-c8-countermass-wash-material', scene);
-    this.impulseMaterial.diffuseColor = colorFromHex(0x67b5d5).scale(0.18);
-    this.impulseMaterial.emissiveColor = colorFromHex(0x67b5d5).scale(0.62);
+    // Timed wash = warm, translucent danger pulse. It must not masquerade as
+    // permanent cyan navigation or occlude the player behind a painted slab.
+    this.impulseMaterial.diffuseColor = colorFromHex(0xd48a64).scale(0.22);
+    this.impulseMaterial.emissiveColor = colorFromHex(0xe8ad7d).scale(0.26);
     this.impulseMaterial.specularColor = Color3.Black();
     this.impulseMaterial.alpha = 0.16;
     this.impulseMaterial.disableLighting = true;
     this.impulseMaterial.backFaceCulling = false;
-    ([[0.44, 0.50, 0.16, 0.88], [0.58, 0.50, 0.16, 0.88], [0.72, 0.50, 0.15, 0.84]] as const).forEach(([x, z, wr, dr], index) => {
-      const band = box(scene, this.root, 'p27-c8-countermass-band-' + index, this.impulseMaterial, worldW * x, 0.035, worldH * z, worldW * wr, 0.025, worldH * dr);
+    ([[0.44, 0.50], [0.58, 0.50], [0.72, 0.50]] as const).forEach(([x, z], index) => {
+      const band = box(scene, this.root, 'p27-c8-countermass-band-' + index,
+        this.impulseMaterial, worldW * x, 0.038, worldH * z,
+        worldW * BABYLON_MOMENTUM_WASH_FOOTPRINT.widthFraction, 0.028,
+        worldH * BABYLON_MOMENTUM_WASH_FOOTPRINT.lengthFraction);
       band.setEnabled(false);
       this.impulseBands.push(band);
     });
@@ -411,6 +425,12 @@ export class BabylonMomentumExchangePresentation {
     const shared = new Set(this.premiumSurfaces.materials.values());
     this.premiumBindingCount = this.root.getChildMeshes(false)
       .filter(mesh => mesh.material instanceof PBRMaterial && shared.has(mesh.material)).length;
+    // High/balanced retain the full mechanical close-up. Compact/mobile keeps
+    // the premium silhouettes and bearings, but avoids per-bolt GPU draw calls
+    // that could delay gameplay-time hazard cues on software-rendered devices.
+    this.performanceDecoration = this.root.getChildMeshes(false).filter((mesh): mesh is Mesh =>
+      mesh instanceof Mesh
+      && /^p28-g7-(?:flywheel-flux-tooth|bearing-service-strut|transfer-frame-bus|drum-latch|cradle-latch|transfer-rail-carrier)-/.test(mesh.name));
     const size = REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize;
     this.groundingTexture = RawTexture.CreateRGBATexture(
       createRefineryContactDepthAlphaData(size), size, size, scene, false, false);
@@ -495,6 +515,8 @@ export class BabylonMomentumExchangePresentation {
     enableCount(this.serviceFrames, profile.serviceFrameInstances);
     enableCount(this.transferRails, profile.transferRailInstances);
     enableCount(this.captureCradles, profile.captureCradleInstances);
+    const detailedMachinery = renderBudget.tierName !== 'performance';
+    this.performanceDecoration.forEach(mesh => mesh.setEnabled(detailedMachinery));
 
     this.flywheels.forEach((rig, index) => {
       const direction = Number(rig.rotor.metadata?.direction ?? (index % 2 ? 1 : -1));
@@ -514,8 +536,8 @@ export class BabylonMomentumExchangePresentation {
       }
     });
     const washPulse = 0.76 + Math.sin(state.time * 7.2) * 0.22;
-    this.impulseMaterial.alpha = (washMode === 'countermass-wash' ? 0.24 : 0.07) * renderBudget.transparencyScale;
-    this.impulseMaterial.emissiveColor = colorFromHex(0x67b5d5).scale(0.56 * washPulse);
+    this.impulseMaterial.alpha = (washMode === 'countermass-wash' ? 0.12 : 0.035) * renderBudget.transparencyScale;
+    this.impulseMaterial.emissiveColor = colorFromHex(0xe8ad7d).scale(0.24 * washPulse);
 
     const captureObjects = state.objects.filter(object => object.id === 'capture-drum-a' || object.id === 'capture-drum-b');
     const intactCapture = captureObjects.filter(object => object.hp > 0);
@@ -630,6 +652,8 @@ export class BabylonMomentumExchangePresentation {
     this.canvas.dataset.momentumGroundedProps = String(this.staticGroundingCount);
     this.canvas.dataset.babylonRouteMarkingProfile = 'momentum-recessed-transfer-inlay';
     this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary);
+    this.canvas.dataset.momentumWashFootprint = String(BABYLON_MOMENTUM_WASH_FOOTPRINT.widthFraction);
+    this.canvas.dataset.momentumDetailTier = detailedMachinery ? 'full-hardware' : 'compact-hardware';
     this.canvas.dataset.babylonEnvironmentState = premiumReady && this.iblReady ? 'ready' : 'loading';
     this.canvas.dataset.environmentVisual = 'procedural-momentum-exchange-babylon';
     this.canvas.dataset.environmentKit = 'flywheel-rig,transfer-frame,electromagnetic-rail,capture-cradle,capture-drum,countermass-band,wayfinding,boss-cue';
