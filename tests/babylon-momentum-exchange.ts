@@ -4,6 +4,7 @@ import {
   BABYLON_MOMENTUM_EXCHANGE_IDENTITY,
   BABYLON_MOMENTUM_EXCHANGE_LIGHTING,
   BABYLON_MOMENTUM_EXCHANGE_PREMIUM_SURFACES,
+  BABYLON_MOMENTUM_WASH_FOOTPRINT,
   momentumExchangeCaptureState,
   momentumExchangeRenderProfile,
   momentumExchangeWashMode,
@@ -112,6 +113,8 @@ assert.ok(pkg.scripts.build.includes('npm run test:babylon-momentum-exchange'));
 
 // P28-G7 is only a visual rollout. Its live authored assets, exact Android
 // pixels, and independent Copilot image inspection must disprove flat/late art.
+assert.equal(BABYLON_MOMENTUM_WASH_FOOTPRINT.widthFraction, 0.032);
+assert.ok(BABYLON_MOMENTUM_WASH_FOOTPRINT.lengthFraction <= 0.36);
 assert.deepEqual(BABYLON_MOMENTUM_EXCHANGE_PREMIUM_SURFACES,
   ['deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture']);
 for (const premiumDetail of [
@@ -141,10 +144,18 @@ for (const premiumDetail of [
   "this.canvas.dataset.babylonRouteMarkingProfile = 'momentum-recessed-transfer-inlay'",
   "this.canvas.dataset.environmentSurfaceDetail = 'flywheel-rig:'",
   "flux-tooth:48+bearing-race:6",
+  "this.performanceDecoration.forEach(mesh => mesh.setEnabled(detailedMachinery))",
+  "this.canvas.dataset.momentumDetailTier = detailedMachinery ? 'full-hardware' : 'compact-hardware'",
+  "worldW * BABYLON_MOMENTUM_WASH_FOOTPRINT.widthFraction",
 ]) assert.ok(presentation.includes(premiumDetail), 'P28-G7 missing real mechanical layer or material gate: ' + premiumDetail);
 assert.ok(presentation.includes("new CubeTexture('/assets/environments/refinery-prefiltered.env'"));
 assert.ok(presentation.includes('babylonRouteMarkingWidth(route.kind)'));
 assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
+const g7Hud = readFileSync('src/combatHudGlance.css', 'utf8');
+assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .boss-hud.boss-hud--top'));
+assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane.event .combat-alert b'));
+assert.ok(babylon.includes("const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
+assert.ok(babylon.includes("const momentumContrast = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(readFileSync('src/game/babylonWorldPresentation.ts', 'utf8')
   .includes("|| mission.location === 'momentum-exchange';"));
 
@@ -158,7 +169,7 @@ const validG7Proof = {
   artState: 'ready', beforeArtState: 'ready',
   premium: 'ready', beforePremium: 'ready',
   premiumBindings: 130, ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
-  routeStyle: 'momentum-recessed-transfer-inlay', routeMaxWidth: 0.16,
+  routeStyle: 'momentum-recessed-transfer-inlay', routeMaxWidth: 0.16, washFootprint: 0.032,
   objectiveCue: 'beacon+navigation-path', worldObjects: 8, groundProps: 6,
   actionInput: 'manual-aim+live-touch-fire', shotsBefore: 0, shotsAfter: 1,
   surfaceDetail: 'laminated-rim:6+flux-tooth:48+bearing-race:6+rail-carrier:8',
@@ -171,6 +182,7 @@ for (const [label, edit, reason] of [
   ['unmapped', { fallbackObjects: 1 }, 'procedural-box-or-unresolved-world-slot'],
   ['untextured', { premiumBindings: 3 }, 'missing-or-unready-premium-material'],
   ['wide-ribbon', { routeMaxWidth: 0.48 }, 'oversized-route-material'],
+  ['wash-slab', { washFootprint: 0.16 }, 'oversized-countermass-wash'],
   ['missing-rims', { surfaceDetail: 'flux-tooth:48' }, 'missing-transfer-depth-or-grounding'],
   ['missing-teeth', { surfaceDetail: 'laminated-rim:6' }, 'missing-transfer-depth-or-grounding'],
   ['no-contact', { groundProps: 0 }, 'missing-transfer-depth-or-grounding'],
@@ -190,6 +202,7 @@ assert.ok(g7Capture.includes("!campaign?.story?.interdiction || !campaign?.story
 assert.ok(g7Capture.includes("url.searchParams.set('p27d5Lifecycle', '1')"));
 assert.ok(g7Capture.includes("d?.babylonScenario === 'momentum-exchange'"));
 assert.ok(g7Capture.includes("d.momentumPremiumAssetState === 'ready'"));
+assert.ok(g7Capture.includes("Number(d.momentumWashFootprint) <= 0.05"));
 assert.ok(g7Capture.includes("d.missionVisualReadiness === 'ready'"));
 assert.ok(g7Capture.includes("await waitFor(ready, 'post-reentry Momentum Exchange authored-world readiness'"));
 assert.ok(g7Capture.includes("const shotsBefore = await evaluate"));
