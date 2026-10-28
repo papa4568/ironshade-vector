@@ -4,7 +4,7 @@ export function auditMomentumVisualProvenance(state) {
   const mapped = finite('mappedObjects'), authored = finite('authoredObjects'), fallback = finite('fallbackObjects');
   const problems = [];
   if (state?.mapReentry !== 'exit-to-command-and-redeploy:ready') problems.push('missing-map-reentry-proof');
-  if (state?.capturedRoute !== 'momentum-annex' || state?.backend !== 'webgl2') problems.push('wrong-map-or-backend');
+  if (state?.capturedRoute !== 'momentum-exchange' || state?.backend !== 'webgl2') problems.push('wrong-map-or-backend');
   if (state?.tier !== 'high' || state?.captureMode !== 'high-tier-qa-visual-only'
       || !state?.assetIds || !state.assetIds.split(',').every(id => id.endsWith('-lod0')))
     problems.push('not-authored-lod0-flagship-visual');
@@ -20,7 +20,7 @@ export function auditMomentumVisualProvenance(state) {
     problems.push('missing-or-occluded-objective');
   if (state?.actionInput !== 'manual-aim+live-touch-fire' || !(finite('shotsAfter') > finite('shotsBefore')))
     problems.push('no-real-combat-action');
-  if (!(finite('groundProps') >= 6) || !state?.surfaceDetail?.includes('laminated-rim:6') && state?.surfaceDetail?.includes('flux-tooth:48'))
+  if (!(finite('groundProps') >= 6) || (!state?.surfaceDetail?.includes('laminated-rim:6') || !state?.surfaceDetail?.includes('flux-tooth:48')))
     problems.push('missing-transfer-depth-or-grounding');
   if (state?.hazardLanguage !== 'shared-hazards+countermass-wash+vector-wash+near-zero-g+magnetic-transfer')
     problems.push('missing-transfer-hazard-cues');
