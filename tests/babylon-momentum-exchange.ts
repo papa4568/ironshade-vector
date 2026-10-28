@@ -185,8 +185,8 @@ for (const [label, edit, reason] of [
 const g7Capture = readFileSync('tools/android-p28g7-momentum-capture.mjs', 'utf8');
 const g7Shell = readFileSync('tools/android-p28g7-momentum-capture.sh', 'utf8');
 const g7Workflow = readFileSync('.github/workflows/p28-g7-momentum-visual-qa.yml', 'utf8');
-assert.ok(g7Capture.includes("story.step = 13"));
-assert.ok(g7Capture.includes("story = campaign?.story?.blackLattice"));
+assert.ok(g7Capture.includes("interdiction.step = 0"));
+assert.ok(g7Capture.includes("!campaign?.story?.interdiction || !campaign?.story?.postKhepri"));
 assert.ok(g7Capture.includes("url.searchParams.set('p27d5Lifecycle', '1')"));
 assert.ok(g7Capture.includes("d?.babylonScenario === 'momentum-exchange'"));
 assert.ok(g7Capture.includes("d.momentumPremiumAssetState === 'ready'"));
