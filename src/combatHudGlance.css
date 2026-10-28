@@ -1102,3 +1102,30 @@
     bottom: 172px;
   }
 }
+
+
+/* P28-G7: at the Momentum Exchange's compact landscape viewport the actual
+   command target belongs in the open middle roof lane, not underneath the
+   right-anchored objective chip. Keep the transient tactical warning readable
+   without resizing or moving the touch controls. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="momentum-exchange"] .boss-hud.boss-hud--top {
+    position: fixed;
+    top: max(.5rem, env(safe-area-inset-top));
+    left: 50vw;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(26rem, 30vw);
+  }
+
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane {
+    width: min(40vw, 42rem);
+  }
+
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane.event .combat-alert b {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+  }
+}
