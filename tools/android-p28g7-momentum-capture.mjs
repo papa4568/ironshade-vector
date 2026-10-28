@@ -139,16 +139,27 @@ try {
   }
   await waitFor(`[...document.querySelectorAll('button')].some(b =>
     (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations')`, 'Command Deck');
-  // Use the actual finale unlock from browser E2E; retain real contract selection.
+  // Seed the same late-campaign Interdiction contract as browser E2E.
+  // Do not swap to the unrelated Black Lattice finale just to get a screenshot.
   const seeded = await evaluate(`(() => {
     const seed = campaign => {
-      const story = campaign?.story?.blackLattice;
-      if (!story) return false;
-      campaign.anomalyRecovered = true;
-      story.status = 'active'; story.step = 13;
-      story.choiceA ||= 'joint-lab'; story.choiceB ||= 'ledger'; story.choiceC ||= 'publish';
-      story.lastBeat = 'QA seed // Black Lattice finale ready at Momentum Exchange.';
-      campaign.story.lastBeat = story.lastBeat;
+      if (!campaign?.story?.interdiction || !campaign?.story?.postKhepri) return false;
+      if (campaign.story.blackLattice) {
+        campaign.story.blackLattice.status = 'complete';
+        campaign.story.blackLattice.step = Math.max(14, campaign.story.blackLattice.step || 0);
+      }
+      campaign.story.postKhepri.status = 'complete';
+      campaign.story.postKhepri.step = Math.max(5, campaign.story.postKhepri.step || 0);
+      const interdiction = campaign.story.interdiction;
+      interdiction.status = 'active';
+      interdiction.step = 0;
+      interdiction.choiceA = null;
+      interdiction.completed = [];
+      interdiction.evidence = [];
+      interdiction.identifiedTargets = [];
+      interdiction.lastBeat = 'QA seed // Brake Custody ready at Cislunar Momentum Exchange.';
+      campaign.story.lastBeat = interdiction.lastBeat;
+      campaign.lastOutcome = interdiction.lastBeat;
       return true;
     };
     let success = false;
@@ -162,7 +173,7 @@ try {
     }
     return success;
   })()`);
-  if (!seeded) throw new Error('P28-G7 real finale unlock could not be established.');
+  if (!seeded) throw new Error('P28-G7 real Interdiction unlock could not be established.');
   await call('Page.reload', { ignoreCache: true });
   await waitFor(`[...document.querySelectorAll('button')].some(b =>
     (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations')`,
