@@ -1,4 +1,4 @@
-// P28-G7: exact-APK Android WebView visual proof for the Momentum Annex route.
+// P28-G7: exact-APK Android WebView visual proof for the Momentum Exchange route.
 // Screenshots and telemetry are captured from the live, deployed combat scene.
 import { writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -142,12 +142,12 @@ try {
   // Use the actual finale unlock from browser E2E; retain real contract selection.
   const seeded = await evaluate(`(() => {
     const seed = campaign => {
-      const story = campaign?.story?.blackMomentum;
+      const story = campaign?.story?.blackLattice;
       if (!story) return false;
       campaign.anomalyRecovered = true;
       story.status = 'active'; story.step = 13;
       story.choiceA ||= 'joint-lab'; story.choiceB ||= 'ledger'; story.choiceC ||= 'publish';
-      story.lastBeat = 'QA seed // Black Momentum finale ready at Momentum Exchange.';
+      story.lastBeat = 'QA seed // Black Lattice finale ready at Momentum Exchange.';
       campaign.story.lastBeat = story.lastBeat;
       return true;
     };
@@ -171,19 +171,19 @@ try {
   await waitFor(`[...document.querySelectorAll('button')].some(b =>
     (b.textContent || '').trim().toLowerCase() === 'contracts')`, 'Operations');
   await clickButton('Contracts');
-  await waitFor('Boolean(document.querySelector(\'button[data-location="momentum-annex"]\'))', 'Momentum Annex contract');
+  await waitFor('Boolean(document.querySelector(\'button[data-location="momentum-exchange"]\'))', 'Momentum Exchange contract');
   const selected = await evaluate(`(() => {
-    const b = document.querySelector('button[data-location="momentum-annex"]');
+    const b = document.querySelector('button[data-location="momentum-exchange"]');
     if (!b || b.disabled) return false;
     b.click(); return true;
   })()`);
-  if (!selected) throw new Error('P28-G7 could not select Momentum Annex.');
-  await waitFor('document.querySelector(\'button[data-location="momentum-annex"]\')?.classList.contains("selected")', 'contract selection');
+  if (!selected) throw new Error('P28-G7 could not select Momentum Exchange.');
+  await waitFor('document.querySelector(\'button[data-location="momentum-exchange"]\')?.classList.contains("selected")', 'contract selection');
   await clickButton('Deploy Selected Contract');
 
   const ready = `(() => {
     const d = document.querySelector('canvas')?.dataset;
-    return d?.babylonScenario === 'momentum-annex'
+    return d?.babylonScenario === 'momentum-exchange'
       && d.graphicsPathLoaded === 'babylon'
       && d.babylonBackend === 'webgl2'
       && d.renderTier === 'high'
@@ -215,7 +215,7 @@ try {
       && d.objectiveWorldCue === 'beacon+navigation-path'
       && d.interactableReadability === 'shape-coded+state-emissive+floor-cue:quality-safe';
   })()`;
-  await waitFor(ready, 'Momentum Annex route / authored-world visual readiness', 90_000);
+  await waitFor(ready, 'Momentum Exchange route / authored-world visual readiness', 90_000);
   // The campaign acceptance contract requires the *captured* normal and action
   // scenes to be from a real return-to-hub / redeploy cycle. This lifecycle
   // bridge is enabled only by p27d5Lifecycle=1 and calls the real App exit path.
@@ -234,20 +234,20 @@ try {
     (b.textContent || '').trim().toLowerCase() === 'contracts')`,
     'post-exit Operations');
   await clickButton('Contracts');
-  await waitFor('Boolean(document.querySelector(\'button[data-location="momentum-annex"]\'))',
-    're-entry Momentum Annex contract');
+  await waitFor('Boolean(document.querySelector(\'button[data-location="momentum-exchange"]\'))',
+    're-entry Momentum Exchange contract');
   const reselected = await evaluate(`(() => {
-    const contract = document.querySelector('button[data-location="momentum-annex"]');
+    const contract = document.querySelector('button[data-location="momentum-exchange"]');
     if (!contract || contract.disabled) return false;
     contract.click();
     return true;
   })()`);
-  if (!reselected) throw new Error('P28-G7 real Momentum Annex redeployment unavailable.');
-  await waitFor('document.querySelector(\'button[data-location="momentum-annex"]\')?.classList.contains("selected")',
+  if (!reselected) throw new Error('P28-G7 real Momentum Exchange redeployment unavailable.');
+  await waitFor('document.querySelector(\'button[data-location="momentum-exchange"]\')?.classList.contains("selected")',
     're-entry contract selection');
   await clickButton('Deploy Selected Contract');
-  await waitFor(ready, 'post-reentry Momentum Annex authored-world readiness', 90_000);
-  console.log('ANDROID_P28G7_MOMENTUM_REENTRY_PASS exit=command-deck redeploy=momentum-annex state=ready');
+  await waitFor(ready, 'post-reentry Momentum Exchange authored-world readiness', 90_000);
+  console.log('ANDROID_P28G7_MOMENTUM_REENTRY_PASS exit=command-deck redeploy=momentum-exchange state=ready');
   await sleep(650);
   const beforeVisual = await evaluate(`(() => {
     const d = document.querySelector('canvas')?.dataset ?? {};
@@ -255,13 +255,13 @@ try {
       artState: d.babylonSharedWorldArtState ?? '',
       premium: d.momentumPremiumAssetState ?? '', ibl: d.environmentIbl ?? '' };
   })()`);
-  const normalBytes = await capture('android-p28g7-momentum-annex-normal.png');
+  const normalBytes = await capture('android-p28g7-momentum-exchange-normal.png');
   const before = await evaluate("document.querySelector('canvas')?.dataset.babylonMomentumExchangePlayerPosition ?? ''");
   await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
   await sleep(650);
   await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
   await sleep(500);
-  await waitFor(ready, 'post-input Momentum Annex cues', 20_000);
+  await waitFor(ready, 'post-input Momentum Exchange cues', 20_000);
   // Capture ACTIVE combat, not merely a different walking pose. This is the
   // real touch FIRE control on the deployed Android WebView, not fabricated
   // counters or synthetic projectiles. Manual aim mirrors the fast smoke path.
@@ -298,7 +298,7 @@ try {
       }
       if (shotsAfter > shotsBefore) {
         await waitFor(ready, 'live-fire Annex authored scene', 20_000);
-        actionBytes = await capture('android-p28g7-momentum-annex-action.png');
+        actionBytes = await capture('android-p28g7-momentum-exchange-action.png');
       }
     } finally {
       await touch('touchEnd', 310 + attempt, combatInput.fireX, combatInput.fireY);
@@ -332,22 +332,22 @@ try {
     };
   })()`);
   if (result.tier !== 'high' || result.captureMode !== 'high-tier-qa-visual-only'
-      || before === result.playerPosition || result.capturedRoute !== 'momentum-annex' || result.artState !== 'ready' || result.premium !== 'ready'
+      || before === result.playerPosition || result.capturedRoute !== 'momentum-exchange' || result.artState !== 'ready' || result.premium !== 'ready'
     || !result.assetIds || result.fallbackObjects > 0 || result.authoredObjects !== result.mappedObjects
     || !result.tier || result.width <= 0 || result.height <= 0
     || !(shotsAfter > shotsBefore) || !(normalBytes > 20_000 && actionBytes > 20_000)) {
     throw new Error('P28-G7 actual Android visual proof incomplete: ' + JSON.stringify(result));
   }
-  writeFileSync('android-p28g7-momentum-annex.json', JSON.stringify({
+  writeFileSync('android-p28g7-momentum-exchange.json', JSON.stringify({
     task: 'P28-G7', mapReentry: 'exit-to-command-and-redeploy:ready', deviceValidation: 'emulator-visual-evidence-not-physical-thermal-acceptance',
-    normalScreenshot: 'android-p28g7-momentum-annex-normal.png',
-    actionScreenshot: 'android-p28g7-momentum-annex-action.png',
+    normalScreenshot: 'android-p28g7-momentum-exchange-normal.png',
+    actionScreenshot: 'android-p28g7-momentum-exchange-action.png',
     screenshotsBytes: [normalBytes, actionBytes], beforePosition: before,
     actionInput: 'manual-aim+live-touch-fire', shotsBefore, shotsAfter,
     beforeAssetIds: beforeVisual.assetIds, beforeArtState: beforeVisual.artState,
     beforePremium: beforeVisual.premium, beforeIbl: beforeVisual.ibl, ...result,
   }, null, 2) + '\n');
-  console.log('ANDROID_P28G7_MOMENTUM_VISUAL_CAPTURE_PASS route=momentum-annex authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
+  console.log('ANDROID_P28G7_MOMENTUM_VISUAL_CAPTURE_PASS route=momentum-exchange authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
 } finally {
   socket.close();
 }
