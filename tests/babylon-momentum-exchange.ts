@@ -3,11 +3,14 @@ import { readFileSync } from 'node:fs';
 import {
   BABYLON_MOMENTUM_EXCHANGE_IDENTITY,
   BABYLON_MOMENTUM_EXCHANGE_LIGHTING,
+  BABYLON_MOMENTUM_EXCHANGE_PREMIUM_SURFACES,
   momentumExchangeCaptureState,
   momentumExchangeRenderProfile,
   momentumExchangeWashMode,
 } from '../src/game/babylonMomentumExchangePresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
+import { auditMomentumVisualProvenance } from '../tools/p28g7-momentum-provenance.mjs';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonMomentumExchangePresentation.ts', 'utf8');
@@ -106,5 +109,98 @@ assert.ok(workflow.includes('BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCAT
 assert.ok(workflow.includes('p27c8-momentum-exchange.png'));
 assert.ok(pkg.scripts['test:babylon-momentum-exchange']);
 assert.ok(pkg.scripts.build.includes('npm run test:babylon-momentum-exchange'));
+
+// P28-G7 is only a visual rollout. Its live authored assets, exact Android
+// pixels, and independent Copilot image inspection must disprove flat/late art.
+assert.deepEqual(BABYLON_MOMENTUM_EXCHANGE_PREMIUM_SURFACES,
+  ['deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture']);
+for (const premiumDetail of [
+  "createBabylonPremiumPbrSurfaceLibrary(scene)",
+  "this.premiumSurfaces.get('deck-plate')",
+  "this.premiumSurfaces.get('bare-metal')",
+  "this.premiumSurfaces.get('painted-metal')",
+  "this.premiumSurfaces.get('polymer-rubber')",
+  "this.premiumSurfaces.get('emissive-fixture')",
+  "p28-g7-flywheel-lamination-",
+  "p28-g7-flywheel-flux-tooth-",
+  "p28-g7-bearing-race-",
+  "p28-g7-transfer-frame-insulator-",
+  "p28-g7-transfer-rail-carrier-",
+  "p28-g7-cradle-polymer-shoe-",
+  "p28-g7-drum-retainer-",
+  "p28-g7-flywheel-plinth-contact-",
+  "p28-g7-cradle-contact-",
+  "p28-g7-momentum-enemy-contact-",
+  "this.enemyGrounding.delete(id)",
+  "this.premiumSurfaces.dispose()",
+  "this.iblTexture.dispose()",
+  "this.groundingTexture.dispose()",
+  "this.canvas.dataset.momentumPremiumBindings = String(this.premiumBindingCount)",
+  "this.canvas.dataset.babylonEnvironmentState = premiumReady && this.iblReady",
+  "this.canvas.dataset.environmentIbl = this.iblReady",
+  "this.canvas.dataset.babylonRouteMarkingProfile = 'momentum-recessed-transfer-inlay'",
+  "this.canvas.dataset.environmentSurfaceDetail = 'flywheel-rig:'",
+  "flux-tooth:48+bearing-race:6",
+]) assert.ok(presentation.includes(premiumDetail), 'P28-G7 missing real mechanical layer or material gate: ' + premiumDetail);
+assert.ok(presentation.includes("new CubeTexture('/assets/environments/refinery-prefiltered.env'"));
+assert.ok(presentation.includes('babylonRouteMarkingWidth(route.kind)'));
+assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
+assert.ok(readFileSync('src/game/babylonWorldPresentation.ts', 'utf8')
+  .includes("|| mission.location === 'momentum-exchange';"));
+
+const validG7Proof = {
+  capturedRoute: 'momentum-exchange', backend: 'webgl2', tier: 'high',
+  captureMode: 'high-tier-qa-visual-only',
+  mapReentry: 'exit-to-command-and-redeploy:ready',
+  assetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0',
+  beforeAssetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0',
+  mappedObjects: 8, authoredObjects: 8, fallbackObjects: 0,
+  artState: 'ready', beforeArtState: 'ready',
+  premium: 'ready', beforePremium: 'ready',
+  premiumBindings: 130, ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
+  routeStyle: 'momentum-recessed-transfer-inlay', routeMaxWidth: 0.16,
+  objectiveCue: 'beacon+navigation-path', worldObjects: 8, groundProps: 6,
+  actionInput: 'manual-aim+live-touch-fire', shotsBefore: 0, shotsAfter: 1,
+  surfaceDetail: 'laminated-rim:6+flux-tooth:48+bearing-race:6+rail-carrier:8',
+  hazardLanguage: 'shared-hazards+countermass-wash+vector-wash+near-zero-g+magnetic-transfer',
+};
+assert.ok(auditMomentumVisualProvenance(validG7Proof).valid);
+for (const [label, edit, reason] of [
+  ['wrong-route', { capturedRoute: 'lattice-annex' }, 'wrong-map-or-backend'],
+  ['no-reentry', { mapReentry: '' }, 'missing-map-reentry-proof'],
+  ['unmapped', { fallbackObjects: 1 }, 'procedural-box-or-unresolved-world-slot'],
+  ['untextured', { premiumBindings: 3 }, 'missing-or-unready-premium-material'],
+  ['wide-ribbon', { routeMaxWidth: 0.48 }, 'oversized-route-material'],
+  ['missing-rims', { surfaceDetail: 'flux-tooth:48' }, 'missing-transfer-depth-or-grounding'],
+  ['missing-teeth', { surfaceDetail: 'laminated-rim:6' }, 'missing-transfer-depth-or-grounding'],
+  ['no-contact', { groundProps: 0 }, 'missing-transfer-depth-or-grounding'],
+  ['hazard-hidden', { hazardLanguage: 'none' }, 'missing-transfer-hazard-cues'],
+  ['late-art', { beforeArtState: 'loading' }, 'late-asset-pop-in'],
+  ['fake-action', { shotsAfter: 0 }, 'no-real-combat-action'],
+] as const) {
+  const result = auditMomentumVisualProvenance({ ...validG7Proof, ...edit });
+  assert.ok(!result.valid && result.problems.includes(reason), 'P28-G7 accepted invalid ' + label);
+}
+
+const g7Capture = readFileSync('tools/android-p28g7-momentum-capture.mjs', 'utf8');
+const g7Shell = readFileSync('tools/android-p28g7-momentum-capture.sh', 'utf8');
+const g7Workflow = readFileSync('.github/workflows/p28-g7-momentum-visual-qa.yml', 'utf8');
+assert.ok(g7Capture.includes("story.step = 13"));
+assert.ok(g7Capture.includes("story = campaign?.story?.blackLattice"));
+assert.ok(g7Capture.includes("url.searchParams.set('p27d5Lifecycle', '1')"));
+assert.ok(g7Capture.includes("d?.babylonScenario === 'momentum-exchange'"));
+assert.ok(g7Capture.includes("d.momentumPremiumAssetState === 'ready'"));
+assert.ok(g7Capture.includes("d.missionVisualReadiness === 'ready'"));
+assert.ok(g7Capture.includes("await waitFor(ready, 'post-reentry Momentum Exchange authored-world readiness'"));
+assert.ok(g7Capture.includes("const shotsBefore = await evaluate"));
+assert.ok(g7Capture.includes("const touch = async (type, id, x, y)"));
+assert.ok(g7Capture.includes("actionInput: 'manual-aim+live-touch-fire', shotsBefore, shotsAfter"));
+assert.ok(g7Shell.includes("node tools/verify-p28g7-gameplay-frames.mjs"));
+assert.ok(g7Shell.includes('for attempt in 1 2 3; do'));
+assert.ok(g7Shell.includes('P28-G7 non-cutout failure is not retryable'));
+assert.ok(g7Workflow.includes('G7 Independent Copilot PNG Inspection'));
+assert.ok(g7Workflow.includes('imagesActuallyViewed !== true'));
+assert.ok(g7Workflow.includes('--attachment android-p28g7-momentum-exchange-normal.png'));
+assert.ok(g7Workflow.includes('gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip"'));
 
 console.log('BABYLON_MOMENTUM_EXCHANGE_PASS identity=flywheel-lane|magnetic-machinery|transfer-blue|capture-service routes=' + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' washes=9s>20s capture=2');
