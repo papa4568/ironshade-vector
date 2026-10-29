@@ -10,6 +10,8 @@ import {
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
+const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
+const readiness = readFileSync('src/game/babylonRefineryMissionReadiness.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonCryoReservePresentation.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
 const director = readFileSync('src/game/director.ts', 'utf8');
@@ -115,5 +117,38 @@ assert.ok(workflow.includes('BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCAT
 assert.ok(workflow.includes('p27c9-cryo-reserve.png'));
 assert.ok(pkg.scripts['test:babylon-cryo-reserve']);
 assert.ok(pkg.scripts.build.includes('npm run test:babylon-cryo-reserve'));
+
+
+// P28-G8: actual shared KTX2 material binding, authored-world readiness
+// and dedicated cryogenic detail regressions. Live frame proof remains required.
+for (const marker of [
+  "createBabylonPremiumPbrSurfaceLibrary(scene)",
+  "this.premiumSurfaces.get('deck-plate')",
+  "this.premiumSurfaces.get('painted-metal')",
+  "this.premiumSurfaces.get('bare-metal')",
+  "this.premiumSurfaces.get('polymer-rubber')",
+  "this.premiumSurfaces.get('emissive-fixture')",
+  "const shared = new Set(this.premiumSurfaces.materials.values())",
+  "mesh.material instanceof PBRMaterial && shared.has(mesh.material)",
+  "material.albedoTexture?.isReady() === true",
+  "material.bumpTexture?.isReady() === true",
+  "material.metallicTexture?.isReady() === true",
+  "premiumReady && this.iblReady ? 'ready' : 'loading'",
+  "new CubeTexture('/assets/environments/refinery-prefiltered.env'",
+  "this.premiumSurfaces.dispose()",
+  "this.iblTexture.dispose()",
+  "babylonRouteMarkingWidth(route.kind)",
+  "p28-g8-jacket-hoop-",
+  "p28-g8-tank-thermal-sensor-",
+  "p28-g8-gallery-valve-bank-",
+  "p28-g8-header-flange-",
+  "p28-g8-purge-handwheel-grip-",
+  "p28-g8-valve-control-face-",
+  "this.canvas.dataset.cryoPremiumBindings = String(this.premiumBindingCount)",
+]) assert.ok(presentation.includes(marker), 'P28-G8 missing visual/readiness gate: ' + marker);
+assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';"));
+assert.ok(readiness.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve');"));
+assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
+assert.ok(!presentation.includes("const width = route.kind === 'primary' ? 0.12 : 0.076;"));
 
 console.log('BABYLON_CRYO_RESERVE_PASS identity=tank-gallery|vacuum-jacketed-cryogenic|cold-blue|purge-service routes=' + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' purge=10s>21s valves=2');
