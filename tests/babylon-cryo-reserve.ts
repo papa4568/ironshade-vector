@@ -15,6 +15,7 @@ const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
 const readiness = readFileSync('src/game/babylonRefineryMissionReadiness.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonCryoReservePresentation.ts', 'utf8');
+const telegraphs = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
 const director = readFileSync('src/game/director.ts', 'utf8');
 const interdiction = readFileSync('src/game/postKhepriInterdiction.ts', 'utf8');
@@ -33,10 +34,10 @@ assert.deepEqual(BABYLON_CRYO_RESERVE_LIGHTING, {
   keyColor: 0xd0e3ed,
   rimColor: 0x77c6de,
   emergencyColor: 0x76cde9,
-  keyIntensity: 2.0,
-  rimIntensity: 1.12,
+  keyIntensity: 2.2,
+  rimIntensity: 1.65,
   emergencyIntensity: 8.4,
-  exposure: 1.07,
+  exposure: 1.13,
 });
 
 assert.equal(cryoReservePurgeMode(0), 'nominal');
@@ -135,7 +136,7 @@ const validG8Proof = {
   actionInput: 'manual-aim+live-touch-fire', shotsBefore: 2, shotsAfter: 5,
   normalBoiloff: 1,
   hazardLanguage: 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing',
-  surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12',
+  surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:7',
 };
 assert.ok(auditCryoVisualProvenance(validG8Proof).valid);
 for (const [label, patch, reason] of [
@@ -149,6 +150,7 @@ for (const [label, patch, reason] of [
   ['no-combat', { shotsAfter: 2 }, 'no-real-combat-action'],
   ['late-pbr', { beforePremium: 'loading' }, 'late-asset-pop-in'],
   ['wrong-hazard', { hazardLanguage: 'wash' }, 'missing-boiloff-thermal-hazard-cues'],
+  ['missing-thermal-dressing', { surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12' }, 'missing-cryo-material-hardware-detail'],
 ] as const) {
   const report = auditCryoVisualProvenance({ ...validG8Proof, ...patch });
   assert.ok(!report.valid && report.problems.includes(reason),
@@ -220,8 +222,24 @@ for (const marker of [
   "p28-g8-header-flange-",
   "p28-g8-purge-handwheel-grip-",
   "p28-g8-valve-control-face-",
+  "p28-g8-cryogenic-frost-cuff-",
+  "p28-g8-cryogenic-sightline-",
+  "p28-g8-tank-pressure-gauge-",
+  "p28-g8-ambient-cold-vent-",
+  "this.ambientColdVaporMaterial.alpha = 0.19",
+  "jacket.emissiveColor = colorFromHex(0x80b5c5).scale(0.11)",
+  "this.ambientColdVents.forEach((vent, index) =>",
+  "this.ambientColdVaporMaterial.dispose()",
   "this.canvas.dataset.cryoPremiumBindings = String(this.premiumBindingCount)",
 ]) assert.ok(presentation.includes(marker), 'P28-G8 missing visual/readiness gate: ' + marker);
+// The true combat hazard remains mechanically legible; only the uninterrupted
+// slab opacity/width is reduced for Cryo, with bright source/target/tick cues.
+assert.ok(telegraphs.includes("const cryoWarning = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
+assert.ok(telegraphs.includes("cryoWarning ? clamp01(0.14"));
+assert.ok(telegraphs.includes("const laneWidth = Math.max(0.08, scaled(profile.width)) * (cryoWarning ? 0.68 : 1)"));
+assert.ok(telegraphs.includes("tick.setEnabled(annexWarning || momentumWarning || cryoWarning)"));
+assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.24 : 0;"));
+assert.ok(babylon.includes("const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
 assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';"));
 assert.ok(readiness.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve');"));
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
