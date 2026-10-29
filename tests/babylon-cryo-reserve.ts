@@ -8,6 +8,7 @@ import {
   cryoReserveValveState,
 } from '../src/game/babylonCryoReservePresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { auditCryoVisualProvenance } from '../tools/p28g8-cryo-provenance.mjs';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
@@ -118,6 +119,56 @@ assert.ok(workflow.includes('p27c9-cryo-reserve.png'));
 assert.ok(pkg.scripts['test:babylon-cryo-reserve']);
 assert.ok(pkg.scripts.build.includes('npm run test:babylon-cryo-reserve'));
 
+
+const validG8Proof = {
+  task: 'P28-G8', mapReentry: 'exit-to-command-and-redeploy:ready',
+  capturedRoute: 'cryo-reserve', backend: 'webgl2',
+  tier: 'high', captureMode: 'high-tier-qa-visual-only',
+  assetIds: 'refinery-cover-crate-lod0', beforeAssetIds: 'refinery-cover-crate-lod0',
+  artState: 'ready', beforeArtState: 'ready',
+  mappedObjects: 5, authoredObjects: 5, fallbackObjects: 0,
+  premium: 'ready', beforePremium: 'ready', premiumBindings: 110,
+  ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
+  routeStyle: 'cryo-recessed-service-inlay', routeMaxWidth: 0.16,
+  objectiveCue: 'beacon+navigation-path', worldObjects: 5,
+  actionInput: 'manual-aim+live-touch-fire', shotsBefore: 2, shotsAfter: 5,
+  hazardLanguage: 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing',
+  surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12',
+};
+assert.ok(auditCryoVisualProvenance(validG8Proof).valid);
+for (const [label, patch, reason] of [
+  ['other-map', { capturedRoute: 'momentum-exchange' }, 'wrong-map-or-backend'],
+  ['missing-asset', { assetIds: '' }, 'not-authored-lod0-flagship-visual'],
+  ['unready-ibl', { ibl: 'shared-prefiltered:loading' }, 'missing-or-unready-premium-material'],
+  ['unbound-pbr', { premiumBindings: 4 }, 'missing-or-unready-premium-material'],
+  ['placeholder', { authoredObjects: 4, fallbackObjects: 1 }, 'procedural-box-or-unresolved-world-slot'],
+  ['oversized-route', { routeMaxWidth: 1.2 }, 'oversized-route-material'],
+  ['no-reentry', { mapReentry: '' }, 'missing-map-reentry-proof'],
+  ['no-combat', { shotsAfter: 2 }, 'no-real-combat-action'],
+  ['late-pbr', { beforePremium: 'loading' }, 'late-asset-pop-in'],
+  ['wrong-hazard', { hazardLanguage: 'wash' }, 'missing-boiloff-thermal-hazard-cues'],
+] as const) {
+  const report = auditCryoVisualProvenance({ ...validG8Proof, ...patch });
+  assert.ok(!report.valid && report.problems.includes(reason),
+    'P28-G8 accepted unsafe screenshot provenance: ' + label);
+}
+const g8Workflow = readFileSync('.github/workflows/p28-g8-cryo-visual-qa.yml', 'utf8');
+const g8Capture = readFileSync('tools/android-p28g8-cryo-capture.mjs', 'utf8');
+const g8Shell = readFileSync('tools/android-p28g8-cryo-capture.sh', 'utf8');
+assert.ok(g8Capture.includes("interdiction.step = 1"));
+assert.ok(g8Capture.includes("interdiction.completed = ['interdiction-0-undecided']"));
+assert.ok(g8Capture.includes("d?.babylonScenario === 'cryo-reserve'"));
+assert.ok(g8Capture.includes("d.cryoPremiumAssetState === 'ready'"));
+assert.ok(g8Capture.includes("d.babylonSharedWorldArtState === 'ready'"));
+assert.ok(g8Capture.includes("d.missionVisualReadiness === 'ready'"));
+assert.ok(g8Capture.includes("await awaitCryoReady('post-reentry Cryo Reserve authored-world readiness'"));
+assert.ok(g8Capture.includes("actionInput: 'manual-aim+live-touch-fire', shotsBefore, shotsAfter"));
+assert.ok(g8Workflow.includes('G8 Independent Copilot PNG Inspection'));
+assert.ok(g8Workflow.includes('--attachment android-p28g8-cryo-reserve-normal.png'));
+assert.ok(g8Workflow.includes('script: bash tools/android-p28g8-cryo-capture.sh'));
+assert.ok(g8Shell.includes('adb install -r "$APK"'));
+assert.ok(g8Shell.includes('tools/verify-p28g8-gameplay-frames.mjs'));
+assert.ok(g8Shell.includes("report.capturedRoute !== \"cryo-reserve\""));
 
 // P28-G8: actual shared KTX2 material binding, authored-world readiness
 // and dedicated cryogenic detail regressions. Live frame proof remains required.
