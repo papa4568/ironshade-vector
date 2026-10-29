@@ -2739,12 +2739,15 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // eye and aim together toward the real transfer machinery, retaining
     // perspective, touch-aim rays and other maps' established framing.
     const momentumCombatPan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 1.8 : 0;
+    // Translate eye and target together to reserve the unchanged right-side
+    // RUSH button lane for real enemies and their warning rings.
+    const momentumTouchLanePan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 2.8 : 0;
 
-    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan);
+    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan);
     this.cameraTarget.set(
-      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan,
+      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan,
       0.62,
-      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan,
+      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan,
     );
     this.camera.setTarget(this.cameraTarget);
     this.camera.getViewMatrix(true);
