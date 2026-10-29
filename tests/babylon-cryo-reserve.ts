@@ -9,6 +9,7 @@ import {
 } from '../src/game/babylonCryoReservePresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 import { auditCryoVisualProvenance } from '../tools/p28g8-cryo-provenance.mjs';
+import { auditCryoAndroidAppCrash } from '../tools/p28g8-android-crash-audit.mjs';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
