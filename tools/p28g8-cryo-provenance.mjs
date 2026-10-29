@@ -24,6 +24,7 @@ export function auditCryoVisualProvenance(state) {
       || !state?.surfaceDetail?.includes('thermal-sensor:14')
       || !state?.surfaceDetail?.includes('gallery-valve-bank:12'))
     problems.push('missing-cryo-material-hardware-detail');
+  if (!(finite('normalBoiloff') > 0)) problems.push('missing-live-boiloff-frame');
   if (state?.hazardLanguage !== 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing')
     problems.push('missing-boiloff-thermal-hazard-cues');
   if (state?.beforeAssetIds !== state?.assetIds || state?.beforeArtState !== 'ready'
