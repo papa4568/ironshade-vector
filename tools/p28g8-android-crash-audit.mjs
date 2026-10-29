@@ -19,7 +19,10 @@ export function auditCryoAndroidAppCrash(log) {
   return { valid: reasons.length === 0, reasons };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Vite SSR inlines imported modules into its test entry. Matching only
+// import.meta.url would accidentally execute this CLI path inside that bundle.
+if (process.argv[1]?.replace(/\\\\/g, '/').endsWith('/tools/p28g8-android-crash-audit.mjs')
+    && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const path = process.argv[2];
   if (!path) throw new Error('Provide raw captured Android logcat');
   const verdict = auditCryoAndroidAppCrash(readFileSync(path, 'utf8'));
