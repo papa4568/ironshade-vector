@@ -249,7 +249,8 @@ assert.ok(g7Shell.includes('node.attrib.get("text") != "Got it"'));
 assert.ok(g7Shell.includes('adb shell input tap "$x" "$y"'));
 assert.ok(g7Shell.includes('for attempt in 1 2 3; do'));
 const androidPrWorkflow = readFileSync('.github/workflows/pr-android-apk.yml', 'utf8');
-assert.ok(androidPrWorkflow.includes('name: Android PR API 35 Smoke\n    needs: android-pr-apk\n    runs-on: ubuntu-24.04\n    timeout-minutes: 35'));
+assert.ok(androidPrWorkflow.includes('name: Android PR API 35 Smoke\n    needs: android-pr-apk\n    runs-on: ubuntu-24.04')
+  && androidPrWorkflow.includes('    timeout-minutes: 35\n    steps:'));
 assert.ok(g7Shell.includes('P28-G7 non-cutout failure is not retryable'));
 assert.ok(g7Workflow.includes('G7 Independent Copilot PNG Inspection'));
 assert.ok(g7Workflow.includes('script: bash tools/android-p28g7-momentum-capture.sh'));
