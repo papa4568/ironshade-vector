@@ -36,10 +36,10 @@ export const BABYLON_CRYO_RESERVE_LIGHTING = Object.freeze({
   keyColor: 0xd0e3ed,
   rimColor: 0x77c6de,
   emergencyColor: 0x76cde9,
-  keyIntensity: 2.0,
-  rimIntensity: 1.12,
+  keyIntensity: 2.2,
+  rimIntensity: 1.65,
   emergencyIntensity: 8.4,
-  exposure: 1.07,
+  exposure: 1.13,
 });
 
 export type CryoReserveRenderProfile = {
@@ -134,6 +134,8 @@ export class BabylonCryoReservePresentation {
   private readonly cueMaterial: PBRMaterial;
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
   private readonly plumeMaterial: StandardMaterial;
+  private readonly ambientColdVaporMaterial: StandardMaterial;
+  private readonly ambientColdVents: Mesh[] = [];
   private readonly bossCueMaterial: StandardMaterial;
   private readonly tanks: TankRig[] = [];
   private readonly galleryFrames: TransformNode[] = [];
@@ -170,7 +172,18 @@ export class BabylonCryoReservePresentation {
     const structural = this.premiumSurfaces.get('bare-metal');
     const insulation = this.premiumSurfaces.get('polymer-rubber');
     const fixture = this.premiumSurfaces.get('emissive-fixture');
-    const frost = pbr(scene, 'p28-g8-frosted-vacuum-insulation', 0xa4c2cb, 0.14, 0.73, 0x77c6de, 0.045);
+    // Retain the shipped painted-metal base/normal/ORM textures; lift dark
+    // vacuum-jacket recesses just enough to expose their authored material.
+    jacket.albedoColor = new Color3(1.17, 1.23, 1.28);
+    jacket.emissiveColor = colorFromHex(0x80b5c5).scale(0.11);
+    const frost = pbr(scene, 'p28-g8-frosted-vacuum-insulation', 0xb9dbe4, 0.09, 0.78, 0x8dd7ea, 0.11);
+    this.ambientColdVaporMaterial = new StandardMaterial('p28-g8-ambient-cold-vent-material', scene);
+    this.ambientColdVaporMaterial.diffuseColor = colorFromHex(0xbce7f0).scale(0.24);
+    this.ambientColdVaporMaterial.emissiveColor = colorFromHex(0xa2d9e8).scale(0.34);
+    this.ambientColdVaporMaterial.specularColor = Color3.Black();
+    this.ambientColdVaporMaterial.alpha = 0.19;
+    this.ambientColdVaporMaterial.disableLighting = true;
+    this.ambientColdVaporMaterial.backFaceCulling = false;
     const purge = pbr(scene, 'p27-c9-cold-blue-purge', 0x31576a, 0.48, 0.30, 0x77c6de, 0.25);
     // Recessed wayfinding has to remain distinct from bright boiloff and boss tells.
     const routePrimary = pbr(scene, 'p27-c9-route-primary', 0x233d49, 0.10, 0.91, 0x32627a, 0.025);
@@ -211,9 +224,9 @@ export class BabylonCryoReservePresentation {
       // untextured cylinder silhouette without covering the player route.
       for (const [bandIndex, elevation] of [1.08, 1.72, 2.36, 3.04, 3.84].entries()) {
         const hoop = MeshBuilder.CreateTorus('p28-g8-jacket-hoop-' + index + '-' + bandIndex,
-          { diameter: 1.84, thickness: 0.07, tessellation: 32 }, scene);
-        hoop.parent = root; hoop.position.y = elevation; // Torus XZ plane hugs upright tank shell.
-        hoop.material = bandIndex % 2 ? insulation : structural; hoop.isPickable = false;
+          { diameter: 1.94, thickness: 0.12, tessellation: 32 }, scene);
+        hoop.parent = root; hoop.position.y = elevation; // XZ hoop clears the jacket surface.
+        hoop.material = bandIndex % 2 ? frost : structural; hoop.isPickable = false;
       }
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g8-tank-retainer-' + index + '-' + side, structural,
@@ -221,6 +234,28 @@ export class BabylonCryoReservePresentation {
         box(scene, root, 'p28-g8-tank-thermal-sensor-' + index + '-' + side, fixture,
           side * 0.85, 2.06, 0.12, 0.11, 0.22, 0.22);
       }
+      // Raised pale frost sleeves visibly separate thermal insulation from
+      // the dark, actually textured vessel. The gauges project above the
+      // surface, unlike formerly hidden micro-sized sensors.
+      for (const [cuffIndex, elevation] of [1.40, 3.72].entries()) {
+        const cuff = MeshBuilder.CreateCylinder('p28-g8-cryogenic-frost-cuff-' + index + '-' + cuffIndex,
+          { height: 0.25, diameter: 1.91, tessellation: 32 }, scene);
+        cuff.parent = root; cuff.position.y = elevation;
+        cuff.material = frost; cuff.isPickable = false;
+      }
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g8-cryogenic-sightline-' + index + '-' + side, frost,
+          side * 0.42, 2.58, side * 0.83, 0.15, 1.24, 0.12);
+      }
+      const gauge = MeshBuilder.CreateCylinder('p28-g8-tank-pressure-gauge-' + index,
+        { height: 0.12, diameter: 0.40, tessellation: 24 }, scene);
+      gauge.parent = root; gauge.position.set(0.30, 2.73, 0.93);
+      gauge.rotation.x = Math.PI / 2; gauge.material = fixture; gauge.isPickable = false;
+      const vent = MeshBuilder.CreateCylinder('p28-g8-ambient-cold-vent-' + index,
+        { height: 0.86, diameterTop: 0.10, diameterBottom: 0.58, tessellation: 12 }, scene);
+      vent.parent = root; vent.position.set(0, 5.54, 0);
+      vent.material = this.ambientColdVaporMaterial; vent.isPickable = false;
+      this.ambientColdVents.push(vent);
       const collar = MeshBuilder.CreateCylinder('p28-g8-tank-service-nozzle-' + index,
         { height: 0.44, diameter: 0.42, tessellation: 20 }, scene);
       collar.parent = root; collar.position.set(0, 4.97, 0);
@@ -438,6 +473,12 @@ export class BabylonCryoReservePresentation {
     enableCount(this.pipeRuns, profile.pipeRunInstances);
     enableCount(this.saddles, profile.saddleInstances);
     this.detailMeshes.forEach(mesh => mesh.setEnabled(renderBudget.tierName !== 'performance'));
+    this.ambientColdVents.forEach((vent, index) => {
+      // Constant low-pressure neck bleed is ambience; floor-bound timed jets
+      // remain the distinct, simulation-owned boiloff hazard cue.
+      const breathe = 1 + Math.sin(state.time * 0.85 + index * 0.61) * 0.06;
+      vent.scaling.set(breathe, 1, breathe);
+    });
 
     this.tanks.forEach((rig, index) => {
       const frostPulse = 0.94 + Math.sin(state.time * 1.6 + index * 0.72) * 0.04;
@@ -508,7 +549,7 @@ export class BabylonCryoReservePresentation {
 
     const lighting = BABYLON_CRYO_RESERVE_LIGHTING;
     const tierScale = renderBudget.tierName === 'high' ? 1 : renderBudget.tierName === 'balanced' ? 0.88 : 0.72;
-    this.hemisphere.intensity = 0.29 * (renderBudget.tierName === 'performance' ? 0.82 : 1);
+    this.hemisphere.intensity = 0.43 * (renderBudget.tierName === 'performance' ? 0.82 : 1);
     this.keyLight.intensity = lighting.keyIntensity * tierScale * (lowVisibility ? 0.94 : 1);
     this.rimLight.intensity = lighting.rimIntensity * (renderBudget.tierName === 'performance' ? 0.74 : 1);
     const px = scaled(state.player.x);
@@ -529,7 +570,7 @@ export class BabylonCryoReservePresentation {
 
     this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
     this.scene.environmentIntensity = this.iblReady
-      ? (renderBudget.tierName === 'performance' ? 0.20 : 0.34) : 0;
+      ? (renderBudget.tierName === 'performance' ? 0.26 : 0.49) : 0;
     this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
     this.scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.scene.imageProcessingConfiguration.exposure = lighting.exposure * (lowVisibility ? 1.04 : 1);
@@ -560,7 +601,7 @@ export class BabylonCryoReservePresentation {
     this.canvas.dataset.environmentShadowCasters = 'off';
     this.canvas.dataset.environmentLandmark = 'staggered-vacuum-jacket-tank-gallery';
     this.canvas.dataset.environmentServiceDetails = 'gallery-frame:' + profile.galleryFrameInstances + '+tank-saddle:' + profile.saddleInstances + '+purge-valve:2';
-    this.canvas.dataset.environmentSurfaceDetail = 'vacuum-jacket-tank:' + profile.tankInstances + '+boiloff-header:' + profile.pipeRunInstances + '+jacket-hoop:35+retainer:14+thermal-sensor:14+gallery-valve-bank:12+header-flange:8';
+    this.canvas.dataset.environmentSurfaceDetail = 'vacuum-jacket-tank:' + profile.tankInstances + '+boiloff-header:' + profile.pipeRunInstances + '+jacket-hoop:35+retainer:14+thermal-sensor:14+gallery-valve-bank:12+header-flange:8+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:7';
     this.canvas.dataset.environmentMachineDetail = 'vacuum-jacket-tank:7+purge-valve:2+siphon-relay:' + siphonNodes;
     this.canvas.dataset.environmentComposition = 'service-collar+propellant-gallery+umbra-tank-farm';
     this.canvas.dataset.environmentMaterials = 'vacuum-jacketed-steel+frosted-insulation+cold-blue-purge+cold-cyan-service';
@@ -624,6 +665,7 @@ export class BabylonCryoReservePresentation {
     this.ownedMaterials.forEach(item => item.dispose());
     this.premiumSurfaces.dispose();
     this.plumeMaterial.dispose();
+    this.ambientColdVaporMaterial.dispose();
     this.bossCueMaterial.dispose();
     this.hemisphere.dispose();
     this.keyLight.dispose();
