@@ -656,6 +656,10 @@ export class BabylonCryoReservePresentation {
   release(reason: string) {
     if (this.released) return;
     this.released = true;
+    // The observed hazard is mission-generation evidence, not a lifetime
+    // property of the shared renderer. A new contract must prove its own jet.
+    this.boiloffObserved = false;
+    this.canvas.dataset.environmentBoiloffObserved = 'pending';
     this.root.setEnabled(false);
     this.setLightingEnabled(false);
     this.canvas.dataset.babylonCryoReserveRelease = reason;
