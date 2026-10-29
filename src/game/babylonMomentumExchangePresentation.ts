@@ -182,13 +182,14 @@ export class BabylonMomentumExchangePresentation {
     const structural = this.premiumSurfaces.get('bare-metal');
     const polymer = this.premiumSurfaces.get('polymer-rubber');
     const fixture = this.premiumSurfaces.get('emissive-fixture');
-    const edgeMetal = pbr(scene, 'p28-g7-exposed-machinery-trim', 0x7c9298, 0.63, 0.34, 0x6cb4bc, 0.075);
+    const edgeMetal = pbr(scene, 'p28-g7-exposed-machinery-trim', 0xa8bac0, 0.74, 0.29, 0x8ac3c8, 0.10);
+    const magneticCopper = pbr(scene, 'p28-g7-exposed-magnetic-copper', 0x9f7653, 0.76, 0.38, 0xc39b6c, 0.055);
     const capture = pbr(scene, 'p27-c8-capture-service', 0x47798c, 0.48, 0.30, 0x67b5d5, 0.22);
     const reference = pbr(scene, 'p27-c8-reference-blue', 0x10252f, 0.42, 0.23, 0x67b5d5, 0.34);
     // Narrow, dark, rough deck inlays: hazards and combat actions own the bright cyan.
     const routePrimary = pbr(scene, 'p27-c8-route-primary', 0x203946, 0.11, 0.91, 0x36677a, 0.026);
     const routeSecondary = pbr(scene, 'p27-c8-route-secondary', 0x152a34, 0.10, 0.94, 0x285363, 0.012);
-    this.ownedMaterials = [edgeMetal, capture, reference, routePrimary, routeSecondary];
+    this.ownedMaterials = [edgeMetal, magneticCopper, capture, reference, routePrimary, routeSecondary];
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.cueMaterial = capture;
     this.routeMaterials = [routePrimary, routeSecondary];
@@ -234,18 +235,18 @@ export class BabylonMomentumExchangePresentation {
         const ring = MeshBuilder.CreateTorus('p28-g7-flywheel-lamination-' + index + '-' + ringIndex,
           { diameter, thickness, tessellation: 48 }, scene);
         ring.parent = rotor;
-        ring.position.y = 0.26 + ringIndex * 0.13; // axle-depth, not vertical
-        ring.material = ringIndex === 1 ? structural : edgeMetal;
+        ring.position.y = 0.36 + ringIndex * 0.19; // visibly offset toward the camera along the axle
+        ring.material = ringIndex === 1 ? magneticCopper : edgeMetal;
         ring.isPickable = false;
       }
       for (let tooth = 0; tooth < 16; tooth += 1) {
         const angle = tooth * Math.PI / 8;
         const toothMesh = box(scene, root, 'p28-g7-flywheel-flux-tooth-' + index + '-' + tooth,
-          tooth % 4 === 0 ? edgeMetal : tooth % 2 === 0 ? structural : machinery,
-          Math.sin(angle) * 2.42, 0.45, Math.cos(angle) * 2.42,
-          0.24, 0.22, 0.43);
+          tooth % 2 === 0 ? edgeMetal : magneticCopper,
+          Math.sin(angle) * 2.42, 0.94, Math.cos(angle) * 2.42,
+          0.34, 0.22, 0.55);
         toothMesh.parent = rotor;
-        toothMesh.rotation.y = angle; // visible on the actual upright rotor face
+        toothMesh.rotation.y = angle; // alternating high-contrast flux shoes on the exposed rotor face
       }
       for (const side of [-1, 1]) {
         const race = MeshBuilder.CreateTorus('p28-g7-bearing-race-' + index + '-' + side,
