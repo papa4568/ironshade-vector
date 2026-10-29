@@ -140,8 +140,7 @@ node --input-type=module -e '
   }
 '
 adb logcat -d > android-p28g8-cryo-reserve-logcat.txt
-if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-p28g8-cryo-reserve-logcat.txt; then
-  echo 'P28-G8 Android capture suffered a fatal exception.' >&2
-  exit 1
-fi
+# Android UiAutomation may crash when uiautomator exits; that is not an app
+# failure. Reject app-scoped AndroidRuntime crashes/ANRs from actual logcat.
+node tools/p28g8-android-crash-audit.mjs android-p28g8-cryo-reserve-logcat.txt
 echo "ANDROID_P28G8_FLAGSHIP_CAPTURE_PASS device=pixel_7_pro emulator=api35 captures=webview-normal+webview-action+android-display route=cryo-reserve assets=authored-world+survey-inlays"
