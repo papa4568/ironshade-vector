@@ -212,7 +212,7 @@ export class BabylonCryoReservePresentation {
       for (const [bandIndex, elevation] of [1.08, 1.72, 2.36, 3.04, 3.84].entries()) {
         const hoop = MeshBuilder.CreateTorus('p28-g8-jacket-hoop-' + index + '-' + bandIndex,
           { diameter: 1.84, thickness: 0.07, tessellation: 32 }, scene);
-        hoop.parent = root; hoop.position.y = elevation; hoop.rotation.x = Math.PI / 2;
+        hoop.parent = root; hoop.position.y = elevation; // Torus XZ plane hugs upright tank shell.
         hoop.material = bandIndex % 2 ? insulation : structural; hoop.isPickable = false;
       }
       for (const side of [-1, 1]) {
@@ -259,7 +259,7 @@ export class BabylonCryoReservePresentation {
         const flange = MeshBuilder.CreateTorus('p28-g8-header-flange-' + index + '-' + side,
           { diameter: 0.31, thickness: 0.07, tessellation: 16 }, scene);
         flange.parent = pipe; flange.position.y = side * (length * 0.43);
-        flange.rotation.x = Math.PI / 2;
+        // The pipe's rotated local Y is its axis; torus XZ is perpendicular to it.
         flange.material = structural; flange.isPickable = false;
       }
       this.pipeRuns.push(pipe);
