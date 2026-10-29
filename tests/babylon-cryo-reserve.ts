@@ -243,7 +243,8 @@ for (const marker of [
 // The true combat hazard remains mechanically legible; only the uninterrupted
 // slab opacity/width is reduced for Cryo, with bright source/target/tick cues.
 assert.ok(telegraphs.includes("const cryoWarning = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
-assert.ok(/: cryoWarning\\s*\\? clamp01\\(0\\.14/.test(telegraphs));
+assert.ok(telegraphs.includes(': cryoWarning'));
+assert.ok(telegraphs.includes('? clamp01(0.14 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.025)'));
 assert.ok(telegraphs.includes("const laneWidth = Math.max(0.08, scaled(profile.width)) * (cryoWarning ? 0.68 : 1)"));
 assert.ok(telegraphs.includes("tick.setEnabled(annexWarning || momentumWarning || cryoWarning)"));
 assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.24 : 0;"));
