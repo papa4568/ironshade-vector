@@ -132,6 +132,7 @@ const validG8Proof = {
   routeStyle: 'cryo-recessed-service-inlay', routeMaxWidth: 0.16,
   objectiveCue: 'beacon+navigation-path', worldObjects: 5,
   actionInput: 'manual-aim+live-touch-fire', shotsBefore: 2, shotsAfter: 5,
+  normalBoiloff: 1,
   hazardLanguage: 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing',
   surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12',
 };
@@ -147,6 +148,7 @@ for (const [label, patch, reason] of [
   ['no-combat', { shotsAfter: 2 }, 'no-real-combat-action'],
   ['late-pbr', { beforePremium: 'loading' }, 'late-asset-pop-in'],
   ['wrong-hazard', { hazardLanguage: 'wash' }, 'missing-boiloff-thermal-hazard-cues'],
+  ['missing-boiloff', { normalBoiloff: 0 }, 'missing-live-boiloff-frame'],
 ] as const) {
   const report = auditCryoVisualProvenance({ ...validG8Proof, ...patch });
   assert.ok(!report.valid && report.problems.includes(reason),
@@ -159,6 +161,8 @@ assert.ok(g8Capture.includes("interdiction.step = 1"));
 assert.ok(g8Capture.includes("interdiction.completed = ['interdiction-0-undecided']"));
 assert.ok(g8Capture.includes("d?.babylonScenario === 'cryo-reserve'"));
 assert.ok(g8Capture.includes("d.cryoPremiumAssetState === 'ready'"));
+assert.ok(g8Capture.includes("d?.environmentHazardMode === 'boiloff-purge'"));
+assert.ok(g8Capture.includes('normalBoiloff, beforePosition: before'));
 assert.ok(g8Capture.includes("d.babylonSharedWorldArtState === 'ready'"));
 assert.ok(g8Capture.includes("d.missionVisualReadiness === 'ready'"));
 assert.ok(g8Capture.includes("await awaitCryoReady('post-reentry Cryo Reserve authored-world readiness'"));
