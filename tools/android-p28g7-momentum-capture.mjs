@@ -228,7 +228,35 @@ try {
       && d.objectiveWorldCue === 'beacon+navigation-path'
       && d.interactableReadability === 'shape-coded+state-emissive+floor-cue:quality-safe';
   })()`;
-  await waitFor(ready, 'Momentum Exchange route / authored-world visual readiness', 90_000);
+  // Do not collapse a real failure to "last=false": record each required
+  // actual renderer/asset field so slow CI startup, lost WebGL context, and
+  // a genuine unready material or world slot can be distinguished.
+  const awaitMomentumReady = async label => {
+    try {
+      await waitFor(ready, label, 90_000);
+    } catch (error) {
+      const diagnostic = await evaluate(`(() => {
+        const d = document.querySelector('canvas')?.dataset ?? {};
+        const fields = ['babylonScenario','graphicsPathLoaded','babylonBackend',
+          'renderTier','p28FlagshipCapture','babylonSharedWorldAssets',
+          'babylonInit','babylonFrames','babylonEnvironmentState',
+          'momentumPremiumAssetState','momentumPremiumBindings',
+          'momentumPremiumSurfaces','environmentIbl','environmentHazardLanguage',
+          'environmentSurfaceDetail','momentumGrounding','momentumGroundedProps',
+          'momentumWashFootprint','babylonRouteMarkingProfile',
+          'babylonRouteMarkingMaxWidth','babylonSharedWorldArtState',
+          'missionVisualReadiness','missionVisualMode',
+          'babylonSharedWorldPendingCount','babylonSharedWorldFailedCount',
+          'babylonSharedWorldMappedCount','babylonSharedWorldAuthoredCount',
+          'babylonSharedWorldFallbackCount','objectiveWorldCue',
+          'interactableReadability','babylonEnvironmentError',
+          'momentumPremiumAssetError','babylonSharedWorldError'];
+        return Object.fromEntries(fields.map(key => [key, d[key] ?? null]));
+      })()`);
+      throw new Error(String(error) + '; P28G7_ACTUAL_READINESS_FIELDS=' + JSON.stringify(diagnostic));
+    }
+  };
+  await awaitMomentumReady('Momentum Exchange route / authored-world visual readiness');
   // The campaign acceptance contract requires the *captured* normal and action
   // scenes to be from a real return-to-hub / redeploy cycle. This lifecycle
   // bridge is enabled only by p27d5Lifecycle=1 and calls the real App exit path.
@@ -259,7 +287,7 @@ try {
   await waitFor('document.querySelector(\'button[data-location="momentum-exchange"]\')?.classList.contains("selected")',
     're-entry contract selection');
   await clickButton('Deploy Selected Contract');
-  await waitFor(ready, 'post-reentry Momentum Exchange authored-world readiness', 90_000);
+  await awaitMomentumReady('post-reentry Momentum Exchange authored-world readiness');
   console.log('ANDROID_P28G7_MOMENTUM_REENTRY_PASS exit=command-deck redeploy=momentum-exchange state=ready');
   await sleep(650);
   const beforeVisual = await evaluate(`(() => {
