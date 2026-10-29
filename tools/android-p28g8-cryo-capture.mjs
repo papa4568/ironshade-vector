@@ -286,7 +286,18 @@ try {
     're-entry contract selection');
   await clickButton('Deploy Selected Contract');
   await awaitCryoReady('post-reentry Cryo Reserve authored-world readiness');
-  console.log('ANDROID_P28G8_MOMENTUM_REENTRY_PASS exit=command-deck redeploy=cryo-reserve state=ready');
+  // First real boiloff purge begins at 10s, then the secondary at 21s.
+  // Capture actual timed thermal danger instead of a quiet spawn scene.
+  await waitFor(`(() => {
+    const d = document.querySelector('canvas')?.dataset;
+    return d?.environmentHazardMode === 'boiloff-purge'
+      && Number(d.environmentBoiloffJets || 0) > 0;
+  })()`, 'actual Cryo Reserve boiloff purge gameplay', 27_000);
+  const normalBoiloff = await evaluate(
+    "Number(document.querySelector('canvas')?.dataset.environmentBoiloffJets || 0)");
+  if (!(normalBoiloff > 0)) throw new Error('P28-G8 capture lacks an active thermal hazard');
+
+  console.log('ANDROID_P28G8_CRYO_REENTRY_PASS exit=command-deck redeploy=cryo-reserve state=ready');
   await sleep(650);
   const beforeVisual = await evaluate(`(() => {
     const d = document.querySelector('canvas')?.dataset ?? {};
@@ -381,12 +392,12 @@ try {
     task: 'P28-G8', mapReentry: 'exit-to-command-and-redeploy:ready', deviceValidation: 'emulator-visual-evidence-not-physical-thermal-acceptance',
     normalScreenshot: 'android-p28g8-cryo-reserve-normal.png',
     actionScreenshot: 'android-p28g8-cryo-reserve-action.png',
-    screenshotsBytes: [normalBytes, actionBytes], beforePosition: before,
+    screenshotsBytes: [normalBytes, actionBytes], normalBoiloff, beforePosition: before,
     actionInput: 'manual-aim+live-touch-fire', shotsBefore, shotsAfter,
     beforeAssetIds: beforeVisual.assetIds, beforeArtState: beforeVisual.artState,
     beforePremium: beforeVisual.premium, beforeIbl: beforeVisual.ibl, ...result,
   }, null, 2) + '\n');
-  console.log('ANDROID_P28G8_MOMENTUM_VISUAL_CAPTURE_PASS route=cryo-reserve authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
+  console.log('ANDROID_P28G8_CRYO_VISUAL_CAPTURE_PASS route=cryo-reserve authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
 } finally {
   socket.close();
 }
