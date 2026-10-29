@@ -115,6 +115,8 @@ assert.ok(babylon.includes('this.worldPresentation.sync(state, mission, budget.d
 assert.ok(smoke.includes('async function p27C9BabylonCryoReserveAudit()'));
 assert.ok(smoke.includes('BROWSER_P27C9_BABYLON_CRYO_RESERVE_PASS'));
 assert.ok(smoke.includes("environmentBoiloffObserved === 'live-hazard-seen'"));
+assert.ok(smoke.includes("['boiloff-purge', 'nominal'].includes(state.hazardMode)"));
+assert.ok(!smoke.includes("state.hazardMode !== 'boiloff-purge'"));
 assert.ok(!smoke.includes("canvas?.dataset.environmentHazardMode === 'boiloff-purge'"));
 assert.ok(presentation.includes("if (boiloffJets.length > 0) this.boiloffObserved = true"));
 assert.ok(presentation.includes("this.canvas.dataset.environmentBoiloffObserved = this.boiloffObserved ? 'live-hazard-seen' : 'pending'"));
