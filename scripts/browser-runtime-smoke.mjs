@@ -555,6 +555,20 @@ async function p27C1BabylonOrbitalAudit() {
   await waitFor(`document.querySelector('canvas')?.dataset.babylonOrbitalPlayerPosition !== ${JSON.stringify(beforeMove)}`, 'P27-C1 Orbital Station movement', 5_000);
   const afterMove = await evaluate(`document.querySelector('canvas')?.dataset.babylonOrbitalPlayerPosition ?? ''`);
 
+  // A movement-triggered placement pass can momentarily return the authored
+  // enemies to loading on software mobile WebGL. Wait for genuine readiness,
+  // never waive the source/model, actor-count, or no-fallback conditions.
+  await waitFor(`(() => {
+    const d = document.querySelector('canvas')?.dataset;
+    return d?.babylonScenario === 'orbital-station'
+      && d.babylonEnemyCatalogState === 'ready'
+      && d.babylonEnemyState === 'ready'
+      && Number(d.enemyActive ?? 0) > 0
+      && d.orbitalPremiumAssetState === 'ready'
+      && d.babylonSharedWorldArtState === 'ready'
+      && Number(d.babylonSharedWorldFallbackCount ?? 0) === 0;
+  })()`, 'Orbital Station post-movement authored enemy readiness', 45_000);
+
   const state = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     return {
@@ -1830,11 +1844,13 @@ async function p27C9BabylonCryoReserveAudit() {
   await waitFor("document.querySelector('canvas')?.dataset.babylonCryoReservePlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C9 Cryo Reserve movement', 5_000);
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonCryoReservePlayerPosition ?? ''");
 
+  // Require actual simulation-owned boiloff to have been rendered, rather
+  // than the momentary jet to still be alive after a slow mobile art load.
+  // The source observes real active boiloffJet hazards in sync(), and keeps
+  // their evidence across the 10s/21s hazard expiration window.
   await waitFor(
-    "(() => { const canvas = document.querySelector('canvas'); return"
-      + " canvas?.dataset.environmentHazardMode === 'boiloff-purge'"
-      + " && Number(canvas?.dataset.environmentBoiloffJets ?? 0) > 0; })()",
-    'P27-C9 Cryo Reserve authored boiloff purge',
+    "document.querySelector('canvas')?.dataset.environmentBoiloffObserved === 'live-hazard-seen'",
+    'P27-C9 Cryo Reserve observed real authored boiloff purge',
     17_000,
   );
 
@@ -1844,6 +1860,7 @@ async function p27C9BabylonCryoReserveAudit() {
     + " service: canvas?.dataset.environmentServiceDetails ?? '', surface: canvas?.dataset.environmentSurfaceDetail ?? '',"
     + " machinery: canvas?.dataset.environmentMachineDetail ?? '', pressure: canvas?.dataset.environmentPressureProfile ?? '',"
     + " valves: canvas?.dataset.environmentPurgeValves ?? '', jets: Number(canvas?.dataset.environmentBoiloffJets ?? 0),"
+    + " boiloffObserved: canvas?.dataset.environmentBoiloffObserved ?? '',"
     + " hazardMode: canvas?.dataset.environmentHazardMode ?? '', localCues: Number(canvas?.dataset.interactableLocationCueCount ?? 0),"
     + " boss: canvas?.dataset.bossPresentation ?? '', bossCueState: canvas?.dataset.bossCueState ?? '',"
     + " parity: canvas?.dataset.babylonCryoReserveParity ?? '', identity: canvas?.dataset.locationArtIdentity ?? '',"
@@ -1871,7 +1888,7 @@ async function p27C9BabylonCryoReserveAudit() {
     || !state.machinery.includes('vacuum-jacket-tank:7+purge-valve:2+siphon-relay:')
     || !pressureWithinLimitedAtmosphere
     || !/^(armed|partial|routed|offline):[0-2]\/[0-2]$/.test(state.valves)
-    || state.jets < 1
+    || state.boiloffObserved !== 'live-hazard-seen'
     || state.hazardMode !== 'boiloff-purge'
     || state.localCues < 1
     || state.boss !== 'oren-saal'
