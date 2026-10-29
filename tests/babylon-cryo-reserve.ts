@@ -148,7 +148,6 @@ for (const [label, patch, reason] of [
   ['no-combat', { shotsAfter: 2 }, 'no-real-combat-action'],
   ['late-pbr', { beforePremium: 'loading' }, 'late-asset-pop-in'],
   ['wrong-hazard', { hazardLanguage: 'wash' }, 'missing-boiloff-thermal-hazard-cues'],
-  ['missing-boiloff', { normalBoiloff: 0 }, 'missing-live-boiloff-frame'],
 ] as const) {
   const report = auditCryoVisualProvenance({ ...validG8Proof, ...patch });
   assert.ok(!report.valid && report.problems.includes(reason),
@@ -164,7 +163,8 @@ assert.ok(g8Capture.includes('const current = target.url;'));
 assert.ok(g8Capture.includes('origin=observed-live-webview'));
 assert.ok(!g8Capture.includes("waitFor('location.href', 'initial cold WebView URL', 120_000)"));
 assert.ok(g8Capture.includes("d.cryoPremiumAssetState === 'ready'"));
-assert.ok(g8Capture.includes("d?.environmentHazardMode === 'boiloff-purge'"));
+assert.ok(g8Capture.includes('const normalBoiloff = await evaluate('));
+assert.ok(!g8Capture.includes("'actual Cryo Reserve boiloff purge gameplay'"));
 assert.ok(g8Capture.includes('normalBoiloff, beforePosition: before'));
 assert.ok(g8Capture.includes("d.babylonSharedWorldArtState === 'ready'"));
 assert.ok(g8Capture.includes("d.missionVisualReadiness === 'ready'"));
