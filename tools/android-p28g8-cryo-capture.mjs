@@ -110,7 +110,17 @@ try {
   await call('Page.enable');
   // A cold Android WebView can stall while compiling the flagship client.
   // Retry only startup; all route, pixel and asset assertions remain strict.
-  const current = await waitFor('location.href', 'initial cold WebView URL', 120_000);
+  // The first cold WebView target can display the real class-intake screen
+  // while Runtime.evaluate has no live default context. Read the *same
+  // observed target's* navigable URL rather than waiting on an unavailable
+  // JS context; every subsequent gameplay/readiness assertion still uses
+  // live Runtime.evaluate and fails closed.
+  const target = await waitForTarget();
+  const current = target.url;
+  if (typeof current !== 'string'
+      || !/^(?:https?:|file:|capacitor:)/.test(current))
+    throw new Error('P28-G8 observed WebView target has no navigable app URL: ' + JSON.stringify(current));
+  console.log('ANDROID_P28G8_CDP_TARGET_URL_PASS origin=observed-live-webview');
   const url = new URL(current);
   url.search = '';
   url.searchParams.set('graphicsCompare', '1');
