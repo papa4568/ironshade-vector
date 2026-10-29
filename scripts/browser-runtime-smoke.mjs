@@ -1844,12 +1844,11 @@ async function p27C9BabylonCryoReserveAudit() {
   await waitFor("document.querySelector('canvas')?.dataset.babylonCryoReservePlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C9 Cryo Reserve movement', 5_000);
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonCryoReservePlayerPosition ?? ''");
 
-  // Require actual simulation-owned boiloff to have been rendered, rather
-  // than the momentary jet to still be alive after a slow mobile art load.
-  // The source observes real active boiloffJet hazards in sync(), and keeps
-  // their evidence across the 10s/21s hazard expiration window.
+  // Require the director to have allocated a real boiloffJet to the sim,
+  // even if its 6.5s lifetime expired before slow mobile WebGL art was ready.
+  // A timeline string or locationEventA flag alone does not satisfy this.
   await waitFor(
-    "document.querySelector('canvas')?.dataset.environmentBoiloffObserved === 'live-hazard-seen'",
+    "document.querySelector('canvas')?.dataset.environmentBoiloffObserved === 'sim-hazard-deployed'",
     'P27-C9 Cryo Reserve observed real authored boiloff purge',
     17_000,
   );
@@ -1888,7 +1887,7 @@ async function p27C9BabylonCryoReserveAudit() {
     || !state.machinery.includes('vacuum-jacket-tank:7+purge-valve:2+siphon-relay:')
     || !pressureWithinLimitedAtmosphere
     || !/^(armed|partial|routed|offline):[0-2]\/[0-2]$/.test(state.valves)
-    || state.boiloffObserved !== 'live-hazard-seen'
+    || state.boiloffObserved !== 'sim-hazard-deployed'
     || !['boiloff-purge', 'nominal'].includes(state.hazardMode)
     || state.localCues < 1
     || state.boss !== 'oren-saal'
