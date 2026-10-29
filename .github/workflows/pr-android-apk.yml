@@ -173,7 +173,9 @@ jobs:
     name: Android PR API 35 Smoke
     needs: android-pr-apk
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # The exact APK smoke includes persistent-process cache/re-attach proofs;
+    # a clean emulator run can legitimately exceed the old 20-minute cap.
+    timeout-minutes: 35
     steps:
       - name: Check out exact candidate revision
         uses: actions/checkout@v7
