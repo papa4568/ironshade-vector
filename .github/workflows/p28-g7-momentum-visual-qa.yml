@@ -119,10 +119,12 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          # An emulator CDP startup close can precede any gameplay frame.
-          # Retry the unchanged startup smoke once with a fresh native launch,
-          # then require the complete G7 capture/pixel/visual proof as usual.
-          script: bash -lc 'ok=0; for attempt in 1 2; do if ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh; then ok=1; break; fi; if [[ "$attempt" -lt 2 ]]; then echo "P28-G7 early Android startup retry"; adb shell am force-stop app.ironshade.vector || true; sleep 3; fi; done; test "$ok" = 1 && bash tools/android-p28g7-momentum-capture.sh'
+          # Full Android API35/API36 smoke remains mandatory in the independent
+          # PR Candidate workflow. This supplemental G7 job starts its own clean
+          # app, enters actual Momentum Exchange, performs real touch FIRE, and
+          # captures same-APK frames; avoid rerunning the unrelated refinery
+          # fast smoke as a flaky prerequisite to the dedicated visual proof.
+          script: bash tools/android-p28g7-momentum-capture.sh
 
       - name: Publish exact-head visual proof
         id: visual_evidence_upload
