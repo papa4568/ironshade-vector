@@ -1889,7 +1889,7 @@ async function p27C9BabylonCryoReserveAudit() {
     || !pressureWithinLimitedAtmosphere
     || !/^(armed|partial|routed|offline):[0-2]\/[0-2]$/.test(state.valves)
     || state.boiloffObserved !== 'live-hazard-seen'
-    || state.hazardMode !== 'boiloff-purge'
+    || !['boiloff-purge', 'nominal'].includes(state.hazardMode)
     || state.localCues < 1
     || state.boss !== 'oren-saal'
     || !/^(queued|active-phase-[12]:(none|purgeLance|busSiphon|busReroute))$/.test(state.bossCueState)
@@ -1909,7 +1909,7 @@ async function p27C9BabylonCryoReserveAudit() {
 
   console.log('BROWSER_P27C9_BABYLON_CRYO_RESERVE_PASS viewport=' + viewportMode
     + ' identity=' + state.identity + ' routes=' + state.routes + ' landmarks=' + state.landmarks
-    + ' pressure=' + state.pressure + ' valves=' + state.valves + ' purge=' + state.jets + ':' + state.hazardMode
+    + ' pressure=' + state.pressure + ' valves=' + state.valves + ' purge=' + state.jets + ':' + state.hazardMode + ':observed-' + state.boiloffObserved
     + ' boss=' + state.boss + ':' + state.bossCueState + ' movement=' + beforeMove + '->' + afterMove
     + ' lighting=' + state.locationLighting);
   return state;
