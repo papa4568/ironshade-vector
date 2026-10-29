@@ -128,6 +128,14 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // The landscape navigation inset can reappear after a WebView reload
+        // without another focus callback. Reassert once the decor is attached.
+        getWindow().getDecorView().post(() -> enterImmersiveMode());
+    }
+
+    @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         configureGameWindow();
@@ -156,8 +164,16 @@ public class MainActivity extends BridgeActivity {
         // the display cutout. Preserve the existing responsive HUD/touch layouts.
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.rgb(5, 9, 10)));
         getWindow().getDecorView().setBackgroundColor(Color.rgb(5, 9, 10));
+        // A light Capacitor content parent can show as a solid 144px edge
+        // when Android temporarily reserves the landscape navigation inset.
+        View contentRoot = findViewById(android.R.id.content);
+        if (contentRoot != null) contentRoot.setBackgroundColor(Color.rgb(5, 9, 10));
         getWindow().setNavigationBarColor(Color.rgb(5, 9, 10));
         getWindow().setStatusBarColor(Color.rgb(5, 9, 10));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            getWindow().setNavigationBarContrastEnforced(false);
+            getWindow().setStatusBarContrastEnforced(false);
+        }
         WindowManager.LayoutParams params = getWindow().getAttributes();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
@@ -180,6 +196,16 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void enterImmersiveMode() {
+        // Keep navigation hidden on API 35 after landscape and CDP/WebView
+        // reloads. The legacy sticky flags complement, not replace, the
+        // WindowInsets controller used on modern Android.
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
         if (controller != null) {
