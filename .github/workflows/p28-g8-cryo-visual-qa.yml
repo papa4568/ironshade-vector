@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'src/game/babylonCryoExchangePresentation.ts'
+      - 'src/game/babylonCryoReservePresentation.ts'
       - 'src/game/babylonWorldPresentation.ts'
       - 'src/game/babylonRefineryMissionReadiness.ts'
       - 'src/game/babylonRouteMarkings.ts'
