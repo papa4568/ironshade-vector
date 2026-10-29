@@ -176,6 +176,23 @@ assert.ok(g8Workflow.includes('--attachment android-p28g8-cryo-reserve-normal.pn
 assert.ok(g8Workflow.includes('script: bash tools/android-p28g8-cryo-capture.sh'));
 assert.ok(g8Shell.includes('adb install -r "$APK"'));
 assert.ok(g8Shell.includes('tools/verify-p28g8-gameplay-frames.mjs'));
+assert.ok(g8Shell.includes('node tools/p28g8-android-crash-audit.mjs android-p28g8-cryo-reserve-logcat.txt'));
+assert.ok(!g8Shell.includes("grep -E 'FATAL EXCEPTION|Process:"));
+const androidInstrumentationCrash = [
+  '10-29 14:46:12.400 2428 2442 E AndroidRuntime: FATAL EXCEPTION: UiAutomation',
+  '10-29 14:46:12.400 2428 2442 E AndroidRuntime: PID: 2428',
+  '10-29 14:46:12.400 2428 2442 E AndroidRuntime: java.lang.RuntimeException: Bad file descriptor',
+].join('\n');
+assert.deepEqual(auditCryoAndroidAppCrash(androidInstrumentationCrash), { valid: true, reasons: [] },
+  'unrelated UiAutomation instrumentation crash must not invalidate real APK frames');
+for (const [label, sample] of [
+  ['android-runtime', '10-29 E AndroidRuntime: FATAL EXCEPTION: main\n10-29 E AndroidRuntime: Process: app.ironshade.vector, PID: 5000'],
+  ['app-anr', '10-29 E ActivityManager: ANR in app.ironshade.vector'],
+  ['am-crash', '10-29 I am_crash: [0,5000,app.ironshade.vector,1]'],
+] as const) {
+  assert.ok(!auditCryoAndroidAppCrash(sample).valid, 'real app crash was ignored: ' + label);
+}
+
 assert.ok(g8Shell.includes("report.capturedRoute !== \"cryo-reserve\""));
 
 // P28-G8: actual shared KTX2 material binding, authored-world readiness
