@@ -26,7 +26,10 @@ assert.equal(sourcePng.readUInt32BE(20), 1024);
 const telegraphSource = await readFile(at('src/game/babylonEnemyTelegraphs.ts'), 'utf8');
 assert(telegraphSource.includes('material.emissiveColor = signal;')
   && telegraphSource.includes("this.canvas.dataset.babylonScenario === 'momentum-exchange'")
-  && telegraphSource.includes('(momentumWarning ? 0.46 : 0.66)')
+  // The Cryo-only ring treatment sits between Momentum and the unchanged
+  // refinery/default 0.66 opacity; the F5 ground-cue margin still uses
+  // the default ring's actual minimum 0.66 - 0.10.
+  && telegraphSource.includes('(momentumWarning ? 0.46 : cryoWarning ? 0.60 : 0.66)')
   && telegraphSource.includes('(momentumWarning ? 0.055 : 0.1)'),
   'P28-F5 ground-cue comparison must be recalibrated if the refinery attack-ring opacity changes');
 const cueMinimumAlpha = 0.66 - 0.10;
