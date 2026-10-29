@@ -22,7 +22,10 @@ export function auditCryoVisualProvenance(state) {
     problems.push('no-real-combat-action');
   if (!state?.surfaceDetail?.includes('jacket-hoop:35')
       || !state?.surfaceDetail?.includes('thermal-sensor:14')
-      || !state?.surfaceDetail?.includes('gallery-valve-bank:12'))
+      || !state?.surfaceDetail?.includes('gallery-valve-bank:12')
+      || !state?.surfaceDetail?.includes('frost-cuff:14')
+      || !state?.surfaceDetail?.includes('pressure-gauge:7')
+      || !state?.surfaceDetail?.includes('ambient-cold-vent:7'))
     problems.push('missing-cryo-material-hardware-detail');
   if (state?.hazardLanguage !== 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing')
     problems.push('missing-boiloff-thermal-hazard-cues');
