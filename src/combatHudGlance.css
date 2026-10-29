@@ -1144,3 +1144,14 @@
     z-index: 13;
   }
 }
+
+/* G7: reserve the bottom-right ACT NEARBY lane for real touch interaction.
+   The tactical forecast stays legible in the open lower-middle area without
+   shrinking the action button or altering input hit targets. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    left: 43%;
+    width: min(34vw, 34rem);
+    transform: translateX(-50%);
+  }
+}
