@@ -489,9 +489,12 @@ export class BabylonCryoReservePresentation {
     });
 
     const boiloffJets = state.hazards.filter(hazard => hazard.active && hazard.kind === 'boiloffJet');
-    // Historical proof of a *live* authored boiloff hazard, never a schedule
-    // string. Slow mobile asset loads can outlive the short 10s/21s purge.
-    if (boiloffJets.length > 0) this.boiloffObserved = true;
+    // Read authoritative sim telemetry written only when the director actually
+    // allocates a boiloffJet. Slow WebGL art loads can miss its entire lifetime.
+    // Unlike a scheduled-time flag, this cannot credit a purge that did not spawn.
+    if (boiloffJets.length > 0 || (state.telemetry.environmentBoiloffDeployments ?? 0) > 0) {
+      this.boiloffObserved = true;
+    }
     const purgeMode = cryoReservePurgeMode(boiloffJets.length);
     this.purgePlumes.forEach((plume, index) => {
       const enabled = purgeMode === 'boiloff-purge' && index < profile.plumeInstances && boiloffJets.length > 0;
@@ -614,7 +617,7 @@ export class BabylonCryoReservePresentation {
     this.canvas.dataset.environmentPurgeValves = valveState + ':' + routedValves.length + '/' + intactValves.length;
     this.canvas.dataset.environmentPurgeValveIds = 'purge-valve-a,purge-valve-b';
     this.canvas.dataset.environmentBoiloffJets = String(boiloffJets.length);
-    this.canvas.dataset.environmentBoiloffObserved = this.boiloffObserved ? 'live-hazard-seen' : 'pending';
+    this.canvas.dataset.environmentBoiloffObserved = this.boiloffObserved ? 'sim-hazard-deployed' : 'pending';
     this.canvas.dataset.environmentPurgeTimeline = '10.0s:first-boiloff>21.0s:secondary-purge';
     this.canvas.dataset.environmentPressureProfile = pressure;
     this.canvas.dataset.environmentHazardLanguage = 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing';
