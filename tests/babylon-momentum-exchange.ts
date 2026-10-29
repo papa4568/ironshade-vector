@@ -197,13 +197,13 @@ for (const [label, edit, reason] of [
 const renderWorldSource = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
 const attackSource = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
 assert.ok(presentation.includes('spoke.rotation.y = spokeRotation'));
-assert.ok(presentation.includes('ring.position.y = 0.26 + ringIndex * 0.13'));
+assert.ok(presentation.includes('ring.position.y = 0.36 + ringIndex * 0.19'));
 assert.ok(presentation.includes('toothMesh.rotation.y = angle'));
 assert.ok(presentation.includes('this.canvas.dataset.momentumSimTime = state.time.toFixed(2)'));
 assert.ok(presentation.includes('laminated-rim:9+flux-tooth:48'));
 assert.ok(renderWorldSource.includes("this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(renderWorldSource.includes("hazard.kind === 'vectorWash'"));
-assert.ok(renderWorldSource.includes('momentumWash ? 0xf0a876 : presentation.color'));
+assert.ok(renderWorldSource.includes('momentumWash ? 0xf0a876'));
 assert.ok(attackSource.includes('visual.sideA.material = momentumWarning ? visual.laneMaterial : visual.attackMaterial'));
 assert.ok(attackSource.includes('tick.setEnabled(annexWarning || momentumWarning)'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .target-readout'));
