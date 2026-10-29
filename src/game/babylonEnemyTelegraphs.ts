@@ -463,12 +463,13 @@ export class BabylonEnemyTelegraphs {
     const signal = colorFromHex(profile.color);
     visual.attackMaterial.diffuseColor = signal.scale(0.18);
     visual.attackMaterial.emissiveColor = signal;
-    visual.attackMaterial.alpha = clamp01(0.66 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.1);
+    const momentumWarning = this.canvas.dataset.babylonScenario === 'momentum-exchange';
+    visual.attackMaterial.alpha = clamp01((momentumWarning ? 0.46 : 0.66)
+      + Math.sin(state.time * 10 + enemy.id * 0.73) * (momentumWarning ? 0.055 : 0.1));
     visual.laneMaterial.diffuseColor = signal.scale(0.18);
     visual.laneMaterial.emissiveColor = signal;
-    const momentumWarning = this.canvas.dataset.babylonScenario === 'momentum-exchange';
     visual.laneMaterial.alpha = momentumWarning
-      ? clamp01(0.14 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.035)
+      ? clamp01(0.09 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.020)
       : this.canvas.dataset.babylonScenario === 'ice-mine'
         ? clamp01(0.32 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.06)
         : visual.attackMaterial.alpha;
