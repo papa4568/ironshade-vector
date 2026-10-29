@@ -242,7 +242,7 @@ export class BabylonMomentumExchangePresentation {
       for (let tooth = 0; tooth < 16; tooth += 1) {
         const angle = tooth * Math.PI / 8;
         const toothMesh = box(scene, root, 'p28-g7-flywheel-flux-tooth-' + index + '-' + tooth,
-          tooth % 2 === 0 ? edgeMetal : magneticCopper,
+          tooth % 4 === 0 ? edgeMetal : tooth % 4 === 1 ? magneticCopper : structural,
           Math.sin(angle) * 2.42, 0.94, Math.cos(angle) * 2.42,
           0.34, 0.22, 0.55);
         toothMesh.parent = rotor;
