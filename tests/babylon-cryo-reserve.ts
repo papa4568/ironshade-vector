@@ -121,6 +121,7 @@ assert.ok(!smoke.includes("canvas?.dataset.environmentHazardMode === 'boiloff-pu
 assert.ok(presentation.includes("boiloffJets.length > 0 || (state.telemetry.environmentBoiloffDeployments ?? 0) > 0"));
 assert.ok(director.includes("if (!hazard) return; Object.assign(hazard"));
 assert.ok(director.includes("if (kind === 'boiloffJet') state.telemetry.environmentBoiloffDeployments = (state.telemetry.environmentBoiloffDeployments ?? 0) + 1;"));
+assert.ok(director.includes('state.telemetry.environmentBoiloffDeployments = 0;'), 'mission setup must clear prior boiloff proof');
 assert.ok(!director.includes("runtime.elapsed >= 10) state.telemetry.environmentBoiloffDeployments"));
 assert.ok(presentation.includes("this.canvas.dataset.environmentBoiloffObserved = this.boiloffObserved ? 'sim-hazard-deployed' : 'pending'"));
 assert.ok(presentation.includes("this.boiloffObserved = false;\n    this.canvas.dataset.environmentBoiloffObserved = 'pending';"));
