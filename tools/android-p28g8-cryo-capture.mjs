@@ -295,7 +295,7 @@ try {
       premium: d.cryoPremiumAssetState ?? '', ibl: d.environmentIbl ?? '' };
   })()`);
   const normalBytes = await capture('android-p28g8-cryo-reserve-normal.png');
-  const before = await evaluate("document.querySelector('canvas')?.dataset.babylonCryoExchangePlayerPosition ?? ''");
+  const before = await evaluate("document.querySelector('canvas')?.dataset.babylonCryoReservePlayerPosition ?? ''");
   await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
   await sleep(650);
   await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
@@ -365,7 +365,7 @@ try {
       ibl: d.environmentIbl ?? '',
       hazardLanguage: d.environmentHazardLanguage ?? '', surfaceDetail: d.environmentSurfaceDetail ?? '',
       worldObjects: Number(d.worldObjectCount || 0),
-      playerPosition: d.babylonCryoExchangePlayerPosition ?? '',
+      playerPosition: d.babylonCryoReservePlayerPosition ?? '',
       objectiveCue: d.objectiveWorldCue ?? '',
       width: canvas?.width ?? 0, height: canvas?.height ?? 0,
     };
