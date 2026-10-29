@@ -20,10 +20,53 @@ capture_diagnostics() {
   adb shell dumpsys activity activities > android-p28g7-momentum-exchange-activity.txt 2>/dev/null || true
 }
 trap capture_diagnostics EXIT
+confirm_immersive_mode_for_g7() {
+  adb shell settings put secure immersive_mode_confirmations confirmed >/dev/null 2>&1 || true
+
+  local remote_dump='/sdcard/ironshade-g7-immersive-window.xml'
+  local dump=''
+  local coords=''
+  local x=''
+  local y=''
+  for attempt in 1 2 3 4 5; do
+    adb shell uiautomator dump --compressed "$remote_dump" >/dev/null 2>&1 || true
+    dump="$(adb shell cat "$remote_dump" 2>/dev/null | tr -d '\r' || true)"
+    if [[ "$dump" != *'text="Viewing full screen"'* && "$dump" != *'text="Got it"'* ]]; then
+      echo "ANDROID_P28G7_IMMERSIVE_CONFIRMATION_PASS state=clear attempt=$attempt"
+      return 0
+    fi
+
+    coords="$(printf '%s' "$dump" | python3 -c 'import re, sys, xml.etree.ElementTree as ET
+text = sys.stdin.read()
+try:
+    root = ET.fromstring(text)
+except ET.ParseError:
+    raise SystemExit(0)
+for node in root.iter("node"):
+    if node.attrib.get("text") != "Got it":
+        continue
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+    if match:
+        left, top, right, bottom = map(int, match.groups())
+        print((left + right) // 2, (top + bottom) // 2)
+        break')"
+    if [[ -n "$coords" ]]; then
+      read -r x y <<< "$coords"
+      adb shell input tap "$x" "$y"
+    fi
+    sleep 1
+  done
+
+  echo "Immersive-mode SystemUI confirmation still covers the app after deterministic dismissal attempts." >&2
+  printf '%s\n' "$dump" >&2
+  return 1
+}
+
 # This isolated visual job no longer relies on the generic fast-smoke's
 # incidental installation. The workflow already verified the exact SHA and
 # checksum; install that identical artifact and assert the package exists.
 test -s "$APK"
+adb shell settings put secure immersive_mode_confirmations confirmed >/dev/null 2>&1 || true
 adb install -r "$APK" >/dev/null
 adb shell pm path "$PACKAGE" | grep -q '^package:'
 # Only the known device-owned 144px cutout compositor failure may cause
@@ -34,6 +77,7 @@ run_gameplay_pair() {
   adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
   adb shell pm clear "$PACKAGE" >/dev/null || return $?
   adb shell am start -W -n "$ACTIVITY" || return $?
+  confirm_immersive_mode_for_g7 || return $?
   timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done' || return $?
   local pid
   pid="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
