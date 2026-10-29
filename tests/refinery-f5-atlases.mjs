@@ -25,8 +25,10 @@ assert.equal(sourcePng.readUInt32BE(20), 1024);
 // Babylon attack-ring minimum rather than trusting GLB metadata markers.
 const telegraphSource = await readFile(at('src/game/babylonEnemyTelegraphs.ts'), 'utf8');
 assert(telegraphSource.includes('material.emissiveColor = signal;')
-  && telegraphSource.includes('0.66 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.1'),
-  'P28-F5 ground-cue comparison must be recalibrated if the real attack-ring opacity changes');
+  && telegraphSource.includes("this.canvas.dataset.babylonScenario === 'momentum-exchange'")
+  && telegraphSource.includes('(momentumWarning ? 0.46 : 0.66)')
+  && telegraphSource.includes('(momentumWarning ? 0.055 : 0.1)'),
+  'P28-F5 ground-cue comparison must be recalibrated if the refinery attack-ring opacity changes');
 const cueMinimumAlpha = 0.66 - 0.10;
 const pixels = createRefineryF5DecalPixels();
 let maxAlpha = 0;

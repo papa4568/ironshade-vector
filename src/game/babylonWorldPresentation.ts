@@ -190,7 +190,8 @@ export class BabylonRefineryWorldPresentation {
     // cover and equipment slots, with explicit readiness and fallback counts.
     this.premiumSharedWorldScenario = mission.location === 'orbital-station' || mission.location === 'damaged-vessel'
       || mission.location === 'spin-habitat' || mission.location === 'jovian-harvester'
-      || mission.location === 'ice-mine' || mission.location === 'lattice-annex';
+      || mission.location === 'ice-mine' || mission.location === 'lattice-annex'
+      || mission.location === 'momentum-exchange';
     this.syncObjects(state, detailScale);
     this.syncObjective(state, mission);
     this.syncGroundLoot(state, detailScale);
@@ -1015,17 +1016,26 @@ export class BabylonRefineryWorldPresentation {
       const visual = this.ensureHazard(count, hazard.kind);
       const radius = Math.max(0.2, scaled(hazard.radius));
       const pulse = 1 + Math.sin(state.time * presentation.pulseHz) * 0.08 * quality.stateMotionScale;
-      const color = colorFromHex(presentation.color);
+      const momentumHazard = this.canvas.dataset.babylonScenario === 'momentum-exchange';
+      const momentumWash = momentumHazard && hazard.kind === 'vectorWash';
+      // True gameplay hazard radius stays intact. Unlike the permanent teal
+      // rail guides, the active magnetic wash uses an amber, thin, pulsing
+      // perimeter and directional glyph; no giant cyan floor loops.
+      const color = colorFromHex(momentumWash ? 0xf0a876
+        : momentumHazard && hazard.kind === 'gravityWell' ? 0x688b9c
+          : presentation.color);
       visual.root.setEnabled(true);
       visual.root.position.set(scaled(hazard.x), 0.08, scaled(hazard.y));
       visual.ringMaterial.diffuseColor = color.scale(0.18);
-      visual.ringMaterial.emissiveColor = color;
-      visual.ringMaterial.alpha = (0.4 + Math.sin(state.time * presentation.pulseHz) * 0.1) * quality.hazardCueOpacity;
-      visual.ring.scaling.set(radius * presentation.scaleX * pulse, 1, radius * presentation.scaleZ * pulse);
+      visual.ringMaterial.emissiveColor = color.scale(momentumHazard ? 0.34 : 1);
+      visual.ringMaterial.alpha = (momentumHazard
+        ? (momentumWash ? 0.11 : 0.16) + Math.sin(state.time * presentation.pulseHz) * 0.025
+        : 0.4 + Math.sin(state.time * presentation.pulseHz) * 0.1) * quality.hazardCueOpacity;
+      visual.ring.scaling.set(radius * presentation.scaleX * pulse, momentumWash ? 0.58 : 1, radius * presentation.scaleZ * pulse);
       visual.ring.rotation.y = state.time * presentation.rotationSpeed * quality.stateMotionScale;
       visual.glyphMaterial.diffuseColor = color.scale(0.2);
       visual.glyphMaterial.emissiveColor = color;
-      visual.glyphMaterial.alpha = quality.hazardCueOpacity;
+      visual.glyphMaterial.alpha = (momentumWash ? 0.75 : 1) * quality.hazardCueOpacity;
       const glyphScale = Math.max(0.34, Math.min(0.86, radius * 0.28));
       visual.glyph.scaling.set(glyphScale * presentation.scaleX, 1, glyphScale * presentation.scaleZ);
       visual.glyph.rotation.y = state.time * presentation.rotationSpeed * 0.7 * quality.stateMotionScale;

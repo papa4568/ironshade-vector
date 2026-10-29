@@ -1,20 +1,38 @@
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
+import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import type { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Scene } from '@babylonjs/core/scene';
 import { getMapNavigationPlan } from './mapNavigation';
+import { babylonRouteMarkingWidth, BABYLON_ROUTE_MARKING_WIDTHS } from './babylonRouteMarkings';
+import { createBabylonPremiumPbrSurfaceLibrary, type BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
+import { createRefineryContactDepthAlphaData } from './refineryContactDepth';
+import { REFINERY_ACTOR_GROUNDING_PROFILE, refineryActorGroundingScale } from './babylonRefineryLighting';
 import type { RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize, type CombatObject, type SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
+
+/** Shipped KTX2 albedo/normal/ORM families, shared with the other P28-G routes. */
+export const BABYLON_MOMENTUM_EXCHANGE_PREMIUM_SURFACES = [
+  'deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture',
+] as const;
+
+/** Active wash remains a timed hazard, never an opaque floor-sized route slab. */
+export const BABYLON_MOMENTUM_WASH_FOOTPRINT = {
+  widthFraction: 0.014,
+  lengthFraction: 0.085,
+} as const;
 
 export const BABYLON_MOMENTUM_EXCHANGE_IDENTITY = Object.freeze({
   silhouette: 'flywheel-lane',
@@ -115,6 +133,17 @@ type CaptureRig = { id: string; root: TransformNode; ring: Mesh; core: Mesh };
 export class BabylonMomentumExchangePresentation {
   private readonly root: TransformNode;
   private readonly materials: PBRMaterial[];
+  private readonly ownedMaterials: PBRMaterial[];
+  private readonly premiumSurfaces: BabylonPremiumPbrSurfaceLibrary;
+  private readonly premiumBindingCount: number;
+  private readonly performanceDecoration: Mesh[];
+  private readonly iblTexture: CubeTexture;
+  private iblReady = false;
+  private readonly groundingTexture: RawTexture;
+  private readonly groundingMaterial: StandardMaterial;
+  private readonly groundingSource: Mesh;
+  private readonly enemyGrounding = new Map<number, InstancedMesh>();
+  private readonly staticGroundingCount: number;
   private readonly cueMaterial: PBRMaterial;
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
   private readonly impulseMaterial: StandardMaterial;
@@ -147,14 +176,21 @@ export class BabylonMomentumExchangePresentation {
     const cz = worldH * 0.5;
 
     this.root = new TransformNode('p27-c8-momentum-exchange-environment', scene);
-    const floor = pbr(scene, 'p27-c8-momentum-floor', 0x07161d, 0.58, 0.44);
-    const machinery = pbr(scene, 'p27-c8-magnetic-machinery', 0x23343c, 0.86, 0.27);
-    const structural = pbr(scene, 'p27-c8-transfer-structure', 0x354d58, 0.72, 0.34);
+    this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
+    const floor = this.premiumSurfaces.get('deck-plate');
+    const machinery = this.premiumSurfaces.get('painted-metal');
+    const structural = this.premiumSurfaces.get('bare-metal');
+    const polymer = this.premiumSurfaces.get('polymer-rubber');
+    const fixture = this.premiumSurfaces.get('emissive-fixture');
+    const edgeMetal = pbr(scene, 'p28-g7-exposed-machinery-trim', 0xa8bac0, 0.74, 0.29, 0x8ac3c8, 0.10);
+    const magneticCopper = pbr(scene, 'p28-g7-exposed-magnetic-copper', 0x9f7653, 0.76, 0.38, 0xc39b6c, 0.055);
     const capture = pbr(scene, 'p27-c8-capture-service', 0x47798c, 0.48, 0.30, 0x67b5d5, 0.22);
     const reference = pbr(scene, 'p27-c8-reference-blue', 0x10252f, 0.42, 0.23, 0x67b5d5, 0.34);
-    const routePrimary = pbr(scene, 'p27-c8-route-primary', 0x31586a, 0.42, 0.44, 0x67b5d5, 0.18);
-    const routeSecondary = pbr(scene, 'p27-c8-route-secondary', 0x1d3540, 0.50, 0.54, 0x3f758d, 0.10);
-    this.materials = [floor, machinery, structural, capture, reference, routePrimary, routeSecondary];
+    // Narrow, dark, rough deck inlays: hazards and combat actions own the bright cyan.
+    const routePrimary = pbr(scene, 'p27-c8-route-primary', 0x203946, 0.11, 0.91, 0x36677a, 0.026);
+    const routeSecondary = pbr(scene, 'p27-c8-route-secondary', 0x152a34, 0.10, 0.94, 0x285363, 0.012);
+    this.ownedMaterials = [edgeMetal, magneticCopper, capture, reference, routePrimary, routeSecondary];
+    this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.cueMaterial = capture;
     this.routeMaterials = [routePrimary, routeSecondary];
     box(scene, this.root, 'p27-c8-momentum-floor-mesh', floor, cx, -0.08, cz, worldW, 0.16, worldH);
@@ -174,7 +210,7 @@ export class BabylonMomentumExchangePresentation {
       const rotor = MeshBuilder.CreateTorus('p27-c8-flywheel-rotor-' + index, { diameter: 5.4, thickness: 0.52, tessellation: 52 }, scene);
       rotor.parent = root;
       rotor.position.y = 3.25;
-      rotor.rotation.y = Math.PI / 2;
+      rotor.rotation.x = Math.PI / 2;
       rotor.material = machinery;
       rotor.isPickable = false;
       const hub = MeshBuilder.CreateCylinder('p27-c8-flywheel-hub-' + index, { height: 1.02, diameter: 1.32, tessellation: 18 }, scene);
@@ -184,9 +220,41 @@ export class BabylonMomentumExchangePresentation {
       hub.material = capture;
       hub.isPickable = false;
       for (const spokeRotation of [0, Math.PI / 2]) {
-        const spoke = box(scene, root, 'p27-c8-flywheel-spoke-' + index + '-' + spokeRotation.toFixed(2), structural, 0, 3.25, 0, 0.20, 4.35, 0.22);
-        spoke.rotation.x = Math.PI / 2;
+        // Spokes travel with the upright flywheel, rather than floating motionless.
+        const spoke = box(scene, root, 'p27-c8-flywheel-spoke-' + index + '-' + spokeRotation.toFixed(2),
+          edgeMetal, 0, 0, 0, 0.20, 0.22, 4.35);
+        // The torus is upright: its unrotated disc is local XZ, and local Y
+        // is the axle. Rotate spokes around local Y, not the world-facing Z.
+        spoke.parent = rotor;
+        spoke.position.y = 0.22;
         spoke.rotation.y = spokeRotation;
+      }
+      // Layered laminated rim, exposed bearing race, and indexed magnetic
+      // segments give the large flywheels readable depth at gameplay zoom.
+      for (const [ringIndex, diameter, thickness] of [[0, 5.05, 0.16], [1, 4.68, 0.12], [2, 4.26, 0.10]] as const) {
+        const ring = MeshBuilder.CreateTorus('p28-g7-flywheel-lamination-' + index + '-' + ringIndex,
+          { diameter, thickness, tessellation: 48 }, scene);
+        ring.parent = rotor;
+        ring.position.y = 0.36 + ringIndex * 0.19; // visibly offset toward the camera along the axle
+        ring.material = ringIndex === 1 ? magneticCopper : edgeMetal;
+        ring.isPickable = false;
+      }
+      for (let tooth = 0; tooth < 16; tooth += 1) {
+        const angle = tooth * Math.PI / 8;
+        const toothMesh = box(scene, root, 'p28-g7-flywheel-flux-tooth-' + index + '-' + tooth,
+          tooth % 4 === 0 ? edgeMetal : tooth % 4 === 1 ? magneticCopper : structural,
+          Math.sin(angle) * 2.42, 0.94, Math.cos(angle) * 2.42,
+          0.34, 0.22, 0.55);
+        toothMesh.parent = rotor;
+        toothMesh.rotation.y = angle; // alternating high-contrast flux shoes on the exposed rotor face
+      }
+      for (const side of [-1, 1]) {
+        const race = MeshBuilder.CreateTorus('p28-g7-bearing-race-' + index + '-' + side,
+          { diameter: 1.60, thickness: 0.15, tessellation: 28 }, scene);
+        race.parent = root; race.position.set(0, 3.25, side * 0.68);
+        race.rotation.x = Math.PI / 2; race.material = edgeMetal; race.isPickable = false;
+        box(scene, root, 'p28-g7-bearing-service-strut-' + index + '-' + side, structural,
+          side * 0.68, 1.45, side * 1.20, 0.14, 1.6, 0.14);
       }
       rotor.metadata = { direction };
       this.flywheels.push({ root, rotor, hub });
@@ -209,6 +277,14 @@ export class BabylonMomentumExchangePresentation {
       coil.rotation.x = Math.PI / 2;
       coil.material = capture;
       coil.isPickable = false;
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g7-transfer-frame-insulator-' + index + '-' + side,
+          polymer, side * 0.88, 0.34, 0, 0.36, 0.38, 0.40);
+        box(scene, root, 'p28-g7-transfer-frame-bus-' + index + '-' + side,
+          fixture, side * 0.88, 1.85, 0.19, 0.052, 0.70, 0.08);
+      }
+      box(scene, root, 'p28-g7-transfer-frame-header-' + index,
+        edgeMetal, 0, 2.61, 0, 1.76, 0.14, 0.46);
       this.serviceFrames.push(root);
     });
 
@@ -221,6 +297,13 @@ export class BabylonMomentumExchangePresentation {
     railData.forEach(([x, z, length, rotation], index) => {
       const rail = box(scene, this.root, 'p27-c8-transfer-rail-' + index, reference, worldW * x, 0.09, worldH * z, length, 0.18, 0.30);
       rail.rotation.y = rotation;
+      for (const side of [-1, 1]) {
+        const carrier = box(scene, this.root, 'p28-g7-transfer-rail-carrier-' + index + '-' + side,
+          edgeMetal, rail.position.x, 0.23, rail.position.z + side * 0.27, length, 0.12, 0.10);
+        carrier.rotation.y = rotation;
+        carrier.parent = rail;
+        carrier.position.set(0, 0.14, side * 0.27);
+      }
       this.transferRails.push(rail);
     });
 
@@ -237,6 +320,12 @@ export class BabylonMomentumExchangePresentation {
       ring.rotation.x = Math.PI / 2;
       ring.material = capture;
       ring.isPickable = false;
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g7-cradle-polymer-shoe-' + index + '-' + side,
+          polymer, side * 0.47, 0.57, 0, 0.18, 0.20, 0.68);
+        box(scene, root, 'p28-g7-cradle-latch-' + index + '-' + side,
+          edgeMetal, side * 0.64, 0.70, 0, 0.09, 0.28, 0.26);
+      }
       this.captureCradles.push(root);
     });
 
@@ -244,6 +333,12 @@ export class BabylonMomentumExchangePresentation {
       const root = new TransformNode('p27-c8-' + id, scene);
       root.parent = this.root;
       root.position.set(scaled(x), 0, scaled(z));
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g7-drum-retainer-' + id + '-' + side,
+          edgeMetal, side * 0.52, 0.88, 0, 0.16, 1.18, 0.84);
+        box(scene, root, 'p28-g7-drum-latch-' + id + '-' + side,
+          fixture, side * 0.51, 1.42, 0.33, 0.14, 0.16, 0.12);
+      }
       box(scene, root, id + '-pedestal', machinery, 0, 0.34, 0, 0.92, 0.68, 0.92);
       const core = MeshBuilder.CreateCylinder(id + '-core', { height: 1.36, diameter: 0.62, tessellation: 16 }, scene);
       core.parent = root;
@@ -260,14 +355,19 @@ export class BabylonMomentumExchangePresentation {
     }
 
     this.impulseMaterial = new StandardMaterial('p27-c8-countermass-wash-material', scene);
-    this.impulseMaterial.diffuseColor = colorFromHex(0x67b5d5).scale(0.18);
-    this.impulseMaterial.emissiveColor = colorFromHex(0x67b5d5).scale(0.62);
+    // Timed wash = warm, translucent danger pulse. It must not masquerade as
+    // permanent cyan navigation or occlude the player behind a painted slab.
+    this.impulseMaterial.diffuseColor = colorFromHex(0xd48a64).scale(0.22);
+    this.impulseMaterial.emissiveColor = colorFromHex(0xe8ad7d).scale(0.26);
     this.impulseMaterial.specularColor = Color3.Black();
     this.impulseMaterial.alpha = 0.16;
     this.impulseMaterial.disableLighting = true;
     this.impulseMaterial.backFaceCulling = false;
-    ([[0.44, 0.50, 0.16, 0.88], [0.58, 0.50, 0.16, 0.88], [0.72, 0.50, 0.15, 0.84]] as const).forEach(([x, z, wr, dr], index) => {
-      const band = box(scene, this.root, 'p27-c8-countermass-band-' + index, this.impulseMaterial, worldW * x, 0.035, worldH * z, worldW * wr, 0.025, worldH * dr);
+    ([[0.44, 0.50], [0.58, 0.50], [0.72, 0.50]] as const).forEach(([x, z], index) => {
+      const band = box(scene, this.root, 'p27-c8-countermass-band-' + index,
+        this.impulseMaterial, worldW * x, 0.038, worldH * z,
+        worldW * BABYLON_MOMENTUM_WASH_FOOTPRINT.widthFraction, 0.028,
+        worldH * BABYLON_MOMENTUM_WASH_FOOTPRINT.lengthFraction);
       band.setEnabled(false);
       this.impulseBands.push(band);
     });
@@ -275,7 +375,7 @@ export class BabylonMomentumExchangePresentation {
     const navigation = getMapNavigationPlan('momentum-exchange');
     navigation.routes.forEach(route => {
       const material = route.kind === 'primary' ? routePrimary : routeSecondary;
-      const width = route.kind === 'primary' ? 0.12 : 0.076;
+      const width = babylonRouteMarkingWidth(route.kind);
       route.points.slice(0, -1).forEach((point, index) => {
         const next = route.points[index + 1];
         routeSegment(scene, this.root, material, 'p27-c8-route-' + route.id + '-' + index, scaled(point.x), scaled(point.y), scaled(next.x), scaled(next.y), width);
@@ -329,8 +429,59 @@ export class BabylonMomentumExchangePresentation {
     this.bossCore.isPickable = false;
     this.bossCueRoot.setEnabled(false);
 
+    const shared = new Set(this.premiumSurfaces.materials.values());
+    this.premiumBindingCount = this.root.getChildMeshes(false)
+      .filter(mesh => mesh.material instanceof PBRMaterial && shared.has(mesh.material)).length;
+    // High/balanced retain the full mechanical close-up. Compact/mobile keeps
+    // the premium silhouettes and bearings, but avoids per-bolt GPU draw calls
+    // that could delay gameplay-time hazard cues on software-rendered devices.
+    this.performanceDecoration = this.root.getChildMeshes(false).filter((mesh): mesh is Mesh =>
+      mesh instanceof Mesh
+      && /^p28-g7-(?:flywheel-flux-tooth|bearing-service-strut|transfer-frame-bus|drum-latch|cradle-latch|transfer-rail-carrier)-/.test(mesh.name));
+    const size = REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize;
+    this.groundingTexture = RawTexture.CreateRGBATexture(
+      createRefineryContactDepthAlphaData(size), size, size, scene, false, false);
+    this.groundingTexture.hasAlpha = true;
+    this.groundingMaterial = new StandardMaterial('p28-g7-momentum-soft-contact', scene);
+    this.groundingMaterial.diffuseColor = new Color3(0.012, 0.020, 0.026);
+    this.groundingMaterial.specularColor = Color3.Black();
+    this.groundingMaterial.diffuseTexture = this.groundingTexture;
+    this.groundingMaterial.useAlphaFromDiffuseTexture = true;
+    this.groundingMaterial.disableLighting = true;
+    this.groundingMaterial.disableDepthWrite = true;
+    this.groundingMaterial.backFaceCulling = false;
+    this.groundingMaterial.alpha = 0.24;
+    this.groundingSource = MeshBuilder.CreatePlane('p28-g7-momentum-player-contact',
+      { width: 1, height: 1, sideOrientation: Mesh.DOUBLESIDE }, scene);
+    this.groundingSource.parent = this.root;
+    this.groundingSource.material = this.groundingMaterial;
+    this.groundingSource.rotation.x = Math.PI / 2;
+    this.groundingSource.alphaIndex = -300;
+    this.groundingSource.isPickable = false;
+    for (const [index, rig] of this.flywheels.entries()) {
+      const contact = this.groundingSource.createInstance('p28-g7-flywheel-plinth-contact-' + index);
+      contact.parent = this.root;
+      contact.position.set(rig.root.position.x, 0.043, rig.root.position.z);
+      contact.scaling.set(2.6, 1.7, 1);
+      contact.alphaIndex = -300;
+      contact.isPickable = false;
+    }
+    for (const [index, cradle] of this.captureCradles.entries()) {
+      const contact = this.groundingSource.createInstance('p28-g7-cradle-contact-' + index);
+      contact.parent = this.root;
+      contact.position.set(cradle.position.x, 0.043, cradle.position.z);
+      contact.scaling.set(1.7, 1.15, 1);
+      contact.alphaIndex = -300;
+      contact.isPickable = false;
+    }
+    this.staticGroundingCount = this.flywheels.length + this.captureCradles.length;
     this.meshCount = this.root.getChildMeshes(false).length;
     this.root.setEnabled(false);
+    this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env',
+      scene, undefined, false, undefined,
+      () => { this.iblReady = true; }, () => { this.iblReady = false; }, undefined, true);
+    this.iblTexture.name = 'p28-g7-momentum-shared-prefiltered-ibl';
+    this.iblTexture.gammaSpace = false;
 
     const lighting = BABYLON_MOMENTUM_EXCHANGE_LIGHTING;
     this.hemisphere = new HemisphericLight('p27-c8-momentum-hemisphere', new Vector3(-0.16, 1, 0.10), scene);
@@ -371,6 +522,8 @@ export class BabylonMomentumExchangePresentation {
     enableCount(this.serviceFrames, profile.serviceFrameInstances);
     enableCount(this.transferRails, profile.transferRailInstances);
     enableCount(this.captureCradles, profile.captureCradleInstances);
+    const detailedMachinery = renderBudget.tierName !== 'performance';
+    this.performanceDecoration.forEach(mesh => mesh.setEnabled(detailedMachinery));
 
     this.flywheels.forEach((rig, index) => {
       const direction = Number(rig.rotor.metadata?.direction ?? (index % 2 ? 1 : -1));
@@ -390,8 +543,8 @@ export class BabylonMomentumExchangePresentation {
       }
     });
     const washPulse = 0.76 + Math.sin(state.time * 7.2) * 0.22;
-    this.impulseMaterial.alpha = (washMode === 'countermass-wash' ? 0.24 : 0.07) * renderBudget.transparencyScale;
-    this.impulseMaterial.emissiveColor = colorFromHex(0x67b5d5).scale(0.56 * washPulse);
+    this.impulseMaterial.alpha = (washMode === 'countermass-wash' ? 0.10 : 0.02) * renderBudget.transparencyScale;
+    this.impulseMaterial.emissiveColor = colorFromHex(0xe8ad7d).scale(0.15 * washPulse);
 
     const captureObjects = state.objects.filter(object => object.id === 'capture-drum-a' || object.id === 'capture-drum-b');
     const intactCapture = captureObjects.filter(object => object.hp > 0);
@@ -442,6 +595,30 @@ export class BabylonMomentumExchangePresentation {
     this.rimLight.intensity = lighting.rimIntensity * (renderBudget.tierName === 'performance' ? 0.74 : 1);
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
+    this.groundingMaterial.alpha = renderBudget.tierName === 'performance' ? 0.16 : 0.24;
+    this.groundingSource.position.set(px, 0.044, pz);
+    this.groundingSource.scaling.set(1.06, 0.78, 1);
+    const nearby = new Set<number>();
+    const nearbySq = REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius ** 2;
+    for (const enemy of state.enemies) {
+      if (!enemy.active || enemy.dead) continue;
+      const dx = enemy.x - state.player.x, dz = enemy.y - state.player.y;
+      if (dx * dx + dz * dz > nearbySq) continue;
+      nearby.add(enemy.id);
+      let contact = this.enemyGrounding.get(enemy.id);
+      if (!contact) {
+        contact = this.groundingSource.createInstance('p28-g7-momentum-enemy-contact-' + enemy.id);
+        contact.parent = this.root; contact.isPickable = false; contact.alphaIndex = -300;
+        this.enemyGrounding.set(enemy.id, contact);
+      }
+      const scale = refineryActorGroundingScale(enemy.role);
+      contact.position.set(scaled(enemy.x), 0.043, scaled(enemy.y));
+      contact.rotation.x = Math.PI / 2;
+      contact.scaling.set(1.06 * scale, 0.78 * scale, 1);
+    }
+    for (const [id, contact] of this.enemyGrounding) {
+      if (!nearby.has(id)) { contact.dispose(); this.enemyGrounding.delete(id); }
+    }
     this.readabilityLight.position.set(px - 0.5, 2.8, pz + 0.7);
     this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 3.7 : 5.3) * tierScale;
     this.emergencyLight.position.set(px + 1.6, 3.0, pz - 1.4);
@@ -453,11 +630,12 @@ export class BabylonMomentumExchangePresentation {
       light.intensity = enabled ? (index === 0 ? 5.3 : 4.5) * tierScale : 0;
     });
     const routePulse = 0.86 + Math.sin(state.time * 3.6) * 0.14;
-    this.routeMaterials[0].emissiveColor = colorFromHex(0x67b5d5).scale(0.18 * routePulse);
-    this.routeMaterials[1].emissiveColor = colorFromHex(0x3f758d).scale(0.10 * routePulse);
+    this.routeMaterials[0].emissiveColor = colorFromHex(0x36677a).scale(0.026 * routePulse);
+    this.routeMaterials[1].emissiveColor = colorFromHex(0x285363).scale(0.012 * routePulse);
 
-    this.scene.environmentTexture = null;
-    this.scene.environmentIntensity = 0;
+    this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
+    this.scene.environmentIntensity = this.iblReady
+      ? (renderBudget.tierName === 'performance' ? 0.20 : 0.33) : 0;
     this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
     this.scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.scene.imageProcessingConfiguration.exposure = lighting.exposure * (lowVisibility ? 1.04 : 1);
@@ -466,7 +644,24 @@ export class BabylonMomentumExchangePresentation {
     const navigation = getMapNavigationPlan('momentum-exchange');
     const transferGravity = state.sectors[1]?.gravity ?? 0;
     const pbrCount = this.scene.materials.filter(item => item instanceof PBRMaterial).length;
-    this.canvas.dataset.babylonEnvironmentState = 'ready';
+    const premiumReady = BABYLON_MOMENTUM_EXCHANGE_PREMIUM_SURFACES.every(id => {
+      const material = this.premiumSurfaces.get(id);
+      return material.albedoTexture?.isReady() === true
+        && material.bumpTexture?.isReady() === true
+        && material.metallicTexture?.isReady() === true
+        && (!material.emissiveTexture || material.emissiveTexture.isReady());
+    });
+    this.canvas.dataset.momentumPremiumAssetState = premiumReady ? 'ready' : 'loading';
+    this.canvas.dataset.momentumPremiumBindings = String(this.premiumBindingCount);
+    this.canvas.dataset.momentumPremiumSurfaces = BABYLON_MOMENTUM_EXCHANGE_PREMIUM_SURFACES.join(',');
+    this.canvas.dataset.momentumGrounding = 'player+enemies:soft-contact';
+    this.canvas.dataset.momentumGroundedEnemies = String(nearby.size);
+    this.canvas.dataset.momentumGroundedProps = String(this.staticGroundingCount);
+    this.canvas.dataset.babylonRouteMarkingProfile = 'momentum-recessed-transfer-inlay';
+    this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary);
+    this.canvas.dataset.momentumWashFootprint = String(BABYLON_MOMENTUM_WASH_FOOTPRINT.widthFraction);
+    this.canvas.dataset.momentumDetailTier = detailedMachinery ? 'full-hardware' : 'compact-hardware';
+    this.canvas.dataset.babylonEnvironmentState = premiumReady && this.iblReady ? 'ready' : 'loading';
     this.canvas.dataset.environmentVisual = 'procedural-momentum-exchange-babylon';
     this.canvas.dataset.environmentKit = 'flywheel-rig,transfer-frame,electromagnetic-rail,capture-cradle,capture-drum,countermass-band,wayfinding,boss-cue';
     this.canvas.dataset.environmentInstances = String(this.meshCount + this.objectCues.size);
@@ -475,7 +670,7 @@ export class BabylonMomentumExchangePresentation {
     this.canvas.dataset.environmentShadowCasters = 'off';
     this.canvas.dataset.environmentLandmark = 'counter-rotating-flywheel-transfer-lane';
     this.canvas.dataset.environmentServiceDetails = 'transfer-frame:' + profile.serviceFrameInstances + '+capture-cradle:' + profile.captureCradleInstances;
-    this.canvas.dataset.environmentSurfaceDetail = 'flywheel-rig:' + profile.flywheelInstances + '+electromagnetic-rail:' + profile.transferRailInstances;
+    this.canvas.dataset.environmentSurfaceDetail = 'flywheel-rig:' + profile.flywheelInstances + '+electromagnetic-rail:' + profile.transferRailInstances + '+laminated-rim:9+flux-tooth:48+bearing-race:6+frame-bus:12+rail-carrier:8';
     this.canvas.dataset.environmentMachineDetail = 'counter-rotating-flywheel:3+capture-drum:2+countermass-bus:1';
     this.canvas.dataset.environmentComposition = 'brake-deck+near-zero-g-transfer-tunnel+countermass-cradle';
     this.canvas.dataset.environmentMaterials = 'magnetic-machinery+brushed-ferrous+transfer-blue+capture-cyan';
@@ -508,13 +703,16 @@ export class BabylonMomentumExchangePresentation {
     this.canvas.dataset.bossCueState = activeBoss ? 'active-phase-' + activeBoss.bossPhase + ':' + bossPattern : 'queued';
     this.canvas.dataset.babylonMomentumExchangeParity = 'flywheel-transfer-architecture+magnetic-machinery+props+interactables+hazards+countermass-washes+capture-drums+navigation+boss-cues+shared-world-cues';
     this.canvas.dataset.babylonMomentumExchangePlayerPosition = state.player.x.toFixed(1) + ',' + state.player.y.toFixed(1);
+    // Real simulation time is diagnostic-only; the gameplay director owns
+    // both actual 9s/20s wash events and their duration.
+    this.canvas.dataset.momentumSimTime = state.time.toFixed(2);
     this.canvas.dataset.babylonMomentumExchangeRoutes = String(navigation.routes.length);
     this.canvas.dataset.babylonMomentumExchangeLandmarks = navigation.landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;
     this.canvas.dataset.babylonMaterialIntent = 'magnetic-machinery-pbr+transfer-structure+capture-service+shared-world-pbr';
     this.canvas.dataset.babylonLightingBudget = 'tier:' + renderBudget.tierName + '|practical:' + practicalCount + '|shadows:off';
-    this.canvas.dataset.environmentIbl = 'off:momentum-exchange';
-    this.canvas.dataset.environmentLighting = 'momentum-exchange-cool-key+transfer-blue-rim+contact:player+enemy+practical:' + practicalCount + '+shadow:off';
+    this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading';
+    this.canvas.dataset.environmentLighting = 'momentum-exchange-cool-key+transfer-blue-rim+contact:player+enemy+practical:' + practicalCount + '+ibl:shared-prefiltered+shadow:off';
     this.canvas.dataset.environmentShadowBudget = 'off:momentum-exchange-babylon';
     this.canvas.dataset.environmentTone = 'aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2) + '+magnetic-neutral+transfer-blue';
     this.canvas.dataset.locationLighting = 'momentum-exchange:transfer-blue:aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2);
@@ -533,9 +731,16 @@ export class BabylonMomentumExchangePresentation {
 
   dispose() {
     this.release('renderer-dispose');
+    for (const contact of this.enemyGrounding.values()) contact.dispose();
+    this.enemyGrounding.clear();
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose());
     this.root.dispose();
-    this.materials.forEach(item => item.dispose());
+    this.groundingMaterial.dispose();
+    this.groundingTexture.dispose();
+    if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
+    this.iblTexture.dispose();
+    this.ownedMaterials.forEach(item => item.dispose());
+    this.premiumSurfaces.dispose();
     this.impulseMaterial.dispose();
     this.bossCueMaterial.dispose();
     this.hemisphere.dispose();

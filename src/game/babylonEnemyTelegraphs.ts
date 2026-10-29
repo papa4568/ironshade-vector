@@ -463,12 +463,20 @@ export class BabylonEnemyTelegraphs {
     const signal = colorFromHex(profile.color);
     visual.attackMaterial.diffuseColor = signal.scale(0.18);
     visual.attackMaterial.emissiveColor = signal;
-    visual.attackMaterial.alpha = clamp01(0.66 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.1);
+    const momentumWarning = this.canvas.dataset.babylonScenario === 'momentum-exchange';
+    visual.attackMaterial.alpha = clamp01((momentumWarning ? 0.46 : 0.66)
+      + Math.sin(state.time * 10 + enemy.id * 0.73) * (momentumWarning ? 0.055 : 0.1));
     visual.laneMaterial.diffuseColor = signal.scale(0.18);
     visual.laneMaterial.emissiveColor = signal;
-    visual.laneMaterial.alpha = this.canvas.dataset.babylonScenario === 'ice-mine'
-      ? clamp01(0.32 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.06)
-      : visual.attackMaterial.alpha;
+    visual.laneMaterial.alpha = momentumWarning
+      ? clamp01(0.09 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.020)
+      : this.canvas.dataset.babylonScenario === 'ice-mine'
+        ? clamp01(0.32 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.06)
+        : visual.attackMaterial.alpha;
+    // Keep bright, discrete origin/target rings and warning ticks, but not
+    // continuous high-opacity salmon ribbons over moving actors and machinery.
+    visual.sideA.material = momentumWarning ? visual.laneMaterial : visual.attackMaterial;
+    visual.sideB.material = momentumWarning ? visual.laneMaterial : visual.attackMaterial;
 
     const originX = scaled(enemy.x);
     const originZ = scaled(enemy.y);
@@ -479,8 +487,8 @@ export class BabylonEnemyTelegraphs {
     visual.sourceRing.scaling.set(sourceDiameter, sourceDiameter, sourceDiameter);
     const annexWarning = this.canvas.dataset.babylonScenario === 'lattice-annex';
     for (const tick of visual.annexAttackTicks) {
-      tick.setEnabled(annexWarning);
-      tick.scaling.setAll(annexWarning ? 1 + 0.18 * Math.sin(state.time * 10) : 1);
+      tick.setEnabled(annexWarning || momentumWarning);
+      tick.scaling.setAll(annexWarning || momentumWarning ? 1 + 0.18 * Math.sin(state.time * 10) : 1);
     }
 
     let direction = normalizedDirection(enemy.telegraphAim.x, enemy.telegraphAim.y);

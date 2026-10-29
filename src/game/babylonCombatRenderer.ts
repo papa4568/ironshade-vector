@@ -1446,8 +1446,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Keep the operator silhouette separate from the Annex's near-black
     // patterned floor; this is presentation-only and restores on map exit.
     const annexActorLift = this.canvas.dataset.babylonScenario === 'lattice-annex' ? 0.24 : 0;
+    const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.15 : 0;
     this.operatorAccentMaterial.emissiveColor.copyFrom(operatorColor.scale(
-      0.18 + annexActorLift + Math.min(0.35, heat * 0.16 + flash * 0.12),
+      0.18 + annexActorLift + momentumActorLift + Math.min(0.35, heat * 0.16 + flash * 0.12),
     ));
     this.weaponAccentMaterial.diffuseColor.copyFrom(weaponColor.scale(0.5));
     this.weaponAccentMaterial.emissiveColor.copyFrom(weaponColor.scale(
@@ -2034,10 +2035,14 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     visual.variantCue.rotation.z = (silhouette === 'mobile' ? -0.28 : silhouette === 'technical' ? 0.16 : 0)
       + (silhouette === 'mobile' ? Math.sin(state.time * 8 + enemy.id) * 0.08 * speed : 0);
     const annexContrast = this.canvas.dataset.babylonScenario === 'lattice-annex';
-    visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(annexContrast ? 0.22 : 0.06);
-    visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(annexContrast ? 0.13 : 0);
+    const momentumContrast = this.canvas.dataset.babylonScenario === 'momentum-exchange';
+    visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
+      annexContrast ? 0.22 : momentumContrast ? 0.18 : 0.06);
+    visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(
+      annexContrast ? 0.13 : momentumContrast ? 0.10 : 0);
     visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      (annexContrast ? 0.42 : 0.22) + damage.hit * 0.32 + damage.armorBreak * 0.24,
+      (annexContrast ? 0.42 : momentumContrast ? 0.34 : 0.22)
+      + damage.hit * 0.32 + damage.armorBreak * 0.24,
     );
   }
 
@@ -2730,12 +2735,19 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // left on screen without changing their true locations, threat footprints,
     // camera inclination, zoom or touch-target size.
     const annexTouchLanePan = this.canvas.dataset.babylonScenario === 'lattice-annex' && !narrow ? 3.2 : 0;
+    // Momentum's near wheel was cropped by the low-right touch lane. Pan
+    // eye and aim together toward the real transfer machinery, retaining
+    // perspective, touch-aim rays and other maps' established framing.
+    const momentumCombatPan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 1.8 : 0;
+    // Translate eye and target together to reserve the unchanged right-side
+    // RUSH button lane for real enemies and their warning rings.
+    const momentumTouchLanePan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 2.8 : 0;
 
-    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan);
+    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan);
     this.cameraTarget.set(
-      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan,
+      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan,
       0.62,
-      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan,
+      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan,
     );
     this.camera.setTarget(this.cameraTarget);
     this.camera.getViewMatrix(true);

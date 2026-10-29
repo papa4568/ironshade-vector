@@ -1699,13 +1699,25 @@ async function p27C8BabylonMomentumExchangeAudit() {
   await waitFor("document.querySelector('canvas')?.dataset.babylonMomentumExchangePlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C8 Momentum Exchange movement', 5_000);
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonMomentumExchangePlayerPosition ?? ''");
 
-  await waitFor(
-    "(() => { const canvas = document.querySelector('canvas'); return"
-      + " canvas?.dataset.environmentHazardMode === 'countermass-wash'"
-      + " && Number(canvas?.dataset.environmentCountermassWashes ?? 0) > 0; })()",
-    'P27-C8 Momentum Exchange authored countermass wash',
-    16_000,
-  );
+  // High-tier IBL/KTX2 decode can finish after the first 9s/6s pulse on
+  // SwiftShader mobile. Preserve actual active-wash evidence, but allow the
+  // second authored 20s pulse to arrive on that slower software renderer.
+  // A failure includes the real sim clock and hazard state to diagnose it.
+  try {
+    await waitFor(
+      "(() => { const canvas = document.querySelector('canvas'); return"
+        + " canvas?.dataset.environmentHazardMode === 'countermass-wash'"
+        + " && Number(canvas?.dataset.environmentCountermassWashes ?? 0) > 0; })()",
+      'P27-C8 Momentum Exchange authored countermass wash',
+      viewportMode === 'mobile-landscape' ? 42_000 : 16_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate("(() => { const d = document.querySelector('canvas')?.dataset ?? {}; return {"
+      + " simTime: d.momentumSimTime, mode: d.environmentHazardMode, washes: d.environmentCountermassWashes,"
+      + " frames: d.babylonFrames, tier: d.renderTier, art: d.babylonEnvironmentState,"
+      + " scenario: d.babylonScenario, premium: d.momentumPremiumAssetState }; })()");
+    throw new Error(String(error) + '; momentum-wash-diagnostic=' + JSON.stringify(diagnostic));
+  }
 
   const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
     + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
@@ -2244,6 +2256,25 @@ async function p27A2BabylonBackendAudit() {
     `(() => { const canvas = document.querySelector('canvas'); return canvas?.dataset.babylonEnemyState === 'ready' && Number(canvas?.dataset.enemyLoadingCount ?? 0) === 0; })()`,
     'P27-B4 Babylon enemy post-fire settle',
     10_000,
+  );
+
+  // Chrome may lose WebGPU mid-fight and legitimately recreate the complete
+  // authored scene on WebGL2. Check the new scene's actual LOD readiness, not
+  // the old engine's transient "loading" flag, before asserting parity.
+  const refineryDeviceLost = await evaluate(`(document.querySelector('canvas')?.dataset.babylonBackendFallbackReason ?? '').includes('WebGPU device lost')`);
+  // The runtime can be initialized and drawing while real KTX2/IBL
+  // environment assets continue uploading. Await actual authored readiness
+  // on *both* native WebGL2 and device-loss fallback; no placeholder passes.
+  await waitFor(
+    `(() => { const d = document.querySelector('canvas')?.dataset; return d?.babylonInit === 'ready'
+      && d?.babylonEnvironmentState === 'ready'
+      && d?.environmentVisual === 'authored-refinery-babylon'
+      && !d?.babylonEnvironmentError
+      && (!${refineryDeviceLost} || d?.babylonBackend === 'webgl2'); })()`,
+    refineryDeviceLost
+      ? 'P27-B2 fully reauthored refinery after actual WebGPU device loss'
+      : 'P27-B2 fully authored refinery after initial asset upload',
+    45_000,
   );
 
   const state = await evaluate(`(() => {
