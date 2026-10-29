@@ -2262,17 +2262,20 @@ async function p27A2BabylonBackendAudit() {
   // authored scene on WebGL2. Check the new scene's actual LOD readiness, not
   // the old engine's transient "loading" flag, before asserting parity.
   const refineryDeviceLost = await evaluate(`(document.querySelector('canvas')?.dataset.babylonBackendFallbackReason ?? '').includes('WebGPU device lost')`);
-  if (refineryDeviceLost) {
-    await waitFor(
-      `(() => { const d = document.querySelector('canvas')?.dataset; return d?.babylonInit === 'ready'
-        && d?.babylonBackend === 'webgl2'
-        && d?.babylonEnvironmentState === 'ready'
-        && d?.environmentVisual === 'authored-refinery-babylon'
-        && !d?.babylonEnvironmentError; })()`,
-      'P27-B2 fully reauthored refinery after actual WebGPU device loss',
-      35_000,
-    );
-  }
+  // The runtime can be initialized and drawing while real KTX2/IBL
+  // environment assets continue uploading. Await actual authored readiness
+  // on *both* native WebGL2 and device-loss fallback; no placeholder passes.
+  await waitFor(
+    `(() => { const d = document.querySelector('canvas')?.dataset; return d?.babylonInit === 'ready'
+      && d?.babylonEnvironmentState === 'ready'
+      && d?.environmentVisual === 'authored-refinery-babylon'
+      && !d?.babylonEnvironmentError
+      && (!${refineryDeviceLost} || d?.babylonBackend === 'webgl2'); })()`,
+    refineryDeviceLost
+      ? 'P27-B2 fully reauthored refinery after actual WebGPU device loss'
+      : 'P27-B2 fully authored refinery after initial asset upload',
+    45_000,
+  );
 
   const state = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
