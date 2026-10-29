@@ -2258,6 +2258,22 @@ async function p27A2BabylonBackendAudit() {
     10_000,
   );
 
+  // Chrome may lose WebGPU mid-fight and legitimately recreate the complete
+  // authored scene on WebGL2. Check the new scene's actual LOD readiness, not
+  // the old engine's transient "loading" flag, before asserting parity.
+  const refineryDeviceLost = await evaluate(`(document.querySelector('canvas')?.dataset.babylonBackendFallbackReason ?? '').includes('WebGPU device lost')`);
+  if (refineryDeviceLost) {
+    await waitFor(
+      `(() => { const d = document.querySelector('canvas')?.dataset; return d?.babylonInit === 'ready'
+        && d?.babylonBackend === 'webgl2'
+        && d?.babylonEnvironmentState === 'ready'
+        && d?.environmentVisual === 'authored-refinery-babylon'
+        && !d?.babylonEnvironmentError; })()`,
+      'P27-B2 fully reauthored refinery after actual WebGPU device loss',
+      35_000,
+    );
+  }
+
   const state = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     return {
