@@ -42,6 +42,9 @@ function enforcePersistentConditions(state: SimState, contract: Contract) {
 }
 
 export function applyMissionSetup(state: SimState, contract: Contract) {
+  // This diagnostic must never carry an earlier contract's purge into a new
+  // mission: only hazards actually allocated after setup can satisfy Cryo QA.
+  state.telemetry.environmentBoiloffDeployments = 0;
   state.bossGateHold = true;
   const classStatus = getClassMechanicStatus(state);
   state.eventText = `${contract.locationName.toUpperCase()} // ${contract.objective.toUpperCase()}${classStatus.id !== 'none' ? ` // ${classStatus.label}` : ''}`;
