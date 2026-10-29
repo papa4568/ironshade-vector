@@ -128,7 +128,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         // The landscape navigation inset can reappear after a WebView reload
         // without another focus callback. Reassert once the decor is attached.
