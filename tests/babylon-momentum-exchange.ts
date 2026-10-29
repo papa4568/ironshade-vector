@@ -231,7 +231,7 @@ assert.ok(g7Capture.includes("d?.babylonScenario === 'momentum-exchange'"));
 assert.ok(g7Capture.includes("d.momentumPremiumAssetState === 'ready'"));
 assert.ok(g7Capture.includes("Number(d.momentumWashFootprint) <= 0.025"));
 assert.ok(g7Capture.includes("d.missionVisualReadiness === 'ready'"));
-assert.ok(g7Capture.includes("await waitFor(ready, 'post-reentry Momentum Exchange authored-world readiness'"));
+assert.ok(g7Capture.includes("await awaitMomentumReady('post-reentry Momentum Exchange authored-world readiness'"));
 assert.ok(g7Capture.includes("const shotsBefore = await evaluate"));
 assert.ok(g7Capture.includes("const touch = async (type, id, x, y)"));
 assert.ok(g7Capture.includes("actionInput: 'manual-aim+live-touch-fire', shotsBefore, shotsAfter"));
