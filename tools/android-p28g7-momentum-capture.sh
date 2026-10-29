@@ -3,6 +3,7 @@
 set -euo pipefail
 PACKAGE=app.ironshade.vector
 ACTIVITY="$PACKAGE/.MainActivity"
+APK=Ironshade-Vector-Android-Smoke.apk
 # Preserve independent failure evidence even when a cold emulator/WebView stalls.
 capture_diagnostics() {
   # The accepted framebuffer is already validated. Capture fallback diagnostics
@@ -19,6 +20,12 @@ capture_diagnostics() {
   adb shell dumpsys activity activities > android-p28g7-momentum-exchange-activity.txt 2>/dev/null || true
 }
 trap capture_diagnostics EXIT
+# This isolated visual job no longer relies on the generic fast-smoke's
+# incidental installation. The workflow already verified the exact SHA and
+# checksum; install that identical artifact and assert the package exists.
+test -s "$APK"
+adb install -r "$APK" >/dev/null
+adb shell pm path "$PACKAGE" | grep -q '^package:'
 # Only the known device-owned 144px cutout compositor failure may cause
 # another pair capture. Each attempt clears app data, creates a new WebView,
 # re-enters the actual finale, and regenerates both *raw* Android PNGs.
@@ -44,6 +51,12 @@ for attempt in 1 2 3; do
   if run_gameplay_pair; then pair_ok=1; break; fi
   if (( attempt >= 3 )); then
     echo 'P28-G7 no accepted raw cutout-free gameplay pair after bounded retries' >&2
+    exit 1
+  fi
+  # Startup failure has no valid pixel report and must remain fail-closed,
+  # rather than accidentally retrying a missing/blank capture as a cutout.
+  if [[ ! -s android-p28g7-momentum-exchange-pixel-report.json ]]; then
+    echo 'P28-G7 capture exited before valid pixel/provenance evidence' >&2
     exit 1
   fi
   # The sole allowable retry is a known valid scene whose only failure is
