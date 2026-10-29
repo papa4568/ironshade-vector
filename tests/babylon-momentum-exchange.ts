@@ -168,7 +168,7 @@ const validG7Proof = {
   mappedObjects: 8, authoredObjects: 8, fallbackObjects: 0,
   artState: 'ready', beforeArtState: 'ready',
   premium: 'ready', beforePremium: 'ready',
-  premiumBindings: 130, ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
+  premiumBindings: 105, ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
   routeStyle: 'momentum-recessed-transfer-inlay', routeMaxWidth: 0.16, washFootprint: 0.014,
   objectiveCue: 'beacon+navigation-path', worldObjects: 8, groundProps: 6,
   actionInput: 'manual-aim+live-touch-fire', shotsBefore: 0, shotsAfter: 1,
@@ -210,7 +210,10 @@ assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .target-
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"])'));
 assert.ok(g7Hud.includes('left: 43%'));
 assert.ok(presentation.includes("const magneticCopper = pbr(scene, 'p28-g7-exposed-magnetic-copper'"));
-assert.ok(presentation.includes('tooth % 2 === 0 ? edgeMetal : magneticCopper'));
+assert.ok(presentation.includes('tooth % 4 === 0 ? edgeMetal : tooth % 4 === 1 ? magneticCopper : structural'));
+// 24 of the 48 indexed flux shoes now use the actual shared bare-metal PBR.
+// This adds premium bindings without lowering the live >=100 acceptance gate.
+assert.ok(presentation.includes("const shared = new Set(this.premiumSurfaces.materials.values())"));
 assert.ok(presentation.includes('ring.material = ringIndex === 1 ? magneticCopper : edgeMetal'));
 assert.ok(renderWorldSource.includes('visual.ringMaterial.emissiveColor = color.scale(momentumHazard ? 0.34 : 1)'));
 assert.ok(renderWorldSource.includes('momentumHazard && hazard.kind ==='));
@@ -245,6 +248,8 @@ assert.ok(g7Shell.includes('uiautomator dump --compressed'));
 assert.ok(g7Shell.includes('node.attrib.get("text") != "Got it"'));
 assert.ok(g7Shell.includes('adb shell input tap "$x" "$y"'));
 assert.ok(g7Shell.includes('for attempt in 1 2 3; do'));
+const androidPrWorkflow = readFileSync('.github/workflows/pr-android-apk.yml', 'utf8');
+assert.ok(androidPrWorkflow.includes('name: Android PR API 35 Smoke\n    needs: android-pr-apk\n    runs-on: ubuntu-24.04\n    timeout-minutes: 35'));
 assert.ok(g7Shell.includes('P28-G7 non-cutout failure is not retryable'));
 assert.ok(g7Workflow.includes('G7 Independent Copilot PNG Inspection'));
 assert.ok(g7Workflow.includes('script: bash tools/android-p28g7-momentum-capture.sh'));
