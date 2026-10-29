@@ -207,6 +207,16 @@ assert.ok(renderWorldSource.includes('momentumWash ? 0xf0a876 : presentation.col
 assert.ok(attackSource.includes('visual.sideA.material = momentumWarning ? visual.laneMaterial : visual.attackMaterial'));
 assert.ok(attackSource.includes('tick.setEnabled(annexWarning || momentumWarning)'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .target-readout'));
+assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"])'));
+assert.ok(g7Hud.includes('left: 43%'));
+assert.ok(presentation.includes("const magneticCopper = pbr(scene, 'p28-g7-exposed-magnetic-copper'"));
+assert.ok(presentation.includes('tooth % 2 === 0 ? edgeMetal : magneticCopper'));
+assert.ok(presentation.includes('ring.material = ringIndex === 1 ? magneticCopper : edgeMetal'));
+assert.ok(renderWorldSource.includes('visual.ringMaterial.emissiveColor = color.scale(momentumHazard ? 0.34 : 1)'));
+assert.ok(renderWorldSource.includes('momentumHazard && hazard.kind ==='));
+assert.ok(attackSource.includes('(momentumWarning ? 0.46 : 0.66)'));
+assert.ok(babylon.includes('const momentumTouchLanePan = this.canvas.dataset.babylonScenario ==='));
+
 assert.ok(babylon.includes("const momentumCombatPan = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(smoke.includes("viewportMode === 'mobile-landscape' ? 42_000 : 16_000"));
 assert.ok(smoke.includes("momentum-wash-diagnostic="));
