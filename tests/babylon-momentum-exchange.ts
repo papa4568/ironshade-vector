@@ -204,8 +204,8 @@ assert.ok(presentation.includes('laminated-rim:9+flux-tooth:48'));
 assert.ok(renderWorldSource.includes("this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(renderWorldSource.includes("hazard.kind === 'vectorWash'"));
 assert.ok(renderWorldSource.includes('momentumWash ? 0xf0a876'));
-assert.ok(attackSource.includes('visual.sideA.material = momentumWarning ? visual.laneMaterial : visual.attackMaterial'));
-assert.ok(attackSource.includes('tick.setEnabled(annexWarning || momentumWarning)'));
+assert.ok(attackSource.includes('visual.sideA.material = momentumWarning || cryoWarning ? visual.laneMaterial : visual.attackMaterial'));
+assert.ok(attackSource.includes('tick.setEnabled(annexWarning || momentumWarning || cryoWarning)'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .target-readout'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"])'));
 assert.ok(g7Hud.includes('left: 43%'));
@@ -217,7 +217,7 @@ assert.ok(presentation.includes("const shared = new Set(this.premiumSurfaces.mat
 assert.ok(presentation.includes('ring.material = ringIndex === 1 ? magneticCopper : edgeMetal'));
 assert.ok(renderWorldSource.includes('visual.ringMaterial.emissiveColor = color.scale(momentumHazard ? 0.34 : 1)'));
 assert.ok(renderWorldSource.includes('momentumHazard && hazard.kind ==='));
-assert.ok(attackSource.includes('(momentumWarning ? 0.46 : 0.66)'));
+assert.ok(attackSource.includes('(momentumWarning ? 0.46 : cryoWarning ? 0.60 : 0.66)'));
 assert.ok(babylon.includes('const momentumTouchLanePan = this.canvas.dataset.babylonScenario ==='));
 
 assert.ok(babylon.includes("const momentumCombatPan = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
