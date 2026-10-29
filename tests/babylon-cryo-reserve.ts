@@ -118,6 +118,7 @@ assert.ok(smoke.includes("environmentBoiloffObserved === 'live-hazard-seen'"));
 assert.ok(!smoke.includes("canvas?.dataset.environmentHazardMode === 'boiloff-purge'"));
 assert.ok(presentation.includes("if (boiloffJets.length > 0) this.boiloffObserved = true"));
 assert.ok(presentation.includes("this.canvas.dataset.environmentBoiloffObserved = this.boiloffObserved ? 'live-hazard-seen' : 'pending'"));
+assert.ok(presentation.includes("this.boiloffObserved = false;\n    this.canvas.dataset.environmentBoiloffObserved = 'pending';"));
 assert.ok(smoke.includes("Orbital Station post-movement authored enemy readiness"));
 assert.ok(smoke.includes("else if (targetLocation === 'cryo-reserve') await p27C9BabylonCryoReserveAudit();"));
 assert.ok(workflow.includes("interdiction.step = 1"));
