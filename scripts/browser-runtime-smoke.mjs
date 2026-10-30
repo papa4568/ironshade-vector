@@ -555,6 +555,20 @@ async function p27C1BabylonOrbitalAudit() {
   await waitFor(`document.querySelector('canvas')?.dataset.babylonOrbitalPlayerPosition !== ${JSON.stringify(beforeMove)}`, 'P27-C1 Orbital Station movement', 5_000);
   const afterMove = await evaluate(`document.querySelector('canvas')?.dataset.babylonOrbitalPlayerPosition ?? ''`);
 
+  // A movement-triggered placement pass can momentarily return the authored
+  // enemies to loading on software mobile WebGL. Wait for genuine readiness,
+  // never waive the source/model, actor-count, or no-fallback conditions.
+  await waitFor(`(() => {
+    const d = document.querySelector('canvas')?.dataset;
+    return d?.babylonScenario === 'orbital-station'
+      && d.babylonEnemyCatalogState === 'ready'
+      && d.babylonEnemyState === 'ready'
+      && Number(d.enemyActive ?? 0) > 0
+      && d.orbitalPremiumAssetState === 'ready'
+      && d.babylonSharedWorldArtState === 'ready'
+      && Number(d.babylonSharedWorldFallbackCount ?? 0) === 0;
+  })()`, 'Orbital Station post-movement authored enemy readiness', 45_000);
+
   const state = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     return {
@@ -1700,8 +1714,8 @@ async function p27C8BabylonMomentumExchangeAudit() {
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonMomentumExchangePlayerPosition ?? ''");
 
   // High-tier IBL/KTX2 decode can finish after the first 9s/6s pulse on
-  // SwiftShader mobile. Preserve actual active-wash evidence, but allow the
-  // second authored 20s pulse to arrive on that slower software renderer.
+  // SwiftShader. The 16s desktop wall clock reached just 3.6s of actual sim
+  // time in CI. Allow the actual authored 9s/20s pulse, not a fake timestamp.
   // A failure includes the real sim clock and hazard state to diagnose it.
   try {
     await waitFor(
@@ -1709,7 +1723,7 @@ async function p27C8BabylonMomentumExchangeAudit() {
         + " canvas?.dataset.environmentHazardMode === 'countermass-wash'"
         + " && Number(canvas?.dataset.environmentCountermassWashes ?? 0) > 0; })()",
       'P27-C8 Momentum Exchange authored countermass wash',
-      viewportMode === 'mobile-landscape' ? 42_000 : 16_000,
+      viewportMode === 'mobile-landscape' ? 42_000 : 90_000,
     );
   } catch (error) {
     const diagnostic = await evaluate("(() => { const d = document.querySelector('canvas')?.dataset ?? {}; return {"
@@ -1830,13 +1844,22 @@ async function p27C9BabylonCryoReserveAudit() {
   await waitFor("document.querySelector('canvas')?.dataset.babylonCryoReservePlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C9 Cryo Reserve movement', 5_000);
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonCryoReservePlayerPosition ?? ''");
 
-  await waitFor(
-    "(() => { const canvas = document.querySelector('canvas'); return"
-      + " canvas?.dataset.environmentHazardMode === 'boiloff-purge'"
-      + " && Number(canvas?.dataset.environmentBoiloffJets ?? 0) > 0; })()",
-    'P27-C9 Cryo Reserve authored boiloff purge',
-    17_000,
-  );
+  // Require the director to have allocated a real boiloffJet to the sim,
+  // even if its 6.5s lifetime expired before slow mobile WebGL art was ready.
+  // A timeline string or locationEventA flag alone does not satisfy this.
+  // High-detail mobile WebGL can advance simulation more slowly than wall
+  // time. Bound the wait, but require a real allocated event (not the timer
+  // crossing 10s) and include sim-time diagnostics on failure.
+  try {
+    await waitFor(
+      "document.querySelector('canvas')?.dataset.environmentBoiloffObserved === 'sim-hazard-deployed'",
+      'P27-C9 Cryo Reserve observed real authored boiloff purge',
+      90_000,
+    );
+  } catch (error) {
+    const timing = await evaluate("(() => { const d = document.querySelector('canvas')?.dataset; return { simTime: d?.cryoSimulationTime, deployed: d?.cryoSimulatedPurgeCount, art: d?.missionVisualReadiness }; })()");
+    throw new Error(String(error) + ' simulated-purge-diagnostics=' + JSON.stringify(timing));
+  }
 
   const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
     + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
@@ -1844,6 +1867,7 @@ async function p27C9BabylonCryoReserveAudit() {
     + " service: canvas?.dataset.environmentServiceDetails ?? '', surface: canvas?.dataset.environmentSurfaceDetail ?? '',"
     + " machinery: canvas?.dataset.environmentMachineDetail ?? '', pressure: canvas?.dataset.environmentPressureProfile ?? '',"
     + " valves: canvas?.dataset.environmentPurgeValves ?? '', jets: Number(canvas?.dataset.environmentBoiloffJets ?? 0),"
+    + " boiloffObserved: canvas?.dataset.environmentBoiloffObserved ?? '',"
     + " hazardMode: canvas?.dataset.environmentHazardMode ?? '', localCues: Number(canvas?.dataset.interactableLocationCueCount ?? 0),"
     + " boss: canvas?.dataset.bossPresentation ?? '', bossCueState: canvas?.dataset.bossCueState ?? '',"
     + " parity: canvas?.dataset.babylonCryoReserveParity ?? '', identity: canvas?.dataset.locationArtIdentity ?? '',"
@@ -1871,8 +1895,8 @@ async function p27C9BabylonCryoReserveAudit() {
     || !state.machinery.includes('vacuum-jacket-tank:7+purge-valve:2+siphon-relay:')
     || !pressureWithinLimitedAtmosphere
     || !/^(armed|partial|routed|offline):[0-2]\/[0-2]$/.test(state.valves)
-    || state.jets < 1
-    || state.hazardMode !== 'boiloff-purge'
+    || state.boiloffObserved !== 'sim-hazard-deployed'
+    || !['boiloff-purge', 'nominal'].includes(state.hazardMode)
     || state.localCues < 1
     || state.boss !== 'oren-saal'
     || !/^(queued|active-phase-[12]:(none|purgeLance|busSiphon|busReroute))$/.test(state.bossCueState)
@@ -1892,7 +1916,7 @@ async function p27C9BabylonCryoReserveAudit() {
 
   console.log('BROWSER_P27C9_BABYLON_CRYO_RESERVE_PASS viewport=' + viewportMode
     + ' identity=' + state.identity + ' routes=' + state.routes + ' landmarks=' + state.landmarks
-    + ' pressure=' + state.pressure + ' valves=' + state.valves + ' purge=' + state.jets + ':' + state.hazardMode
+    + ' pressure=' + state.pressure + ' valves=' + state.valves + ' purge=' + state.jets + ':' + state.hazardMode + ':observed-' + state.boiloffObserved
     + ' boss=' + state.boss + ':' + state.bossCueState + ' movement=' + beforeMove + '->' + afterMove
     + ' lighting=' + state.locationLighting);
   return state;
