@@ -307,6 +307,8 @@ try {
   const beforeVisual = await evaluate(`(() => {
     const d = document.querySelector('canvas')?.dataset ?? {};
     return { assetIds: d.babylonSharedWorldAssets ?? '',
+      mappedObjects: Number(d.babylonSharedWorldMappedCount ?? 0),
+      authoredObjects: Number(d.babylonSharedWorldAuthoredCount ?? 0),
       artState: d.babylonSharedWorldArtState ?? '',
       premium: d.cryoPremiumAssetState ?? '', ibl: d.environmentIbl ?? '' };
   })()`);
@@ -399,7 +401,10 @@ try {
     actionScreenshot: 'android-p28g8-cryo-reserve-action.png',
     screenshotsBytes: [normalBytes, actionBytes], normalBoiloff, beforePosition: before,
     actionInput: 'manual-aim+live-touch-fire', shotsBefore, shotsAfter,
-    beforeAssetIds: beforeVisual.assetIds, beforeArtState: beforeVisual.artState,
+    beforeAssetIds: beforeVisual.assetIds,
+    beforeMappedObjects: beforeVisual.mappedObjects,
+    beforeAuthoredObjects: beforeVisual.authoredObjects,
+    beforeArtState: beforeVisual.artState,
     beforePremium: beforeVisual.premium, beforeIbl: beforeVisual.ibl, ...result,
   }, null, 2) + '\n');
   console.log('ANDROID_P28G8_CRYO_VISUAL_CAPTURE_PASS route=cryo-reserve authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
