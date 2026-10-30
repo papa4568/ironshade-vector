@@ -20,6 +20,7 @@ const encounters = readFileSync('src/game/encounters.ts', 'utf8');
 const director = readFileSync('src/game/director.ts', 'utf8');
 const interdiction = readFileSync('src/game/postKhepriInterdiction.ts', 'utf8');
 const smoke = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
+const hudCss = readFileSync('src/combatHudGlance.css', 'utf8');
 const workflow = readFileSync('.github/workflows/browser-e2e.yml', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
 
@@ -148,7 +149,7 @@ const validG8Proof = {
   actionInput: 'manual-aim+live-touch-fire', shotsBefore: 2, shotsAfter: 5,
   normalBoiloff: 1,
   hazardLanguage: 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing',
-  surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:7',
+  surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:21+frost-scar:56',
 };
 assert.ok(auditCryoVisualProvenance(validG8Proof).valid);
 for (const [label, patch, reason] of [
@@ -175,6 +176,10 @@ assert.ok(g8Capture.includes("interdiction.step = 1"));
 assert.ok(g8Capture.includes("interdiction.completed = ['interdiction-0-undecided']"));
 assert.ok(g8Capture.includes("d?.babylonScenario === 'cryo-reserve'"));
 assert.ok(g8Capture.includes('const current = target.url;'));
+assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .boss-name'));
+assert.ok(hudCss.includes('white-space: normal;'));
+assert.ok(hudCss.includes('text-overflow: clip;'));
+assert.ok(presentation.includes("MeshBuilder.CreateSphere('p28-g8-ambient-cold-vent-"));
 assert.ok(g8Capture.includes('origin=observed-live-webview'));
 assert.ok(!g8Capture.includes("waitFor('location.href', 'initial cold WebView URL', 120_000)"));
 assert.ok(g8Capture.includes("d.cryoPremiumAssetState === 'ready'"));
@@ -238,7 +243,9 @@ for (const marker of [
   "p28-g8-cryogenic-sightline-",
   "p28-g8-tank-pressure-gauge-",
   "p28-g8-ambient-cold-vent-",
-  "this.ambientColdVaporMaterial.alpha = 0.19",
+  "this.ambientColdVaporMaterial.alpha = 0.38",
+  "this.ambientColdVaporMaterial.disableDepthWrite = true",
+  "p28-g8-tank-frost-scar-",
   "jacket.emissiveColor = colorFromHex(0x80b5c5).scale(0.11)",
   "this.ambientColdVents.forEach((vent, index) =>",
   "this.ambientColdVaporMaterial.dispose()",
