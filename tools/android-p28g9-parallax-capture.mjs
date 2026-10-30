@@ -312,7 +312,7 @@ try {
       premium: d.parallaxPremiumAssetState ?? '', ibl: d.environmentIbl ?? '' };
   })()`);
   const normalBytes = await capture('android-p28g9-parallax-array-normal.png');
-  const before = await evaluate("document.querySelector('canvas')?.dataset.babylonParallaxReservePlayerPosition ?? ''");
+  const before = await evaluate("document.querySelector('canvas')?.dataset.babylonParallaxArrayPlayerPosition ?? ''");
   await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
   await sleep(650);
   await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
@@ -353,7 +353,7 @@ try {
         shotsAfter = await evaluate("Number(document.querySelector('.game-root')?.dataset.weaponShots ?? '0')");
       }
       if (shotsAfter > shotsBefore) {
-        await waitFor(ready, 'live-fire Parallax authored scene', 20_000);
+        await waitFor(ready, 'live-fire Parallax Array authored scene', 20_000);
         actionBytes = await capture('android-p28g9-parallax-array-action.png');
       }
     } finally {
@@ -383,7 +383,7 @@ try {
       hazardLanguage: d.environmentHazardLanguage ?? '', surfaceDetail: d.environmentSurfaceDetail ?? '',
       referenceNodeIds: d.environmentReferenceNodeIds ?? '', shearTimeline: d.environmentShearTimeline ?? '',
       worldObjects: Number(d.worldObjectCount || 0),
-      playerPosition: d.babylonParallaxReservePlayerPosition ?? '',
+      playerPosition: d.babylonParallaxArrayPlayerPosition ?? '',
       objectiveCue: d.objectiveWorldCue ?? '',
       width: canvas?.width ?? 0, height: canvas?.height ?? 0,
     };
@@ -407,7 +407,7 @@ try {
     beforeArtState: beforeVisual.artState,
     beforePremium: beforeVisual.premium, beforeIbl: beforeVisual.ibl, ...result,
   }, null, 2) + '\n');
-  console.log('ANDROID_P28G9_CRYO_VISUAL_CAPTURE_PASS route=parallax-array authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
+  console.log('ANDROID_P28G9_PARALLAX_VISUAL_CAPTURE_PASS route=parallax-array authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);
 } finally {
   socket.close();
 }
