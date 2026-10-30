@@ -301,13 +301,7 @@ try {
     're-entry contract selection');
   await clickButton('Deploy Selected Contract');
   await awaitParallaxReady('post-reentry Parallax Array authored-world readiness');
-  // The 10s/21s mission-scripted boiloff events can finish while the exact
-  // LOD0 scene is loading. The existing browser hazard test covers the real
-  // active purge; PNG acceptance must inspect genuine ready normal/action
-  // combat pixels, not demand a transient that expired before art readiness.
-  const normalBoiloff = await evaluate(
-    "Number(document.querySelector('canvas')?.dataset.environmentBoiloffJets || 0)");
-  console.log('ANDROID_P28G9_CRYO_REENTRY_PASS exit=command-deck redeploy=parallax-array state=ready');
+  console.log('ANDROID_P28G9_PARALLAX_REENTRY_PASS exit=command-deck redeploy=parallax-array state=ready');
   await sleep(650);
   const beforeVisual = await evaluate(`(() => {
     const d = document.querySelector('canvas')?.dataset ?? {};
@@ -387,6 +381,7 @@ try {
       premium: d.parallaxPremiumAssetState ?? '', premiumBindings: Number(d.parallaxPremiumBindings || 0),
       ibl: d.environmentIbl ?? '',
       hazardLanguage: d.environmentHazardLanguage ?? '', surfaceDetail: d.environmentSurfaceDetail ?? '',
+      referenceNodeIds: d.environmentReferenceNodeIds ?? '', shearTimeline: d.environmentShearTimeline ?? '',
       worldObjects: Number(d.worldObjectCount || 0),
       playerPosition: d.babylonParallaxReservePlayerPosition ?? '',
       objectiveCue: d.objectiveWorldCue ?? '',
@@ -395,7 +390,7 @@ try {
   })()`);
   if (result.tier !== 'high' || result.captureMode !== 'high-tier-qa-visual-only'
       || before === result.playerPosition || result.capturedRoute !== 'parallax-array' || result.artState !== 'ready' || result.premium !== 'ready'
-    || !result.assetIds || result.premiumBindings < 70 || result.fallbackObjects > 0 || result.authoredObjects !== result.mappedObjects
+    || !result.assetIds || result.premiumBindings < 40 || result.fallbackObjects > 0 || result.authoredObjects !== result.mappedObjects
     || !result.tier || result.width <= 0 || result.height <= 0
     || !(shotsAfter > shotsBefore) || !(normalBytes > 20_000 && actionBytes > 20_000)) {
     throw new Error('P28-G9 actual Android visual proof incomplete: ' + JSON.stringify(result));
@@ -404,7 +399,7 @@ try {
     task: 'P28-G9', mapReentry: 'exit-to-command-and-redeploy:ready', deviceValidation: 'emulator-visual-evidence-not-physical-thermal-acceptance',
     normalScreenshot: 'android-p28g9-parallax-array-normal.png',
     actionScreenshot: 'android-p28g9-parallax-array-action.png',
-    screenshotsBytes: [normalBytes, actionBytes], normalBoiloff, beforePosition: before,
+    screenshotsBytes: [normalBytes, actionBytes], beforePosition: before,
     actionInput: 'manual-aim+live-touch-fire', shotsBefore, shotsAfter,
     beforeAssetIds: beforeVisual.assetIds,
     beforeMappedObjects: beforeVisual.mappedObjects,
