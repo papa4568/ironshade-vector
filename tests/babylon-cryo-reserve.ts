@@ -155,7 +155,7 @@ const validG8Proof = {
   actionInput: 'manual-aim+live-touch-fire', shotsBefore: 2, shotsAfter: 5,
   normalBoiloff: 1,
   hazardLanguage: 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing',
-  surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:21+frost-scar:56+frost-cladding:14',
+  surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:21+frost-scar:56+frost-cladding:14+jacket-relief-panel:42+instrument-trunk:14',
 };
 assert.ok(auditCryoVisualProvenance(validG8Proof).valid);
 // Newly activated mission hardware is not late asset loading: both frames
@@ -278,7 +278,10 @@ for (const marker of [
   "p28-g8-frozen-jacket-cladding-",
   "this.ambientColdVaporMaterial.disableDepthWrite = true",
   "p28-g8-tank-frost-scar-",
-  "jacket.emissiveColor = colorFromHex(0x80b5c5).scale(0.11)",
+  "jacket.emissiveColor = colorFromHex(0x80b5c5).scale(0.055)",
+  "p28-g8-vacuum-jacket-relief-panel-",
+  "p28-g8-tank-instrument-trunk-",
+  "const pipeData = [[0.28, 0.28, 9.0], [0.46, 0.72, 10.4]",
   "this.ambientColdVents.forEach((vent, index) =>",
   "this.ambientColdVaporMaterial.dispose()",
   "this.canvas.dataset.cryoPremiumBindings = String(this.premiumBindingCount)",
@@ -292,6 +295,8 @@ assert.ok(telegraphs.includes("const laneWidth = Math.max(0.08, scaled(profile.w
 assert.ok(telegraphs.includes("tick.setEnabled(annexWarning || momentumWarning || cryoWarning)"));
 assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;"));
 assert.ok(babylon.includes("const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
+assert.ok(babylon.includes("colorFromHex(0xa6d8e8).scale(0.27)"));
+assert.ok(presentation.includes("jacket.albedoColor = new Color3(0.73, 0.85, 0.94)"));
 assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';"));
 assert.ok(readiness.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve');"));
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
