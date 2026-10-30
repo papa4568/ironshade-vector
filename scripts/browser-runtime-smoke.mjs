@@ -1935,6 +1935,18 @@ async function p27C10BabylonParallaxArrayAudit() {
       + " && canvas?.dataset.babylonScene === 'active'"
       + " && canvas?.dataset.babylonScenario === 'parallax-array'"
       + " && canvas?.dataset.babylonEnvironmentState === 'ready'"
+      + " && canvas?.dataset.parallaxPremiumAssetState === 'ready'"
+      + " && Number(canvas?.dataset.parallaxPremiumBindings ?? 0) >= 40"
+      + " && canvas?.dataset.parallaxPremiumSurfaces === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'"
+      + " && canvas?.dataset.environmentIbl === 'shared-prefiltered:ready'"
+      + " && canvas?.dataset.babylonRouteMarkingProfile === 'parallax-recessed-metrology-inlay'"
+      + " && Number(canvas?.dataset.babylonRouteMarkingMaxWidth ?? 1) <= 0.16"
+      + " && canvas?.dataset.babylonSharedWorldArtState === 'ready'"
+      + " && Number(canvas?.dataset.babylonSharedWorldMappedCount ?? 0) > 0"
+      + " && Number(canvas?.dataset.babylonSharedWorldMappedCount ?? 0) === Number(canvas?.dataset.babylonSharedWorldAuthoredCount ?? -1)"
+      + " && Number(canvas?.dataset.babylonSharedWorldFallbackCount ?? -1) === 0"
+      + " && Number(canvas?.dataset.babylonSharedWorldPendingCount ?? -1) === 0"
+      + " && Number(canvas?.dataset.babylonSharedWorldFailedCount ?? -1) === 0"
       + " && canvas?.dataset.environmentVisual === 'procedural-parallax-array-babylon'"
       + " && canvas?.dataset.environmentLandmark === 'three-point-long-baseline'"
       + " && canvas?.dataset.environmentComposition === 'three-point-baseline+cross-track-frames+perimeter-shear-anchors'"
@@ -1961,7 +1973,7 @@ async function p27C10BabylonParallaxArrayAudit() {
       + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
       + " && Number(canvas?.dataset.babylonFrames ?? 0) >= 2; })()",
     'P27-C10 Babylon Parallax Array parity',
-    45_000,
+    90_000,
   );
 
   const beforeMove = await evaluate("document.querySelector('canvas')?.dataset.babylonParallaxArrayPlayerPosition ?? ''");
@@ -1994,6 +2006,12 @@ async function p27C10BabylonParallaxArrayAudit() {
     + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
     + " profile: canvas?.dataset.environmentPerformanceProfile ?? '', budget: canvas?.dataset.environmentInstanceBudget ?? '',"
     + " service: canvas?.dataset.environmentServiceDetails ?? '', surface: canvas?.dataset.environmentSurfaceDetail ?? '',"
+    + " premium: canvas?.dataset.parallaxPremiumAssetState ?? '', bindings: Number(canvas?.dataset.parallaxPremiumBindings ?? 0),"
+    + " ibl: canvas?.dataset.environmentIbl ?? '', route: canvas?.dataset.babylonRouteMarkingProfile ?? '',"
+    + " mapped: Number(canvas?.dataset.babylonSharedWorldMappedCount ?? 0),"
+    + " authored: Number(canvas?.dataset.babylonSharedWorldAuthoredCount ?? 0),"
+    + " fallbacks: Number(canvas?.dataset.babylonSharedWorldFallbackCount ?? 0),"
+    + " art: canvas?.dataset.babylonSharedWorldArtState ?? '',"
     + " machinery: canvas?.dataset.environmentMachineDetail ?? '', gravity: canvas?.dataset.environmentGravityProfile ?? '',"
     + " references: canvas?.dataset.environmentReferenceNodes ?? '', shear: Number(canvas?.dataset.environmentReferenceShear ?? 0),"
     + " hazardMode: canvas?.dataset.environmentHazardMode ?? '', localCues: Number(canvas?.dataset.interactableLocationCueCount ?? 0),"
@@ -2018,6 +2036,11 @@ async function p27C10BabylonParallaxArrayAudit() {
     || !state.budget.includes('console:3')
     || !state.service.includes('reference-console:3')
     || !state.surface.includes('reference-frame:')
+    || !state.surface.includes('pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8')
+    || state.premium !== 'ready' || state.bindings < 40
+    || state.ibl !== 'shared-prefiltered:ready'
+    || state.route !== 'parallax-recessed-metrology-inlay'
+    || state.mapped < 1 || state.mapped !== state.authored || state.fallbacks !== 0 || state.art !== 'ready'
     || !state.machinery.includes('baseline-pylon:3+mass-carriage:3+live-baseline-servo:')
     || !gravitySheared
     || !/^(armed|partial|aligned|offline):[0-3]\/[0-3]$/.test(state.references)
@@ -2043,7 +2066,8 @@ async function p27C10BabylonParallaxArrayAudit() {
     + ' identity=' + state.identity + ' routes=' + state.routes + ' landmarks=' + state.landmarks
     + ' gravity=' + state.gravity + ' references=' + state.references + ' shear=' + state.shear + ':' + state.hazardMode
     + ' boss=' + state.boss + ':' + state.bossCueState + ' movement=' + beforeMove + '->' + afterMove
-    + ' lighting=' + state.locationLighting);
+    + ' lighting=' + state.locationLighting + ' premium=' + state.premium + ':' + state.bindings
+    + ' authored=' + state.authored + '/' + state.mapped + ' ibl=' + state.ibl);
   return state;
 }
 
