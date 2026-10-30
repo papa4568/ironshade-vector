@@ -219,16 +219,18 @@ try {
       && Number(d.babylonFrames || 0) >= 2
       && d.babylonEnvironmentState === 'ready'
       && d.parallaxPremiumAssetState === 'ready'
-      && Number(d.parallaxPremiumBindings || 0) >= 70
+      && Number(d.parallaxPremiumBindings || 0) >= 40
       && d.parallaxPremiumSurfaces === 'deck-plate,painted-metal,bare-metal,polymer-rubber,emissive-fixture'
       && d.environmentIbl === 'shared-prefiltered:ready'
-      && d.environmentHazardLanguage === 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing'
-      && d.environmentSurfaceDetail?.includes('jacket-hoop:35')
-      && d.environmentSurfaceDetail?.includes('thermal-sensor:14')
-      && d.environmentSurfaceDetail?.includes('gallery-valve-bank:12')
-      && d.babylonRouteMarkingProfile === 'parallax-recessed-service-inlay'
+      && d.environmentHazardLanguage === 'shared-hazards+reference-shear+gravity-split+physical-baseline-alignment'
+      && d.environmentReferenceNodeIds === 'reference-node-a,reference-node-b,reference-node-c'
+      && d.environmentShearTimeline === '8.0s:first-shear>19.0s:deep-reference-reversal'
+      && d.environmentSurfaceDetail?.includes('pylon-fiducial:27')
+      && d.environmentSurfaceDetail?.includes('frame-scale:30')
+      && d.environmentSurfaceDetail?.includes('carriage-stud:18')
+      && d.babylonRouteMarkingProfile === 'parallax-recessed-metrology-inlay'
       && Number(d.babylonRouteMarkingMaxWidth) > 0
-      && Number(d.babylonRouteMarkingMaxWidth) <= 0.20
+      && Number(d.babylonRouteMarkingMaxWidth) <= 0.16
       && d.babylonSharedWorldArtState === 'ready'
       && d.missionVisualReadiness === 'ready'
       && d.missionVisualMode === 'authored'
@@ -254,15 +256,14 @@ try {
           'babylonInit','babylonFrames','babylonEnvironmentState',
           'parallaxPremiumAssetState','parallaxPremiumBindings',
           'parallaxPremiumSurfaces','environmentIbl','environmentHazardLanguage',
-          'environmentSurfaceDetail','parallaxGrounding','parallaxGroundedProps',
-          'parallaxWashFootprint','babylonRouteMarkingProfile',
+          'environmentReferenceNodeIds','environmentShearTimeline',
+          'environmentSurfaceDetail','babylonRouteMarkingProfile',
           'babylonRouteMarkingMaxWidth','babylonSharedWorldArtState',
           'missionVisualReadiness','missionVisualMode',
           'babylonSharedWorldPendingCount','babylonSharedWorldFailedCount',
           'babylonSharedWorldMappedCount','babylonSharedWorldAuthoredCount',
           'babylonSharedWorldFallbackCount','objectiveWorldCue',
-          'interactableReadability','babylonEnvironmentError',
-          'parallaxPremiumAssetError','babylonSharedWorldError'];
+          'interactableReadability','babylonEnvironmentError','babylonSharedWorldError'];
         return Object.fromEntries(fields.map(key => [key, d[key] ?? null]));
       })()`);
       throw new Error(String(error) + '; P28G9_ACTUAL_READINESS_FIELDS=' + JSON.stringify(diagnostic));
