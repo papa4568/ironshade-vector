@@ -31,8 +31,25 @@ export function auditCryoVisualProvenance(state) {
     problems.push('missing-cryo-material-hardware-detail');
   if (state?.hazardLanguage !== 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing')
     problems.push('missing-boiloff-thermal-hazard-cues');
-  if (state?.beforeAssetIds !== state?.assetIds || state?.beforeArtState !== 'ready'
-      || state?.beforePremium !== 'ready' || state?.beforeIbl !== 'shared-prefiltered:ready')
+  // babylonSharedWorldAssets is an inventory of ACTIVE authored objects, not
+  // immutable loaded files. A new object may legitimately activate between
+  // movement and live FIRE. Both snapshots must already be authored-ready,
+  // and any newly active family must be explained by an increase in the
+  // active, fully authored mapped-object inventory (never a late GLB load).
+  const beforeIds = (state?.beforeAssetIds ?? '').split(',').filter(Boolean);
+  const afterIds = (state?.assetIds ?? '').split(',').filter(Boolean);
+  const addedIds = afterIds.filter(id => !beforeIds.includes(id));
+  const onlyNewlyActivated = addedIds.length > 0
+    && beforeIds.length > 0
+    && beforeIds.every(id => afterIds.includes(id))
+    && finite('beforeMappedObjects') > 0
+    && finite('beforeMappedObjects') === finite('beforeAuthoredObjects')
+    && mapped > finite('beforeMappedObjects')
+    && authored > finite('beforeAuthoredObjects')
+    && addedIds.length <= mapped - finite('beforeMappedObjects');
+  if ((state?.beforeAssetIds !== state?.assetIds && !onlyNewlyActivated)
+      || state?.beforeArtState !== 'ready' || state?.beforePremium !== 'ready'
+      || state?.beforeIbl !== 'shared-prefiltered:ready')
     problems.push('late-asset-pop-in');
   return { valid: problems.length === 0, problems };
 }
