@@ -505,6 +505,8 @@ export class BabylonCryoReservePresentation {
     });
 
     const boiloffJets = state.hazards.filter(hazard => hazard.active && hazard.kind === 'boiloffJet');
+    this.canvas.dataset.cryoSimulationTime = state.time.toFixed(2);
+    this.canvas.dataset.cryoSimulatedPurgeCount = String(state.telemetry.environmentBoiloffDeployments ?? 0);
     // Read authoritative sim telemetry written only when the director actually
     // allocates a boiloffJet. Slow WebGL art loads can miss its entire lifetime.
     // Unlike a scheduled-time flag, this cannot credit a purge that did not spawn.
