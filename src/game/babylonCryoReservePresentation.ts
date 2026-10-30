@@ -175,11 +175,13 @@ export class BabylonCryoReservePresentation {
     const structural = this.premiumSurfaces.get('bare-metal');
     const insulation = this.premiumSurfaces.get('polymer-rubber');
     const fixture = this.premiumSurfaces.get('emissive-fixture');
-    // Retain the shipped painted-metal base/normal/ORM textures; lift dark
-    // vacuum-jacket recesses just enough to expose their authored material.
-    jacket.albedoColor = new Color3(1.17, 1.23, 1.28);
-    jacket.emissiveColor = colorFromHex(0x80b5c5).scale(0.11);
+    // Retain the shipped painted-metal base/normal/ORM maps. Cooler, darker
+    // steel separates their microstructure from the bright insulated cuffs.
+    jacket.albedoColor = new Color3(0.73, 0.85, 0.94);
+    jacket.emissiveColor = colorFromHex(0x80b5c5).scale(0.055);
     const frost = pbr(scene, 'p28-g8-frosted-vacuum-insulation', 0xb9dbe4, 0.09, 0.78, 0x8dd7ea, 0.11);
+    const jacketPanel = pbr(scene, 'p28-g8-jacket-service-panels', 0x314b5a, 0.62, 0.53, 0x6caac0, 0.035);
+    const frozenPanel = pbr(scene, 'p28-g8-frost-stippled-insulation', 0x86afc0, 0.12, 0.90, 0x9cdeea, 0.055);
     this.ambientColdVaporMaterial = new StandardMaterial('p28-g8-ambient-cold-vent-material', scene);
     // A single small alpha-feathered texture makes the neck vapor read as
     // translucent gas at the gameplay camera, not opaque gray discs.
@@ -209,7 +211,7 @@ export class BabylonCryoReservePresentation {
     // Recessed wayfinding has to remain distinct from bright boiloff and boss tells.
     const routePrimary = pbr(scene, 'p27-c9-route-primary', 0x233d49, 0.10, 0.91, 0x32627a, 0.025);
     const routeSecondary = pbr(scene, 'p27-c9-route-secondary', 0x172e3b, 0.08, 0.94, 0x285269, 0.012);
-    this.ownedMaterials = [frost, purge, routePrimary, routeSecondary];
+    this.ownedMaterials = [frost, jacketPanel, frozenPanel, purge, routePrimary, routeSecondary];
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.cueMaterial = purge;
     this.routeMaterials = [routePrimary, routeSecondary];
@@ -276,7 +278,26 @@ export class BabylonCryoReservePresentation {
         cladding.parent = root;
         cladding.position.y = patchIndex === 0 ? 1.97 : 3.35;
         cladding.rotation.y = index * 0.17 + patchIndex * 2.0;
-        cladding.material = frost; cladding.isPickable = false;
+        cladding.material = frozenPanel; cladding.isPickable = false;
+      }
+      // Alternating weathered pressure-jacket service panels break the flat
+      // cylinder into clearly recessed metal and frosted insulation sections.
+      for (let panelIndex = 0; panelIndex < 6; panelIndex++) {
+        const panel = MeshBuilder.CreateCylinder('p28-g8-vacuum-jacket-relief-panel-' + index + '-' + panelIndex,
+          { height: panelIndex % 2 ? 0.62 : 0.89, diameter: 1.94, tessellation: 28, arc: 0.15 }, scene);
+        panel.parent = root;
+        panel.position.y = panelIndex < 3 ? 2.00 : 3.25;
+        panel.rotation.y = panelIndex * 1.047 + index * 0.17;
+        panel.material = panelIndex % 3 === 0 ? frozenPanel : jacketPanel;
+        panel.isPickable = false;
+      }
+      for (const side of [-1, 1]) {
+        // Full-height insulated instrument trunks are visible at gameplay
+        // distance and frame the colored temperature/pressure indicators.
+        box(scene, root, 'p28-g8-tank-instrument-trunk-' + index + '-' + side,
+          structural, side * 0.92, 2.55, 0.10, 0.17, 1.50, 0.14);
+        box(scene, root, 'p28-g8-tank-instrument-display-' + index + '-' + side,
+          fixture, side * 0.97, 2.65, 0.23, 0.23, 0.30, 0.09);
       }
       // Surface-mounted frozen seams break up broad smooth cylinder spans.
       for (let frostIndex = 0; frostIndex < 8; frostIndex++) {
@@ -328,9 +349,11 @@ export class BabylonCryoReservePresentation {
       this.galleryFrames.push(root);
     });
 
-    const pipeData = [[0.28, 0.48, 9.0], [0.46, 0.52, 10.4], [0.64, 0.48, 10.4], [0.82, 0.52, 9.0]] as const;
+    // Run each return header beside its tank row, not across the middle
+    // player/enemy combat lane where bright crossing pipes masked silhouettes.
+    const pipeData = [[0.28, 0.28, 9.0], [0.46, 0.72, 10.4], [0.64, 0.28, 10.4], [0.82, 0.72, 9.0]] as const;
     pipeData.forEach(([x, z, length], index) => {
-      const pipe = MeshBuilder.CreateCylinder('p27-c9-boiloff-header-' + index, { height: length, diameter: 0.22, tessellation: 12 }, scene);
+      const pipe = MeshBuilder.CreateCylinder('p27-c9-boiloff-header-' + index, { height: length, diameter: 0.18, tessellation: 12 }, scene);
       pipe.parent = this.root;
       pipe.position.set(worldW * x, 2.16, worldH * z);
       pipe.rotation.z = Math.PI / 2;
@@ -655,7 +678,7 @@ export class BabylonCryoReservePresentation {
     this.canvas.dataset.environmentShadowCasters = 'off';
     this.canvas.dataset.environmentLandmark = 'staggered-vacuum-jacket-tank-gallery';
     this.canvas.dataset.environmentServiceDetails = 'gallery-frame:' + profile.galleryFrameInstances + '+tank-saddle:' + profile.saddleInstances + '+purge-valve:2';
-    this.canvas.dataset.environmentSurfaceDetail = 'vacuum-jacket-tank:' + profile.tankInstances + '+boiloff-header:' + profile.pipeRunInstances + '+jacket-hoop:35+retainer:14+thermal-sensor:14+gallery-valve-bank:12+header-flange:8+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:21+frost-scar:56+frost-cladding:14';
+    this.canvas.dataset.environmentSurfaceDetail = 'vacuum-jacket-tank:' + profile.tankInstances + '+boiloff-header:' + profile.pipeRunInstances + '+jacket-hoop:35+retainer:14+thermal-sensor:14+gallery-valve-bank:12+header-flange:8+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:21+frost-scar:56+frost-cladding:14+jacket-relief-panel:42+instrument-trunk:14';
     this.canvas.dataset.environmentMachineDetail = 'vacuum-jacket-tank:7+purge-valve:2+siphon-relay:' + siphonNodes;
     this.canvas.dataset.environmentComposition = 'service-collar+propellant-gallery+umbra-tank-farm';
     this.canvas.dataset.environmentMaterials = 'vacuum-jacketed-steel+frosted-insulation+cold-blue-purge+cold-cyan-service';
