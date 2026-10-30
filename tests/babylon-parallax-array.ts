@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   BABYLON_PARALLAX_ARRAY_IDENTITY,
   BABYLON_PARALLAX_ARRAY_LIGHTING,
+  BABYLON_PARALLAX_PREMIUM_SURFACES,
   parallaxArrayRenderProfile,
   parallaxReferenceState,
   parallaxShearMode,
@@ -11,6 +12,8 @@ import { getMapNavigationPlan } from '../src/game/mapNavigation';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonParallaxArrayPresentation.ts', 'utf8');
+const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
+const readiness = readFileSync('src/game/babylonRefineryMissionReadiness.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
 const director = readFileSync('src/game/director.ts', 'utf8');
 const sim = readFileSync('src/game/sim.ts', 'utf8');
@@ -19,6 +22,9 @@ const smoke = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
 const workflow = readFileSync('.github/workflows/browser-e2e.yml', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
 
+assert.deepEqual(BABYLON_PARALLAX_PREMIUM_SURFACES, [
+  'deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture',
+]);
 assert.deepEqual(BABYLON_PARALLAX_ARRAY_IDENTITY, {
   silhouette: 'baseline-pylons',
   material: 'metrology-composite',
@@ -123,6 +129,31 @@ assert.ok(workflow.includes('BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCAT
 assert.ok(workflow.includes('p27c10-parallax-array.png'));
 assert.ok(pkg.scripts['test:babylon-parallax-array']);
 assert.ok(pkg.scripts.build.includes('npm run test:babylon-parallax-array'));
+
+// P28-G9: shipped KTX2 PBR bindings (not metadata-only), shared authored
+// world objects and a fail-closed scene-readiness path are mandatory.
+assert.ok(presentation.includes("this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);"));
+for (const id of BABYLON_PARALLAX_PREMIUM_SURFACES) {
+  assert.ok(presentation.includes("this.premiumSurfaces.get('" + id + "')"), 'unbound Parallax KTX2 family: ' + id);
+}
+assert.ok(presentation.includes("material.albedoTexture?.isReady() === true"));
+assert.ok(presentation.includes("material.bumpTexture?.isReady() === true"));
+assert.ok(presentation.includes("material.metallicTexture?.isReady() === true"));
+assert.ok(presentation.includes("this.canvas.dataset.babylonEnvironmentState = premiumReady && this.iblReady ? 'ready' : 'loading'"));
+assert.ok(presentation.includes("this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env'"));
+assert.ok(presentation.includes("this.premiumSurfaces.dispose()"));
+assert.ok(presentation.includes("this.iblTexture.dispose()"));
+assert.ok(world.includes("|| mission.location === 'parallax-array';"));
+assert.ok(readiness.includes("|| mission.location === 'parallax-array');"));
+for (const detail of [
+  'p28-g9-pylon-fiducial-', 'p28-g9-pylon-conductor-', 'p28-g9-frame-scale-',
+  'p28-g9-carriage-stud-', 'p28-g9-anchor-insulator-', 'p28-g9-console-knob-',
+]) assert.ok(presentation.includes(detail), 'missing Parallax calibrated geometry: ' + detail);
+assert.ok(presentation.includes("Math.min(babylonRouteMarkingWidth(route.kind)"));
+assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
+assert.ok(smoke.includes("canvas?.dataset.parallaxPremiumAssetState === 'ready'"));
+assert.ok(smoke.includes("canvas?.dataset.babylonSharedWorldArtState === 'ready'"));
+assert.ok(smoke.includes("canvas?.dataset.environmentIbl === 'shared-prefiltered:ready'"));
 
 console.log('BABYLON_PARALLAX_ARRAY_PASS identity=baseline-pylons|metrology-composite|reference-violet|inertial-reference routes='
   + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' shear=8s>19s references=3');
