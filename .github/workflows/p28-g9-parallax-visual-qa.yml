@@ -15,6 +15,7 @@ on:
       - 'tools/android-p28g9-parallax-capture.mjs'
       - 'tools/android-p28g9-parallax-capture.sh'
       - 'tools/p28g9-android-frame.mjs'
+      - 'tools/p28g9-android-crash-audit.mjs'
       - 'tools/p28g9-parallax-provenance.mjs'
       - 'tools/verify-p28g9-gameplay-frames.mjs'
       - 'tools/p28g5-bright-edge.mjs'
