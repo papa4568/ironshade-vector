@@ -1,0 +1,277 @@
+name: P28-G9 Exact APK Parallax Visual QA
+
+# Supplemental real gameplay screenshots only. The unchanged trusted PR Candidate
+# producer and Android API35/36 gates remain independently mandatory.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/game/babylonParallaxReservePresentation.ts'
+      - 'src/game/babylonWorldPresentation.ts'
+      - 'src/game/babylonRefineryMissionReadiness.ts'
+      - 'src/game/babylonRouteMarkings.ts'
+      - 'src/game/babylonPremiumPbrSurfaceLibrary.ts'
+      - 'tests/babylon-parallax-array.ts'
+      - 'tools/android-p28g9-parallax-capture.mjs'
+      - 'tools/android-p28g9-parallax-capture.sh'
+      - 'tools/p28g9-android-frame.mjs'
+      - 'tools/p28g9-parallax-provenance.mjs'
+      - 'tools/verify-p28g9-gameplay-frames.mjs'
+      - 'tools/p28g5-bright-edge.mjs'
+      - 'scripts/configure-android.mjs'
+      - '.github/workflows/p28-g9-parallax-visual-qa.yml'
+      - 'docs/content-roadmap.md'
+      - 'docs/content-roadmap-archive.md'
+      - 'agent/roadmap-metadata.json'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: p28g9-visual-qa-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  exact-apk-parallax-frames:
+    name: G9 Real Android Gameplay Pixels and Provenance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    outputs:
+      screenshot_artifact_id: ${{ steps.visual_evidence_upload.outputs['artifact-id'] }}
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Find authoritative exact-candidate APK
+        id: producer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          for attempt in $(seq 1 150); do
+            run_id="$(gh api "/repos/$REPO/actions/runs?event=pull_request&head_sha=$CANDIDATE_SHA&per_page=100" --jq ".workflow_runs | map(select(.name == \"PR Candidate Verification\" and .head_sha == \"$CANDIDATE_SHA\")) | first | .id // empty")"
+            if [[ -n "$run_id" ]]; then
+              artifact="$(gh api "/repos/$REPO/actions/runs/$run_id/artifacts?per_page=100" --jq '.artifacts[] | select(.name == "ironshade-vector-pr-android-apk") | .id' | head -n 1)"
+              if [[ "$artifact" =~ ^[0-9]+$ ]]; then
+                echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+                echo "P28G9_EXACT_APK_PRODUCER_READY sha=$CANDIDATE_SHA run=$run_id"
+                exit 0
+              fi
+              status="$(gh api "/repos/$REPO/actions/runs/$run_id" --jq '.status')"
+              if [[ "$status" == completed ]]; then
+                echo "Producer completed without exact candidate APK" >&2
+                exit 1
+              fi
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for the authoritative APK" >&2
+          exit 1
+
+      - name: Download exact-candidate APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-pr-android-apk
+          run-id: ${{ steps.producer.outputs.run_id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+
+      - name: Verify APK checksum and source identity
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -s Ironshade-Vector-Android-Smoke.apk
+          sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+          printf '%s\n' "$CANDIDATE_SHA" > android-p28g9-candidate-sha.txt
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Preinstall API 35 emulator image
+        run: bash scripts/install-android-system-image.sh 35 default x86_64
+
+      - name: Capture exact APK normal and action frames on API 35
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          # Full Android API35/API36 smoke remains mandatory in the independent
+          # PR Candidate workflow. This supplemental G9 job starts its own clean
+          # app, enters actual Parallax Array, performs real touch FIRE, and
+          # captures same-APK frames; avoid rerunning the unrelated refinery
+          # fast smoke as a flaky prerequisite to the dedicated visual proof.
+          script: bash tools/android-p28g9-parallax-capture.sh
+
+      - name: Publish exact-head visual proof
+        id: visual_evidence_upload
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: p28-g9-exact-apk-parallax-${{ github.event.pull_request.head.sha }}
+          path: |
+            android-p28g9-candidate-sha.txt
+            android-p28g9-parallax-array-normal.png
+            android-p28g9-parallax-array-action.png
+            android-p28g9-parallax-array-device.png
+            android-p28g9-parallax-array.json
+            android-p28g9-parallax-array-pixel-report.json
+            android-p28g9-parallax-array-logcat.txt
+            android-p28g9-parallax-array-activity.txt
+            android-fast-logcat.txt
+            android-fast-smoke.png
+          if-no-files-found: warn
+          retention-days: 30
+
+
+  independent-image-review:
+    name: G9 Independent Copilot PNG Inspection
+    needs: exact-apk-parallax-frames
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+      copilot-requests: write
+    steps:
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Download actual exact-SHA gameplay screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ needs['exact-apk-parallax-frames'].outputs.screenshot_artifact_id }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          # Query the REST artifact by immutable ID. actions/download-artifact
+          # runtime-token lookup can fail after a producer job retry even while
+          # that ID exists in the run; never fall back to a same-name artifact.
+          expected_name="p28-g9-exact-apk-parallax-$CANDIDATE_SHA"
+          actual_name="$(gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" --jq '.name')"
+          test "$actual_name" = "$expected_name"
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" --jq '.expired')" = false
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > .g9-artifact.zip
+          unzip -tq .g9-artifact.zip >/dev/null
+          unzip -oq .g9-artifact.zip
+          rm .g9-artifact.zip
+
+      - name: Verify screenshot origin and image signatures
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(tr -d '\r\n' < android-p28g9-candidate-sha.txt)" = "$CANDIDATE_SHA"
+          for image in android-p28g9-parallax-array-normal.png android-p28g9-parallax-array-action.png android-p28g9-parallax-array-device.png; do
+            test -s "$image"
+          done
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          for (const name of ['normal', 'action', 'device']) {
+            const file = readFileSync('android-p28g9-parallax-array-' + name + '.png');
+            if (file.length < 20000 || file.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') {
+              throw new Error('Invalid actual device PNG: ' + name);
+            }
+          }
+          NODE
+
+      - name: Install pinned vision-capable Copilot CLI
+        shell: bash
+        run: |
+          npm install --global @github/copilot@1.0.88
+          copilot --version
+          copilot help | grep -- '--attachment'
+
+      - name: Independently inspect actual screenshot pixels
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          prompt="You are an independent read-only visual acceptance reviewer of THREE ATTACHED ACTUAL PNG GAMEPLAY FRAMES, in order: NORMAL, ACTION, DEVICE. Do not read code or rely on image filenames, telemetry or earlier reviewers. LOOK DIRECTLY at the image pixel content. If images are not visually accessible, return verdict unavailable. Inspect whether the hard-sci-fi Parallax Array metrology array shows plausible textured textured calibrated reference pylons, machined metrology frame rails, fine calibrated fiducials, suspended mass-carriage studs, reference consoles and insulated shear anchors rather than flat untextured pylons, empty grids or placeholder cubes; assess visible inertial-reference alignment and violet/cyan shear cues versus mere HUD text. Verify narrow recessed wayfinding does not become bright opaque route ribbons or compete with gameplay hazards. Confirm enemy tells, boss warnings, player, objective, touch controls and environment lighting remain readable in actual combat. Check for blank bright margins, missing world geometry, untextured assets, pop-in or overlay defects. Action must visibly differ from normal, and device frame must show the actual game. Be adversarial; report concrete details from EACH image. Return ONLY a valid JSON object with candidateSha '$CANDIDATE_SHA', verdict (pass/fail/unavailable), imagesActuallyViewed (boolean), normalObservation, actionObservation, deviceObservation, materialAndGeometryAssessment, combatReadabilityAssessment, and issues (array of strings). Every observation must come from pixels, not metadata. Pass only if relevant visual acceptance checks pass; fail on concrete defects. Do not edit files."
+          copilot -s -p "$prompt" \
+            --attachment android-p28g9-parallax-array-normal.png \
+            --attachment android-p28g9-parallax-array-action.png \
+            --attachment android-p28g9-parallax-array-device.png \
+            --model auto --no-ask-user --no-custom-instructions \
+            --disable-builtin-mcps --deny-tool=write --deny-tool=shell \
+            --deny-tool=url --deny-tool=memory --no-remote --no-remote-export \
+            --stream=off > p28g9-copilot-visual-review.txt
+
+      - name: Validate the independent direct-image verdict
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const output = readFileSync('p28g9-copilot-visual-review.txt', 'utf8').trim();
+          const match = output.match(/\{[\s\S]*\}/);
+          if (!match) throw new Error('No JSON independent image verdict');
+          // Models may hard-wrap JSON string text with unescaped newlines. Escape only
+          // literal CR/LF *inside quoted strings*; do not change the verdict or issues.
+          // The pinned Copilot CLI can hard-wrap an unquoted boolean token:
+          // "imagesActuallyViewed":t\\nrue. Repair only this exact
+          // line-break corruption of the required true literal, never a false
+          // verdict, a different field, or arbitrary model-supplied syntax.
+          const repaired = match[0].replace(/"(?:\\.|[^"\\])*"/gs, quoted =>
+            quoted.replace(/\r/g, '\\r').replace(/\n/g, '\\n'))
+            .replace(/("imagesActuallyViewed"\s*:\s*)(?:t\r?\n+rue|tr\r?\n+ue|tru\r?\n+e)(?=\s*[,}])/g, '$1true');
+          const result = JSON.parse(repaired);
+          if (result.candidateSha !== process.env.CANDIDATE_SHA) throw new Error('Stale image review SHA');
+          if (result.imagesActuallyViewed !== true) throw new Error('Reviewer could not view PNG pixels');
+          if (!['pass', 'fail', 'unavailable'].includes(result.verdict)) throw new Error('Invalid image verdict');
+          for (const field of ['normalObservation', 'actionObservation', 'deviceObservation', 'materialAndGeometryAssessment', 'combatReadabilityAssessment']) {
+            if (typeof result[field] !== 'string' || result[field].trim().length < 35) {
+              throw new Error('Missing substantive direct pixel observation: ' + field);
+            }
+          }
+          if (!Array.isArray(result.issues)) throw new Error('Missing visual issues list');
+          writeFileSync('p28g9-copilot-visual-review.json', JSON.stringify(result, null, 2) + '\n');
+          if (result.verdict !== 'pass' || result.issues.length > 0) {
+            throw new Error('Independent image reviewer did not approve: ' + result.verdict);
+          }
+          console.log('P28G9_INDEPENDENT_DIRECT_PNG_REVIEW_PASS sha=' + result.candidateSha);
+          NODE
+
+      - name: Retain direct-image reviewer evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: p28-g9-copilot-image-review-${{ github.event.pull_request.head.sha }}
+          path: |
+            p28g9-copilot-visual-review.txt
+            p28g9-copilot-visual-review.json
+            android-p28g9-candidate-sha.txt
+          if-no-files-found: warn
+          retention-days: 30
