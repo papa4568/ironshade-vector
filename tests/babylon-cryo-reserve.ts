@@ -154,7 +154,7 @@ const validG8Proof = {
   actionInput: 'manual-aim+live-touch-fire', shotsBefore: 2, shotsAfter: 5,
   normalBoiloff: 1,
   hazardLanguage: 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing',
-  surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:21+frost-scar:56',
+  surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:21+frost-scar:56+frost-cladding:14',
 };
 assert.ok(auditCryoVisualProvenance(validG8Proof).valid);
 for (const [label, patch, reason] of [
@@ -184,7 +184,7 @@ assert.ok(g8Capture.includes('const current = target.url;'));
 assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .boss-name'));
 assert.ok(hudCss.includes('white-space: normal;'));
 assert.ok(hudCss.includes('text-overflow: clip;'));
-assert.ok(presentation.includes("MeshBuilder.CreateSphere('p28-g8-ambient-cold-vent-"));
+assert.ok(presentation.includes("MeshBuilder.CreatePlane('p28-g8-ambient-cold-vent-"));
 assert.ok(g8Capture.includes('origin=observed-live-webview'));
 assert.ok(!g8Capture.includes("waitFor('location.href', 'initial cold WebView URL', 120_000)"));
 assert.ok(g8Capture.includes("d.cryoPremiumAssetState === 'ready'"));
@@ -248,7 +248,11 @@ for (const marker of [
   "p28-g8-cryogenic-sightline-",
   "p28-g8-tank-pressure-gauge-",
   "p28-g8-ambient-cold-vent-",
-  "this.ambientColdVaporMaterial.alpha = 0.38",
+  "this.ambientColdVaporMaterial.alpha = 0.76",
+  "new DynamicTexture('p28-g8-neck-vapor-soft-alpha'",
+  "this.ambientColdVaporMaterial.useAlphaFromDiffuseTexture = true",
+  "this.ambientColdVaporTexture.dispose()",
+  "p28-g8-frozen-jacket-cladding-",
   "this.ambientColdVaporMaterial.disableDepthWrite = true",
   "p28-g8-tank-frost-scar-",
   "jacket.emissiveColor = colorFromHex(0x80b5c5).scale(0.11)",
@@ -263,7 +267,7 @@ assert.ok(telegraphs.includes(': cryoWarning'));
 assert.ok(telegraphs.includes('? clamp01(0.14 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.025)'));
 assert.ok(telegraphs.includes("const laneWidth = Math.max(0.08, scaled(profile.width)) * (cryoWarning ? 0.68 : 1)"));
 assert.ok(telegraphs.includes("tick.setEnabled(annexWarning || momentumWarning || cryoWarning)"));
-assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.24 : 0;"));
+assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;"));
 assert.ok(babylon.includes("const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
 assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';"));
 assert.ok(readiness.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve');"));
