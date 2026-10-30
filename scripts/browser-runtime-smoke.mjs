@@ -1847,11 +1847,19 @@ async function p27C9BabylonCryoReserveAudit() {
   // Require the director to have allocated a real boiloffJet to the sim,
   // even if its 6.5s lifetime expired before slow mobile WebGL art was ready.
   // A timeline string or locationEventA flag alone does not satisfy this.
-  await waitFor(
-    "document.querySelector('canvas')?.dataset.environmentBoiloffObserved === 'sim-hazard-deployed'",
-    'P27-C9 Cryo Reserve observed real authored boiloff purge',
-    17_000,
-  );
+  // High-detail mobile WebGL can advance simulation more slowly than wall
+  // time. Bound the wait, but require a real allocated event (not the timer
+  // crossing 10s) and include sim-time diagnostics on failure.
+  try {
+    await waitFor(
+      "document.querySelector('canvas')?.dataset.environmentBoiloffObserved === 'sim-hazard-deployed'",
+      'P27-C9 Cryo Reserve observed real authored boiloff purge',
+      90_000,
+    );
+  } catch (error) {
+    const timing = await evaluate("(() => { const d = document.querySelector('canvas')?.dataset; return { simTime: d?.cryoSimulationTime, deployed: d?.cryoSimulatedPurgeCount, art: d?.missionVisualReadiness }; })()");
+    throw new Error(String(error) + ' simulated-purge-diagnostics=' + JSON.stringify(timing));
+  }
 
   const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
     + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
