@@ -297,8 +297,8 @@ assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonSce
 assert.ok(babylon.includes("const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
 assert.ok(babylon.includes("colorFromHex(0xa6d8e8).scale(0.27)"));
 assert.ok(presentation.includes("jacket.albedoColor = new Color3(0.73, 0.85, 0.94)"));
-assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';"));
-assert.ok(readiness.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve');"));
+assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n      || mission.location === 'parallax-array';"));
+assert.ok(readiness.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n       || mission.location === 'parallax-array');"));
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
 assert.ok(!presentation.includes("const width = route.kind === 'primary' ? 0.12 : 0.076;"));
 
