@@ -221,7 +221,7 @@ assert.ok(attackSource.includes('(momentumWarning ? 0.46 : cryoWarning ? 0.60 : 
 assert.ok(babylon.includes('const momentumTouchLanePan = this.canvas.dataset.babylonScenario ==='));
 
 assert.ok(babylon.includes("const momentumCombatPan = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
-assert.ok(smoke.includes("viewportMode === 'mobile-landscape' ? 42_000 : 16_000"));
+assert.ok(smoke.includes("viewportMode === 'mobile-landscape' ? 42_000 : 90_000"));
 assert.ok(smoke.includes("momentum-wash-diagnostic="));
 
 const g7Capture = readFileSync('tools/android-p28g7-momentum-capture.mjs', 'utf8');
