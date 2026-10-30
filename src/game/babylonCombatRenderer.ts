@@ -2038,12 +2038,15 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const annexContrast = this.canvas.dataset.babylonScenario === 'lattice-annex';
     const momentumContrast = this.canvas.dataset.babylonScenario === 'momentum-exchange';
     const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';
+    // Cool rim contribution makes dark enemy armor distinguishable from the
+    // cryogenic deck without turning timed orange attack rings into decoration.
     visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      annexContrast ? 0.22 : cryoContrast ? 0.40 : momentumContrast ? 0.18 : 0.06);
+      annexContrast ? 0.22 : cryoContrast ? 0.43 : momentumContrast ? 0.18 : 0.06)
+      .add(cryoContrast ? colorFromHex(0xa6d8e8).scale(0.27) : Color3.Black());
     visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(
-      annexContrast ? 0.13 : cryoContrast ? 0.22 : momentumContrast ? 0.10 : 0);
+      annexContrast ? 0.13 : cryoContrast ? 0.34 : momentumContrast ? 0.10 : 0);
     visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      (annexContrast ? 0.42 : cryoContrast ? 0.65 : momentumContrast ? 0.34 : 0.22)
+      (annexContrast ? 0.42 : cryoContrast ? 0.72 : momentumContrast ? 0.34 : 0.22)
       + damage.hit * 0.32 + damage.armorBreak * 0.24,
     );
   }
