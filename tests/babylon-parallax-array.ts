@@ -9,6 +9,7 @@ import {
   parallaxShearMode,
 } from '../src/game/babylonParallaxArrayPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { auditParallaxVisualProvenance } from '../tools/p28g9-parallax-provenance.mjs';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonParallaxArrayPresentation.ts', 'utf8');
@@ -151,9 +152,40 @@ for (const detail of [
 ]) assert.ok(presentation.includes(detail), 'missing Parallax calibrated geometry: ' + detail);
 assert.ok(presentation.includes("Math.min(babylonRouteMarkingWidth(route.kind)"));
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
-assert.ok(smoke.includes("canvas?.dataset.parallaxPremiumAssetState === 'ready'"));
-assert.ok(smoke.includes("canvas?.dataset.babylonSharedWorldArtState === 'ready'"));
-assert.ok(smoke.includes("canvas?.dataset.environmentIbl === 'shared-prefiltered:ready'"));
+const g9Capture = readFileSync('tools/android-p28g9-parallax-capture.mjs', 'utf8');
+const g9Workflow = readFileSync('.github/workflows/p28-g9-parallax-visual-qa.yml', 'utf8');
+const g9Verify = readFileSync('tools/verify-p28g9-gameplay-frames.mjs', 'utf8');
+assert.ok(g9Capture.includes("parallaxPremiumAssetState === 'ready'"));
+assert.ok(g9Capture.includes("babylonSharedWorldArtState === 'ready'"));
+assert.ok(g9Capture.includes("environmentIbl === 'shared-prefiltered:ready'"));
+assert.ok(g9Capture.includes("window.dispatchEvent(new Event('ironshade:p27d5-return-to-hub'))"));
+assert.ok(g9Capture.includes("shotsAfter > shotsBefore"));
+assert.ok(g9Workflow.includes('G9 Independent Copilot PNG Inspection'));
+assert.ok(g9Workflow.includes('github.event.pull_request.head.sha'));
+assert.ok(g9Workflow.includes('android-p28g9-parallax-array-action.png'));
+assert.ok(g9Verify.includes('auditGameplayPair(normal, action)'));
+const validG9Proof = {
+  mapReentry: 'exit-to-command-and-redeploy:ready', capturedRoute: 'parallax-array', backend: 'webgl2',
+  tier: 'high', captureMode: 'high-tier-qa-visual-only',
+  assetIds: 'refinery-cover-crate-lod0', beforeAssetIds: 'refinery-cover-crate-lod0',
+  beforeMappedObjects: 5, beforeAuthoredObjects: 5,
+  mappedObjects: 5, authoredObjects: 5, fallbackObjects: 0,
+  artState: 'ready', beforeArtState: 'ready', premium: 'ready', beforePremium: 'ready',
+  premiumBindings: 40, ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
+  routeStyle: 'parallax-recessed-metrology-inlay', routeMaxWidth: 0.16,
+  objectiveCue: 'beacon+navigation-path', worldObjects: 5,
+  actionInput: 'manual-aim+live-touch-fire', shotsBefore: 2, shotsAfter: 5,
+  surfaceDetail: 'reference-frame:3+shear-anchor:8+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8',
+  hazardLanguage: 'shared-hazards+reference-shear+gravity-split+physical-baseline-alignment',
+  referenceNodeIds: 'reference-node-a,reference-node-b,reference-node-c',
+  shearTimeline: '8.0s:first-shear>19.0s:deep-reference-reversal',
+};
+assert.ok(auditParallaxVisualProvenance(validG9Proof).valid);
+assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, premiumBindings: 0 }).valid);
+assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, fallbackObjects: 1 }).valid);
+assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, routeMaxWidth: 0.5 }).valid);
+assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, shotsAfter: 2 }).valid);
+assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, beforeAssetIds: 'late-object-lod0' }).valid);
 
 console.log('BABYLON_PARALLAX_ARRAY_PASS identity=baseline-pylons|metrology-composite|reference-violet|inertial-reference routes='
   + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' shear=8s>19s references=3');
