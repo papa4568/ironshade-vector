@@ -145,6 +145,7 @@ const validG8Proof = {
   capturedRoute: 'cryo-reserve', backend: 'webgl2',
   tier: 'high', captureMode: 'high-tier-qa-visual-only',
   assetIds: 'refinery-cover-crate-lod0', beforeAssetIds: 'refinery-cover-crate-lod0',
+  beforeMappedObjects: 5, beforeAuthoredObjects: 5,
   artState: 'ready', beforeArtState: 'ready',
   mappedObjects: 5, authoredObjects: 5, fallbackObjects: 0,
   premium: 'ready', beforePremium: 'ready', premiumBindings: 110,
@@ -157,6 +158,26 @@ const validG8Proof = {
   surfaceDetail: 'vacuum-jacket-tank:7+jacket-hoop:35+thermal-sensor:14+gallery-valve-bank:12+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:21+frost-scar:56+frost-cladding:14',
 };
 assert.ok(auditCryoVisualProvenance(validG8Proof).valid);
+// Newly activated mission hardware is not late asset loading: both frames
+// have fully authored, settled active objects, even if the active set grows.
+const activatedWorldObject = {
+  ...validG8Proof,
+  assetIds: 'refinery-cover-crate-lod0,refinery-processor-lod0',
+  mappedObjects: 6,
+  authoredObjects: 6,
+  worldObjects: 6,
+};
+assert.ok(auditCryoVisualProvenance(activatedWorldObject).valid,
+  'new active mapped object should not be misclassified as late asset pop-in');
+for (const patch of [
+  { mappedObjects: 5, authoredObjects: 5 }, // asset appears with no new active object
+  { beforeMappedObjects: 5, beforeAuthoredObjects: 4 }, // old frame had an unready asset
+  { assetIds: 'refinery-processor-lod0', mappedObjects: 6, authoredObjects: 6 }, // old authored assets disappeared
+]) {
+  const result = auditCryoVisualProvenance({ ...activatedWorldObject, ...patch });
+  assert.ok(result.problems.includes('late-asset-pop-in'),
+    'P28-G8 asset delta without fully authored activation was incorrectly approved');
+}
 for (const [label, patch, reason] of [
   ['other-map', { capturedRoute: 'momentum-exchange' }, 'wrong-map-or-backend'],
   ['missing-asset', { assetIds: '' }, 'not-authored-lod0-flagship-visual'],
@@ -180,6 +201,8 @@ const g8Shell = readFileSync('tools/android-p28g8-cryo-capture.sh', 'utf8');
 assert.ok(g8Capture.includes("interdiction.step = 1"));
 assert.ok(g8Capture.includes("interdiction.completed = ['interdiction-0-undecided']"));
 assert.ok(g8Capture.includes("d?.babylonScenario === 'cryo-reserve'"));
+assert.ok(g8Capture.includes('beforeMappedObjects: beforeVisual.mappedObjects'));
+assert.ok(g8Capture.includes('beforeAuthoredObjects: beforeVisual.authoredObjects'));
 assert.ok(g8Capture.includes('const current = target.url;'));
 assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .boss-name'));
 assert.ok(hudCss.includes('white-space: normal;'));
