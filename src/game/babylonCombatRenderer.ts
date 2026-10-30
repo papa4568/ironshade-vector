@@ -1447,7 +1447,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // patterned floor; this is presentation-only and restores on map exit.
     const annexActorLift = this.canvas.dataset.babylonScenario === 'lattice-annex' ? 0.24 : 0;
     const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.15 : 0;
-    const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.24 : 0;
+    const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;
     this.operatorAccentMaterial.emissiveColor.copyFrom(operatorColor.scale(
       0.18 + annexActorLift + momentumActorLift + cryoActorLift + Math.min(0.35, heat * 0.16 + flash * 0.12),
     ));
@@ -2039,11 +2039,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const momentumContrast = this.canvas.dataset.babylonScenario === 'momentum-exchange';
     const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';
     visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      annexContrast ? 0.22 : cryoContrast ? 0.24 : momentumContrast ? 0.18 : 0.06);
+      annexContrast ? 0.22 : cryoContrast ? 0.40 : momentumContrast ? 0.18 : 0.06);
     visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(
-      annexContrast ? 0.13 : cryoContrast ? 0.14 : momentumContrast ? 0.10 : 0);
+      annexContrast ? 0.13 : cryoContrast ? 0.22 : momentumContrast ? 0.10 : 0);
     visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      (annexContrast ? 0.42 : cryoContrast ? 0.43 : momentumContrast ? 0.34 : 0.22)
+      (annexContrast ? 0.42 : cryoContrast ? 0.65 : momentumContrast ? 0.34 : 0.22)
       + damage.hit * 0.32 + damage.armorBreak * 0.24,
     );
   }
