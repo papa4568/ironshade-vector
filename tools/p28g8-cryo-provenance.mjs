@@ -25,7 +25,8 @@ export function auditCryoVisualProvenance(state) {
       || !state?.surfaceDetail?.includes('gallery-valve-bank:12')
       || !state?.surfaceDetail?.includes('frost-cuff:14')
       || !state?.surfaceDetail?.includes('pressure-gauge:7')
-      || !state?.surfaceDetail?.includes('ambient-cold-vent:7'))
+      || !state?.surfaceDetail?.includes('ambient-cold-vent:21')
+      || !state?.surfaceDetail?.includes('frost-scar:56'))
     problems.push('missing-cryo-material-hardware-detail');
   if (state?.hazardLanguage !== 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing')
     problems.push('missing-boiloff-thermal-hazard-cues');
