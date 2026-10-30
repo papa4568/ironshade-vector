@@ -149,27 +149,31 @@ try {
   }
   await waitFor(`[...document.querySelectorAll('button')].some(b =>
     (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations')`, 'Command Deck');
-  // Seed the same late-campaign Interdiction contract as browser E2E.
-  // Do not swap to the unrelated Black Lattice finale just to get a screenshot.
+  // Seed the same Blind Meridian unlock as the existing browser acceptance run.
   const seeded = await evaluate(`(() => {
-    const seed = campaign => {
-      if (!campaign?.story?.interdiction || !campaign?.story?.postKhepri) return false;
+    const seed = (campaign, profile) => {
+      if (!campaign?.story?.parallaxDebt || !campaign.story.interdiction || !campaign.story.postKhepri) return false;
+      if (profile) {
+        profile.level = Math.max(15, profile.level || 1);
+        profile.xp = Math.max(7140, profile.xp || 0);
+      }
       if (campaign.story.blackLattice) {
         campaign.story.blackLattice.status = 'complete';
         campaign.story.blackLattice.step = Math.max(14, campaign.story.blackLattice.step || 0);
       }
       campaign.story.postKhepri.status = 'complete';
       campaign.story.postKhepri.step = Math.max(5, campaign.story.postKhepri.step || 0);
-      const interdiction = campaign.story.interdiction;
-      interdiction.status = 'active';
-      interdiction.step = 1;
-      interdiction.choiceA = null;
-      interdiction.completed = ['interdiction-0-undecided'];
-      interdiction.evidence = ['custody-rotation'];
-      interdiction.identifiedTargets = ['Transfer Adjudicator Iona Vale'];
-      interdiction.lastBeat = 'QA seed // Cold Relay ready at Umbra Parallaxgenic Propellant Reserve.';
-      campaign.story.lastBeat = interdiction.lastBeat;
-      campaign.lastOutcome = interdiction.lastBeat;
+      campaign.story.interdiction.status = 'complete';
+      campaign.story.interdiction.step = Math.max(5, campaign.story.interdiction.step || 0);
+      const debt = campaign.story.parallaxDebt;
+      debt.status = 'active';
+      debt.step = 2;
+      debt.choiceA = null;
+      debt.completed = ['parallax-debt-0', 'parallax-debt-1'];
+      debt.evidence = ['baseline-offset', 'return-vector'];
+      debt.lastBeat = 'QA seed // Blind Meridian ready at Cislunar Parallax Array.';
+      campaign.story.lastBeat = debt.lastBeat;
+      campaign.lastOutcome = debt.lastBeat;
       return true;
     };
     let success = false;
@@ -177,13 +181,13 @@ try {
       const raw = localStorage.getItem(key);
       if (!raw) continue;
       const obj = JSON.parse(raw);
-      if (seed(key.endsWith('state-v1') ? obj.campaign : obj)) {
+      if (seed(key.endsWith('state-v1') ? obj.campaign : obj, obj.profile)) {
         localStorage.setItem(key, JSON.stringify(obj)); success = true;
       }
     }
     return success;
   })()`);
-  if (!seeded) throw new Error('P28-G9 real Interdiction unlock could not be established.');
+  if (!seeded) throw new Error('P28-G9 Blind Meridian progression unlock could not be established.');
   await call('Page.reload', { ignoreCache: true });
   await waitFor(`[...document.querySelectorAll('button')].some(b =>
     (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations')`,
