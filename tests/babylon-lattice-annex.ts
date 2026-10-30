@@ -141,7 +141,7 @@ assert.ok(presentation.includes('babylonRouteMarkingWidth(route.kind)'));
 assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
 assert.ok(world.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex'"));
-assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';"));
+assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n      || mission.location === 'parallax-array';"));
 assert.ok(readiness.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex'"));
 
 
