@@ -1155,3 +1155,16 @@
     transform: translateX(-50%);
   }
 }
+
+
+/* P28-G8: Cryo's long purge-command boss identity must remain readable
+   in the exact-APK landscape HUD; two lines stay inside the same panel. */
+.game-root[data-location="cryo-reserve"] .boss-heading {
+  align-items: start;
+}
+.game-root[data-location="cryo-reserve"] .boss-name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  line-height: 1.12;
+}
