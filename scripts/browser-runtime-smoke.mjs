@@ -1714,8 +1714,8 @@ async function p27C8BabylonMomentumExchangeAudit() {
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonMomentumExchangePlayerPosition ?? ''");
 
   // High-tier IBL/KTX2 decode can finish after the first 9s/6s pulse on
-  // SwiftShader mobile. Preserve actual active-wash evidence, but allow the
-  // second authored 20s pulse to arrive on that slower software renderer.
+  // SwiftShader. The 16s desktop wall clock reached just 3.6s of actual sim
+  // time in CI. Allow the actual authored 9s/20s pulse, not a fake timestamp.
   // A failure includes the real sim clock and hazard state to diagnose it.
   try {
     await waitFor(
@@ -1723,7 +1723,7 @@ async function p27C8BabylonMomentumExchangeAudit() {
         + " canvas?.dataset.environmentHazardMode === 'countermass-wash'"
         + " && Number(canvas?.dataset.environmentCountermassWashes ?? 0) > 0; })()",
       'P27-C8 Momentum Exchange authored countermass wash',
-      viewportMode === 'mobile-landscape' ? 42_000 : 16_000,
+      viewportMode === 'mobile-landscape' ? 42_000 : 90_000,
     );
   } catch (error) {
     const diagnostic = await evaluate("(() => { const d = document.querySelector('canvas')?.dataset ?? {}; return {"
