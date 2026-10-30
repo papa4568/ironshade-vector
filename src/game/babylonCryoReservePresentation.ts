@@ -179,12 +179,13 @@ export class BabylonCryoReservePresentation {
     jacket.emissiveColor = colorFromHex(0x80b5c5).scale(0.11);
     const frost = pbr(scene, 'p28-g8-frosted-vacuum-insulation', 0xb9dbe4, 0.09, 0.78, 0x8dd7ea, 0.11);
     this.ambientColdVaporMaterial = new StandardMaterial('p28-g8-ambient-cold-vent-material', scene);
-    this.ambientColdVaporMaterial.diffuseColor = colorFromHex(0xbce7f0).scale(0.24);
-    this.ambientColdVaporMaterial.emissiveColor = colorFromHex(0xa2d9e8).scale(0.34);
+    this.ambientColdVaporMaterial.diffuseColor = colorFromHex(0xc9eff5).scale(0.68);
+    this.ambientColdVaporMaterial.emissiveColor = colorFromHex(0xb9e9f1).scale(0.82);
     this.ambientColdVaporMaterial.specularColor = Color3.Black();
-    this.ambientColdVaporMaterial.alpha = 0.19;
+    this.ambientColdVaporMaterial.alpha = 0.38;
     this.ambientColdVaporMaterial.disableLighting = true;
     this.ambientColdVaporMaterial.backFaceCulling = false;
+    this.ambientColdVaporMaterial.disableDepthWrite = true;
     const purge = pbr(scene, 'p27-c9-cold-blue-purge', 0x31576a, 0.48, 0.30, 0x77c6de, 0.25);
     // Recessed wayfinding has to remain distinct from bright boiloff and boss tells.
     const routePrimary = pbr(scene, 'p27-c9-route-primary', 0x233d49, 0.10, 0.91, 0x32627a, 0.025);
@@ -248,15 +249,30 @@ export class BabylonCryoReservePresentation {
         box(scene, root, 'p28-g8-cryogenic-sightline-' + index + '-' + side, frost,
           side * 0.42, 2.58, side * 0.83, 0.15, 1.24, 0.12);
       }
+      // Surface-mounted frozen seams break up broad smooth cylinder spans.
+      for (let frostIndex = 0; frostIndex < 8; frostIndex++) {
+        const angle = Math.PI * 2 * frostIndex / 8 + index * 0.13;
+        const patch = box(scene, root, 'p28-g8-tank-frost-scar-' + index + '-' + frostIndex,
+          frost, Math.cos(angle) * 0.93, 2.6 + (frostIndex % 3) * 0.47,
+          Math.sin(angle) * 0.93, 0.14, 0.66 + (frostIndex % 2) * 0.24, 0.055);
+        patch.rotation.y = -angle - Math.PI / 2;
+      }
       const gauge = MeshBuilder.CreateCylinder('p28-g8-tank-pressure-gauge-' + index,
         { height: 0.12, diameter: 0.40, tessellation: 24 }, scene);
       gauge.parent = root; gauge.position.set(0.30, 2.73, 0.93);
       gauge.rotation.x = Math.PI / 2; gauge.material = fixture; gauge.isPickable = false;
-      const vent = MeshBuilder.CreateCylinder('p28-g8-ambient-cold-vent-' + index,
-        { height: 0.86, diameterTop: 0.10, diameterBottom: 0.58, tessellation: 12 }, scene);
-      vent.parent = root; vent.position.set(0, 5.54, 0);
-      vent.material = this.ambientColdVaporMaterial; vent.isPickable = false;
-      this.ambientColdVents.push(vent);
+      // Ambient gas stays above the neck, separate from the short-lived
+      // floor-bound and simulation-owned lethal boiloff plumes.
+      for (let vaporIndex = 0; vaporIndex < 3; vaporIndex++) {
+        const vent = MeshBuilder.CreateSphere('p28-g8-ambient-cold-vent-' + index + '-' + vaporIndex,
+          { diameter: 1.15 + vaporIndex * 0.24, segments: 14 }, scene);
+        vent.parent = root;
+        vent.position.set((vaporIndex - 1) * 0.42, 5.28 + vaporIndex * 0.29,
+          vaporIndex % 2 ? 0.30 : -0.26);
+        vent.scaling.set(1, 0.32, 0.65);
+        vent.material = this.ambientColdVaporMaterial; vent.isPickable = false;
+        this.ambientColdVents.push(vent);
+      }
       const collar = MeshBuilder.CreateCylinder('p28-g8-tank-service-nozzle-' + index,
         { height: 0.44, diameter: 0.42, tessellation: 20 }, scene);
       collar.parent = root; collar.position.set(0, 4.97, 0);
@@ -477,8 +493,8 @@ export class BabylonCryoReservePresentation {
     this.ambientColdVents.forEach((vent, index) => {
       // Constant low-pressure neck bleed is ambience; floor-bound timed jets
       // remain the distinct, simulation-owned boiloff hazard cue.
-      const breathe = 1 + Math.sin(state.time * 0.85 + index * 0.61) * 0.06;
-      vent.scaling.set(breathe, 1, breathe);
+      const breathe = 1 + Math.sin(state.time * 0.85 + index * 0.61) * 0.09;
+      vent.scaling.set(breathe, 0.32 + Math.sin(state.time * 0.7 + index) * 0.028, 0.65 * breathe);
     });
 
     this.tanks.forEach((rig, index) => {
@@ -608,7 +624,7 @@ export class BabylonCryoReservePresentation {
     this.canvas.dataset.environmentShadowCasters = 'off';
     this.canvas.dataset.environmentLandmark = 'staggered-vacuum-jacket-tank-gallery';
     this.canvas.dataset.environmentServiceDetails = 'gallery-frame:' + profile.galleryFrameInstances + '+tank-saddle:' + profile.saddleInstances + '+purge-valve:2';
-    this.canvas.dataset.environmentSurfaceDetail = 'vacuum-jacket-tank:' + profile.tankInstances + '+boiloff-header:' + profile.pipeRunInstances + '+jacket-hoop:35+retainer:14+thermal-sensor:14+gallery-valve-bank:12+header-flange:8+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:7';
+    this.canvas.dataset.environmentSurfaceDetail = 'vacuum-jacket-tank:' + profile.tankInstances + '+boiloff-header:' + profile.pipeRunInstances + '+jacket-hoop:35+retainer:14+thermal-sensor:14+gallery-valve-bank:12+header-flange:8+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:21+frost-scar:56';
     this.canvas.dataset.environmentMachineDetail = 'vacuum-jacket-tank:7+purge-valve:2+siphon-relay:' + siphonNodes;
     this.canvas.dataset.environmentComposition = 'service-collar+propellant-gallery+umbra-tank-farm';
     this.canvas.dataset.environmentMaterials = 'vacuum-jacketed-steel+frosted-insulation+cold-blue-purge+cold-cyan-service';
