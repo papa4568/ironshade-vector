@@ -1,6 +1,7 @@
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
+import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
@@ -11,10 +12,17 @@ import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Scene } from '@babylonjs/core/scene';
 import { getMapNavigationPlan } from './mapNavigation';
+import { createBabylonPremiumPbrSurfaceLibrary, type BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
+import { babylonRouteMarkingWidth, BABYLON_ROUTE_MARKING_WIDTHS } from './babylonRouteMarkings';
 import type { RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize, type CombatObject, type SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
+
+/** Existing shipped KTX2 base/normal/ORM surfaces reused throughout the metrology facility. */
+export const BABYLON_PARALLAX_PREMIUM_SURFACES = [
+  'deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture',
+] as const;
 
 export const BABYLON_PARALLAX_ARRAY_IDENTITY = Object.freeze({
   silhouette: 'baseline-pylons',
@@ -116,6 +124,11 @@ type ShearRig = { root: TransformNode; disc: Mesh; ring: Mesh };
 export class BabylonParallaxArrayPresentation {
   private readonly root: TransformNode;
   private readonly materials: PBRMaterial[];
+  private readonly ownedMaterials: PBRMaterial[];
+  private readonly premiumSurfaces: BabylonPremiumPbrSurfaceLibrary;
+  private readonly premiumBindingCount: number;
+  private readonly iblTexture: CubeTexture;
+  private iblReady = false;
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
   private readonly pylonRigs: PylonRig[] = [];
   private readonly frames: TransformNode[] = [];
@@ -148,14 +161,22 @@ export class BabylonParallaxArrayPresentation {
     const cz = worldH * 0.5;
 
     this.root = new TransformNode('p27-c10-parallax-array-environment', scene);
-    const floor = pbr(scene, 'p27-c10-parallax-floor', 0x12101b, 0.64, 0.50);
-    const graphite = pbr(scene, 'p27-c10-graphite-structure', 0x191724, 0.82, 0.32);
-    const shell = pbr(scene, 'p27-c10-reference-shell', 0x4a405f, 0.68, 0.30, 0x665a82, 0.06);
-    const violet = pbr(scene, 'p27-c10-violet-alignment', 0x665a82, 0.44, 0.30, 0x9a87cf, 0.32);
-    const cyan = pbr(scene, 'p27-c10-cyan-readout', 0x315d66, 0.38, 0.28, 0x82d7df, 0.34);
-    const routePrimary = pbr(scene, 'p27-c10-route-primary', 0x4c4168, 0.42, 0.42, 0x9a87cf, 0.22);
-    const routeSecondary = pbr(scene, 'p27-c10-route-secondary', 0x263b45, 0.46, 0.48, 0x69b7c1, 0.13);
-    this.materials = [floor, graphite, shell, violet, cyan, routePrimary, routeSecondary];
+    this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
+    const floor = this.premiumSurfaces.get('deck-plate');
+    const graphite = this.premiumSurfaces.get('bare-metal');
+    const shell = this.premiumSurfaces.get('painted-metal');
+    const insulation = this.premiumSurfaces.get('polymer-rubber');
+    const fixture = this.premiumSurfaces.get('emissive-fixture');
+    // These subtle tint multipliers preserve shipped KTX2 base/normal/ORM relief.
+    graphite.albedoColor = colorFromHex(0x9b94b8);
+    shell.albedoColor = colorFromHex(0xb9afd1);
+    const violet = pbr(scene, 'p27-c10-violet-alignment', 0x554b70, 0.44, 0.46, 0x9a87cf, 0.23);
+    const cyan = pbr(scene, 'p27-c10-cyan-readout', 0x264a51, 0.38, 0.39, 0x82d7df, 0.22);
+    // Recessed navigational inlays never compete with vector-wash or boss telegraphs.
+    const routePrimary = pbr(scene, 'p27-c10-route-primary', 0x29233b, 0.16, 0.90, 0x655485, 0.026);
+    const routeSecondary = pbr(scene, 'p27-c10-route-secondary', 0x192c32, 0.14, 0.94, 0x36626a, 0.014);
+    this.ownedMaterials = [violet, cyan, routePrimary, routeSecondary];
+    this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.routeMaterials = [routePrimary, routeSecondary];
     box(scene, this.root, 'p27-c10-parallax-floor-mesh', floor, cx, -0.08, cz, worldW, 0.16, worldH);
 
@@ -170,6 +191,19 @@ export class BabylonParallaxArrayPresentation {
       root.position.set(scaled(x), 0, scaled(z));
       box(scene, root, 'p27-c10-pylon-foot-' + index, graphite, 0, 0.24, 0, 1.40, 0.48, 1.40);
       box(scene, root, 'p27-c10-pylon-spine-' + index, shell, 0, 2.15, 0, 0.72, 4.30, 0.72);
+      // Reference-grade metrology hardware: raised conductor rails, insulated
+      // receivers and numbered calibration fiducials, all on shipped PBR art.
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-pylon-conductor-' + index + '-' + side,
+          graphite, side * 0.40, 2.20, 0.02, 0.11, 3.60, 0.18);
+        box(scene, root, 'p28-g9-pylon-insulator-' + index + '-' + side,
+          insulation, side * 0.38, 0.72, 0.36, 0.31, 0.30, 0.12);
+      }
+      for (let tick = 0; tick < 9; tick++) {
+        box(scene, root, 'p28-g9-pylon-fiducial-' + index + '-' + tick,
+          tick % 3 === 0 ? fixture : shell,
+          0, 0.96 + tick * 0.36, 0.38, tick % 3 === 0 ? 0.34 : 0.20, 0.045, 0.07);
+      }
       const rings: Mesh[] = [];
       for (const [ringIndex, y] of [1.15, 2.25, 3.35].entries()) {
         const ring = MeshBuilder.CreateTorus('p27-c10-pylon-ring-' + index + '-' + ringIndex, { diameter: 2.16, thickness: 0.10, tessellation: 30 }, scene);
@@ -197,6 +231,16 @@ export class BabylonParallaxArrayPresentation {
       box(scene, root, 'p27-c10-frame-right-' + index, graphite, 0.72, 1.48, 0, 0.22, 2.96, 0.32);
       box(scene, root, 'p27-c10-frame-top-' + index, shell, 0, 2.82, 0, 1.66, 0.22, 0.36);
       box(scene, root, 'p27-c10-frame-readout-' + index, cyan, 0, 1.68, 0, 1.10, 0.10, 0.20);
+      box(scene, root, 'p28-g9-frame-isolator-' + index, insulation, 0, 2.48, 0.12, 1.32, 0.12, 0.25);
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-frame-guide-' + index + '-' + side,
+          shell, side * 0.53, 1.40, 0.21, 0.10, 2.36, 0.12);
+        for (let tick = 0; tick < 5; tick++) {
+          box(scene, root, 'p28-g9-frame-scale-' + index + '-' + side + '-' + tick,
+            tick === 2 ? fixture : graphite, side * 0.72, 0.54 + tick * 0.46, 0.21,
+            0.16, 0.05, 0.10);
+        }
+      }
       this.frames.push(root);
     });
 
@@ -209,6 +253,20 @@ export class BabylonParallaxArrayPresentation {
       box(scene, root, 'p27-c10-carriage-mass-' + index, shell, 0, 0.92, 0, 1.34, 0.76, 0.72);
       const rail = box(scene, root, 'p27-c10-carriage-rail-' + index, violet, 0, 0.09, 0, 3.40, 0.08, 0.14);
       rail.position.y = 0.08;
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-carriage-suspension-' + index + '-' + side,
+          insulation, side * 0.86, 0.39, 0.0, 0.24, 0.22, 0.94);
+        box(scene, root, 'p28-g9-carriage-readout-' + index + '-' + side,
+          fixture, side * 0.66, 1.06, 0.38, 0.28, 0.12, 0.06);
+        for (let bolt = 0; bolt < 3; bolt++) {
+          const stud = MeshBuilder.CreateCylinder('p28-g9-carriage-stud-' + index + '-' + side + '-' + bolt,
+            { height: 0.12, diameter: 0.12, tessellation: 12 }, scene);
+          stud.parent = root;
+          stud.position.set(side * 0.98, 0.64, (bolt - 1) * 0.36);
+          stud.material = graphite;
+          stud.isPickable = false;
+        }
+      }
       this.carriages.push(root);
     });
 
@@ -231,6 +289,10 @@ export class BabylonParallaxArrayPresentation {
       marker.rotation.x = Math.PI / 2;
       marker.material = violet;
       marker.isPickable = false;
+      box(scene, root, 'p28-g9-anchor-insulator-' + index,
+        insulation, 0, 0.60, 0.34, 0.52, 0.30, 0.24);
+      box(scene, root, 'p28-g9-anchor-calibration-face-' + index,
+        fixture, 0, 1.20, 0.48, 0.12, 0.34, 0.08);
       this.anchors.push(root);
     });
 
@@ -241,6 +303,19 @@ export class BabylonParallaxArrayPresentation {
       box(scene, root, 'p27-c10-console-body-' + index, graphite, 0, 0.42, 0, 0.82, 0.84, 0.62);
       const screen = box(scene, root, 'p27-c10-console-screen-' + index, cyan, 0, 0.82, -0.30, 0.56, 0.34, 0.06);
       screen.rotation.x = -0.18;
+      box(scene, root, 'p28-g9-console-bezel-' + index,
+        insulation, 0, 0.78, -0.25, 0.72, 0.46, 0.10);
+      // Move the illuminated readout in front of the recessed bezel.
+      screen.position.z = -0.32;
+      for (let dial = 0; dial < 3; dial++) {
+        const knob = MeshBuilder.CreateCylinder('p28-g9-console-knob-' + index + '-' + dial,
+          { height: 0.12, diameter: 0.10, tessellation: 12 }, scene);
+        knob.parent = root;
+        knob.position.set((dial - 1) * 0.20, 0.51, -0.36);
+        knob.rotation.x = Math.PI / 2;
+        knob.material = fixture;
+        knob.isPickable = false;
+      }
       root.metadata = { referenceNode: id };
       this.consoles.push(root);
     });
@@ -248,7 +323,7 @@ export class BabylonParallaxArrayPresentation {
     const navigation = getMapNavigationPlan('parallax-array');
     navigation.routes.forEach(route => {
       const material = route.kind === 'primary' ? routePrimary : routeSecondary;
-      const width = route.kind === 'primary' ? 0.12 : 0.076;
+      const width = Math.min(babylonRouteMarkingWidth(route.kind), route.kind === 'primary' ? 0.10 : 0.065);
       route.points.slice(0, -1).forEach((point, index) => {
         const next = route.points[index + 1];
         routeSegment(scene, this.root, material, 'p27-c10-route-' + route.id + '-' + index, scaled(point.x), scaled(point.y), scaled(next.x), scaled(next.y), width);
@@ -326,8 +401,16 @@ export class BabylonParallaxArrayPresentation {
     this.bossCore.isPickable = false;
     this.bossCueRoot.setEnabled(false);
 
+    const shared = new Set(this.premiumSurfaces.materials.values());
+    this.premiumBindingCount = this.root.getChildMeshes(false)
+      .filter(mesh => mesh.material instanceof PBRMaterial && shared.has(mesh.material)).length;
     this.meshCount = this.root.getChildMeshes(false).length;
     this.root.setEnabled(false);
+    this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env',
+      scene, undefined, false, undefined,
+      () => { this.iblReady = true; }, () => { this.iblReady = false; }, undefined, true);
+    this.iblTexture.name = 'p28-g9-parallax-shared-prefiltered-ibl';
+    this.iblTexture.gammaSpace = false;
 
     const lighting = BABYLON_PARALLAX_ARRAY_LIGHTING;
     this.hemisphere = new HemisphericLight('p27-c10-parallax-hemisphere', new Vector3(-0.10, 1, 0.14), scene);
@@ -458,11 +541,12 @@ export class BabylonParallaxArrayPresentation {
       light.intensity = enabled ? (index === 0 ? 5.1 : 4.6) * tierScale : 0;
     });
     const routePulse = 0.86 + Math.sin(state.time * 3.5) * 0.14;
-    this.routeMaterials[0].emissiveColor = colorFromHex(0x9a87cf).scale(0.22 * routePulse);
-    this.routeMaterials[1].emissiveColor = colorFromHex(0x69b7c1).scale(0.13 * routePulse);
+    this.routeMaterials[0].emissiveColor = colorFromHex(0x655485).scale(0.026 * routePulse);
+    this.routeMaterials[1].emissiveColor = colorFromHex(0x36626a).scale(0.014 * routePulse);
 
-    this.scene.environmentTexture = null;
-    this.scene.environmentIntensity = 0;
+    this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
+    this.scene.environmentIntensity = this.iblReady
+      ? (renderBudget.tierName === 'performance' ? 0.24 : 0.43) : 0;
     this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
     this.scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.scene.imageProcessingConfiguration.exposure = lighting.exposure * (lowVisibility ? 1.04 : 1);
@@ -472,7 +556,19 @@ export class BabylonParallaxArrayPresentation {
     const gravity = gravityValues.map(value => value.toFixed(2)).join('>');
     const baselineServos = state.objects.filter(object => object.id.startsWith('baseline-anchor-') && object.active && object.hp > 0).length;
     const pbrCount = this.scene.materials.filter(item => item instanceof PBRMaterial).length;
-    this.canvas.dataset.babylonEnvironmentState = 'ready';
+    const premiumReady = BABYLON_PARALLAX_PREMIUM_SURFACES.every(id => {
+      const material = this.premiumSurfaces.get(id);
+      return material.albedoTexture?.isReady() === true
+        && material.bumpTexture?.isReady() === true
+        && material.metallicTexture?.isReady() === true
+        && (!material.emissiveTexture || material.emissiveTexture.isReady());
+    });
+    this.canvas.dataset.parallaxPremiumAssetState = premiumReady ? 'ready' : 'loading';
+    this.canvas.dataset.parallaxPremiumBindings = String(this.premiumBindingCount);
+    this.canvas.dataset.parallaxPremiumSurfaces = BABYLON_PARALLAX_PREMIUM_SURFACES.join(',');
+    this.canvas.dataset.babylonRouteMarkingProfile = 'parallax-recessed-metrology-inlay';
+    this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary);
+    this.canvas.dataset.babylonEnvironmentState = premiumReady && this.iblReady ? 'ready' : 'loading';
     this.canvas.dataset.environmentVisual = 'procedural-parallax-array-babylon';
     this.canvas.dataset.environmentKit = 'baseline-pylon,reference-frame,mass-carriage,shear-anchor,reference-console,reference-shear,wayfinding,boss-cue';
     this.canvas.dataset.environmentInstances = String(this.meshCount + this.objectCues.size);
@@ -481,7 +577,8 @@ export class BabylonParallaxArrayPresentation {
     this.canvas.dataset.environmentShadowCasters = 'off';
     this.canvas.dataset.environmentLandmark = 'three-point-long-baseline';
     this.canvas.dataset.environmentServiceDetails = 'reference-console:3+mass-carriage:' + profile.carriageInstances;
-    this.canvas.dataset.environmentSurfaceDetail = 'reference-frame:' + profile.frameInstances + '+shear-anchor:' + profile.anchorInstances;
+    this.canvas.dataset.environmentSurfaceDetail = 'reference-frame:' + profile.frameInstances + '+shear-anchor:' + profile.anchorInstances
+      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8';
     this.canvas.dataset.environmentMachineDetail = 'baseline-pylon:3+mass-carriage:3+live-baseline-servo:' + baselineServos;
     this.canvas.dataset.environmentComposition = 'three-point-baseline+cross-track-frames+perimeter-shear-anchors';
     this.canvas.dataset.environmentMaterials = 'graphite-structure+reference-shell+violet-alignment+cyan-readout';
@@ -516,9 +613,9 @@ export class BabylonParallaxArrayPresentation {
     this.canvas.dataset.babylonParallaxArrayRoutes = String(navigation.routes.length);
     this.canvas.dataset.babylonParallaxArrayLandmarks = navigation.landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;
-    this.canvas.dataset.babylonMaterialIntent = 'metrology-composite-pbr+graphite-structure+reference-violet+cyan-readout+shared-world-pbr';
+    this.canvas.dataset.babylonMaterialIntent = 'shared-ktx2-pbr+metrology-composite+graphite-structure+reference-violet+cyan-readout+shared-world-pbr';
     this.canvas.dataset.babylonLightingBudget = 'tier:' + renderBudget.tierName + '|practical:' + practicalCount + '|shadows:off';
-    this.canvas.dataset.environmentIbl = 'off:parallax-array';
+    this.canvas.dataset.environmentIbl = this.iblReady ? 'shared-prefiltered:ready' : 'shared-prefiltered:loading';
     this.canvas.dataset.environmentLighting = 'parallax-array-violet-key+cyan-rim+contact:player+enemy+practical:' + practicalCount + '+shadow:off';
     this.canvas.dataset.environmentShadowBudget = 'off:parallax-array-babylon';
     this.canvas.dataset.environmentTone = 'aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2) + '+graphite-neutral+reference-violet';
@@ -533,6 +630,7 @@ export class BabylonParallaxArrayPresentation {
     this.released = true;
     this.root.setEnabled(false);
     this.setLightingEnabled(false);
+    if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
     this.canvas.dataset.babylonParallaxArrayRelease = reason;
   }
 
@@ -540,7 +638,10 @@ export class BabylonParallaxArrayPresentation {
     this.release('renderer-dispose');
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose());
     this.root.dispose();
-    this.materials.forEach(item => item.dispose());
+    if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
+    this.iblTexture.dispose();
+    this.ownedMaterials.forEach(item => item.dispose());
+    this.premiumSurfaces.dispose();
     this.shearMaterial.dispose();
     this.bossCueMaterial.dispose();
     this.hemisphere.dispose();
@@ -564,7 +665,7 @@ export class BabylonParallaxArrayPresentation {
           ? MeshBuilder.CreateCylinder('p27-c10-' + label + '-' + object.id, { height: 0.92, diameter: 0.46, tessellation: 12 }, this.scene)
           : MeshBuilder.CreateBox('p27-c10-' + label + '-' + object.id, { width: 0.70, height: 0.82, depth: 0.52 }, this.scene);
         mesh.parent = this.objectCueRoot;
-        mesh.material = label.includes('pylon') || label.includes('servo') ? this.materials[3] : this.materials[4];
+        mesh.material = label.includes('pylon') || label.includes('servo') ? this.premiumSurfaces.get('emissive-fixture') : this.premiumSurfaces.get('painted-metal');
         mesh.isPickable = false;
         this.objectCues.set(object.id, mesh);
       }
