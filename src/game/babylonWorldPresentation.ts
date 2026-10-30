@@ -191,7 +191,8 @@ export class BabylonRefineryWorldPresentation {
     this.premiumSharedWorldScenario = mission.location === 'orbital-station' || mission.location === 'damaged-vessel'
       || mission.location === 'spin-habitat' || mission.location === 'jovian-harvester'
       || mission.location === 'ice-mine' || mission.location === 'lattice-annex'
-      || mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';
+      || mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'
+      || mission.location === 'parallax-array';
     this.syncObjects(state, detailScale);
     this.syncObjective(state, mission);
     this.syncGroundLoot(state, detailScale);
