@@ -157,7 +157,7 @@ assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transie
 assert.ok(babylon.includes("const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(babylon.includes("const momentumContrast = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(readFileSync('src/game/babylonWorldPresentation.ts', 'utf8')
-  .includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';"));
+  .includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n      || mission.location === 'parallax-array';"));
 
 const validG7Proof = {
   capturedRoute: 'momentum-exchange', backend: 'webgl2', tier: 'high',
