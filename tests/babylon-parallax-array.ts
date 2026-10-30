@@ -3,14 +3,18 @@ import { readFileSync } from 'node:fs';
 import {
   BABYLON_PARALLAX_ARRAY_IDENTITY,
   BABYLON_PARALLAX_ARRAY_LIGHTING,
+  BABYLON_PARALLAX_PREMIUM_SURFACES,
   parallaxArrayRenderProfile,
   parallaxReferenceState,
   parallaxShearMode,
 } from '../src/game/babylonParallaxArrayPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { auditParallaxVisualProvenance } from '../tools/p28g9-parallax-provenance.mjs';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonParallaxArrayPresentation.ts', 'utf8');
+const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
+const readiness = readFileSync('src/game/babylonRefineryMissionReadiness.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
 const director = readFileSync('src/game/director.ts', 'utf8');
 const sim = readFileSync('src/game/sim.ts', 'utf8');
@@ -19,6 +23,9 @@ const smoke = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
 const workflow = readFileSync('.github/workflows/browser-e2e.yml', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
 
+assert.deepEqual(BABYLON_PARALLAX_PREMIUM_SURFACES, [
+  'deck-plate', 'painted-metal', 'bare-metal', 'polymer-rubber', 'emissive-fixture',
+]);
 assert.deepEqual(BABYLON_PARALLAX_ARRAY_IDENTITY, {
   silhouette: 'baseline-pylons',
   material: 'metrology-composite',
@@ -123,6 +130,62 @@ assert.ok(workflow.includes('BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCAT
 assert.ok(workflow.includes('p27c10-parallax-array.png'));
 assert.ok(pkg.scripts['test:babylon-parallax-array']);
 assert.ok(pkg.scripts.build.includes('npm run test:babylon-parallax-array'));
+
+// P28-G9: shipped KTX2 PBR bindings (not metadata-only), shared authored
+// world objects and a fail-closed scene-readiness path are mandatory.
+assert.ok(presentation.includes("this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);"));
+for (const id of BABYLON_PARALLAX_PREMIUM_SURFACES) {
+  assert.ok(presentation.includes("this.premiumSurfaces.get('" + id + "')"), 'unbound Parallax KTX2 family: ' + id);
+}
+assert.ok(presentation.includes("material.albedoTexture?.isReady() === true"));
+assert.ok(presentation.includes("material.bumpTexture?.isReady() === true"));
+assert.ok(presentation.includes("material.metallicTexture?.isReady() === true"));
+assert.ok(presentation.includes("this.canvas.dataset.babylonEnvironmentState = premiumReady && this.iblReady ? 'ready' : 'loading'"));
+assert.ok(presentation.includes("this.iblTexture = new CubeTexture('/assets/environments/refinery-prefiltered.env'"));
+assert.ok(presentation.includes("this.premiumSurfaces.dispose()"));
+assert.ok(presentation.includes("this.iblTexture.dispose()"));
+assert.ok(world.includes("|| mission.location === 'parallax-array';"));
+assert.ok(readiness.includes("|| mission.location === 'parallax-array');"));
+for (const detail of [
+  'p28-g9-pylon-fiducial-', 'p28-g9-pylon-conductor-', 'p28-g9-frame-scale-',
+  'p28-g9-carriage-stud-', 'p28-g9-anchor-insulator-', 'p28-g9-console-knob-',
+]) assert.ok(presentation.includes(detail), 'missing Parallax calibrated geometry: ' + detail);
+assert.ok(presentation.includes("Math.min(babylonRouteMarkingWidth(route.kind)"));
+assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
+const g9Capture = readFileSync('tools/android-p28g9-parallax-capture.mjs', 'utf8');
+const g9Workflow = readFileSync('.github/workflows/p28-g9-parallax-visual-qa.yml', 'utf8');
+const g9Verify = readFileSync('tools/verify-p28g9-gameplay-frames.mjs', 'utf8');
+assert.ok(g9Capture.includes("parallaxPremiumAssetState === 'ready'"));
+assert.ok(g9Capture.includes("babylonSharedWorldArtState === 'ready'"));
+assert.ok(g9Capture.includes("environmentIbl === 'shared-prefiltered:ready'"));
+assert.ok(g9Capture.includes("window.dispatchEvent(new Event('ironshade:p27d5-return-to-hub'))"));
+assert.ok(g9Capture.includes("shotsAfter > shotsBefore"));
+assert.ok(g9Workflow.includes('G9 Independent Copilot PNG Inspection'));
+assert.ok(g9Workflow.includes('github.event.pull_request.head.sha'));
+assert.ok(g9Workflow.includes('android-p28g9-parallax-array-action.png'));
+assert.ok(g9Verify.includes('auditGameplayPair(normal, action)'));
+const validG9Proof = {
+  mapReentry: 'exit-to-command-and-redeploy:ready', capturedRoute: 'parallax-array', backend: 'webgl2',
+  tier: 'high', captureMode: 'high-tier-qa-visual-only',
+  assetIds: 'refinery-cover-crate-lod0', beforeAssetIds: 'refinery-cover-crate-lod0',
+  beforeMappedObjects: 5, beforeAuthoredObjects: 5,
+  mappedObjects: 5, authoredObjects: 5, fallbackObjects: 0,
+  artState: 'ready', beforeArtState: 'ready', premium: 'ready', beforePremium: 'ready',
+  premiumBindings: 40, ibl: 'shared-prefiltered:ready', beforeIbl: 'shared-prefiltered:ready',
+  routeStyle: 'parallax-recessed-metrology-inlay', routeMaxWidth: 0.16,
+  objectiveCue: 'beacon+navigation-path', worldObjects: 5,
+  actionInput: 'manual-aim+live-touch-fire', shotsBefore: 2, shotsAfter: 5,
+  surfaceDetail: 'reference-frame:3+shear-anchor:8+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8',
+  hazardLanguage: 'shared-hazards+reference-shear+gravity-split+physical-baseline-alignment',
+  referenceNodeIds: 'reference-node-a,reference-node-b,reference-node-c',
+  shearTimeline: '8.0s:first-shear>19.0s:deep-reference-reversal',
+};
+assert.ok(auditParallaxVisualProvenance(validG9Proof).valid);
+assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, premiumBindings: 0 }).valid);
+assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, fallbackObjects: 1 }).valid);
+assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, routeMaxWidth: 0.5 }).valid);
+assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, shotsAfter: 2 }).valid);
+assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, beforeAssetIds: 'late-object-lod0' }).valid);
 
 console.log('BABYLON_PARALLAX_ARRAY_PASS identity=baseline-pylons|metrology-composite|reference-violet|inertial-reference routes='
   + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' shear=8s>19s references=3');
