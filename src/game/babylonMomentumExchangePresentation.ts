@@ -183,13 +183,16 @@ export class BabylonMomentumExchangePresentation {
     const polymer = this.premiumSurfaces.get('polymer-rubber');
     const fixture = this.premiumSurfaces.get('emissive-fixture');
     const edgeMetal = pbr(scene, 'p28-g7-exposed-machinery-trim', 0xa8bac0, 0.74, 0.29, 0x8ac3c8, 0.10);
+    // Transfer rails must read as dark machined guideways, not white ribbons
+    // that mask enemy telegraphs across the real mobile combat lane.
+    const railMetal = pbr(scene, 'p28-g9-recessed-transfer-rail-steel', 0x263a40, 0.61, 0.78, 0x19272e, 0.01);
     const magneticCopper = pbr(scene, 'p28-g7-exposed-magnetic-copper', 0x9f7653, 0.76, 0.38, 0xc39b6c, 0.055);
     const capture = pbr(scene, 'p27-c8-capture-service', 0x47798c, 0.48, 0.30, 0x67b5d5, 0.22);
     const reference = pbr(scene, 'p27-c8-reference-blue', 0x10252f, 0.42, 0.23, 0x67b5d5, 0.34);
     // Narrow, dark, rough deck inlays: hazards and combat actions own the bright cyan.
-    const routePrimary = pbr(scene, 'p27-c8-route-primary', 0x203946, 0.11, 0.91, 0x36677a, 0.026);
-    const routeSecondary = pbr(scene, 'p27-c8-route-secondary', 0x152a34, 0.10, 0.94, 0x285363, 0.012);
-    this.ownedMaterials = [edgeMetal, magneticCopper, capture, reference, routePrimary, routeSecondary];
+    const routePrimary = pbr(scene, 'p27-c8-route-primary', 0x142a32, 0.11, 0.94, 0x28505c, 0.010);
+    const routeSecondary = pbr(scene, 'p27-c8-route-secondary', 0x101c23, 0.10, 0.96, 0x1e3842, 0.005);
+    this.ownedMaterials = [edgeMetal, railMetal, magneticCopper, capture, reference, routePrimary, routeSecondary];
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.cueMaterial = capture;
     this.routeMaterials = [routePrimary, routeSecondary];
@@ -305,11 +308,11 @@ export class BabylonMomentumExchangePresentation {
       [0.79, 0.57, 8.5, 0.08],
     ] as const;
     railData.forEach(([x, z, length, rotation], index) => {
-      const rail = box(scene, this.root, 'p27-c8-transfer-rail-' + index, reference, worldW * x, 0.09, worldH * z, length, 0.18, 0.30);
+      const rail = box(scene, this.root, 'p27-c8-transfer-rail-' + index, railMetal, worldW * x, 0.09, worldH * z, length, 0.18, 0.30);
       rail.rotation.y = rotation;
       for (const side of [-1, 1]) {
         const carrier = box(scene, this.root, 'p28-g7-transfer-rail-carrier-' + index + '-' + side,
-          edgeMetal, rail.position.x, 0.23, rail.position.z + side * 0.27, length, 0.12, 0.10);
+          railMetal, rail.position.x, 0.23, rail.position.z + side * 0.27, length, 0.12, 0.10);
         carrier.rotation.y = rotation;
         carrier.parent = rail;
         carrier.position.set(0, 0.14, side * 0.27);
@@ -640,8 +643,8 @@ export class BabylonMomentumExchangePresentation {
       light.intensity = enabled ? (index === 0 ? 5.3 : 4.5) * tierScale : 0;
     });
     const routePulse = 0.86 + Math.sin(state.time * 3.6) * 0.14;
-    this.routeMaterials[0].emissiveColor = colorFromHex(0x36677a).scale(0.026 * routePulse);
-    this.routeMaterials[1].emissiveColor = colorFromHex(0x285363).scale(0.012 * routePulse);
+    this.routeMaterials[0].emissiveColor = colorFromHex(0x28505c).scale(0.010 * routePulse);
+    this.routeMaterials[1].emissiveColor = colorFromHex(0x1e3842).scale(0.005 * routePulse);
 
     this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
     this.scene.environmentIntensity = this.iblReady
