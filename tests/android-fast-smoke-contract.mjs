@@ -89,6 +89,16 @@ for (const marker of [
   'smallestWidthDp >= LARGE_SCREEN_SMALLEST_WIDTH_DP',
   'phoneLandscape=sensor largeScreen=adaptive-resizable thresholdDp=600 appCategory=game',
 ]) requireText(androidConfigurator, marker, 'P25-B Android configurator');
+// The Pixel 7 Pro landscape camera-cutout surface must be configured before
+// Capacitor measures/attaches its WebView, not only after first layout.
+const nativeOnCreate = androidConfigurator.slice(androidConfigurator.indexOf('public void onCreate(Bundle savedInstanceState)'));
+const cutoutSetup = nativeOnCreate.indexOf('configureGameWindow();');
+const capacitorCreate = nativeOnCreate.indexOf('super.onCreate(savedInstanceState);');
+if (!(cutoutSetup >= 0 && cutoutSetup < capacitorCreate &&
+      nativeOnCreate.indexOf('WindowCompat.setDecorFitsSystemWindows(getWindow(), false);') < capacitorCreate)) {
+  throw new Error('Native immersive cutout bounds must be set before Capacitor creates its WebView');
+}
+
 
 for (const marker of [
   'adb shell wm size 1600x2560',
