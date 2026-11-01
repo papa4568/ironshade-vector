@@ -1542,6 +1542,8 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       if (message.startsWith('CISLUNAR PARALLAX ARRAY')) return 'ALIGN 3 REFERENCE PYLONS';
       if (message.startsWith('PARALLAX SHEAR')) return 'SHEAR FRONT LIVE // REFERENCES DISAGREE';
       if (message.startsWith('DEEP REFERENCE REVERSAL')) return 'DEEP REFERENCE // SHEAR REVERSAL';
+      if (message.startsWith('REFERENCE TECH')) return 'MASS STANDARD AT RISK';
+      if (message.startsWith('BASELINE')) return 'BASELINE ALIGNMENT SHIFT';
     }
     if (activeMission.location === 'momentum-exchange') {
       if (message.startsWith('CISLUNAR MOMENTUM EXCHANGE')) return 'CAPTURE BOTH TRANSFER DRUMS';
