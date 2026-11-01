@@ -182,6 +182,9 @@ export class BabylonCryoReservePresentation {
     const frost = pbr(scene, 'p28-g8-frosted-vacuum-insulation', 0xb9dbe4, 0.09, 0.78, 0x8dd7ea, 0.11);
     const jacketPanel = pbr(scene, 'p28-g8-jacket-service-panels', 0x314b5a, 0.62, 0.53, 0x6caac0, 0.035);
     const frozenPanel = pbr(scene, 'p28-g8-frost-stippled-insulation', 0xc2dfe6, 0.08, 0.96, 0xb7e6ef, 0.17);
+    // Genuine opaque, rough hoarfrost crust at barrel scale: the tiny scars
+    // alone disappeared at the Android gameplay camera distance.
+    const frostCrust = pbr(scene, 'p28-g9-cryo-vacuum-hoarfrost', 0xd8eeef, 0.03, 0.99, 0x9acbd0, 0.09);
     this.ambientColdVaporMaterial = new StandardMaterial('p28-g8-ambient-cold-vent-material', scene);
     // A single small alpha-feathered texture makes the neck vapor read as
     // translucent gas at the gameplay camera, not opaque gray discs.
@@ -209,9 +212,9 @@ export class BabylonCryoReservePresentation {
     this.ambientColdVaporMaterial.disableDepthWrite = true;
     const purge = pbr(scene, 'p27-c9-cold-blue-purge', 0x31576a, 0.48, 0.30, 0x77c6de, 0.25);
     // Recessed wayfinding has to remain distinct from bright boiloff and boss tells.
-    const routePrimary = pbr(scene, 'p27-c9-route-primary', 0x233d49, 0.10, 0.91, 0x32627a, 0.025);
-    const routeSecondary = pbr(scene, 'p27-c9-route-secondary', 0x172e3b, 0.08, 0.94, 0x285269, 0.012);
-    this.ownedMaterials = [frost, jacketPanel, frozenPanel, purge, routePrimary, routeSecondary];
+    const routePrimary = pbr(scene, 'p27-c9-route-primary', 0x142b33, 0.10, 0.96, 0x26434f, 0.009);
+    const routeSecondary = pbr(scene, 'p27-c9-route-secondary', 0x101d26, 0.08, 0.97, 0x1b3844, 0.004);
+    this.ownedMaterials = [frost, frostCrust, jacketPanel, frozenPanel, purge, routePrimary, routeSecondary];
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.cueMaterial = purge;
     this.routeMaterials = [routePrimary, routeSecondary];
@@ -290,6 +293,29 @@ export class BabylonCryoReservePresentation {
         rime.position.y = [1.46, 2.46, 3.48][rimeIndex];
         rime.rotation.y = index * 0.31 + rimeIndex * 2.094;
         rime.material = frozenPanel; rime.isPickable = false;
+      }
+      // Pale frost sleeves cover *part* of each pressure jacket so both
+      // insulation and underlying machined steel stay visible at game zoom.
+      for (const [collarIndex, elevation] of [1.62, 3.48].entries()) {
+        const crust = MeshBuilder.CreateCylinder('p28-g9-cryo-hoarfrost-collar-' + index + '-' + collarIndex,
+          { height: collarIndex === 0 ? 0.64 : 0.54, diameter: 2.02, tessellation: 28 }, scene);
+        crust.parent = root;
+        crust.position.y = elevation;
+        crust.material = frostCrust;
+        crust.isPickable = false;
+      }
+      // Broken vertical crust sheets and frost-lipped seams break up the smooth
+      // cylinder silhouette. Opaque physical depth, never a painted HUD halo.
+      for (let iceIndex = 0; iceIndex < 8; iceIndex++) {
+        const angle = iceIndex * Math.PI * 2 / 8 + index * 0.19;
+        const shard = box(scene, root, 'p28-g9-cryo-insulation-rime-' + index + '-' + iceIndex,
+          iceIndex % 3 === 0 ? frozenPanel : frostCrust,
+          Math.cos(angle) * 1.02,
+          2.45 + (iceIndex % 4) * 0.23,
+          Math.sin(angle) * 1.02,
+          0.30 + (iceIndex % 2) * 0.12,
+          0.64 + (iceIndex % 3) * 0.19, 0.11);
+        shard.rotation.y = -angle - Math.PI / 2;
       }
       // Alternating weathered pressure-jacket service panels break the flat
       // cylinder into clearly recessed metal and frosted insulation sections.
@@ -653,8 +679,8 @@ export class BabylonCryoReservePresentation {
       light.intensity = enabled ? (index === 0 ? 5.0 : 4.4) * tierScale : 0;
     });
     const routePulse = 0.86 + Math.sin(state.time * 3.4) * 0.14;
-    this.routeMaterials[0].emissiveColor = colorFromHex(0x32627a).scale(0.025 * routePulse);
-    this.routeMaterials[1].emissiveColor = colorFromHex(0x285269).scale(0.012 * routePulse);
+    this.routeMaterials[0].emissiveColor = colorFromHex(0x26434f).scale(0.009 * routePulse);
+    this.routeMaterials[1].emissiveColor = colorFromHex(0x1b3844).scale(0.004 * routePulse);
 
     this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
     this.scene.environmentIntensity = this.iblReady
@@ -689,7 +715,7 @@ export class BabylonCryoReservePresentation {
     this.canvas.dataset.environmentShadowCasters = 'off';
     this.canvas.dataset.environmentLandmark = 'staggered-vacuum-jacket-tank-gallery';
     this.canvas.dataset.environmentServiceDetails = 'gallery-frame:' + profile.galleryFrameInstances + '+tank-saddle:' + profile.saddleInstances + '+purge-valve:2';
-    this.canvas.dataset.environmentSurfaceDetail = 'vacuum-jacket-tank:' + profile.tankInstances + '+boiloff-header:' + profile.pipeRunInstances + '+jacket-hoop:35+retainer:14+thermal-sensor:14+gallery-valve-bank:12+header-flange:8+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:21+frost-scar:56+frost-cladding:14+jacket-relief-panel:42+instrument-trunk:14';
+    this.canvas.dataset.environmentSurfaceDetail = 'vacuum-jacket-tank:' + profile.tankInstances + '+boiloff-header:' + profile.pipeRunInstances + '+jacket-hoop:35+retainer:14+thermal-sensor:14+gallery-valve-bank:12+header-flange:8+frost-cuff:14+pressure-gauge:7+ambient-cold-vent:21+frost-scar:56+frost-cladding:14+jacket-relief-panel:42+instrument-trunk:14+hoarfrost-collar:14+insulation-rime:56';
     this.canvas.dataset.environmentMachineDetail = 'vacuum-jacket-tank:7+purge-valve:2+siphon-relay:' + siphonNodes;
     this.canvas.dataset.environmentComposition = 'service-collar+propellant-gallery+umbra-tank-farm';
     this.canvas.dataset.environmentMaterials = 'vacuum-jacketed-steel+frosted-insulation+cold-blue-purge+cold-cyan-service';
