@@ -10,6 +10,7 @@ import {
 } from '../src/game/babylonParallaxArrayPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 import { auditParallaxVisualProvenance } from '../tools/p28g9-parallax-provenance.mjs';
+import { auditParallaxDeckRelief } from '../tools/p28g9-deck-relief.mjs';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonParallaxArrayPresentation.ts', 'utf8');
@@ -199,6 +200,33 @@ assert.ok(g9Capture.includes("babylonSharedWorldArtState === 'ready'"));
 assert.ok(g9Capture.includes("environmentIbl === 'shared-prefiltered:ready'"));
 assert.ok(g9Capture.includes("window.dispatchEvent(new Event('ironshade:p27d5-return-to-hub'))"));
 assert.ok(g9Capture.includes("shotsAfter > shotsBefore"));
+assert.ok(g9Capture.includes('ANDROID_P28G9_KTX2_DECK_VISIBLE_PASS')
+  && g9Capture.includes('auditParallaxDeckRelief(decodeScreenshotPng(readFileSync(normalPath)))'),
+  'G9 screenshot source must wait for actual deck pixels, not only asset telemetry');
+assert.ok(g9Verify.includes('deck.normal.valid && deck.action.valid'),
+  'G9 post-capture proof must reject flat normal and action decks');
+
+// Synthetic frames are strict negative/positive unit controls, not visual proof.
+// The production audit consumes untouched Android PNG pixels in both G9 jobs.
+const deckWidth = 960, deckHeight = 450;
+const plate = (textured: boolean) => {
+  const pixels = new Uint8Array(deckWidth * deckHeight * 4);
+  for (let y = 0; y < deckHeight; y++) for (let x = 0; x < deckWidth; x++) {
+    const offset = (y * deckWidth + x) * 4;
+    const engraved = textured && (Math.floor(x / 3) + Math.floor(y / 3)) % 2 === 0;
+    const value = engraved ? 112 : 70;
+    pixels[offset] = value;
+    pixels[offset + 1] = value;
+    pixels[offset + 2] = value;
+    pixels[offset + 3] = 255;
+  }
+  return { width: deckWidth, height: deckHeight, pixels };
+};
+assert.equal(auditParallaxDeckRelief(plate(false)).valid, false,
+  'flat material without uploaded normal-map relief must fail the deck gate');
+assert.equal(auditParallaxDeckRelief(plate(true)).valid, true,
+  'raised metrology calibration plate must pass the same pixel-edge criterion');
+
 assert.ok(g9Shell.includes("grep -qF 'Error: P28-G9 CDP timeout: Runtime.enable'"),
   'pre-frame Android CDP recovery must identify the exact observed transport failure');
 assert.ok(g9Shell.includes('ANDROID_P28G9_CDP_STARTUP_RELAUNCH attempt='),
