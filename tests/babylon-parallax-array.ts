@@ -217,6 +217,13 @@ assert.ok(g9Capture.includes("window.dispatchEvent(new Event('ironshade:p27d5-re
 assert.ok(g9Capture.includes("shotsAfter > shotsBefore"));
 assert.ok(g9Capture.includes("dataset.environmentHazardMode === 'reference-shear'"),
   'action frame must contain the actual director-triggered violet vector wash');
+assert.ok(g9Capture.includes("await redeployParallaxForShear('initial')")
+  && g9Capture.includes("await redeployParallaxForShear('recover-live-director-window')")
+  && g9Capture.includes('ANDROID_P28G9_REAL_SHEAR_REDEPLOY'),
+  'native ANR recovery must reacquire hazard only through the real command-deck lifecycle');
+assert.ok(g9Capture.includes("await waitFor(liveShear, 'live shear during combat'"),
+  'live shear must remain present in the actual action, not only during setup');
+
 assert.ok(g9Capture.includes('ANDROID_P28G9_KTX2_DECK_VISIBLE_PASS')
   && g9Capture.includes('auditParallaxDeckRelief(decodeScreenshotPng(readFileSync(normalPath)))'),
   'G9 screenshot source must wait for actual deck pixels, not only asset telemetry');
