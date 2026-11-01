@@ -39,10 +39,10 @@ assert.deepEqual(BABYLON_PARALLAX_ARRAY_LIGHTING, {
   keyColor: 0xe2ddf1,
   rimColor: 0x9a87cf,
   emergencyColor: 0x7864ba,
-  keyIntensity: 3.1,
-  rimIntensity: 1.7,
+  keyIntensity: 2.5,
+  rimIntensity: 1.4,
   emergencyIntensity: 7.5,
-  exposure: 1.28,
+  exposure: 1.12,
 });
 
 // In addition to ready material bindings, the actual scene must have a
@@ -50,9 +50,10 @@ assert.deepEqual(BABYLON_PARALLAX_ARRAY_LIGHTING, {
 for (const detail of ['p28-g9-pylon-rear-scale-', 'p28-g9-pylon-readout-', 'p28-g9-perimeter-long-rail-']) {
   assert.ok(presentation.includes(detail), 'missing readable Parallax instrument detail: ' + detail);
 }
-assert.ok(presentation.includes('this.hemisphere.intensity = 1.02'), 'Parallax industrial structures need an ambient fill');
+assert.ok(presentation.includes('this.hemisphere.intensity = 0.90'), 'Parallax industrial structures need an ambient fill');
 for (const detail of [
-  'p28-g9-etched-datum-enamel',
+  'p28-g9-etched-datum-enamel', 'p28-g9-machined-brass-datum',
+  'p28-g9-pylon-meter-recess-', 'p28-g9-reference-foot-datum-',
   'p28-g9-pylon-survey-yoke-', 'p28-g9-pylon-interferometer-lens-',
   'p28-g9-reference-objective-mast-', 'p28-g9-reference-objective-halo-',
   'p28-g9-frame-optical-reticle-', 'p28-g9-frame-reticle-index-',
@@ -63,7 +64,7 @@ for (const detail of [
 ]) assert.ok(presentation.includes(detail), 'Parallax silhouette must expose calibrated hardware: ' + detail);
 assert.ok(presentation.includes('floor.emissiveColor = colorFromHex(0x42566f).scale(0.10)'),
   'PBR floor relief needs restrained bounce fill at gameplay zoom');
-assert.ok(presentation.includes('1.15) : 0'), 'Parallax normal-quality PBR needs nonblack IBL');
+assert.ok(presentation.includes('0.94) : 0'), 'Parallax normal-quality PBR needs nonblack IBL');
 assert.ok(telegraphs.includes("const parallaxWarning = this.canvas.dataset.babylonScenario === 'parallax-array'"));
 assert.ok(telegraphs.includes('parallaxWarning ? 0.12 : 0.14'), 'Parallax warning lanes must remain transparent');
 assert.ok(telegraphs.includes('parallaxWarning ? 0.74 : 1'), 'Parallax combat lanes must not become wide route ribbons');
@@ -148,8 +149,8 @@ assert.ok(babylon.includes('momentumTouchLanePan + parallaxTouchLanePan'),
   'Parallax camera should translate eye and target without changing simulation');
 assert.ok(hudGlance.includes('.game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert b'),
   'Parallax tactical alert lane must have a route-scoped mobile treatment');
-assert.ok(hudGlance.includes('white-space: normal;') && hudGlance.includes('overflow-wrap: break-word;'),
-  'full metrology warning text must wrap instead of ellipsizing');
+assert.ok(hudGlance.includes('-webkit-line-clamp: 2;') && hudGlance.includes('overflow-wrap: break-word;'),
+  'Parallax metrology warning must preserve full accessible text while occupying at most two visual lines');
 
 assert.ok(babylon.includes("this.parallaxArrayPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));"));
 assert.ok(babylon.includes('momentum-exchange,cryo-reserve,parallax-array'));
