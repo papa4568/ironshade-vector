@@ -124,8 +124,7 @@ public class MainActivity extends BridgeActivity {
         // Configure the display cutout BEFORE Capacitor installs its WebView.
         // Otherwise Android can retain a white, 144px landscape inset even
         // after immersive mode is reasserted during an in-app navigation.
-        configureGameWindow();
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        configureWindowCutoutBeforeContent();
         super.onCreate(savedInstanceState);
         configureGameWindow();
         // Android uses TaskDescription.backgroundColor for uncovered task/cutout
@@ -173,6 +172,20 @@ public class MainActivity extends BridgeActivity {
         if (getRequestedOrientation() != requestedOrientation) {
             setRequestedOrientation(requestedOrientation);
         }
+    }
+
+    private void configureWindowCutoutBeforeContent() {
+        // Only Window APIs are safe before AppCompatActivity.onCreate.
+        // findViewById() triggers AppCompat subdecor/theme initialization and
+        // crashes the activity if called before super.onCreate().
+        WindowManager.LayoutParams params = getWindow().getAttributes();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        getWindow().setAttributes(params);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
     }
 
     private void configureGameWindow() {
