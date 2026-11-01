@@ -153,7 +153,7 @@ assert.ok(babylon.includes("import { BabylonParallaxArrayPresentation } from './
 assert.ok(babylon.includes("const parallaxArrayScenario = mission.location === 'parallax-array';"));
 assert.ok(babylon.includes("const parallaxTouchLanePan = this.canvas.dataset.babylonScenario === 'parallax-array' && !narrow ? 2.4 : 0;"),
   'Parallax combat framing must protect the existing right-side FIRE touch lane');
-assert.ok(babylon.includes('momentumTouchLanePan + parallaxTouchLanePan'),
+assert.ok(babylon.includes('momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan'),
   'Parallax camera should translate eye and target without changing simulation');
 assert.ok(hudGlance.includes('.game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert b'),
   'Parallax tactical alert lane must have a route-scoped mobile treatment');
