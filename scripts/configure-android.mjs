@@ -120,6 +120,11 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Configure the display cutout BEFORE Capacitor installs its WebView.
+        // Otherwise Android can retain a white, 144px landscape inset even
+        // after immersive mode is reasserted during an in-app navigation.
+        configureGameWindow();
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         super.onCreate(savedInstanceState);
         configureGameWindow();
         configureGameOrientation();
