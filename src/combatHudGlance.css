@@ -1235,14 +1235,16 @@
     top: max(.45rem, env(safe-area-inset-top));
     bottom: auto;
     left: 51%;
-    width: min(30vw, 25rem);
+    width: min(25vw, 20rem);
   }
 
   .game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"]) {
     top: max(.45rem, env(safe-area-inset-top));
     bottom: auto;
-    left: 31.4%;
-    width: min(13.3vw, 12rem);
+    /* Fit between left vitals and center assisted-target panel (whose
+       left edge starts near 35.5vw on landscape phones). */
+    left: 28%;
+    width: min(12vw, 11rem);
   }
 
   .game-root[data-location="momentum-exchange"] .transient-alert-lane.event > .combat-alert {
