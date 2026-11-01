@@ -313,7 +313,10 @@ try {
   // The real director warns at 8s then 19s. WebView/Quickstep ANR can
   // consume both windows before the QA client resumes. On a miss, only a
   // second genuine mission exit/deploy is allowed, not a manufactured hazard.
-  const liveShear = "document.querySelector('canvas')?.dataset.environmentHazardMode === 'reference-shear'";
+  // Boss pattern names may override environmentHazardMode even while the
+  // authored vector-wash hazards remain active. Observe the separately
+  // published *actual live vectorWash count* instead of a UI priority label.
+  const liveShear = "Number(document.querySelector('canvas')?.dataset.environmentReferenceShear ?? 0) > 0";
   try {
     await waitFor(liveShear, 'first director-authored shear warning', 16_000);
   } catch {
