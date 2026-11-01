@@ -229,9 +229,14 @@ assert.ok(g9Capture.includes("await redeployParallaxForShear('initial')")
 assert.ok(g9Capture.includes("await waitFor(liveShear, 'live shear during combat'"),
   'live shear must remain present in the actual action, not only during setup');
 assert.ok(g9Capture.includes("const readyWithLiveShear = '(' + ready + ') && (' + liveShear + ')'")
-  && g9Capture.includes("await waitFor(readyWithLiveShear, 'post-reentry visually-ready director-authored shear'")
+  && g9Capture.includes("await waitForRealShearWithProgress('post-reentry visually-ready director-authored shear'")
   && g9Capture.includes('P28G9_ACTUAL_SHEAR_FIELDS='),
   'real G9 shear must be observed concurrently with strict material/world readiness and diagnosed on failure');
+assert.ok(g9Capture.includes("lastProgress + 0.06")
+  && g9Capture.includes("await sleep(1800)")
+  && g9Capture.includes("director-clock-stalled")
+  && g9Capture.includes("ANDROID_P28G9_REAL_DIRECTOR_SHEAR_PASS"),
+  'slow WebGL2 Android emulators must be allowed actual director simulation time, not fake hazard state');
 assert.ok(gameCanvas.includes('canvas.dataset.parallaxDirectorElapsed = directorRef.current.elapsed.toFixed(2)')
   && gameCanvas.includes('canvas.dataset.parallaxDirectorEventA = directorRef.current.locationEventA')
   && gameCanvas.includes('canvas.dataset.parallaxDirectorEventB = directorRef.current.locationEventB'),
