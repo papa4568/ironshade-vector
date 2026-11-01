@@ -1355,6 +1355,13 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
         accumulator -= fixed;
         steps += 1;
       }
+      // Observational QA only: real director clock/event flags explain why an
+      // Android screenshot missed a short-lived Parallax shear window.
+      if (activeMissionRef.current.location === 'parallax-array') {
+        canvas.dataset.parallaxDirectorElapsed = directorRef.current.elapsed.toFixed(2);
+        canvas.dataset.parallaxDirectorEventA = directorRef.current.locationEventA ? 'triggered' : 'pending';
+        canvas.dataset.parallaxDirectorEventB = directorRef.current.locationEventB ? 'triggered' : 'pending';
+      }
       const cpuMs = performance.now() - frameStartedAt;
       const animationStartedAt = performance.now();
       syncCanvasEnemyLifecycleMemory(state, canvasEnemyLifecycleRef.current);
