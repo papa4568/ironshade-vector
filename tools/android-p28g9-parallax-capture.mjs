@@ -305,26 +305,40 @@ try {
     await waitFor('document.querySelector(\'button[data-location="parallax-array"]\')?.classList.contains("selected")',
       're-entry contract selection');
     await clickButton('Deploy Selected Contract');
-    await awaitParallaxReady('post-reentry Parallax Array authored-world readiness');
-    console.log('ANDROID_P28G9_PARALLAX_REENTRY_PASS exit=command-deck redeploy=parallax-array state=ready reason=' + reason);
+    // A 6-second director hazard can expire during the GPU-ready wait. Observe
+    // the *actual active vector-wash* and all strict visual-readiness fields in
+    // the same live frame rather than sequentially awaiting them.
+    try {
+      await waitFor(readyWithLiveShear, 'post-reentry visually-ready director-authored shear', 31_000);
+    } catch (error) {
+      const diagnostic = await evaluate(`(() => {
+        const d = document.querySelector('canvas')?.dataset ?? {};
+        const root = document.querySelector('.game-root')?.dataset ?? {};
+        return { route: d.babylonScenario ?? '', visualReadiness: d.missionVisualReadiness ?? '',
+          premium: d.parallaxPremiumAssetState ?? '', world: d.babylonSharedWorldArtState ?? '',
+          directorElapsed: d.parallaxDirectorElapsed ?? '',
+          directorEventA: d.parallaxDirectorEventA ?? '', directorEventB: d.parallaxDirectorEventB ?? '',
+          shear: Number(d.environmentReferenceShear ?? 0),
+          objectiveComplete: root.objectiveComplete ?? '', playerHealth: root.playerHealth ?? '' };
+      })()`);
+      throw new Error(String(error) + '; P28G9_ACTUAL_SHEAR_FIELDS=' + JSON.stringify(diagnostic));
+    }
+    console.log('ANDROID_P28G9_PARALLAX_REENTRY_PASS exit=command-deck redeploy=parallax-array state=ready shear=live reason=' + reason);
   };
-  await redeployParallaxForShear('initial');
-  await sleep(650);
-  // The real director warns at 8s then 19s. WebView/Quickstep ANR can
-  // consume both windows before the QA client resumes. On a miss, only a
-  // second genuine mission exit/deploy is allowed, not a manufactured hazard.
-  // Boss pattern names may override environmentHazardMode even while the
-  // authored vector-wash hazards remain active. Observe the separately
-  // published *actual live vectorWash count* instead of a UI priority label.
+  // The real director warns at 8s then 19s, each for only six seconds.
+  // Checking after the material/world-ready wait is a race on slow Android
+  // GPUs. Re-entry must prove the strict scene and real live hazard together;
+  // retry only by genuine exit-to-hub and redeployment, never synthetic state.
   const liveShear = "Number(document.querySelector('canvas')?.dataset.environmentReferenceShear ?? 0) > 0";
+  const readyWithLiveShear = '(' + ready + ') && (' + liveShear + ')';
   try {
-    await waitFor(liveShear, 'first director-authored shear warning', 16_000);
-  } catch {
-    console.log('ANDROID_P28G9_REAL_SHEAR_REDEPLOY reason=missed-director-window');
+    await redeployParallaxForShear('initial');
+  } catch (error) {
+    if (!String(error).includes('post-reentry visually-ready director-authored shear')) throw error;
+    console.log('ANDROID_P28G9_REAL_SHEAR_REDEPLOY reason=missed-ready-live-director-overlap ' + String(error));
     await redeployParallaxForShear('recover-live-director-window');
-    await waitFor(liveShear, 're-deployed real director-authored shear warning', 16_000);
   }
-  console.log('ANDROID_P28G9_AUTHORED_SHEAR_VISIBLE_PASS hazard=reference-shear');
+  console.log('ANDROID_P28G9_AUTHORED_SHEAR_VISIBLE_PASS hazard=reference-shear readiness=concurrent');
   const beforeVisual = await evaluate(`(() => {
     const d = document.querySelector('canvas')?.dataset ?? {};
     return { assetIds: d.babylonSharedWorldAssets ?? '',
