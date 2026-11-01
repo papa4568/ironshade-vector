@@ -84,7 +84,14 @@ run_gameplay_pair() {
   test -n "$pid" || return $?
   adb forward --remove tcp:9222 >/dev/null 2>&1 || true
   adb forward tcp:9222 "localabstract:webview_devtools_remote_${pid}" || return $?
-  CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g9-parallax-capture.mjs || return $?
+  # Preserve the unmodified startup error as proof. The outer loop may
+  # retry only the exact known pre-frame CDP Runtime.enable timeout, never
+  # a failed rendered-frame or missing-asset verification.
+  local capture_status=0
+  CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g9-parallax-capture.mjs \
+    > android-p28g9-capture-attempt.log 2>&1 || capture_status=$?
+  cat android-p28g9-capture-attempt.log
+  if (( capture_status != 0 )); then return "$capture_status"; fi
   node tools/verify-p28g9-gameplay-frames.mjs android-p28g9-parallax-array-normal.png android-p28g9-parallax-array-action.png android-p28g9-parallax-array-pixel-report.json android-p28g9-parallax-array.json || return $?
 }
 pair_ok=0
@@ -97,9 +104,16 @@ for attempt in 1 2 3; do
     echo 'P28-G9 no accepted raw cutout-free gameplay pair after bounded retries' >&2
     exit 1
   fi
-  # Startup failure has no valid pixel report and must remain fail-closed,
-  # rather than accidentally retrying a missing/blank capture as a cutout.
+  # A live WebView can accept a socket before its first CDP Runtime.enable
+  # is serviced. Only that exact observed pre-frame transport timeout is
+  # retryable; relaunch the native activity, create a fresh WebView, then
+  # re-enter Parallax and recapture both real PNGs from scratch.
   if [[ ! -s android-p28g9-parallax-array-pixel-report.json ]]; then
+    if grep -qF 'Error: P28-G9 CDP timeout: Runtime.enable' android-p28g9-capture-attempt.log; then
+      echo "ANDROID_P28G9_CDP_STARTUP_RELAUNCH attempt=$attempt reason=Runtime.enable"
+      sleep 2
+      continue
+    fi
     echo 'P28-G9 capture exited before valid pixel/provenance evidence' >&2
     exit 1
   fi
