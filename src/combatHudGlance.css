@@ -1168,3 +1168,22 @@
   text-overflow: clip;
   line-height: 1.12;
 }
+
+/* P28-G9: Parallax's long tactical metrology alerts were truncated to
+   'TACTICAL CISLUNAR P...' at actual Pixel landscape zoom. Allow full
+   multiline alerts inside the otherwise open lower-middle HUD lane. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="parallax-array"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    left: 43%;
+    width: min(37vw, 36rem);
+    transform: translateX(-50%);
+  }
+
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert b {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+    line-height: 1.14;
+  }
+}
