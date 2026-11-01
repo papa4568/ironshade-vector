@@ -55,6 +55,13 @@ assert.ok(presentation.includes('this.hemisphere.intensity = 0.90'), 'Parallax i
 for (const detail of [
   'p28-g9-etched-datum-enamel', 'p28-g9-machined-brass-datum',
   'p28-g9-pylon-meter-recess-', 'p28-g9-reference-foot-datum-',
+  'p28-g9-survey-apron-long-', 'p28-g9-exterior-survey-truss-',
+  'p28-g9-survey-truss-leg-', 'p28-g9-survey-apron-feed-',
+  'p28-g9-pylon-calibration-clamp-', 'p28-g9-pylon-calibration-index-',
+  'p28-g9-pylon-servo-coupler-', 'p28-g9-optical-gantry-cross-brace-',
+  'p28-g9-carriage-coupling-shaft-', 'p28-g9-carriage-rail-shoe-',
+  'p28-g9-console-readout-scale-', 'p28-g9-console-optical-port-',
+  'p28-g9-shear-perimeter-threat-tick-',
   'p28-g9-pylon-survey-yoke-', 'p28-g9-pylon-interferometer-lens-',
   'p28-g9-reference-objective-mast-', 'p28-g9-reference-objective-halo-',
   'p28-g9-frame-optical-reticle-', 'p28-g9-frame-reticle-index-',
@@ -150,8 +157,16 @@ assert.ok(babylon.includes('momentumTouchLanePan + parallaxTouchLanePan'),
   'Parallax camera should translate eye and target without changing simulation');
 assert.ok(hudGlance.includes('.game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert b'),
   'Parallax tactical alert lane must have a route-scoped mobile treatment');
-assert.ok(hudGlance.includes('-webkit-line-clamp: 2;') && hudGlance.includes('overflow-wrap: break-word;'),
-  'Parallax metrology warning must preserve full accessible text while occupying at most two visual lines');
+assert.ok(hudGlance.includes('P28-G9/G7 exact-APK review')
+  && hudGlance.includes('background: rgba(5, 11, 17, .78)'),
+  'both compact tactical callouts must leave machinery and combat space visible');
+const gameCanvas = readFileSync('src/components/GameCanvas.tsx', 'utf8');
+for (const cue of ['ALIGN 3 REFERENCE PYLONS', 'SHEAR FRONT LIVE // REFERENCES DISAGREE',
+  'CAPTURE MOMENTUM TRANSFER DRUMS', 'COUNTERMASS FRONT LIVE']) {
+  assert.ok(gameCanvas.includes(cue), 'Parallax/Momentum route events need concise readable messages: ' + cue);
+}
+assert.ok(gameCanvas.includes("aria-label={hud.eventT > 0 && !bossTransitionCue && !deploymentCueVisible ? hud.eventText : undefined}"),
+  'compact alerts must preserve the full original director announcement for accessibility');
 
 assert.ok(babylon.includes("this.parallaxArrayPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));"));
 assert.ok(babylon.includes('momentum-exchange,cryo-reserve,parallax-array'));
@@ -200,6 +215,8 @@ assert.ok(g9Capture.includes("babylonSharedWorldArtState === 'ready'"));
 assert.ok(g9Capture.includes("environmentIbl === 'shared-prefiltered:ready'"));
 assert.ok(g9Capture.includes("window.dispatchEvent(new Event('ironshade:p27d5-return-to-hub'))"));
 assert.ok(g9Capture.includes("shotsAfter > shotsBefore"));
+assert.ok(g9Capture.includes("dataset.environmentHazardMode === 'reference-shear'"),
+  'action frame must contain the actual director-triggered violet vector wash');
 assert.ok(g9Capture.includes('ANDROID_P28G9_KTX2_DECK_VISIBLE_PASS')
   && g9Capture.includes('auditParallaxDeckRelief(decodeScreenshotPng(readFileSync(normalPath)))'),
   'G9 screenshot source must wait for actual deck pixels, not only asset telemetry');
