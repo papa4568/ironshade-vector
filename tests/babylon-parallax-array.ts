@@ -209,6 +209,17 @@ for (const detail of [
 ]) assert.ok(presentation.includes(detail), 'missing Parallax calibrated geometry: ' + detail);
 assert.ok(presentation.includes("Math.min(babylonRouteMarkingWidth(route.kind)"));
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
+assert.ok(presentation.includes('p28-g9-physical-reference-baseline-')
+  && presentation.includes('p28-g9-physical-datum-graduation-')
+  && presentation.includes('p28-g9-reference-isolator-foot-')
+  && presentation.includes('physical-baseline:3+datum-graduation:39+isolator-foot:12'),
+  'three long-baseline metrology rails must exist as calibrated physical hardware');
+assert.ok(presentation.includes("vectorWashes.length > 0 ? 0.17 : 0.06")
+  && presentation.includes("colorFromHex(0xb195dc).scale(0.64"),
+  'real violet shear stays visible but cannot obscure the entire metrology deck');
+assert.ok(hudGlance.includes('width: min(25vw, 20rem);')
+  && gameCanvas.includes("message.startsWith('REFERENCE TECH')"),
+  'G9 small tactical warnings should not occupy the main survey work surface');
 const g9Capture = readFileSync('tools/android-p28g9-parallax-capture.mjs', 'utf8');
 const g9Shell = readFileSync('tools/android-p28g9-parallax-capture.sh', 'utf8');
 const g9Workflow = readFileSync('.github/workflows/p28-g9-parallax-visual-qa.yml', 'utf8');
