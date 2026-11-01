@@ -278,18 +278,29 @@ export class BabylonParallaxArrayPresentation {
       root.parent = this.root;
       root.position.set(scaled(x), 0, scaled(z));
       if (index === 1) root.rotation.y = Math.PI / 2;
-      box(scene, root, 'p27-c10-frame-left-' + index, graphite, -0.72, 1.48, 0, 0.22, 2.96, 0.32);
-      box(scene, root, 'p27-c10-frame-right-' + index, graphite, 0.72, 1.48, 0, 0.22, 2.96, 0.32);
-      box(scene, root, 'p27-c10-frame-top-' + index, shell, 0, 2.82, 0, 1.66, 0.22, 0.36);
-      box(scene, root, 'p27-c10-frame-readout-' + index, cyan, 0, 1.68, 0, 1.10, 0.10, 0.20);
-      box(scene, root, 'p28-g9-frame-isolator-' + index, insulation, 0, 2.48, 0.12, 1.32, 0.12, 0.25);
+      // Open optical survey gantry: a visible engraved datum arch, beam
+      // insulators and suspended reticle distinguish this from a dark cuboid.
+      box(scene, root, 'p27-c10-frame-left-' + index, shell, -0.98, 1.72, 0, 0.28, 3.44, 0.38);
+      box(scene, root, 'p27-c10-frame-right-' + index, shell, 0.98, 1.72, 0, 0.28, 3.44, 0.38);
+      box(scene, root, 'p27-c10-frame-top-' + index, etched, 0, 3.24, 0, 2.24, 0.22, 0.40);
+      box(scene, root, 'p27-c10-frame-readout-' + index, cyan, 0, 1.68, 0.31, 1.65, 0.14, 0.24);
+      box(scene, root, 'p28-g9-frame-isolator-' + index, insulation, 0, 2.87, 0.12, 1.88, 0.16, 0.27);
+      const reticle = MeshBuilder.CreateTorus('p28-g9-frame-optical-reticle-' + index,
+        { diameter: 1.34, thickness: 0.13, tessellation: 32 }, scene);
+      reticle.parent = root;
+      reticle.position.set(0, 2.38, 0.44);
+      reticle.rotation.x = Math.PI / 2;
+      reticle.material = indexed;
+      reticle.isPickable = false;
+      box(scene, root, 'p28-g9-frame-reticle-index-' + index, etched,
+        0, 2.38, 0.52, 0.11, 1.32, 0.14);
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-frame-guide-' + index + '-' + side,
-          shell, side * 0.53, 1.40, 0.21, 0.10, 2.36, 0.12);
+          etched, side * 0.78, 1.58, 0.25, 0.14, 2.70, 0.16);
         for (let tick = 0; tick < 5; tick++) {
           box(scene, root, 'p28-g9-frame-scale-' + index + '-' + side + '-' + tick,
-            tick === 2 ? fixture : graphite, side * 0.72, 0.54 + tick * 0.46, 0.21,
-            0.16, 0.05, 0.10);
+            tick === 2 ? etched : indexed, side * 0.98, 0.58 + tick * 0.54, 0.27,
+            0.28, 0.09, 0.13);
         }
       }
       this.frames.push(root);
