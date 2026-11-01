@@ -564,8 +564,8 @@ export class BabylonParallaxArrayPresentation {
     });
 
     this.shearMaterial = new StandardMaterial('p27-c10-reference-shear-material', scene);
-    this.shearMaterial.diffuseColor = colorFromHex(0x9a87cf).scale(0.20);
-    this.shearMaterial.emissiveColor = colorFromHex(0x9a87cf).scale(0.70);
+    this.shearMaterial.diffuseColor = colorFromHex(0xac87e7).scale(0.22);
+    this.shearMaterial.emissiveColor = colorFromHex(0xc2a0ff).scale(0.85);
     this.shearMaterial.specularColor = Color3.Black();
     this.shearMaterial.alpha = 0.18;
     this.shearMaterial.disableLighting = true;
@@ -578,11 +578,20 @@ export class BabylonParallaxArrayPresentation {
       disc.position.y = 0.04;
       disc.material = this.shearMaterial;
       disc.isPickable = false;
-      const ring = MeshBuilder.CreateTorus('p27-c10-shear-ring-' + index, { diameter: 5.20, thickness: 0.10, tessellation: 40 }, scene);
+      const ring = MeshBuilder.CreateTorus('p27-c10-shear-ring-' + index, { diameter: 5.20, thickness: 0.19, tessellation: 40 }, scene);
       ring.parent = root;
       ring.position.y = 0.08;
       ring.material = this.shearMaterial;
       ring.isPickable = false;
+      // Detached sector ticks turn a live vector wash into a bounded,
+      // unmistakeable violet hazard, never a navigation ribbon.
+      for (let mark = 0; mark < 8; mark++) {
+        const angle = mark * Math.PI / 4;
+        const tick = box(scene, root, 'p28-g9-shear-perimeter-threat-tick-' + index + '-' + mark,
+          this.shearMaterial, Math.cos(angle) * 2.50, 0.12,
+          Math.sin(angle) * 2.50, 0.46, 0.08, 0.20);
+        tick.rotation.y = -angle;
+      }
       root.setEnabled(false);
       this.shearRigs.push({ root, disc, ring });
     }
@@ -706,8 +715,8 @@ export class BabylonParallaxArrayPresentation {
       rig.ring.scaling.set(pulse, pulse, pulse);
       rig.ring.rotation.y = state.time * (index % 2 ? -0.72 : 0.72);
     });
-    this.shearMaterial.alpha = (vectorWashes.length > 0 ? 0.24 : 0.08) * renderBudget.transparencyScale;
-    this.shearMaterial.emissiveColor = colorFromHex(0x9a87cf).scale(0.64 + Math.sin(state.time * 6.6) * 0.12);
+    this.shearMaterial.alpha = (vectorWashes.length > 0 ? 0.34 : 0.08) * renderBudget.transparencyScale;
+    this.shearMaterial.emissiveColor = colorFromHex(0xc2a0ff).scale(0.90 + Math.sin(state.time * 6.6) * 0.12);
 
     const gravityValues = state.sectors.slice(0, 3).map(sector => sector.gravity);
     const gravitySpread = gravityValues.length > 0 ? Math.max(...gravityValues) - Math.min(...gravityValues) : 0;
