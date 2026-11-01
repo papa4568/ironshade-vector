@@ -95,11 +95,14 @@ for (const marker of [
 // The Pixel 7 Pro landscape camera-cutout surface must be configured before
 // Capacitor measures/attaches its WebView, not only after first layout.
 const nativeOnCreate = androidConfigurator.slice(androidConfigurator.indexOf('public void onCreate(Bundle savedInstanceState)'));
-const cutoutSetup = nativeOnCreate.indexOf('configureGameWindow();');
+const cutoutSetup = nativeOnCreate.indexOf('configureWindowCutoutBeforeContent();');
 const capacitorCreate = nativeOnCreate.indexOf('super.onCreate(savedInstanceState);');
+const postCreateViewSetup = nativeOnCreate.indexOf('configureGameWindow();');
 if (!(cutoutSetup >= 0 && cutoutSetup < capacitorCreate &&
-      nativeOnCreate.indexOf('WindowCompat.setDecorFitsSystemWindows(getWindow(), false);') < capacitorCreate)) {
-  throw new Error('Native immersive cutout bounds must be set before Capacitor creates its WebView');
+      postCreateViewSetup > capacitorCreate &&
+      androidConfigurator.includes('private void configureWindowCutoutBeforeContent() {') &&
+      androidConfigurator.includes('WindowCompat.setDecorFitsSystemWindows(getWindow(), false);'))) {
+  throw new Error('Set native cutout bounds before WebView creation but never access AppCompat views before super.onCreate');
 }
 
 
