@@ -165,6 +165,9 @@ for (const cue of ['ALIGN 3 REFERENCE PYLONS', 'SHEAR FRONT LIVE // REFERENCES D
   'CAPTURE MOMENTUM TRANSFER DRUMS', 'COUNTERMASS FRONT LIVE']) {
   assert.ok(gameCanvas.includes(cue), 'Parallax/Momentum route events need concise readable messages: ' + cue);
 }
+assert.ok(gameCanvas.includes("MASS-WELL LOCK LIVE"), 'Momentum event must fit a safe upper-HUD gap');
+assert.ok(hudGlance.includes('P28-G9 real Android proof: reserve the *unoccupied top status roof*'),
+  'Parallax and Momentum tactical alerts must not overlap gameplay floor/rails');
 assert.ok(gameCanvas.includes("aria-label={hud.eventT > 0 && !bossTransitionCue && !deploymentCueVisible ? hud.eventText : undefined}"),
   'compact alerts must preserve the full original director announcement for accessibility');
 
