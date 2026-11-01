@@ -285,6 +285,19 @@ export class BabylonParallaxArrayPresentation {
       footReticle.rotation.x = Math.PI / 2;
       footReticle.material = indexed;
       footReticle.isPickable = false;
+      // Instrument-scale lateral clamps, conductor terminals and machine
+      // engraving are larger than the per-pixel shimmer of a smooth box edge.
+      for (let tier = 0; tier < 4; tier++) {
+        const y = 1.08 + tier * 0.76;
+        box(scene, root, 'p28-g9-pylon-calibration-clamp-' + index + '-' + tier,
+          graphite, 0, y, 0.76, 1.44, 0.18, 0.18);
+        box(scene, root, 'p28-g9-pylon-calibration-index-' + index + '-' + tier,
+          graduation, 0, y + 0.10, 0.87, tier % 2 ? 0.42 : 0.70, 0.13, 0.17);
+        for (const side of [-1, 1]) {
+          box(scene, root, 'p28-g9-pylon-servo-coupler-' + index + '-' + tier + '-' + side,
+            shell, side * 0.78, y, 0.60, 0.26, 0.34, 0.44);
+        }
+      }
       const lens = MeshBuilder.CreateCylinder('p28-g9-pylon-interferometer-lens-' + index,
         { diameter: 0.78, height: 0.17, tessellation: 24 }, scene);
       lens.parent = root;
@@ -355,6 +368,12 @@ export class BabylonParallaxArrayPresentation {
             0.28, 0.09, 0.13);
         }
       }
+      for (const sign of [-1, 1]) {
+        box(scene, root, 'p28-g9-optical-gantry-cross-brace-' + index + '-' + sign,
+          shell, sign * 0.74, 0.65, 0.36, 0.31, 0.20, 0.46);
+        box(scene, root, 'p28-g9-optical-gantry-datum-foot-' + index + '-' + sign,
+          graduation, sign * 0.94, 0.23, 0.46, 0.38, 0.18, 0.22);
+      }
       this.frames.push(root);
     });
 
@@ -401,6 +420,23 @@ export class BabylonParallaxArrayPresentation {
         box(scene, root, 'p28-g9-carriage-graduation-' + index + '-' + tick,
           tick % 2 ? etched : graduation, (tick - 2) * 0.25, 1.34, 0.30,
           0.12, 0.08, 0.12);
+      }
+      // The mass carriage is a rail-guided counterweight, not two loose
+      // decorative wheels. Expose its shaft, service bearing and indexed head.
+      const shaft = MeshBuilder.CreateCylinder('p28-g9-carriage-coupling-shaft-' + index,
+        { diameter: 0.24, height: 2.25, tessellation: 16 }, scene);
+      shaft.parent = root;
+      shaft.position.set(0, 0.93, 0.43);
+      shaft.rotation.z = Math.PI / 2;
+      shaft.material = graduation;
+      shaft.isPickable = false;
+      box(scene, root, 'p28-g9-carriage-machined-head-' + index,
+        graphite, 0, 1.37, 0, 1.74, 0.22, 0.82);
+      box(scene, root, 'p28-g9-carriage-index-plate-' + index,
+        graduation, 0, 1.50, 0, 1.38, 0.06, 0.52);
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-carriage-rail-shoe-' + index + '-' + side,
+          shell, side * 1.32, 0.24, 0.15, 0.58, 0.22, 0.87);
       }
       this.carriages.push(root);
     });
@@ -486,6 +522,20 @@ export class BabylonParallaxArrayPresentation {
         knob.material = fixture;
         knob.isPickable = false;
       }
+      box(scene, root, 'p28-g9-console-engraved-base-' + index,
+        shell, 0, 0.22, -0.14, 1.26, 0.24, 1.18);
+      for (let tick = 0; tick < 4; tick++) {
+        box(scene, root, 'p28-g9-console-readout-scale-' + index + '-' + tick,
+          tick === 0 ? graduation : etched,
+          -0.27 + tick * 0.18, 0.91, -0.39, 0.11, 0.18, 0.10);
+      }
+      const consoleLens = MeshBuilder.CreateTorus('p28-g9-console-optical-port-' + index,
+        { diameter: 0.40, thickness: 0.08, tessellation: 24 }, scene);
+      consoleLens.parent = root;
+      consoleLens.position.set(0, 0.44, -0.44);
+      consoleLens.rotation.x = Math.PI / 2;
+      consoleLens.material = graduation;
+      consoleLens.isPickable = false;
       root.metadata = { referenceNode: id };
       this.consoles.push(root);
     });
