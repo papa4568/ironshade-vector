@@ -337,6 +337,13 @@ try {
   await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
   await sleep(500);
   await waitFor(ready, 'post-input Parallax Array cues', 20_000);
+  // The first real authored vector wash starts eight seconds into the mission.
+  // Inspect live combat DURING that warning, rather than asking an image
+  // reviewer to find a shear hazard in a pre-hazard snapshot. Do not fabricate
+  // state or render a QA-only hazard.
+  await waitFor("document.querySelector('canvas')?.dataset.environmentHazardMode === 'reference-shear'",
+    'live authored Parallax shear front', 20_000);
+  console.log('ANDROID_P28G9_AUTHORED_SHEAR_VISIBLE_PASS hazard=reference-shear');
   // Capture ACTIVE combat, not merely a different walking pose. This is the
   // real touch FIRE control on the deployed Android WebView, not fabricated
   // counters or synthetic projectiles. Manual aim mirrors the fast smoke path.
