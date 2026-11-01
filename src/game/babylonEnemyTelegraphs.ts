@@ -609,7 +609,7 @@ export class BabylonEnemyTelegraphs {
     visual.phaseMaterial.diffuseColor = phaseSignal.scale(0.16);
     visual.phaseMaterial.emissiveColor = phaseSignal;
     visual.phaseMaterial.alpha = clamp01(
-      0.42
+      (this.canvas.dataset.babylonScenario === 'parallax-array' ? 0.27 : 0.42)
       + (phaseTwo ? 0.1 : 0)
       + lifecycle.phaseTransition * 0.24
       + Math.sin(state.time * (phaseTwo ? 5.8 : 3.2) + enemy.patternIndex) * 0.06,
