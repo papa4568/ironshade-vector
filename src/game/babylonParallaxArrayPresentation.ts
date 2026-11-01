@@ -36,10 +36,10 @@ export const BABYLON_PARALLAX_ARRAY_LIGHTING = Object.freeze({
   keyColor: 0xe2ddf1,
   rimColor: 0x9a87cf,
   emergencyColor: 0x7864ba,
-  keyIntensity: 2.2,
-  rimIntensity: 1.15,
-  emergencyIntensity: 8.1,
-  exposure: 1.06,
+  keyIntensity: 2.85,
+  rimIntensity: 1.55,
+  emergencyIntensity: 7.5,
+  exposure: 1.22,
 });
 
 export type ParallaxArrayRenderProfile = {
@@ -168,10 +168,10 @@ export class BabylonParallaxArrayPresentation {
     const insulation = this.premiumSurfaces.get('polymer-rubber');
     const fixture = this.premiumSurfaces.get('emissive-fixture');
     // These subtle tint multipliers preserve shipped KTX2 base/normal/ORM relief.
-    graphite.albedoColor = colorFromHex(0x9b94b8);
-    shell.albedoColor = colorFromHex(0xb9afd1);
-    const violet = pbr(scene, 'p27-c10-violet-alignment', 0x554b70, 0.44, 0.46, 0x9a87cf, 0.23);
-    const cyan = pbr(scene, 'p27-c10-cyan-readout', 0x264a51, 0.38, 0.39, 0x82d7df, 0.22);
+    graphite.albedoColor = colorFromHex(0xc1c4d0);
+    shell.albedoColor = colorFromHex(0xd6d6df);
+    const violet = pbr(scene, 'p27-c10-violet-alignment', 0x665680, 0.44, 0.46, 0x9a87cf, 0.34);
+    const cyan = pbr(scene, 'p27-c10-cyan-readout', 0x48767b, 0.38, 0.39, 0x82d7df, 0.44);
     // Recessed navigational inlays never compete with vector-wash or boss telegraphs.
     const routePrimary = pbr(scene, 'p27-c10-route-primary', 0x29233b, 0.16, 0.90, 0x655485, 0.026);
     const routeSecondary = pbr(scene, 'p27-c10-route-secondary', 0x192c32, 0.14, 0.94, 0x36626a, 0.014);
@@ -179,6 +179,15 @@ export class BabylonParallaxArrayPresentation {
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.routeMaterials = [routePrimary, routeSecondary];
     box(scene, this.root, 'p27-c10-parallax-floor-mesh', floor, cx, -0.08, cz, worldW, 0.16, worldH);
+    // Frame the survey deck against space without opaque walls or blocking
+    // collision/pathing. These low, contrasting edge rails provide scale and a
+    // visible termination for the otherwise black surrounding environment.
+    for (const side of [-1, 1]) {
+      box(scene, this.root, 'p28-g9-perimeter-long-rail-' + side,
+        shell, cx + side * (worldW / 2 - 0.26), 0.19, cz, 0.26, 0.38, worldH - 0.6);
+      box(scene, this.root, 'p28-g9-perimeter-cross-rail-' + side,
+        graphite, cx, 0.19, cz + side * (worldH / 2 - 0.26), worldW - 0.6, 0.38, 0.26);
+    }
 
     const pylonFallback = [
       ['reference-node-a', 500, 300],
@@ -190,19 +199,25 @@ export class BabylonParallaxArrayPresentation {
       root.parent = this.root;
       root.position.set(scaled(x), 0, scaled(z));
       box(scene, root, 'p27-c10-pylon-foot-' + index, graphite, 0, 0.24, 0, 1.40, 0.48, 1.40);
-      box(scene, root, 'p27-c10-pylon-spine-' + index, shell, 0, 2.15, 0, 0.72, 4.30, 0.72);
-      // Reference-grade metrology hardware: raised conductor rails, insulated
-      // receivers and numbered calibration fiducials, all on shipped PBR art.
+      box(scene, root, 'p27-c10-pylon-spine-' + index, shell, 0, 2.15, 0, 0.90, 4.30, 0.90);
+      // Raised, bidirectional metrology faces must remain legible at the actual
+      // gameplay zoom, including when a shared authored world object overlaps
+      // the pylon centre. A bright rail is a narrow reference, not a route band.
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-pylon-conductor-' + index + '-' + side,
-          graphite, side * 0.40, 2.20, 0.02, 0.11, 3.60, 0.18);
+          shell, side * 0.54, 2.20, 0.28, 0.18, 3.60, 0.22);
         box(scene, root, 'p28-g9-pylon-insulator-' + index + '-' + side,
-          insulation, side * 0.38, 0.72, 0.36, 0.31, 0.30, 0.12);
+          insulation, side * 0.53, 0.72, 0.52, 0.36, 0.30, 0.16);
+        box(scene, root, 'p28-g9-pylon-readout-' + index + '-' + side,
+          fixture, side * 0.54, 3.56, 0.41, 0.18, 0.32, 0.09);
       }
       for (let tick = 0; tick < 9; tick++) {
         box(scene, root, 'p28-g9-pylon-fiducial-' + index + '-' + tick,
           tick % 3 === 0 ? fixture : shell,
-          0, 0.96 + tick * 0.36, 0.38, tick % 3 === 0 ? 0.34 : 0.20, 0.045, 0.07);
+          0, 0.96 + tick * 0.36, 0.53, tick % 3 === 0 ? 0.72 : 0.46, 0.085, 0.11);
+        box(scene, root, 'p28-g9-pylon-rear-scale-' + index + '-' + tick,
+          tick % 3 === 0 ? fixture : graphite,
+          0, 0.96 + tick * 0.36, -0.53, tick % 3 === 0 ? 0.72 : 0.46, 0.085, 0.11);
       }
       const rings: Mesh[] = [];
       for (const [ringIndex, y] of [1.15, 2.25, 3.35].entries()) {
@@ -415,8 +430,8 @@ export class BabylonParallaxArrayPresentation {
     const lighting = BABYLON_PARALLAX_ARRAY_LIGHTING;
     this.hemisphere = new HemisphericLight('p27-c10-parallax-hemisphere', new Vector3(-0.10, 1, 0.14), scene);
     this.hemisphere.diffuse = colorFromHex(0xe7e1f2);
-    this.hemisphere.groundColor = colorFromHex(0x05040a);
-    this.hemisphere.intensity = 0.28;
+    this.hemisphere.groundColor = colorFromHex(0x242331);
+    this.hemisphere.intensity = 0.76;
     this.keyLight = new DirectionalLight('p27-c10-parallax-key', new Vector3(-0.52, -1, 0.30).normalize(), scene);
     this.keyLight.position = new Vector3(worldW * 0.84, 24, worldH * 0.16);
     this.keyLight.diffuse = colorFromHex(lighting.keyColor);
@@ -523,7 +538,7 @@ export class BabylonParallaxArrayPresentation {
 
     const lighting = BABYLON_PARALLAX_ARRAY_LIGHTING;
     const tierScale = renderBudget.tierName === 'high' ? 1 : renderBudget.tierName === 'balanced' ? 0.88 : 0.72;
-    this.hemisphere.intensity = 0.28 * (renderBudget.tierName === 'performance' ? 0.82 : 1);
+    this.hemisphere.intensity = 0.76 * (renderBudget.tierName === 'performance' ? 0.82 : 1);
     this.keyLight.intensity = lighting.keyIntensity * tierScale * (lowVisibility ? 0.94 : 1);
     this.rimLight.intensity = lighting.rimIntensity * (renderBudget.tierName === 'performance' ? 0.74 : 1);
     const px = scaled(state.player.x);
@@ -546,11 +561,11 @@ export class BabylonParallaxArrayPresentation {
 
     this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
     this.scene.environmentIntensity = this.iblReady
-      ? (renderBudget.tierName === 'performance' ? 0.24 : 0.43) : 0;
+      ? (renderBudget.tierName === 'performance' ? 0.54 : 0.93) : 0;
     this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
     this.scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.scene.imageProcessingConfiguration.exposure = lighting.exposure * (lowVisibility ? 1.04 : 1);
-    this.scene.imageProcessingConfiguration.contrast = 1.06;
+    this.scene.imageProcessingConfiguration.contrast = 1.03;
 
     const navigation = getMapNavigationPlan('parallax-array');
     const gravity = gravityValues.map(value => value.toFixed(2)).join('>');
