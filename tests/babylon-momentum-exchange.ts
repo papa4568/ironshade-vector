@@ -156,6 +156,17 @@ assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .boss-hu
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane.event .combat-alert b'));
 assert.ok(g7Hud.includes('top: max(.45rem, env(safe-area-inset-top));'),
   'route-specific tactical notice must move away from the live flywheel field');
+const g7RoofRules = g7Hud.slice(g7Hud.indexOf('/* P28-G9 real Android proof:'));
+assert.ok(g7RoofRules.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane.event > .combat-alert {')
+  && g7RoofRules.includes('display: block;')
+  && g7RoofRules.includes('-webkit-line-clamp: 2;')
+  && g7RoofRules.includes('overflow: hidden;'),
+  'real G7 tactical notice must stack the label and limit the warning to two legible lines');
+const g7CanvasSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
+assert.ok(g7CanvasSource.includes("message.startsWith('CISLUNAR MOMENTUM EXCHANGE')")
+  && g7CanvasSource.includes("message.startsWith('COUNTERMASS MOBILITY')")
+  && g7CanvasSource.includes("return 'LATERAL VECTOR BURST'"),
+  'real director messages must use concise roof captions without changing their accessible text');
 assert.ok(presentation.includes('p28-g9-momentum-machined-lamination-')
   && presentation.includes('0.18, 0.13, 0.28'),
   'Momentum hardware must have fine real laminations rather than chunky flux cubes');
