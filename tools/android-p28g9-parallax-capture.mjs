@@ -272,39 +272,56 @@ try {
     }
   };
   await awaitParallaxReady('Parallax Array route / authored-world visual readiness');
-  // The campaign acceptance contract requires the *captured* normal and action
-  // scenes to be from a real return-to-hub / redeploy cycle. This lifecycle
-  // bridge is enabled only by p27d5Lifecycle=1 and calls the real App exit path.
-  const exitRequested = await evaluate(`(() => {
-    if (!document.querySelector('canvas')) return false;
-    window.dispatchEvent(new Event('ironshade:p27d5-return-to-hub'));
-    return true;
-  })()`);
-  if (!exitRequested) throw new Error('P28-G9 mission exit bridge unavailable.');
-  await waitFor(`(() => !document.querySelector('canvas')
-    && [...document.querySelectorAll('button')].some(b =>
-      (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations'))()`,
-    'returned to Command Deck before map re-entry', 20_000);
-  await clickButton('Operations');
-  await waitFor(`[...document.querySelectorAll('button')].some(b =>
-    (b.textContent || '').trim().toLowerCase() === 'contracts')`,
-    'post-exit Operations');
-  await clickButton('Contracts');
-  await waitFor('Boolean(document.querySelector(\'button[data-location="parallax-array"]\'))',
-    're-entry Parallax Array contract');
-  const reselected = await evaluate(`(() => {
-    const contract = document.querySelector('button[data-location="parallax-array"]');
-    if (!contract || contract.disabled) return false;
-    contract.click();
-    return true;
-  })()`);
-  if (!reselected) throw new Error('P28-G9 real Parallax Array redeployment unavailable.');
-  await waitFor('document.querySelector(\'button[data-location="parallax-array"]\')?.classList.contains("selected")',
-    're-entry contract selection');
-  await clickButton('Deploy Selected Contract');
-  await awaitParallaxReady('post-reentry Parallax Array authored-world readiness');
-  console.log('ANDROID_P28G9_PARALLAX_REENTRY_PASS exit=command-deck redeploy=parallax-array state=ready');
+  // Real command-deck return and mission redeployment, reused only when a
+  // genuine time-bounded director shear event elapsed during emulator ANR.
+  const redeployParallaxForShear = async (reason) => {
+    // The campaign acceptance contract requires the *captured* normal and action
+    // scenes to be from a real return-to-hub / redeploy cycle. This lifecycle
+    // bridge is enabled only by p27d5Lifecycle=1 and calls the real App exit path.
+    const exitRequested = await evaluate(`(() => {
+      if (!document.querySelector('canvas')) return false;
+      window.dispatchEvent(new Event('ironshade:p27d5-return-to-hub'));
+      return true;
+    })()`);
+    if (!exitRequested) throw new Error('P28-G9 mission exit bridge unavailable.');
+    await waitFor(`(() => !document.querySelector('canvas')
+      && [...document.querySelectorAll('button')].some(b =>
+        (b.getAttribute('aria-label') || b.textContent || '').trim().toLowerCase() === 'operations'))()`,
+      'returned to Command Deck before map re-entry', 20_000);
+    await clickButton('Operations');
+    await waitFor(`[...document.querySelectorAll('button')].some(b =>
+      (b.textContent || '').trim().toLowerCase() === 'contracts')`,
+      'post-exit Operations');
+    await clickButton('Contracts');
+    await waitFor('Boolean(document.querySelector(\'button[data-location="parallax-array"]\'))',
+      're-entry Parallax Array contract');
+    const reselected = await evaluate(`(() => {
+      const contract = document.querySelector('button[data-location="parallax-array"]');
+      if (!contract || contract.disabled) return false;
+      contract.click();
+      return true;
+    })()`);
+    if (!reselected) throw new Error('P28-G9 real Parallax Array redeployment unavailable.');
+    await waitFor('document.querySelector(\'button[data-location="parallax-array"]\')?.classList.contains("selected")',
+      're-entry contract selection');
+    await clickButton('Deploy Selected Contract');
+    await awaitParallaxReady('post-reentry Parallax Array authored-world readiness');
+    console.log('ANDROID_P28G9_PARALLAX_REENTRY_PASS exit=command-deck redeploy=parallax-array state=ready reason=' + reason);
+  };
+  await redeployParallaxForShear('initial');
   await sleep(650);
+  // The real director warns at 8s then 19s. WebView/Quickstep ANR can
+  // consume both windows before the QA client resumes. On a miss, only a
+  // second genuine mission exit/deploy is allowed, not a manufactured hazard.
+  const liveShear = "document.querySelector('canvas')?.dataset.environmentHazardMode === 'reference-shear'";
+  try {
+    await waitFor(liveShear, 'first director-authored shear warning', 16_000);
+  } catch {
+    console.log('ANDROID_P28G9_REAL_SHEAR_REDEPLOY reason=missed-director-window');
+    await redeployParallaxForShear('recover-live-director-window');
+    await waitFor(liveShear, 're-deployed real director-authored shear warning', 16_000);
+  }
+  console.log('ANDROID_P28G9_AUTHORED_SHEAR_VISIBLE_PASS hazard=reference-shear');
   const beforeVisual = await evaluate(`(() => {
     const d = document.querySelector('canvas')?.dataset ?? {};
     return { assetIds: d.babylonSharedWorldAssets ?? '',
@@ -333,17 +350,12 @@ try {
   console.log('ANDROID_P28G9_KTX2_DECK_VISIBLE_PASS realPixelEdgeRatio=' + deckNormal.edgeRatio);
   const before = await evaluate("document.querySelector('canvas')?.dataset.babylonParallaxArrayPlayerPosition ?? ''");
   await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
-  await sleep(1600);
+  await sleep(900);
   await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
-  await sleep(500);
+  await sleep(250);
   await waitFor(ready, 'post-input Parallax Array cues', 20_000);
-  // The first real authored vector wash starts eight seconds into the mission.
-  // Inspect live combat DURING that warning, rather than asking an image
-  // reviewer to find a shear hazard in a pre-hazard snapshot. Do not fabricate
-  // state or render a QA-only hazard.
-  await waitFor("document.querySelector('canvas')?.dataset.environmentHazardMode === 'reference-shear'",
-    'live authored Parallax shear front', 20_000);
-  console.log('ANDROID_P28G9_AUTHORED_SHEAR_VISIBLE_PASS hazard=reference-shear');
+  // Verify real hazard remains readable after movement, not merely at setup.
+  await waitFor(liveShear, 'live shear during combat', 12_000);
   // Capture ACTIVE combat, not merely a different walking pose. This is the
   // real touch FIRE control on the deployed Android WebView, not fabricated
   // counters or synthetic projectiles. Manual aim mirrors the fast smoke path.
