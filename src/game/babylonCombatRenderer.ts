@@ -2750,13 +2750,17 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Parallax's live fight reaches the right-side FIRE and DODGE lane. A
     // location-only lateral look-ahead preserves the original FOV, true
     // target positions, telegraph ranges and full-size touch hit regions.
+    // Cryo's far service-bank hostiles were clipped behind the right-side
+    // buttons in real Android action/device frames. Preserve projection and
+    // full-sized controls, translating eye and target toward the threat lane.
+    const cryoTouchLanePan = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 1.3 : 0;
     const parallaxTouchLanePan = this.canvas.dataset.babylonScenario === 'parallax-array' && !narrow ? 2.4 : 0;
 
-    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + parallaxTouchLanePan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - parallaxTouchLanePan);
+    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan);
     this.cameraTarget.set(
-      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + parallaxTouchLanePan,
+      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan,
       0.62,
-      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - parallaxTouchLanePan,
+      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan,
     );
     this.camera.setTarget(this.cameraTarget);
     this.camera.getViewMatrix(true);
