@@ -13,6 +13,7 @@ import { auditParallaxVisualProvenance } from '../tools/p28g9-parallax-provenanc
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonParallaxArrayPresentation.ts', 'utf8');
+const hudGlance = readFileSync('src/combatHudGlance.css', 'utf8');
 const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
 const telegraphs = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
 const readiness = readFileSync('src/game/babylonRefineryMissionReadiness.ts', 'utf8');
@@ -57,6 +58,8 @@ for (const detail of [
   'p28-g9-frame-optical-reticle-', 'p28-g9-frame-reticle-index-',
   'p28-g9-carriage-mass-wheel-', 'p28-g9-carriage-mass-gauge-',
   'p28-g9-shear-anchor-fork-',
+  'p28-g9-anchor-indexed-dial-', 'p28-g9-anchor-measuring-hub-',
+  'p28-g9-anchor-etched-conductor-', 'p28-g9-anchor-index-mark-',
 ]) assert.ok(presentation.includes(detail), 'Parallax silhouette must expose calibrated hardware: ' + detail);
 assert.ok(presentation.includes('floor.emissiveColor = colorFromHex(0x42566f).scale(0.10)'),
   'PBR floor relief needs restrained bounce fill at gameplay zoom');
@@ -139,6 +142,15 @@ assert.ok(presentation.includes("hazard.active && hazard.kind === 'vectorWash'")
 assert.ok(presentation.includes("['baselineFork', 'parallaxSweep', 'shearCollapse'].includes(activeBoss.bossPattern)"));
 assert.ok(babylon.includes("import { BabylonParallaxArrayPresentation } from './babylonParallaxArrayPresentation';"));
 assert.ok(babylon.includes("const parallaxArrayScenario = mission.location === 'parallax-array';"));
+assert.ok(babylon.includes("const parallaxTouchLanePan = this.canvas.dataset.babylonScenario === 'parallax-array' && !narrow ? 2.4 : 0;"),
+  'Parallax combat framing must protect the existing right-side FIRE touch lane');
+assert.ok(babylon.includes('momentumTouchLanePan + parallaxTouchLanePan'),
+  'Parallax camera should translate eye and target without changing simulation');
+assert.ok(hudGlance.includes('.game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert b'),
+  'Parallax tactical alert lane must have a route-scoped mobile treatment');
+assert.ok(hudGlance.includes('white-space: normal;') && hudGlance.includes('overflow-wrap: break-word;'),
+  'full metrology warning text must wrap instead of ellipsizing');
+
 assert.ok(babylon.includes("this.parallaxArrayPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));"));
 assert.ok(babylon.includes('momentum-exchange,cryo-reserve,parallax-array'));
 assert.ok(babylon.includes('this.worldPresentation.sync(state, mission, budget.detailScale);'));
