@@ -319,7 +319,23 @@ export class BabylonParallaxArrayPresentation {
         box(scene, root, 'p28-g9-carriage-suspension-' + index + '-' + side,
           insulation, side * 0.86, 0.39, 0.0, 0.24, 0.22, 0.94);
         box(scene, root, 'p28-g9-carriage-readout-' + index + '-' + side,
-          fixture, side * 0.66, 1.06, 0.38, 0.28, 0.12, 0.06);
+          etched, side * 0.66, 1.06, 0.45, 0.36, 0.15, 0.10);
+        // Twin exposed mass gauges and circular races make this a measured
+        // moving carriage rather than a generic rectangular cover block.
+        const wheel = MeshBuilder.CreateTorus('p28-g9-carriage-mass-wheel-' + index + '-' + side,
+          { diameter: 0.92, thickness: 0.14, tessellation: 24 }, scene);
+        wheel.parent = root;
+        wheel.position.set(side * 0.62, 0.94, 0.52);
+        wheel.rotation.x = Math.PI / 2;
+        wheel.material = indexed;
+        wheel.isPickable = false;
+        const gauge = MeshBuilder.CreateCylinder('p28-g9-carriage-mass-gauge-' + index + '-' + side,
+          { diameter: 0.40, height: 0.12, tessellation: 20 }, scene);
+        gauge.parent = root;
+        gauge.position.set(side * 0.62, 0.94, 0.59);
+        gauge.rotation.x = Math.PI / 2;
+        gauge.material = etched;
+        gauge.isPickable = false;
         for (let bolt = 0; bolt < 3; bolt++) {
           const stud = MeshBuilder.CreateCylinder('p28-g9-carriage-stud-' + index + '-' + side + '-' + bolt,
             { height: 0.12, diameter: 0.12, tessellation: 12 }, scene);
@@ -328,6 +344,11 @@ export class BabylonParallaxArrayPresentation {
           stud.material = graphite;
           stud.isPickable = false;
         }
+      }
+      for (let tick = 0; tick < 5; tick++) {
+        box(scene, root, 'p28-g9-carriage-graduation-' + index + '-' + tick,
+          tick % 2 ? indexed : etched, (tick - 2) * 0.25, 1.34, 0.30,
+          0.12, 0.08, 0.12);
       }
       this.carriages.push(root);
     });
@@ -349,12 +370,17 @@ export class BabylonParallaxArrayPresentation {
       marker.parent = root;
       marker.position.y = 1.58;
       marker.rotation.x = Math.PI / 2;
-      marker.material = violet;
+      marker.material = indexed;
       marker.isPickable = false;
       box(scene, root, 'p28-g9-anchor-insulator-' + index,
         insulation, 0, 0.60, 0.34, 0.52, 0.30, 0.24);
       box(scene, root, 'p28-g9-anchor-calibration-face-' + index,
-        fixture, 0, 1.20, 0.48, 0.12, 0.34, 0.08);
+        etched, 0, 1.20, 0.48, 0.18, 0.54, 0.12);
+      for (const side of [-1, 1]) {
+        const strut = box(scene, root, 'p28-g9-shear-anchor-fork-' + index + '-' + side,
+          indexed, side * 0.36, 1.13, 0.18, 0.16, 1.40, 0.20);
+        strut.rotation.z = side * 0.18;
+      }
       this.anchors.push(root);
     });
 
@@ -363,10 +389,10 @@ export class BabylonParallaxArrayPresentation {
       root.parent = this.root;
       root.position.set(scaled(x + (index === 1 ? -92 : 78)), 0, scaled(z + (index === 2 ? -60 : 50)));
       box(scene, root, 'p27-c10-console-body-' + index, graphite, 0, 0.42, 0, 0.82, 0.84, 0.62);
-      const screen = box(scene, root, 'p27-c10-console-screen-' + index, cyan, 0, 0.82, -0.30, 0.56, 0.34, 0.06);
+      const screen = box(scene, root, 'p27-c10-console-screen-' + index, cyan, 0, 0.82, -0.30, 0.74, 0.40, 0.06);
       screen.rotation.x = -0.18;
       box(scene, root, 'p28-g9-console-bezel-' + index,
-        insulation, 0, 0.78, -0.25, 0.72, 0.46, 0.10);
+        insulation, 0, 0.78, -0.25, 0.85, 0.50, 0.10);
       // Move the illuminated readout in front of the recessed bezel.
       screen.position.z = -0.32;
       for (let dial = 0; dial < 3; dial++) {
