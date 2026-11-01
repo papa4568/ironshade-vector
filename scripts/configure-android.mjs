@@ -100,6 +100,7 @@ writeFileSync(appGradlePath, appGradle);
 
 writeFileSync(activityPath, `package app.ironshade.vector;
 
+import android.app.ActivityManager;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.graphics.Color;
@@ -127,6 +128,16 @@ public class MainActivity extends BridgeActivity {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         super.onCreate(savedInstanceState);
         configureGameWindow();
+        // Android uses TaskDescription.backgroundColor for uncovered task/cutout
+        // regions. The generated Capacitor default can be #FAFAFA, producing
+        // a persistent 144px white edge on the Pixel 7 Pro in landscape.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            setTaskDescription(new ActivityManager.TaskDescription.Builder()
+                .setLabel("Ironshade Vector")
+                .setBackgroundColor(Color.rgb(5, 9, 10))
+                .setPrimaryColor(Color.rgb(5, 9, 10))
+                .build());
+        }
         configureGameOrientation();
         configureGameWebView();
         enterImmersiveMode();
