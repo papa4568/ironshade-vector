@@ -291,7 +291,7 @@ for (const marker of [
 assert.ok(telegraphs.includes("const cryoWarning = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
 assert.ok(telegraphs.includes(': cryoWarning || parallaxWarning'));
 assert.ok(telegraphs.includes('? clamp01((parallaxWarning ? 0.12 : 0.14) + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.025)'));
-assert.ok(telegraphs.includes("const laneWidth = Math.max(0.08, scaled(profile.width)) * (cryoWarning ? 0.68 : parallaxWarning ? 0.74 : 1)"));
+assert.ok(telegraphs.includes("const laneWidth = Math.max(0.08, scaled(profile.width)) * (cryoWarning ? 0.68 : parallaxWarning ? 0.74 : iceWarning ? 0.72 : 1)"));
 assert.ok(telegraphs.includes("tick.setEnabled(annexWarning || momentumWarning || cryoWarning || parallaxWarning)"));
 assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;"));
 assert.ok(babylon.includes("const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
