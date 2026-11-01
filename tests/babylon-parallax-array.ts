@@ -178,6 +178,7 @@ for (const detail of [
 assert.ok(presentation.includes("Math.min(babylonRouteMarkingWidth(route.kind)"));
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
 const g9Capture = readFileSync('tools/android-p28g9-parallax-capture.mjs', 'utf8');
+const g9Shell = readFileSync('tools/android-p28g9-parallax-capture.sh', 'utf8');
 const g9Workflow = readFileSync('.github/workflows/p28-g9-parallax-visual-qa.yml', 'utf8');
 const g9Verify = readFileSync('tools/verify-p28g9-gameplay-frames.mjs', 'utf8');
 assert.ok(g9Capture.includes("parallaxPremiumAssetState === 'ready'"));
@@ -185,6 +186,15 @@ assert.ok(g9Capture.includes("babylonSharedWorldArtState === 'ready'"));
 assert.ok(g9Capture.includes("environmentIbl === 'shared-prefiltered:ready'"));
 assert.ok(g9Capture.includes("window.dispatchEvent(new Event('ironshade:p27d5-return-to-hub'))"));
 assert.ok(g9Capture.includes("shotsAfter > shotsBefore"));
+assert.ok(g9Shell.includes("grep -qF 'Error: P28-G9 CDP timeout: Runtime.enable'"),
+  'pre-frame Android CDP recovery must identify the exact observed transport failure');
+assert.ok(g9Shell.includes('ANDROID_P28G9_CDP_STARTUP_RELAUNCH attempt='),
+  'pre-frame recovery must relaunch the real Android activity');
+assert.ok(g9Shell.includes('if [[ ! -s android-p28g9-parallax-array-pixel-report.json ]]'),
+  'once pixels exist, startup recovery must not waive content or native margin failures');
+assert.ok(g9Shell.includes('r.provenance?.valid !== true') && g9Shell.includes('r.margins?.normal?.leftBrightPixels !== 144'),
+  'native cutout relaunch must retain the exact proven-pixel restriction');
+
 assert.ok(g9Workflow.includes('G9 Independent Copilot PNG Inspection'));
 assert.ok(g9Workflow.includes('github.event.pull_request.head.sha'));
 assert.ok(g9Workflow.includes('android-p28g9-parallax-array-action.png'));
