@@ -181,7 +181,7 @@ export class BabylonCryoReservePresentation {
     jacket.emissiveColor = colorFromHex(0x80b5c5).scale(0.055);
     const frost = pbr(scene, 'p28-g8-frosted-vacuum-insulation', 0xb9dbe4, 0.09, 0.78, 0x8dd7ea, 0.11);
     const jacketPanel = pbr(scene, 'p28-g8-jacket-service-panels', 0x314b5a, 0.62, 0.53, 0x6caac0, 0.035);
-    const frozenPanel = pbr(scene, 'p28-g8-frost-stippled-insulation', 0x86afc0, 0.12, 0.90, 0x9cdeea, 0.055);
+    const frozenPanel = pbr(scene, 'p28-g8-frost-stippled-insulation', 0xc2dfe6, 0.08, 0.96, 0xb7e6ef, 0.17);
     this.ambientColdVaporMaterial = new StandardMaterial('p28-g8-ambient-cold-vent-material', scene);
     // A single small alpha-feathered texture makes the neck vapor read as
     // translucent gas at the gameplay camera, not opaque gray discs.
@@ -279,6 +279,17 @@ export class BabylonCryoReservePresentation {
         cladding.position.y = patchIndex === 0 ? 1.97 : 3.35;
         cladding.rotation.y = index * 0.17 + patchIndex * 2.0;
         cladding.material = frozenPanel; cladding.isPickable = false;
+      }
+      // Thin raised, rough frost crusts are real curved surfaces, not a HUD
+      // effect. Spread irregularly around the jacket so condensation remains
+      // visible from the gameplay camera without hiding pressure hardware.
+      for (let rimeIndex = 0; rimeIndex < 3; rimeIndex++) {
+        const rime = MeshBuilder.CreateCylinder('p28-g8-tank-crystalline-rime-' + index + '-' + rimeIndex,
+          { height: [0.48, 0.63, 0.39][rimeIndex], diameter: 1.92, tessellation: 32, arc: 0.22 }, scene);
+        rime.parent = root;
+        rime.position.y = [1.46, 2.46, 3.48][rimeIndex];
+        rime.rotation.y = index * 0.31 + rimeIndex * 2.094;
+        rime.material = frozenPanel; rime.isPickable = false;
       }
       // Alternating weathered pressure-jacket service panels break the flat
       // cylinder into clearly recessed metal and frosted insulation sections.
