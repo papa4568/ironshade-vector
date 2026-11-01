@@ -152,6 +152,16 @@ assert.ok(presentation.includes("new CubeTexture('/assets/environments/refinery-
 assert.ok(presentation.includes('babylonRouteMarkingWidth(route.kind)'));
 assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
 const g7Hud = readFileSync('src/combatHudGlance.css', 'utf8');
+assert.ok(g7Hud.includes('left: 28%;') && g7Hud.includes('width: min(12vw, 11rem);'),
+  'narrow Momentum tactical roof must not collide with centered target HP panel');
+assert.ok(presentation.includes("p28-g9-recessed-transfer-rail-steel")
+  && presentation.includes("'p27-c8-transfer-rail-' + index, railMetal")
+  && presentation.includes("railMetal, rail.position.x"),
+  'real rail and carriers must be dark metal, not pale ribbons across combat');
+assert.ok(presentation.includes("0x142a32, 0.11, 0.94")
+  && presentation.includes("colorFromHex(0x28505c).scale(0.010 * routePulse)"),
+  'Momentum route inlays must remain visually subordinate to combat telegraphs');
+
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .boss-hud.boss-hud--top'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane.event .combat-alert b'));
 assert.ok(g7Hud.includes('top: max(.45rem, env(safe-area-inset-top));'),
