@@ -418,16 +418,16 @@ export class BabylonParallaxArrayPresentation {
       });
     });
     navigation.landmarks.forEach((landmark, index) => {
-      const beacon = MeshBuilder.CreateCylinder('p27-c10-landmark-' + landmark.id, { height: 2.70, diameterTop: 0.12, diameterBottom: 0.52, tessellation: 8 }, scene);
+      const beacon = MeshBuilder.CreateCylinder('p27-c10-landmark-' + landmark.id, { height: 3.40, diameterTop: 0.12, diameterBottom: 0.58, tessellation: 8 }, scene);
       beacon.parent = this.root;
-      beacon.position.set(scaled(landmark.x), 1.35, scaled(landmark.y));
-      beacon.material = index === 1 ? cyan : shell;
+      beacon.position.set(scaled(landmark.x), 1.70, scaled(landmark.y));
+      beacon.material = index === 1 ? etched : cyan;
       beacon.isPickable = false;
-      const marker = MeshBuilder.CreateTorus('p27-c10-landmark-ring-' + index, { diameter: 0.88, thickness: 0.07, tessellation: 24 }, scene);
+      const marker = MeshBuilder.CreateTorus('p27-c10-landmark-ring-' + index, { diameter: 1.18, thickness: 0.13, tessellation: 24 }, scene);
       marker.parent = this.root;
-      marker.position.set(scaled(landmark.x), 2.56, scaled(landmark.y));
+      marker.position.set(scaled(landmark.x), 3.18, scaled(landmark.y));
       marker.rotation.x = Math.PI / 2;
-      marker.material = violet;
+      marker.material = etched;
       marker.isPickable = false;
     });
 
