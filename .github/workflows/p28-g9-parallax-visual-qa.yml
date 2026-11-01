@@ -18,6 +18,7 @@ on:
       - 'tools/p28g9-android-crash-audit.mjs'
       - 'tools/p28g9-parallax-provenance.mjs'
       - 'tools/verify-p28g9-gameplay-frames.mjs'
+      - 'tools/p28g9-deck-relief.mjs'
       - 'tools/p28g5-bright-edge.mjs'
       - 'scripts/configure-android.mjs'
       - '.github/workflows/p28-g9-parallax-visual-qa.yml'
