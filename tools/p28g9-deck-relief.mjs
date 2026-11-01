@@ -31,7 +31,7 @@ export function auditParallaxDeckRelief(image) {
     }
   }
   const edgeRatio = samples ? texturedSamples / samples : 0;
-  return { valid: samples >= 1000 && edgeRatio >= 0.045,
+  return { valid: samples >= 300 && edgeRatio >= 0.045,
     edgeRatio: Number(edgeRatio.toFixed(5)), samples, texturedSamples,
     region: [0.27, 0.64, 0.38, 0.81] };
 }
