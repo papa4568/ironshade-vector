@@ -211,13 +211,13 @@ assert.ok(presentation.includes('laminated-rim:9+flux-tooth:48'));
 assert.ok(renderWorldSource.includes("this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(renderWorldSource.includes("hazard.kind === 'vectorWash'"));
 assert.ok(renderWorldSource.includes('momentumWash ? 0xf0a876'));
-assert.ok(attackSource.includes('visual.sideA.material = momentumWarning || cryoWarning || parallaxWarning ? visual.laneMaterial : visual.attackMaterial'));
+assert.ok(attackSource.includes('visual.sideA.material = momentumWarning || cryoWarning || parallaxWarning || iceWarning ? visual.laneMaterial : visual.attackMaterial'));
 assert.ok(attackSource.includes('tick.setEnabled(annexWarning || momentumWarning || cryoWarning || parallaxWarning)'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .target-readout'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"])'));
 assert.ok(g7Hud.includes('left: 43%'));
 assert.ok(presentation.includes("const magneticCopper = pbr(scene, 'p28-g7-exposed-magnetic-copper'"));
-assert.ok(presentation.includes('tooth % 4 === 0 ? edgeMetal : tooth % 4 === 1 ? magneticCopper : structural'));
+assert.ok(presentation.includes('tooth % 4 === 0 ? magneticCopper : structural'));
 // 24 of the 48 indexed flux shoes now use the actual shared bare-metal PBR.
 // This adds premium bindings without lowering the live >=100 acceptance gate.
 assert.ok(presentation.includes("const shared = new Set(this.premiumSurfaces.materials.values())"));
