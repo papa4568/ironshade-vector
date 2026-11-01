@@ -198,6 +198,42 @@ export class BabylonParallaxArrayPresentation {
         graphite, cx, 0.19, cz + side * (worldH / 2 - 0.26), worldW - 0.6, 0.38, 0.26);
     }
 
+    // The inertial array is a pressurized survey facility, not a platform
+    // suspended in an empty black void. Service aprons, calibration gantries,
+    // column shoes and suspended conduits live OUTSIDE the playable floor:
+    // purely visual depth with no new collision, route or interaction state.
+    for (const side of [-1, 1]) {
+      box(scene, this.root, 'p28-g9-survey-apron-long-' + side,
+        floor, cx, -0.35, cz + side * (worldH / 2 + 1.65),
+        worldW + 6.3, 0.26, 3.3);
+      box(scene, this.root, 'p28-g9-survey-apron-cross-' + side,
+        floor, cx + side * (worldW / 2 + 1.65), -0.35, cz,
+        3.3, 0.26, worldH + 6.3);
+      box(scene, this.root, 'p28-g9-exterior-survey-truss-' + side,
+        shell, cx, 4.55, cz + side * (worldH / 2 + 2.6),
+        worldW + 3.4, 0.36, 0.52);
+      for (let bay = 0; bay < 6; bay++) {
+        const x = worldW * (bay + 0.5) / 6;
+        const z = cz + side * (worldH / 2 + 2.35);
+        box(scene, this.root, 'p28-g9-survey-truss-leg-' + side + '-' + bay,
+          graphite, x, 2.30, z, 0.46, 4.55, 0.60);
+        box(scene, this.root, 'p28-g9-survey-truss-foot-' + side + '-' + bay,
+          shell, x, 0.28, z, 1.02, 0.56, 1.15);
+        box(scene, this.root, 'p28-g9-survey-truss-reference-' + side + '-' + bay,
+          graduation, x, 3.85, z - side * 0.38, 0.28, 0.72, 0.14);
+        box(scene, this.root, 'p28-g9-survey-truss-violet-service-' + side + '-' + bay,
+          indexed, x, 4.80, z - side * 0.38, 0.65, 0.12, 0.14);
+      }
+      // Parallel instrument-feed pipes run along the service apron, not
+      // through the navigable mission route or live hazard warning lanes.
+      for (const offset of [0, 0.44]) {
+        box(scene, this.root, 'p28-g9-survey-apron-feed-' + side + '-' + offset,
+          offset ? insulation : graphite, cx, 0.20,
+          cz + side * (worldH / 2 + 0.84 + offset),
+          worldW - 1.8, 0.18, 0.14);
+      }
+    }
+
     const pylonFallback = [
       ['reference-node-a', 500, 300],
       ['reference-node-b', 980, 760],
