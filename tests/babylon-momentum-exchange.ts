@@ -154,6 +154,13 @@ assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
 const g7Hud = readFileSync('src/combatHudGlance.css', 'utf8');
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .boss-hud.boss-hud--top'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane.event .combat-alert b'));
+assert.ok(g7Hud.includes('top: max(.45rem, env(safe-area-inset-top));'),
+  'route-specific tactical notice must move away from the live flywheel field');
+assert.ok(presentation.includes('p28-g9-momentum-machined-lamination-')
+  && presentation.includes('0.18, 0.13, 0.28'),
+  'Momentum hardware must have fine real laminations rather than chunky flux cubes');
+assert.ok(babylon.includes("momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.27 : 0"),
+  'Momentum operator must remain readable against dark industrial flooring');
 assert.ok(babylon.includes("const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(babylon.includes("const momentumContrast = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(readFileSync('src/game/babylonWorldPresentation.ts', 'utf8')
