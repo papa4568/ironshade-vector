@@ -466,6 +466,7 @@ export class BabylonEnemyTelegraphs {
     const momentumWarning = this.canvas.dataset.babylonScenario === 'momentum-exchange';
     const cryoWarning = this.canvas.dataset.babylonScenario === 'cryo-reserve';
     const parallaxWarning = this.canvas.dataset.babylonScenario === 'parallax-array';
+    const iceWarning = this.canvas.dataset.babylonScenario === 'ice-mine';
     visual.attackMaterial.alpha = clamp01((momentumWarning ? 0.46 : parallaxWarning ? 0.54 : cryoWarning ? 0.60 : 0.66)
       + Math.sin(state.time * 10 + enemy.id * 0.73) * (momentumWarning || parallaxWarning ? 0.055 : 0.1));
     visual.laneMaterial.diffuseColor = signal.scale(0.18);
@@ -474,13 +475,13 @@ export class BabylonEnemyTelegraphs {
       ? clamp01(0.09 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.020)
       : cryoWarning || parallaxWarning
         ? clamp01((parallaxWarning ? 0.12 : 0.14) + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.025)
-        : this.canvas.dataset.babylonScenario === 'ice-mine'
-        ? clamp01(0.32 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.06)
+        : iceWarning
+        ? clamp01(0.15 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.03)
         : visual.attackMaterial.alpha;
     // Keep bright, discrete origin/target rings and warning ticks, but not
     // continuous high-opacity salmon ribbons over moving actors and machinery.
-    visual.sideA.material = momentumWarning || cryoWarning || parallaxWarning ? visual.laneMaterial : visual.attackMaterial;
-    visual.sideB.material = momentumWarning || cryoWarning || parallaxWarning ? visual.laneMaterial : visual.attackMaterial;
+    visual.sideA.material = momentumWarning || cryoWarning || parallaxWarning || iceWarning ? visual.laneMaterial : visual.attackMaterial;
+    visual.sideB.material = momentumWarning || cryoWarning || parallaxWarning || iceWarning ? visual.laneMaterial : visual.attackMaterial;
 
     const originX = scaled(enemy.x);
     const originZ = scaled(enemy.y);
@@ -512,7 +513,7 @@ export class BabylonEnemyTelegraphs {
     const laneLength = Math.max(0.08, scaled(laneRange));
     // Preserve the full warning reach, source/target rings and orange attack
     // ticks, but stop a wide opaque Cryo laser slab hiding actors and tanks.
-    const laneWidth = Math.max(0.08, scaled(profile.width)) * (cryoWarning ? 0.68 : parallaxWarning ? 0.74 : 1);
+    const laneWidth = Math.max(0.08, scaled(profile.width)) * (cryoWarning ? 0.68 : parallaxWarning ? 0.74 : iceWarning ? 0.72 : 1);
     const setLane = (mesh: Mesh, widthScale = 1) => {
       mesh.position.x = laneLength / 2;
       mesh.scaling.set(laneLength, 1, laneWidth * widthScale);
