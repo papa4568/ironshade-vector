@@ -15,7 +15,6 @@ import { auditParallaxDeckRelief } from '../tools/p28g9-deck-relief.mjs';
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonParallaxArrayPresentation.ts', 'utf8');
 const hudGlance = readFileSync('src/combatHudGlance.css', 'utf8');
-const gameCanvas = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
 const telegraphs = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
 const readiness = readFileSync('src/game/babylonRefineryMissionReadiness.ts', 'utf8');
