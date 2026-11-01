@@ -239,12 +239,22 @@ export class BabylonMomentumExchangePresentation {
         ring.material = ringIndex === 1 ? magneticCopper : edgeMetal;
         ring.isPickable = false;
       }
+      // Fine, axially offset turned-metal bands give the main flywheel a
+      // laminated industrial rim instead of an unbroken smooth torus.
+      for (let groove = 0; groove < 4; groove++) {
+        const lamination = MeshBuilder.CreateTorus('p28-g9-momentum-machined-lamination-' + index + '-' + groove,
+          { diameter: 4.44 + groove * 0.14, thickness: 0.055, tessellation: 52 }, scene);
+        lamination.parent = rotor;
+        lamination.position.y = 0.47 + groove * 0.025;
+        lamination.material = groove % 2 ? magneticCopper : edgeMetal;
+        lamination.isPickable = false;
+      }
       for (let tooth = 0; tooth < 16; tooth += 1) {
         const angle = tooth * Math.PI / 8;
         const toothMesh = box(scene, root, 'p28-g7-flywheel-flux-tooth-' + index + '-' + tooth,
-          tooth % 4 === 0 ? edgeMetal : tooth % 4 === 1 ? magneticCopper : structural,
+          tooth % 4 === 0 ? magneticCopper : structural,
           Math.sin(angle) * 2.42, 0.94, Math.cos(angle) * 2.42,
-          0.34, 0.22, 0.55);
+          0.18, 0.13, 0.28);
         toothMesh.parent = rotor;
         toothMesh.rotation.y = angle; // alternating high-contrast flux shoes on the exposed rotor face
       }
