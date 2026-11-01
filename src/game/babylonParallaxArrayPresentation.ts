@@ -174,7 +174,7 @@ export class BabylonParallaxArrayPresentation {
     const cyan = pbr(scene, 'p27-c10-cyan-readout', 0x48767b, 0.38, 0.39, 0x82d7df, 0.44);
     // Pale enamel indices are trim on shipped KTX2 painted/metal structure,
     // not replacement base materials or wide glowing navigation ribbons.
-    const etched = pbr(scene, 'p28-g9-etched-datum-enamel', 0x9bbbc9, 0.48, 0.54, 0x46809b, 0.10);
+    const etched = pbr(scene, 'p28-g9-etched-datum-enamel', 0x718f9b, 0.48, 0.68, 0x37637b, 0.055);
     const indexed = pbr(scene, 'p28-g9-indexed-violet-enamel', 0x82739c, 0.42, 0.48, 0x7760ba, 0.12);
     // A machined warm-metal standard separates instrument calibration from
     // violet danger cues and cyan status without replacing textured housings.
@@ -239,6 +239,40 @@ export class BabylonParallaxArrayPresentation {
       ['reference-node-b', 980, 760],
       ['reference-node-c', 1400, 300],
     ] as const;
+    // Physical long-baseline datum bars tie the actual three reference
+    // stations together. Low, dark, rough housings carry separate warm
+    // engraved pitch marks: these are steel metrology instruments, not cyan
+    // luminous navigation ribbons or new collision geometry.
+    const baselineVectors = [
+      [500, 300, 980, 760],
+      [980, 760, 1400, 300],
+      [500, 300, 1400, 300],
+    ] as const;
+    baselineVectors.forEach(([ax, az, bx, bz], baseline) => {
+      const dx = scaled(bx - ax);
+      const dz = scaled(bz - az);
+      const length = Math.hypot(dx, dz);
+      const rotationY = -Math.atan2(dz, dx);
+      const centerX = scaled((ax + bx) / 2);
+      const centerZ = scaled((az + bz) / 2);
+      const datum = box(scene, this.root, 'p28-g9-physical-reference-baseline-' + baseline,
+        graphite, centerX, 0.10, centerZ, length, 0.16, 0.16);
+      datum.rotation.y = rotationY;
+      for (let index = 1; index < 14; index++) {
+        const fraction = index / 14 - 0.5;
+        const localX = fraction * length;
+        const tick = box(scene, datum, 'p28-g9-physical-datum-graduation-' + baseline + '-' + index,
+          index % 5 === 0 ? graduation : etched, localX, 0.095, 0, 0.10, 0.025,
+          index % 5 === 0 ? 0.32 : 0.22);
+        tick.isPickable = false;
+      }
+      for (let foot = 1; foot < 5; foot++) {
+        const support = box(scene, datum, 'p28-g9-reference-isolator-foot-' + baseline + '-' + foot,
+          insulation, (foot / 5 - 0.5) * length, -0.04, 0, 0.36, 0.18, 0.42);
+        support.isPickable = false;
+      }
+    });
+
     pylonFallback.forEach(([id, x, z], index) => {
       const root = new TransformNode('p27-c10-baseline-pylon-' + index, scene);
       root.parent = this.root;
@@ -361,7 +395,7 @@ export class BabylonParallaxArrayPresentation {
         0, 2.38, 0.52, 0.11, 1.32, 0.14);
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-frame-guide-' + index + '-' + side,
-          etched, side * 0.78, 1.58, 0.25, 0.14, 2.70, 0.16);
+          graduation, side * 0.78, 1.58, 0.25, 0.20, 2.70, 0.16);
         for (let tick = 0; tick < 5; tick++) {
           box(scene, root, 'p28-g9-frame-scale-' + index + '-' + side + '-' + tick,
             tick === 2 ? graduation : etched, side * 0.98, 0.58 + tick * 0.54, 0.27,
@@ -715,8 +749,9 @@ export class BabylonParallaxArrayPresentation {
       rig.ring.scaling.set(pulse, pulse, pulse);
       rig.ring.rotation.y = state.time * (index % 2 ? -0.72 : 0.72);
     });
-    this.shearMaterial.alpha = (vectorWashes.length > 0 ? 0.34 : 0.08) * renderBudget.transparencyScale;
-    this.shearMaterial.emissiveColor = colorFromHex(0xc2a0ff).scale(0.90 + Math.sin(state.time * 6.6) * 0.12);
+    // Retain the real vector-wash extent, but let machined geometry show through.
+    this.shearMaterial.alpha = (vectorWashes.length > 0 ? 0.17 : 0.06) * renderBudget.transparencyScale;
+    this.shearMaterial.emissiveColor = colorFromHex(0xb195dc).scale(0.64 + Math.sin(state.time * 6.6) * 0.10);
 
     const gravityValues = state.sectors.slice(0, 3).map(sector => sector.gravity);
     const gravitySpread = gravityValues.length > 0 ? Math.max(...gravityValues) - Math.min(...gravityValues) : 0;
@@ -807,7 +842,7 @@ export class BabylonParallaxArrayPresentation {
     this.canvas.dataset.environmentLandmark = 'three-point-long-baseline';
     this.canvas.dataset.environmentServiceDetails = 'reference-console:3+mass-carriage:' + profile.carriageInstances;
     this.canvas.dataset.environmentSurfaceDetail = 'reference-frame:' + profile.frameInstances + '+shear-anchor:' + profile.anchorInstances
-      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8';
+      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8+physical-baseline:3+datum-graduation:39+isolator-foot:12';
     this.canvas.dataset.environmentMachineDetail = 'baseline-pylon:3+mass-carriage:3+live-baseline-servo:' + baselineServos;
     this.canvas.dataset.environmentComposition = 'three-point-baseline+cross-track-frames+perimeter-shear-anchors';
     this.canvas.dataset.environmentMaterials = 'graphite-structure+reference-shell+violet-alignment+cyan-readout';
