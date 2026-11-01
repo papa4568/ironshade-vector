@@ -381,6 +381,36 @@ export class BabylonParallaxArrayPresentation {
           indexed, side * 0.36, 1.13, 0.18, 0.16, 1.40, 0.20);
         strut.rotation.z = side * 0.18;
       }
+      // Every baseline shear anchor has its own exposed optical index dial
+      // and powered conductor bars, instead of only a plain U silhouette.
+      // This is decorative presentation; the simulation retains all hitboxes.
+      const anchorDial = MeshBuilder.CreateTorus('p28-g9-anchor-indexed-dial-' + index,
+        { diameter: 1.32, thickness: 0.15, tessellation: 32 }, scene);
+      anchorDial.parent = root;
+      anchorDial.position.set(0, 1.20, 0.72);
+      anchorDial.rotation.x = Math.PI / 2;
+      anchorDial.material = indexed;
+      anchorDial.isPickable = false;
+      const anchorHub = MeshBuilder.CreateCylinder('p28-g9-anchor-measuring-hub-' + index,
+        { diameter: 0.40, height: 0.15, tessellation: 20 }, scene);
+      anchorHub.parent = root;
+      anchorHub.position.set(0, 1.20, 0.81);
+      anchorHub.rotation.x = Math.PI / 2;
+      anchorHub.material = cyan;
+      anchorHub.isPickable = false;
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-anchor-etched-conductor-' + index + '-' + side,
+          etched, side * 0.38, 1.15, 0.46, 0.13, 1.48, 0.16);
+        box(scene, root, 'p28-g9-anchor-metal-footshoe-' + index + '-' + side,
+          shell, side * 0.36, 0.32, 0.55, 0.31, 0.20, 0.34);
+      }
+      for (let tick = 0; tick < 8; tick++) {
+        const angle = tick * Math.PI / 4;
+        box(scene, root, 'p28-g9-anchor-index-mark-' + index + '-' + tick,
+          tick % 2 ? etched : graphite,
+          Math.sin(angle) * 0.64, 1.20 + Math.cos(angle) * 0.64, 0.81,
+          0.20, 0.16, 0.15);
+      }
       this.anchors.push(root);
     });
 
