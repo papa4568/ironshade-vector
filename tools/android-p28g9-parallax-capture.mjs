@@ -1,8 +1,10 @@
 // P28-G9: exact-APK Android WebView visual proof for the Parallax Array route.
 // Screenshots and telemetry are captured from the live, deployed combat scene.
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { captureAcceptedG9Frame } from './p28g9-android-frame.mjs';
+import { decodeScreenshotPng } from '../scripts/verify-p28g2-gameplay-frames.mjs';
+import { auditParallaxDeckRelief } from './p28g9-deck-relief.mjs';
 
 const endpoint = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -311,7 +313,24 @@ try {
       artState: d.babylonSharedWorldArtState ?? '',
       premium: d.parallaxPremiumAssetState ?? '', ibl: d.environmentIbl ?? '' };
   })()`);
-  const normalBytes = await capture('android-p28g9-parallax-array-normal.png');
+  // GPU texture uploads can lag a material.isReady() transition by several
+  // rendered frames. Sample *real screenshot pixels* and recapture boundedly
+  // until the expected KTX2 diamond-plate relief exists in the normal frame.
+  // Never synthesize, re-color, crop or accept a flat frame.
+  let normalBytes = 0;
+  let deckNormal = null;
+  const normalPath = 'android-p28g9-parallax-array-normal.png';
+  for (let frameAttempt = 1; frameAttempt <= 5; frameAttempt += 1) {
+    await sleep(frameAttempt === 1 ? 1250 : 1100);
+    normalBytes = await capture(normalPath);
+    deckNormal = auditParallaxDeckRelief(decodeScreenshotPng(readFileSync(normalPath)));
+    if (deckNormal.valid) break;
+    console.log('ANDROID_P28G9_KTX2_DECK_NOT_YET_VISIBLE attempt=' + frameAttempt
+      + ' realPixelEdgeRatio=' + deckNormal.edgeRatio);
+  }
+  if (!deckNormal?.valid) throw new Error('P28-G9 real normal frame never gained textured survey deck relief: '
+    + JSON.stringify(deckNormal));
+  console.log('ANDROID_P28G9_KTX2_DECK_VISIBLE_PASS realPixelEdgeRatio=' + deckNormal.edgeRatio);
   const before = await evaluate("document.querySelector('canvas')?.dataset.babylonParallaxArrayPlayerPosition ?? ''");
   await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
   await sleep(1600);
