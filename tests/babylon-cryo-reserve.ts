@@ -295,6 +295,13 @@ assert.ok(telegraphs.includes("const laneWidth = Math.max(0.08, scaled(profile.w
 assert.ok(telegraphs.includes("tick.setEnabled(annexWarning || momentumWarning || cryoWarning || parallaxWarning)"));
 assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;"));
 assert.ok(babylon.includes("const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
+assert.ok(presentation.includes("p28-g8-tank-crystalline-rime-")
+  && presentation.includes("0xc2dfe6, 0.08, 0.96, 0xb7e6ef, 0.17"),
+  'Cryo frost must exist as lit, curved, visible insulation on actual tank jackets');
+assert.ok(babylon.includes("const cryoTouchLanePan = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 1.3 : 0;")
+  && babylon.includes('momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan')
+  && babylon.includes('momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan'),
+  'Cryo combat camera must show real enemy silhouettes outside the unchanged right-side touch rail');
 assert.ok(babylon.includes("colorFromHex(0xa6d8e8).scale(0.27)"));
 assert.ok(presentation.includes("jacket.albedoColor = new Color3(0.73, 0.85, 0.94)"));
 assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n      || mission.location === 'parallax-array';"));
