@@ -295,6 +295,13 @@ assert.ok(telegraphs.includes("const laneWidth = Math.max(0.08, scaled(profile.w
 assert.ok(telegraphs.includes("tick.setEnabled(annexWarning || momentumWarning || cryoWarning || parallaxWarning)"));
 assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;"));
 assert.ok(babylon.includes("const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
+assert.ok(presentation.includes('p28-g9-cryo-hoarfrost-collar-')
+  && presentation.includes('p28-g9-cryo-insulation-rime-')
+  && presentation.includes('hoarfrost-collar:14+insulation-rime:56'),
+  'rough visible frost is physical geometry on the seven actual pressure tanks');
+assert.ok(presentation.includes("0x142b33, 0.10, 0.96")
+  && presentation.includes("colorFromHex(0x26434f).scale(0.009 * routePulse)"),
+  'Cryo floor markings must recede beneath readable machine and hazard cues');
 assert.ok(presentation.includes("p28-g8-tank-crystalline-rime-")
   && presentation.includes("0xc2dfe6, 0.08, 0.96, 0xb7e6ef, 0.17"),
   'Cryo frost must exist as lit, curved, visible insulation on actual tank jackets');
