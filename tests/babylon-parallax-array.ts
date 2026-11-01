@@ -38,10 +38,10 @@ assert.deepEqual(BABYLON_PARALLAX_ARRAY_LIGHTING, {
   keyColor: 0xe2ddf1,
   rimColor: 0x9a87cf,
   emergencyColor: 0x7864ba,
-  keyIntensity: 2.85,
-  rimIntensity: 1.55,
+  keyIntensity: 3.1,
+  rimIntensity: 1.7,
   emergencyIntensity: 7.5,
-  exposure: 1.22,
+  exposure: 1.28,
 });
 
 // In addition to ready material bindings, the actual scene must have a
@@ -49,8 +49,18 @@ assert.deepEqual(BABYLON_PARALLAX_ARRAY_LIGHTING, {
 for (const detail of ['p28-g9-pylon-rear-scale-', 'p28-g9-pylon-readout-', 'p28-g9-perimeter-long-rail-']) {
   assert.ok(presentation.includes(detail), 'missing readable Parallax instrument detail: ' + detail);
 }
-assert.ok(presentation.includes('this.hemisphere.intensity = 0.76'), 'Parallax industrial structures need an ambient fill');
-assert.ok(presentation.includes('0.93) : 0'), 'Parallax normal-quality PBR needs nonblack IBL');
+assert.ok(presentation.includes('this.hemisphere.intensity = 1.02'), 'Parallax industrial structures need an ambient fill');
+for (const detail of [
+  'p28-g9-etched-datum-enamel',
+  'p28-g9-pylon-survey-yoke-', 'p28-g9-pylon-interferometer-lens-',
+  'p28-g9-reference-objective-mast-', 'p28-g9-reference-objective-halo-',
+  'p28-g9-frame-optical-reticle-', 'p28-g9-frame-reticle-index-',
+  'p28-g9-carriage-mass-wheel-', 'p28-g9-carriage-mass-gauge-',
+  'p28-g9-shear-anchor-fork-',
+]) assert.ok(presentation.includes(detail), 'Parallax silhouette must expose calibrated hardware: ' + detail);
+assert.ok(presentation.includes('floor.emissiveColor = colorFromHex(0x42566f).scale(0.10)'),
+  'PBR floor relief needs restrained bounce fill at gameplay zoom');
+assert.ok(presentation.includes('1.15) : 0'), 'Parallax normal-quality PBR needs nonblack IBL');
 assert.ok(telegraphs.includes("const parallaxWarning = this.canvas.dataset.babylonScenario === 'parallax-array'"));
 assert.ok(telegraphs.includes('parallaxWarning ? 0.12 : 0.14'), 'Parallax warning lanes must remain transparent');
 assert.ok(telegraphs.includes('parallaxWarning ? 0.74 : 1'), 'Parallax combat lanes must not become wide route ribbons');
