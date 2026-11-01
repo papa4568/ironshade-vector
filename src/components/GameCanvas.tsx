@@ -1537,6 +1537,8 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       if (message.startsWith('DEEP REFERENCE REVERSAL')) return 'DEEP REFERENCE // SHEAR REVERSAL';
     }
     if (activeMission.location === 'momentum-exchange') {
+      if (message.startsWith('CISLUNAR MOMENTUM EXCHANGE')) return 'CAPTURE BOTH TRANSFER DRUMS';
+      if (message.startsWith('COUNTERMASS MOBILITY')) return 'LATERAL VECTOR BURST';
       if (message.startsWith('MOMENTUM EXCHANGE')) return 'CAPTURE MOMENTUM TRANSFER DRUMS';
       if (message.startsWith('COUNTERMASS WASH')) return 'COUNTERMASS FRONT LIVE';
       if (message.startsWith('TRANSFER REVERSAL')) return 'SECOND WASH CROSSING LANE';
