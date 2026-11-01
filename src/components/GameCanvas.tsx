@@ -1540,6 +1540,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       if (message.startsWith('MOMENTUM EXCHANGE')) return 'CAPTURE MOMENTUM TRANSFER DRUMS';
       if (message.startsWith('COUNTERMASS WASH')) return 'COUNTERMASS FRONT LIVE';
       if (message.startsWith('TRANSFER REVERSAL')) return 'SECOND WASH CROSSING LANE';
+      if (message.startsWith('MAGNETIC LOCK')) return 'MASS-WELL LOCK LIVE';
     }
     return message;
   };
