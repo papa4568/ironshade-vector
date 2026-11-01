@@ -314,7 +314,7 @@ try {
   const normalBytes = await capture('android-p28g9-parallax-array-normal.png');
   const before = await evaluate("document.querySelector('canvas')?.dataset.babylonParallaxArrayPlayerPosition ?? ''");
   await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
-  await sleep(650);
+  await sleep(1600);
   await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
   await sleep(500);
   await waitFor(ready, 'post-input Parallax Array cues', 20_000);
