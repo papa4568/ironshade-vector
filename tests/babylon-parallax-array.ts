@@ -218,8 +218,10 @@ assert.ok(g9Capture.includes("babylonSharedWorldArtState === 'ready'"));
 assert.ok(g9Capture.includes("environmentIbl === 'shared-prefiltered:ready'"));
 assert.ok(g9Capture.includes("window.dispatchEvent(new Event('ironshade:p27d5-return-to-hub'))"));
 assert.ok(g9Capture.includes("shotsAfter > shotsBefore"));
-assert.ok(g9Capture.includes("dataset.environmentHazardMode === 'reference-shear'"),
-  'action frame must contain the actual director-triggered violet vector wash');
+assert.ok(g9Capture.includes("Number(document.querySelector('canvas')?.dataset.environmentReferenceShear ?? 0) > 0"),
+  'action frame must contain at least one actual director-triggered vectorWash, even during a boss pattern');
+assert.ok(presentation.includes("this.canvas.dataset.environmentReferenceShear = String(vectorWashes.length)"),
+  'live-shear capture observation must derive from real active sim hazards');
 assert.ok(g9Capture.includes("await redeployParallaxForShear('initial')")
   && g9Capture.includes("await redeployParallaxForShear('recover-live-director-window')")
   && g9Capture.includes('ANDROID_P28G9_REAL_SHEAR_REDEPLOY'),
