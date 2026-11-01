@@ -1446,7 +1446,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Keep the operator silhouette separate from the Annex's near-black
     // patterned floor; this is presentation-only and restores on map exit.
     const annexActorLift = this.canvas.dataset.babylonScenario === 'lattice-annex' ? 0.24 : 0;
-    const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.15 : 0;
+    const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.27 : 0;
     const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;
     this.operatorAccentMaterial.emissiveColor.copyFrom(operatorColor.scale(
       0.18 + annexActorLift + momentumActorLift + cryoActorLift + Math.min(0.35, heat * 0.16 + flash * 0.12),
@@ -2041,12 +2041,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Cool rim contribution makes dark enemy armor distinguishable from the
     // cryogenic deck without turning timed orange attack rings into decoration.
     visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      annexContrast ? 0.22 : cryoContrast ? 0.43 : momentumContrast ? 0.18 : 0.06)
+      annexContrast ? 0.22 : cryoContrast ? 0.43 : momentumContrast ? 0.28 : 0.06)
       .add(cryoContrast ? colorFromHex(0xa6d8e8).scale(0.27) : Color3.Black());
     visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(
-      annexContrast ? 0.13 : cryoContrast ? 0.34 : momentumContrast ? 0.10 : 0);
+      annexContrast ? 0.13 : cryoContrast ? 0.34 : momentumContrast ? 0.17 : 0);
     visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      (annexContrast ? 0.42 : cryoContrast ? 0.72 : momentumContrast ? 0.34 : 0.22)
+      (annexContrast ? 0.42 : cryoContrast ? 0.72 : momentumContrast ? 0.46 : 0.22)
       + damage.hit * 0.32 + damage.armorBreak * 0.24,
     );
   }
