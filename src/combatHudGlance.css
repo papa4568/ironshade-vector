@@ -1190,3 +1190,37 @@
     line-height: 1.15;
   }
 }
+
+
+/* P28-G9/G7 exact-APK review: concise mission-specific tactical calls do not
+   occupy the flywheel transfer lane or the Parallax metrology work surface.
+   The full original event is retained as an accessible status/title in React. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="parallax-array"] .transient-alert-lane:not([data-presentation="deployment"]),
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    left: 43%;
+    bottom: max(5px, calc(env(safe-area-inset-bottom) + 5px));
+    width: min(29vw, 23rem);
+    transform: translateX(-50%);
+  }
+
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event > .combat-alert,
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane.event > .combat-alert {
+    padding: .22rem .36rem;
+    background: rgba(5, 11, 17, .78);
+    border-color: rgba(105, 138, 146, .42);
+    box-shadow: 0 .15rem .5rem rgba(0, 0, 0, .16);
+  }
+
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert b,
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane.event .combat-alert b {
+    display: block;
+    -webkit-line-clamp: unset;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+    font-size: 12px;
+    line-height: 1.14;
+  }
+}
