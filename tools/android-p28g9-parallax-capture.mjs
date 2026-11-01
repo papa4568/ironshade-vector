@@ -309,7 +309,7 @@ try {
     // the *actual active vector-wash* and all strict visual-readiness fields in
     // the same live frame rather than sequentially awaiting them.
     try {
-      await waitFor(readyWithLiveShear, 'post-reentry visually-ready director-authored shear', 31_000);
+      await waitForRealShearWithProgress('post-reentry visually-ready director-authored shear');
     } catch (error) {
       const diagnostic = await evaluate(`(() => {
         const d = document.querySelector('canvas')?.dataset ?? {};
@@ -331,6 +331,59 @@ try {
   // retry only by genuine exit-to-hub and redeployment, never synthetic state.
   const liveShear = "Number(document.querySelector('canvas')?.dataset.environmentReferenceShear ?? 0) > 0";
   const readyWithLiveShear = '(' + ready + ') && (' + liveShear + ')';
+  // GPU-bound Android emulator frames can advance < 1 simulation second per
+  // 30 seconds of wall time. The authored first shear is at 8 *simulation*
+  // seconds; a 31-second wall timer therefore rejects genuine gameplay.
+  // Poll gently so CDP does not itself starve the WebView render thread.
+  const waitForRealShearWithProgress = async (label) => {
+    const startedAt = Date.now();
+    const deadline = startedAt + 14 * 60_000;
+    let lastAdvanceAt = startedAt;
+    let lastProgress = 0;
+    let lastLoggedSecond = -1;
+    let last = {};
+    while (Date.now() < deadline) {
+      try {
+        last = await evaluate(`(() => {
+          const d = document.querySelector('canvas')?.dataset ?? {};
+          return {
+            readyAndLiveShear: (${readyWithLiveShear}),
+            directorElapsed: Number(d.parallaxDirectorElapsed ?? 0),
+            directorEventA: d.parallaxDirectorEventA ?? '',
+            directorEventB: d.parallaxDirectorEventB ?? '',
+            shear: Number(d.environmentReferenceShear ?? 0),
+            visualReadiness: d.missionVisualReadiness ?? '',
+            premium: d.parallaxPremiumAssetState ?? '',
+            world: d.babylonSharedWorldArtState ?? ''
+          };
+        })()`);
+      } catch (error) {
+        last = { ...last, cdpError: String(error) };
+      }
+      if (last.readyAndLiveShear === true) {
+        console.log('ANDROID_P28G9_REAL_DIRECTOR_SHEAR_PASS simElapsed=' + last.directorElapsed
+          + ' wallMs=' + (Date.now() - startedAt) + ' shear=' + last.shear);
+        return;
+      }
+      const elapsed = Number(last.directorElapsed);
+      if (Number.isFinite(elapsed) && elapsed >= lastProgress + 0.06) {
+        lastProgress = elapsed;
+        lastAdvanceAt = Date.now();
+      }
+      if (Number.isFinite(elapsed) && Math.floor(elapsed) > lastLoggedSecond) {
+        lastLoggedSecond = Math.floor(elapsed);
+        console.log('ANDROID_P28G9_DIRECTOR_CLOCK_PROGRESS simElapsed=' + elapsed.toFixed(2)
+          + ' wallMs=' + (Date.now() - startedAt));
+      }
+      if (Date.now() - lastAdvanceAt > 120_000) {
+        throw new Error('P28-G9 Android ' + label + ' director-clock-stalled'
+          + '; P28G9_ACTUAL_SHEAR_FIELDS=' + JSON.stringify(last));
+      }
+      await sleep(1800);
+    }
+    throw new Error('P28-G9 Android ' + label + ' director-simulation-timeout'
+      + '; P28G9_ACTUAL_SHEAR_FIELDS=' + JSON.stringify(last));
+  };
   try {
     await redeployParallaxForShear('initial');
   } catch (error) {
