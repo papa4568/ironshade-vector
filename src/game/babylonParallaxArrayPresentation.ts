@@ -36,10 +36,10 @@ export const BABYLON_PARALLAX_ARRAY_LIGHTING = Object.freeze({
   keyColor: 0xe2ddf1,
   rimColor: 0x9a87cf,
   emergencyColor: 0x7864ba,
-  keyIntensity: 2.85,
-  rimIntensity: 1.55,
+  keyIntensity: 3.1,
+  rimIntensity: 1.7,
   emergencyIntensity: 7.5,
-  exposure: 1.22,
+  exposure: 1.28,
 });
 
 export type ParallaxArrayRenderProfile = {
@@ -172,12 +172,18 @@ export class BabylonParallaxArrayPresentation {
     shell.albedoColor = colorFromHex(0xd6d6df);
     const violet = pbr(scene, 'p27-c10-violet-alignment', 0x665680, 0.44, 0.46, 0x9a87cf, 0.34);
     const cyan = pbr(scene, 'p27-c10-cyan-readout', 0x48767b, 0.38, 0.39, 0x82d7df, 0.44);
+    // Pale enamel indices are trim on shipped KTX2 painted/metal structure,
+    // not replacement base materials or wide glowing navigation ribbons.
+    const etched = pbr(scene, 'p28-g9-etched-datum-enamel', 0xd9e8ed, 0.24, 0.62, 0xbcefff, 0.28);
+    const indexed = pbr(scene, 'p28-g9-indexed-violet-enamel', 0xada4c9, 0.32, 0.56, 0xbca8e9, 0.24);
     // Recessed navigational inlays never compete with vector-wash or boss telegraphs.
     const routePrimary = pbr(scene, 'p27-c10-route-primary', 0x29233b, 0.16, 0.90, 0x655485, 0.026);
     const routeSecondary = pbr(scene, 'p27-c10-route-secondary', 0x192c32, 0.14, 0.94, 0x36626a, 0.014);
-    this.ownedMaterials = [violet, cyan, routePrimary, routeSecondary];
+    this.ownedMaterials = [violet, cyan, etched, indexed, routePrimary, routeSecondary];
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.routeMaterials = [routePrimary, routeSecondary];
+    // Diffuse bounced fill lifts dark floor relief without replacing KTX2 channels.
+    floor.emissiveColor = colorFromHex(0x42566f).scale(0.10);
     box(scene, this.root, 'p27-c10-parallax-floor-mesh', floor, cx, -0.08, cz, worldW, 0.16, worldH);
     // Frame the survey deck against space without opaque walls or blocking
     // collision/pathing. These low, contrasting edge rails provide scale and a
@@ -200,25 +206,55 @@ export class BabylonParallaxArrayPresentation {
       root.position.set(scaled(x), 0, scaled(z));
       box(scene, root, 'p27-c10-pylon-foot-' + index, graphite, 0, 0.24, 0, 1.40, 0.48, 1.40);
       box(scene, root, 'p27-c10-pylon-spine-' + index, shell, 0, 2.15, 0, 0.90, 4.30, 0.90);
-      // Raised, bidirectional metrology faces must remain legible at the actual
-      // gameplay zoom, including when a shared authored world object overlaps
-      // the pylon centre. A bright rail is a narrow reference, not a route band.
+      // Three unmistakable high-value metrology pillars, not dark cubic
+      // placeholders: exposed etched datum rails and graduated bidirectional
+      // scales sit *outside* the textured PBR structural shell.
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-pylon-conductor-' + index + '-' + side,
-          shell, side * 0.54, 2.20, 0.28, 0.18, 3.60, 0.22);
+          etched, side * 0.58, 2.20, 0.47, 0.16, 3.60, 0.21);
         box(scene, root, 'p28-g9-pylon-insulator-' + index + '-' + side,
-          insulation, side * 0.53, 0.72, 0.52, 0.36, 0.30, 0.16);
+          insulation, side * 0.60, 0.72, 0.55, 0.38, 0.34, 0.24);
         box(scene, root, 'p28-g9-pylon-readout-' + index + '-' + side,
-          fixture, side * 0.54, 3.56, 0.41, 0.18, 0.32, 0.09);
+          cyan, side * 0.59, 3.57, 0.60, 0.20, 0.32, 0.12);
+        for (const yokeY of [1.15, 3.46]) {
+          box(scene, root, 'p28-g9-pylon-endshoe-' + index + '-' + side + '-' + yokeY,
+            indexed, side * 1.03, yokeY, 0.25, 0.30, 0.28, 0.42);
+        }
+      }
+      for (const yokeY of [1.15, 3.46]) {
+        box(scene, root, 'p28-g9-pylon-survey-yoke-' + index + '-' + yokeY,
+          shell, 0, yokeY, 0.18, 2.25, 0.16, 0.44);
       }
       for (let tick = 0; tick < 9; tick++) {
         box(scene, root, 'p28-g9-pylon-fiducial-' + index + '-' + tick,
-          tick % 3 === 0 ? fixture : shell,
-          0, 0.96 + tick * 0.36, 0.53, tick % 3 === 0 ? 0.72 : 0.46, 0.085, 0.11);
+          tick % 3 === 0 ? etched : indexed,
+          0, 0.96 + tick * 0.36, 0.59, tick % 3 === 0 ? 0.82 : 0.54, 0.10, 0.12);
         box(scene, root, 'p28-g9-pylon-rear-scale-' + index + '-' + tick,
-          tick % 3 === 0 ? fixture : graphite,
-          0, 0.96 + tick * 0.36, -0.53, tick % 3 === 0 ? 0.72 : 0.46, 0.085, 0.11);
+          tick % 3 === 0 ? etched : indexed,
+          0, 0.96 + tick * 0.36, -0.59, tick % 3 === 0 ? 0.82 : 0.54, 0.10, 0.12);
       }
+      const lens = MeshBuilder.CreateCylinder('p28-g9-pylon-interferometer-lens-' + index,
+        { diameter: 0.78, height: 0.17, tessellation: 24 }, scene);
+      lens.parent = root;
+      lens.position.set(0, 2.63, 0.75);
+      lens.rotation.x = Math.PI / 2;
+      lens.material = indexed;
+      lens.isPickable = false;
+      // A tall lit objective mast is directly attached to each *physical*
+      // reference node; the violet rotary rings still indicate alignment.
+      const mast = MeshBuilder.CreateCylinder('p28-g9-reference-objective-mast-' + index,
+        { height: 1.16, diameterTop: 0.10, diameterBottom: 0.42, tessellation: 8 }, scene);
+      mast.parent = root;
+      mast.position.y = 4.68;
+      mast.material = etched;
+      mast.isPickable = false;
+      const halo = MeshBuilder.CreateTorus('p28-g9-reference-objective-halo-' + index,
+        { diameter: 1.62, thickness: 0.13, tessellation: 32 }, scene);
+      halo.parent = root;
+      halo.position.y = 4.95;
+      halo.rotation.x = Math.PI / 2;
+      halo.material = cyan;
+      halo.isPickable = false;
       const rings: Mesh[] = [];
       for (const [ringIndex, y] of [1.15, 2.25, 3.35].entries()) {
         const ring = MeshBuilder.CreateTorus('p27-c10-pylon-ring-' + index + '-' + ringIndex, { diameter: 2.16, thickness: 0.10, tessellation: 30 }, scene);
@@ -231,8 +267,8 @@ export class BabylonParallaxArrayPresentation {
       }
       const core = MeshBuilder.CreateSphere('p27-c10-pylon-core-' + index, { diameter: 0.58, segments: 12 }, scene);
       core.parent = root;
-      core.position.y = 4.12;
-      core.material = cyan;
+      core.position.y = 5.26;
+      core.material = etched;
       core.isPickable = false;
       this.pylonRigs.push({ id, root, rings, core });
     });
@@ -431,7 +467,7 @@ export class BabylonParallaxArrayPresentation {
     this.hemisphere = new HemisphericLight('p27-c10-parallax-hemisphere', new Vector3(-0.10, 1, 0.14), scene);
     this.hemisphere.diffuse = colorFromHex(0xe7e1f2);
     this.hemisphere.groundColor = colorFromHex(0x242331);
-    this.hemisphere.intensity = 0.76;
+    this.hemisphere.intensity = 1.02;
     this.keyLight = new DirectionalLight('p27-c10-parallax-key', new Vector3(-0.52, -1, 0.30).normalize(), scene);
     this.keyLight.position = new Vector3(worldW * 0.84, 24, worldH * 0.16);
     this.keyLight.diffuse = colorFromHex(lighting.keyColor);
@@ -538,7 +574,7 @@ export class BabylonParallaxArrayPresentation {
 
     const lighting = BABYLON_PARALLAX_ARRAY_LIGHTING;
     const tierScale = renderBudget.tierName === 'high' ? 1 : renderBudget.tierName === 'balanced' ? 0.88 : 0.72;
-    this.hemisphere.intensity = 0.76 * (renderBudget.tierName === 'performance' ? 0.82 : 1);
+    this.hemisphere.intensity = 1.02 * (renderBudget.tierName === 'performance' ? 0.82 : 1);
     this.keyLight.intensity = lighting.keyIntensity * tierScale * (lowVisibility ? 0.94 : 1);
     this.rimLight.intensity = lighting.rimIntensity * (renderBudget.tierName === 'performance' ? 0.74 : 1);
     const px = scaled(state.player.x);
@@ -561,7 +597,7 @@ export class BabylonParallaxArrayPresentation {
 
     this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
     this.scene.environmentIntensity = this.iblReady
-      ? (renderBudget.tierName === 'performance' ? 0.54 : 0.93) : 0;
+      ? (renderBudget.tierName === 'performance' ? 0.64 : 1.15) : 0;
     this.scene.imageProcessingConfiguration.toneMappingEnabled = true;
     this.scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.scene.imageProcessingConfiguration.exposure = lighting.exposure * (lowVisibility ? 1.04 : 1);
