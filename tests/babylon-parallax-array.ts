@@ -14,6 +14,7 @@ import { auditParallaxVisualProvenance } from '../tools/p28g9-parallax-provenanc
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonParallaxArrayPresentation.ts', 'utf8');
 const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
+const telegraphs = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
 const readiness = readFileSync('src/game/babylonRefineryMissionReadiness.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
 const director = readFileSync('src/game/director.ts', 'utf8');
@@ -37,11 +38,23 @@ assert.deepEqual(BABYLON_PARALLAX_ARRAY_LIGHTING, {
   keyColor: 0xe2ddf1,
   rimColor: 0x9a87cf,
   emergencyColor: 0x7864ba,
-  keyIntensity: 2.2,
-  rimIntensity: 1.15,
-  emergencyIntensity: 8.1,
-  exposure: 1.06,
+  keyIntensity: 2.85,
+  rimIntensity: 1.55,
+  emergencyIntensity: 7.5,
+  exposure: 1.22,
 });
+
+// In addition to ready material bindings, the actual scene must have a
+// sufficiently lit deck and fiducial faces that survive the gameplay zoom.
+for (const detail of ['p28-g9-pylon-rear-scale-', 'p28-g9-pylon-readout-', 'p28-g9-perimeter-long-rail-']) {
+  assert.ok(presentation.includes(detail), 'missing readable Parallax instrument detail: ' + detail);
+}
+assert.ok(presentation.includes('this.hemisphere.intensity = 0.76'), 'Parallax industrial structures need an ambient fill');
+assert.ok(presentation.includes('0.93) : 0'), 'Parallax normal-quality PBR needs nonblack IBL');
+assert.ok(telegraphs.includes("const parallaxWarning = this.canvas.dataset.babylonScenario === 'parallax-array'"));
+assert.ok(telegraphs.includes('parallaxWarning ? 0.12 : 0.14'), 'Parallax warning lanes must remain transparent');
+assert.ok(telegraphs.includes('parallaxWarning ? 0.74 : 1'), 'Parallax combat lanes must not become wide route ribbons');
+assert.ok(director.includes("'Baseline Controller', 182, 132"), 'elite target label must be phone readable');
 
 assert.deepEqual(parallaxArrayRenderProfile(1, false), {
   name: 'full',
