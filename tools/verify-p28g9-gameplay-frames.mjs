@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { decodeScreenshotPng, auditGameplayPair } from '../scripts/verify-p28g2-gameplay-frames.mjs';
 import { auditParallaxVisualProvenance } from './p28g9-parallax-provenance.mjs';
 import { auditBrightEdgeMargins } from './p28g5-bright-edge.mjs';
+import { auditParallaxDeckRelief } from './p28g9-deck-relief.mjs';
 
 const [normalPath, actionPath, reportPath, provenancePath] = process.argv.slice(2);
 if (!normalPath || !actionPath || !reportPath || !provenancePath)
@@ -11,11 +12,15 @@ const normal = decodeScreenshotPng(readFileSync(normalPath));
 const action = decodeScreenshotPng(readFileSync(actionPath));
 const pixels = auditGameplayPair(normal, action);
 const margins = { normal: auditBrightEdgeMargins(normal), action: auditBrightEdgeMargins(action) };
+// Both real PNGs must already show the shipped diamond-plate KTX2 relief.
+// Source-level material.isReady() alone does not prove the GPU has drawn it.
+const deck = { normal: auditParallaxDeckRelief(normal), action: auditParallaxDeckRelief(action) };
 const state = JSON.parse(readFileSync(provenancePath, 'utf8'));
 const provenance = auditParallaxVisualProvenance(state);
 const report = { task: 'P28-G9', ...pixels,
-  valid: pixels.valid && margins.normal.valid && margins.action.valid,
-  margins, provenance };
+  valid: pixels.valid && margins.normal.valid && margins.action.valid
+    && deck.normal.valid && deck.action.valid,
+  margins, deck, provenance };
 writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');
 if (state.capturedRoute !== 'parallax-array' || !report.valid || !provenance.valid)
   throw new Error('P28-G9 exact-APK screenshot acceptance failed: ' + JSON.stringify(report));
