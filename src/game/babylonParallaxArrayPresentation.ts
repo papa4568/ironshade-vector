@@ -182,7 +182,7 @@ export class BabylonParallaxArrayPresentation {
     // A machined warm-metal standard separates instrument calibration from
     // violet danger cues and cyan status without replacing textured housings.
     const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0xb39566, 0.76, 0.38);
-    const objectiveGold = pbr(scene, 'p28-g9-physical-datum-objective-beacon', 0xbc9356, 0.53, 0.43, 0xf2c66c, 0.30);
+    const objectiveGold = pbr(scene, 'p28-g9-physical-datum-objective-beacon', 0xd5ab63, 0.38, 0.38, 0xffcd73, 0.82);
     this.datumAlbedoTexture = new DynamicTexture('p28-g9-metrology-machined-etched-atlas',
       { width: 128, height: 128 }, scene, false);
     this.datumNormalTexture = new DynamicTexture('p28-g9-metrology-etched-normal-atlas',
@@ -219,6 +219,11 @@ export class BabylonParallaxArrayPresentation {
     this.routeMaterials = [routePrimary, routeSecondary];
     // Diffuse bounced fill lifts dark floor relief without replacing KTX2 channels.
     floor.emissiveColor = colorFromHex(0x42566f).scale(0.10);
+    // Distant, textured maintenance-hall floor is set down below the sealed
+    // mission boundary. The real game deck remains clearly bounded by rails,
+    // while camera corners show a built laboratory rather than empty void.
+    box(scene, this.root, 'p28-g9-outboard-metrology-hall-deck', floor,
+      cx, -0.56, cz, worldW + 32, 0.20, worldH + 32);
     box(scene, this.root, 'p27-c10-parallax-floor-mesh', floor, cx, -0.08, cz, worldW, 0.16, worldH);
     // Frame the survey deck against space without opaque walls or blocking
     // collision/pathing. These low, contrasting edge rails provide scale and a
@@ -266,7 +271,26 @@ export class BabylonParallaxArrayPresentation {
       }
     }
 
-    const pylonFallback = [
+    // Non-navigable exterior survey rooms and lit precision-wall ribs frame
+    // the platform. They are rendered with the shared KTX2 metals and never
+    // added to game state, collision, navigation, objectives or enemy logic.
+    for (const side of [-1, 1]) {
+      box(scene, this.root, 'p28-g9-service-hall-back-wall-' + side,
+        shell, cx, 1.50, cz + side * (worldH / 2 + 11.8), worldW + 31, 3.00, 0.45);
+      box(scene, this.root, 'p28-g9-service-hall-side-wall-' + side,
+        shell, cx + side * (worldW / 2 + 11.8), 1.50, cz, 0.45, 3.00, worldH + 31);
+      for (let bay = 0; bay < 6; bay++) {
+        const bayX = cx + (bay - 2.5) * (worldW + 22) / 6;
+        const bayZ = cz + side * (worldH / 2 + 10.9);
+        box(scene, this.root, 'p28-g9-service-hall-panel-' + side + '-' + bay,
+          graphite, bayX, 1.48, bayZ, 2.5, 2.40, 0.24);
+        box(scene, this.root, 'p28-g9-service-hall-survey-window-' + side + '-' + bay,
+          indexed, bayX, 2.20, bayZ - side * 0.19, 1.66, 0.42, 0.10);
+        box(scene, this.root, 'p28-g9-service-hall-calibration-ruler-' + side + '-' + bay,
+          graduation, bayX, 0.66, bayZ - side * 0.19, 1.40, 0.12, 0.12);
+      }
+    }
+        const pylonFallback = [
       ['reference-node-a', 500, 300],
       ['reference-node-b', 980, 760],
       ['reference-node-c', 1400, 300],
@@ -288,15 +312,21 @@ export class BabylonParallaxArrayPresentation {
       const centerX = scaled((ax + bx) / 2);
       const centerZ = scaled((az + bz) / 2);
       const datum = box(scene, this.root, 'p28-g9-physical-reference-baseline-' + baseline,
-        graphite, centerX, 0.10, centerZ, length, 0.16, 0.16);
+        graphite, centerX, 0.10, centerZ, length, 0.18, 0.26);
       datum.rotation.y = rotationY;
       for (let index = 1; index < 14; index++) {
         const fraction = index / 14 - 0.5;
         const localX = fraction * length;
         const tick = box(scene, datum, 'p28-g9-physical-datum-graduation-' + baseline + '-' + index,
-          index % 5 === 0 ? graduation : etched, localX, 0.095, 0, 0.10, 0.025,
-          index % 5 === 0 ? 0.32 : 0.22);
+          index % 5 === 0 ? graduation : etched, localX, 0.11, 0, 0.16, 0.045,
+          index % 5 === 0 ? 0.60 : 0.36);
         tick.isPickable = false;
+      }
+      // Paired shielded conductor bars make this a working interferometer
+      // reference, not a dotted route painted on the floor.
+      for (const side of [-1, 1]) {
+        box(scene, datum, 'p28-g9-calibrated-baseline-conductor-' + baseline + '-' + side,
+          graduation, 0, 0.055, side * 0.36, length - 0.34, 0.08, 0.095);
       }
       for (let foot = 1; foot < 5; foot++) {
         const support = box(scene, datum, 'p28-g9-reference-isolator-foot-' + baseline + '-' + foot,
@@ -401,6 +431,26 @@ export class BabylonParallaxArrayPresentation {
       core.position.y = 5.26;
       core.material = cyan;
       core.isPickable = false;
+      // A conspicuous side-mounted fiducial is positioned below the top HUD,
+      // unlike the tiny upper mast that can sit behind tactical alerts.
+      const beaconRig = new TransformNode('p28-g9-objective-beacon-rig-' + index, scene);
+      beaconRig.parent = root;
+      beaconRig.position.set(1.58, 0, 1.12);
+      box(scene, beaconRig, 'p28-g9-beacon-foot-' + index,
+        graphite, 0, 0.32, 0, 1.34, 0.64, 1.24);
+      box(scene, beaconRig, 'p28-g9-beacon-stem-' + index,
+        graduation, 0, 1.46, 0, 0.26, 2.10, 0.26);
+      for (let level = 0; level < 3; level++) {
+        const target = MeshBuilder.CreateTorus('p28-g9-objective-side-beacon-' + index + '-' + level,
+          { diameter: 1.85 - level * 0.24, thickness: 0.16, tessellation: 28 }, scene);
+        target.parent = beaconRig;
+        target.position.set(0, 2.24 + level * 0.35, 0);
+        target.rotation.x = Math.PI / 2;
+        target.material = objectiveGold;
+        target.isPickable = false;
+      }
+      box(scene, beaconRig, 'p28-g9-physical-objective-index-' + index,
+        objectiveGold, 0, 2.94, 0.66, 1.04, 0.26, 0.18);
       // Unique warm-gold, tiered active-objective light over each real node.
       // It is deliberately separate from the violet shear/rings and cyan
       // navigation, and its base is bolted to the metrology tower.
@@ -891,7 +941,7 @@ export class BabylonParallaxArrayPresentation {
     this.canvas.dataset.environmentLandmark = 'three-point-long-baseline';
     this.canvas.dataset.environmentServiceDetails = 'reference-console:3+mass-carriage:' + profile.carriageInstances;
     this.canvas.dataset.environmentSurfaceDetail = 'reference-frame:' + profile.frameInstances + '+shear-anchor:' + profile.anchorInstances
-      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8+physical-baseline:3+datum-graduation:39+isolator-foot:12+objective-crown:9';
+      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8+physical-baseline:3+datum-graduation:39+isolator-foot:12+objective-crown:9+side-objective-beacon:9+conductor-bar:6';
     this.canvas.dataset.environmentMachineDetail = 'baseline-pylon:3+mass-carriage:3+live-baseline-servo:' + baselineServos;
     this.canvas.dataset.environmentComposition = 'three-point-baseline+cross-track-frames+perimeter-shear-anchors';
     this.canvas.dataset.environmentMaterials = 'graphite-structure+reference-shell+violet-alignment+cyan-readout';
