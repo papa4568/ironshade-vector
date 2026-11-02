@@ -256,6 +256,29 @@ assert.ok(presentation.includes("const graduation = pbr(scene, 'p28-g9-machined-
   && presentation.includes("p28-g9-console-large-angled-housing-")
   && presentation.includes("p28-g9-shear-anchor-violet-crosshead-"),
   'heavy calibrated masses, consoles and dark shear ceramics must have distinct materials/relief from brass targets');
+assert.ok(presentation.includes('p28-g9-survey-machine-floor-island-')
+  && presentation.includes('p28-g9-survey-machine-floor-inset-')
+  && presentation.includes('p28-g9-survey-machine-floor-joint-'),
+  'three machined service islands must break the repetitive floor without broad luminous route bands');
+assert.ok(presentation.includes('p28-g9-pylon-machined-service-plinth-')
+  && presentation.includes('p28-g9-pylon-large-front-scale-bed-')
+  && presentation.includes('p28-g9-pylon-large-scale-tick-')
+  && presentation.includes('p28-g9-pylon-physical-align-target-')
+  && presentation.includes('p28-g9-pylon-plinth-objective-corner-'),
+  'the actual alignment pylons must display bolted reference plinths, counted scales and warm world-space objectives');
+assert.ok(presentation.includes('p28-g9-shear-anchor-bolted-floor-foundation-')
+  && presentation.includes('p28-g9-shear-anchor-grounded-saddle-')
+  && presentation.includes('p28-g9-optical-frame-mounted-service-plate-'),
+  'fork and frame structures must terminate in grounded metal foundations rather than floating lavender fins');
+assert.ok(presentation.includes('p28-g9-counterweight-macro-top-graduation-')
+  && presentation.includes('p28-g9-counterweight-axle-bearing-housing-')
+  && presentation.includes('p28-g9-console-overhead-metric-glass-')
+  && presentation.includes('p28-g9-console-overhead-readout-graduation-')
+  && presentation.includes('survey-floor-island:3+pylon-plinth:3+grounded-anchor:8+macro-ruler:3+carriage-top-meter:3+console-top-screen:3'),
+  'overhead view must expose large calibrated moving masses and readable analysis consoles');
+assert.ok(gameCanvas.includes("message.startsWith('TACTICAL ALERT') && message.includes('DAMAGED GRID')")
+  && gameCanvas.includes('GRID ARC LIVE // CLEAR FIELD'),
+  'the live grid warning must remain actionable without filling the metrology instrument roof');
 assert.ok(presentation.includes('p28-g9-pylon-near-deck-objective-plate-')
   && presentation.includes('p28-g9-pylon-near-deck-target-wing-')
   && presentation.includes('p28-g9-bold-graduated-brass')
