@@ -182,7 +182,11 @@ export class BabylonParallaxArrayPresentation {
     const indexed = pbr(scene, 'p28-g9-indexed-violet-enamel', 0x82739c, 0.42, 0.48, 0x7760ba, 0.12);
     // A machined warm-metal standard separates instrument calibration from
     // violet danger cues and cyan status without replacing textured housings.
-    const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0xb39566, 0.76, 0.38);
+    const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0x856747, 0.35, 0.76);
+    const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0xc3a16b, 0.38, 0.62, 0xffd881, 0.15);
+    const counterweightMetal = pbr(scene, 'p28-g9-moving-inertial-counterweight', 0x3f5b67, 0.48, 0.71, 0x204252, 0.055);
+    const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.16);
+    const referenceScreen = pbr(scene, 'p28-g9-calibration-console-screen', 0x163849, 0.18, 0.48, 0x72d1c7, 0.28);
     const objectiveGold = pbr(scene, 'p28-g9-physical-datum-objective-beacon', 0xd5ab63, 0.38, 0.38, 0xffcd73, 0.82);
     this.datumAlbedoTexture = new DynamicTexture('p28-g9-metrology-machined-etched-atlas',
       { width: 128, height: 128 }, scene, false);
@@ -212,10 +216,13 @@ export class BabylonParallaxArrayPresentation {
     etched.bumpTexture = this.datumNormalTexture;
     indexed.bumpTexture = this.datumNormalTexture;
     graduation.bumpTexture = this.datumNormalTexture;
+    counterweightMetal.albedoTexture = this.datumAlbedoTexture;
+    counterweightMetal.bumpTexture = this.datumNormalTexture;
+    fiducialBrass.bumpTexture = this.datumNormalTexture;
     // Recessed navigational inlays never compete with vector-wash or boss telegraphs.
     const routePrimary = pbr(scene, 'p27-c10-route-primary', 0x29233b, 0.16, 0.90, 0x655485, 0.026);
     const routeSecondary = pbr(scene, 'p27-c10-route-secondary', 0x192c32, 0.14, 0.94, 0x36626a, 0.014);
-    this.ownedMaterials = [violet, cyan, etched, indexed, graduation, objectiveGold, routePrimary, routeSecondary];
+    this.ownedMaterials = [violet, cyan, etched, indexed, graduation, fiducialBrass, counterweightMetal, shearCeramic, referenceScreen, objectiveGold, routePrimary, routeSecondary];
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.routeMaterials = [routePrimary, routeSecondary];
     // Diffuse bounced fill lifts dark floor relief without replacing KTX2 channels.
@@ -380,8 +387,16 @@ export class BabylonParallaxArrayPresentation {
         graphite, 0, 2.18, 1.02, 1.58, 3.46, 0.22);
       for (let mark = 0; mark < 6; mark++) {
         box(scene, root, 'p28-g9-pylon-datum-large-mark-' + index + '-' + mark,
-          mark % 2 === 0 ? graduation : indexed, 0, 1.16 + mark * 0.41, 1.19,
+          mark % 2 === 0 ? fiducialBrass : indexed, 0, 1.16 + mark * 0.41, 1.19,
           mark % 2 === 0 ? 1.35 : 0.80, 0.17, 0.12);
+      }
+      // A broad near-deck objective fiducial remains visible even when the
+      // high mast/crown are behind the top status HUD on the phone.
+      box(scene, root, 'p28-g9-pylon-near-deck-objective-plate-' + index,
+        objectiveGold, 0, 0.84, 1.36, 2.15, 0.64, 0.22);
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-pylon-near-deck-target-wing-' + index + '-' + side,
+          fiducialBrass, side * 1.30, 0.88, 1.10, 0.34, 0.90, 0.30);
       }
       const footReticle = MeshBuilder.CreateTorus('p28-g9-reference-foot-datum-' + index,
         { diameter: 2.34, thickness: 0.085, tessellation: 32 }, scene);
@@ -536,16 +551,16 @@ export class BabylonParallaxArrayPresentation {
         // Twin exposed mass gauges and circular races make this a measured
         // moving carriage rather than a generic rectangular cover block.
         const wheel = MeshBuilder.CreateTorus('p28-g9-carriage-mass-wheel-' + index + '-' + side,
-          { diameter: 0.92, thickness: 0.14, tessellation: 24 }, scene);
+          { diameter: 1.64, thickness: 0.26, tessellation: 24 }, scene);
         wheel.parent = root;
-        wheel.position.set(side * 0.62, 0.94, 0.52);
+        wheel.position.set(side * 0.62, 1.04, 0.76);
         wheel.rotation.x = Math.PI / 2;
-        wheel.material = indexed;
+        wheel.material = fiducialBrass;
         wheel.isPickable = false;
         const gauge = MeshBuilder.CreateCylinder('p28-g9-carriage-mass-gauge-' + index + '-' + side,
-          { diameter: 0.40, height: 0.12, tessellation: 20 }, scene);
+          { diameter: 0.86, height: 0.16, tessellation: 20 }, scene);
         gauge.parent = root;
-        gauge.position.set(side * 0.62, 0.94, 0.59);
+        gauge.position.set(side * 0.62, 1.04, 0.88);
         gauge.rotation.x = Math.PI / 2;
         gauge.material = graduation;
         gauge.isPickable = false;
@@ -583,9 +598,9 @@ export class BabylonParallaxArrayPresentation {
       // Counterweight mass and orange-brass travel scale are a different
       // silhouette from the pylons' loop coils and the anchor's split fork.
       box(scene, root, 'p28-g9-instrumented-moving-counterweight-' + index,
-        shell, 0, 1.71, 0, 1.82, 0.52, 1.16);
+        counterweightMetal, 0, 1.71, 0, 2.10, 0.82, 1.35);
       box(scene, root, 'p28-g9-counterweight-travel-indicator-' + index,
-        graduation, 0, 2.02, 0.72, 1.56, 0.18, 0.20);
+        fiducialBrass, 0, 2.20, 0.80, 1.78, 0.24, 0.26);
       for (const side of [-1, 1]) {
         const axle = MeshBuilder.CreateCylinder('p28-g9-carriage-exposed-axle-' + index + '-' + side,
           { height: 0.64, diameter: 0.46, tessellation: 20 }, scene);
@@ -609,7 +624,7 @@ export class BabylonParallaxArrayPresentation {
       root.position.set(worldW * x, 0, worldH * z);
       root.rotation.y = rotationY;
       box(scene, root, 'p27-c10-anchor-base-' + index, graphite, 0, 0.24, 0, 0.78, 0.48, 0.78);
-      const fin = box(scene, root, 'p27-c10-anchor-fin-' + index, shell, 0, 0.98, 0, 0.18, 1.52, 0.88);
+      const fin = box(scene, root, 'p27-c10-anchor-fin-' + index, shearCeramic, 0, 0.98, 0, 0.28, 1.68, 0.98);
       fin.rotation.z = index % 2 ? 0.10 : -0.10;
       const marker = MeshBuilder.CreateTorus('p27-c10-anchor-ring-' + index, { diameter: 0.72, thickness: 0.07, tessellation: 20 }, scene);
       marker.parent = root;
@@ -623,7 +638,7 @@ export class BabylonParallaxArrayPresentation {
         etched, 0, 1.20, 0.48, 0.18, 0.54, 0.12);
       for (const side of [-1, 1]) {
         const strut = box(scene, root, 'p28-g9-shear-anchor-fork-' + index + '-' + side,
-          indexed, side * 0.36, 1.13, 0.18, 0.16, 1.40, 0.20);
+          shearCeramic, side * 0.48, 1.13, 0.18, 0.29, 1.78, 0.28);
         strut.rotation.z = side * 0.18;
       }
       // Every baseline shear anchor has its own exposed optical index dial
@@ -661,12 +676,12 @@ export class BabylonParallaxArrayPresentation {
       // over two dark polymer sleeves makes the difference visible at zoom.
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-shear-anchor-insulated-upright-' + index + '-' + side,
-          insulation, side * 0.56, 1.30, 0.52, 0.34, 2.16, 0.32);
+          shearCeramic, side * 0.56, 1.30, 0.52, 0.42, 2.16, 0.39);
         box(scene, root, 'p28-g9-shear-anchor-ceramic-collar-' + index + '-' + side,
           indexed, side * 0.56, 2.18, 0.55, 0.48, 0.25, 0.44);
       }
       box(scene, root, 'p28-g9-shear-anchor-violet-crosshead-' + index,
-        indexed, 0, 2.44, 0.52, 1.64, 0.25, 0.34);
+        shearCeramic, 0, 2.44, 0.52, 1.82, 0.32, 0.38);
       this.anchors.push(root);
     });
 
@@ -675,7 +690,7 @@ export class BabylonParallaxArrayPresentation {
       root.parent = this.root;
       root.position.set(scaled(x + (index === 1 ? -92 : 78)), 0, scaled(z + (index === 2 ? -60 : 50)));
       box(scene, root, 'p27-c10-console-body-' + index, graphite, 0, 0.42, 0, 0.82, 0.84, 0.62);
-      const screen = box(scene, root, 'p27-c10-console-screen-' + index, cyan, 0, 0.82, -0.30, 0.74, 0.40, 0.06);
+      const screen = box(scene, root, 'p27-c10-console-screen-' + index, referenceScreen, 0, 0.82, -0.30, 0.74, 0.40, 0.06);
       screen.rotation.x = -0.18;
       box(scene, root, 'p28-g9-console-bezel-' + index,
         insulation, 0, 0.78, -0.25, 0.85, 0.50, 0.10);
@@ -696,6 +711,19 @@ export class BabylonParallaxArrayPresentation {
         box(scene, root, 'p28-g9-console-readout-scale-' + index + '-' + tick,
           tick === 0 ? graduation : etched,
           -0.27 + tick * 0.18, 0.91, -0.39, 0.11, 0.18, 0.10);
+      }
+      // Distinct three-channel metrology console: cyan analysis screen in a
+      // dark tilted housing and an amber frequency/range scale tall enough
+      // to remain visible from the actual player camera.
+      const raisedConsole = box(scene, root, 'p28-g9-console-large-angled-housing-' + index,
+        graphite, 0, 1.38, 0.12, 2.00, 1.10, 0.52);
+      raisedConsole.rotation.x = -0.20;
+      box(scene, root, 'p28-g9-console-large-metric-screen-' + index,
+        referenceScreen, 0, 1.45, 0.45, 1.72, 0.76, 0.13);
+      for (let channel = 0; channel < 3; channel++) {
+        box(scene, root, 'p28-g9-console-calibration-channel-' + index + '-' + channel,
+          channel === 1 ? fiducialBrass : etched, -0.45 + channel * 0.45, 1.49, 0.56,
+          0.22, 0.54, 0.10);
       }
       const consoleLens = MeshBuilder.CreateTorus('p28-g9-console-optical-port-' + index,
         { diameter: 0.40, thickness: 0.08, tessellation: 24 }, scene);
