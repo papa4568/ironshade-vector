@@ -151,6 +151,15 @@ for (const premiumDetail of [
 assert.ok(presentation.includes("new CubeTexture('/assets/environments/refinery-prefiltered.env'"));
 assert.ok(presentation.includes('babylonRouteMarkingWidth(route.kind)'));
 assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
+assert.ok(presentation.includes("0x10171b, 0.06, 0.98")
+  && presentation.includes("route.kind === 'primary' ? 0.055 : 0.038"),
+  'Momentum floor guides must be narrow dark non-mirror guides at Android zoom');
+assert.ok(presentation.includes("this.laminationAlbedo = new DynamicTexture('p28-g9-machined-flywheel-albedo'")
+  && presentation.includes("this.laminationNormal = new DynamicTexture('p28-g9-machined-flywheel-normal'")
+  && presentation.includes('edgeMetal.bumpTexture = this.laminationNormal;')
+  && presentation.includes('this.laminationNormal.dispose();'),
+  'exposed rotor laminations must have actual turned-metal relief with disposed GPU textures');
+
 const g7Hud = readFileSync('src/combatHudGlance.css', 'utf8');
 assert.ok(g7Hud.includes('left: 28%;') && g7Hud.includes('width: min(12vw, 11rem);'),
   'narrow Momentum tactical roof must not collide with centered target HP panel');
