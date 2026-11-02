@@ -263,7 +263,7 @@ async function selfTest() {
       { path: 'scripts/unauthorized.sh', mode: '100644', type: 'blob', sha: '9'.repeat(40) }] } },
     { jobList: jobs.map(j => j.name === 'Android PR / Android PR API 35 Smoke' ? { ...j, conclusion: 'failure' } : j) },
     { visualOutcome: 'failure' },
-    { base: { ...baseTree, tree: baseTree.tree.map(x => x.path === FILES[0].path ? { ...x, sha: '9'.repeat(40) } : x) },
+    { base: { ...baseTree, tree: baseTree.tree.map(x => x.path === FILES[0].path ? { ...x, sha: '9'.repeat(40) } : x) } },
   ]) {
     const f = mock(options);
     await assert.rejects(() => promotion({ ...f, checkoutSha: old }));
