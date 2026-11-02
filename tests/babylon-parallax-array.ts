@@ -72,6 +72,10 @@ for (const detail of [
   'p28-g9-exposed-survey-conductor-', 'p28-g9-survey-conductor-isolator-',
   'p28-g9-survey-conductor-bolt-',
   'p28-g9-objective-deck-dial-backing-', 'p28-g9-objective-deck-diamond-',
+  'p28-g9-objective-dial-index-rail-', 'p28-g9-objective-dial-index-lamp-',
+  'p28-g9-shear-anchor-metal-prong-', 'p28-g9-shear-anchor-machined-jaw-',
+  'p28-g9-shear-anchor-brass-station-', 'p28-g9-shear-anchor-violet-inset-',
+  'p28-g9-elite-controller-contact-warning',
 ]) assert.ok(presentation.includes(detail), 'Parallax silhouette must expose calibrated hardware: ' + detail);
 
 // The overhead-view scale and target must be real scene geometry with
@@ -84,6 +88,20 @@ assert.ok(presentation.includes("objectiveDial.rotation.y = Math.PI / 4"),
   'objective beacon must form a camera-readable top-facing diamond');
 assert.ok(presentation.includes("objectiveDialBack.material = graphite"),
   'bright objective markers need a grounded, dark metal backing');
+assert.ok(presentation.includes("const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0x816a50"),
+  'brass must not render as bright cream optical wheels over the real machine');
+assert.ok(presentation.includes('wheel.material = counterweightMetal'),
+  'mass-carriage circular races must retain dark machinery contrast');
+assert.ok(presentation.includes('objectiveDial.position.set(-1.58, 0.86, 1.58)'),
+  'physical reference target must be top-facing and raised above surrounding survey plates');
+assert.ok(presentation.includes("shearCeramic, 0, 2.65, 0.52"),
+  'violet should read as a narrow insulated hazard channel, not solid pale block prongs');
+assert.ok(presentation.includes('this.eliteTellRing.setEnabled(Boolean(baselineController))'),
+  'elite warning/contact presentation must be bound to an actual live enemy');
+assert.ok(presentation.includes('const telegraphActive = baselineController.telegraph > 0;'),
+  'strong elite alert must reflect a real combat telegraph, never an invented attack');
+assert.ok(presentation.includes("this.eliteTellRing.position.set(scaled(baselineController.x), 0.12"),
+  'elite threat ring must follow real enemy world-space position');
 
 assert.ok(presentation.includes('floor.emissiveColor = colorFromHex(0x42566f).scale(0.10)'),
   'PBR floor relief needs restrained bounce fill at gameplay zoom');
