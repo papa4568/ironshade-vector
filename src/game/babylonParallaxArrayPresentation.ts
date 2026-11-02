@@ -405,6 +405,20 @@ export class BabylonParallaxArrayPresentation {
         box(scene, root, 'p28-g9-pylon-survey-yoke-' + index + '-' + yokeY,
           shell, 0, yokeY, 0.18, 2.25, 0.16, 0.44);
       }
+      // These paired external conductors read as actual calibrated rails at
+      // the overhead gameplay camera distance. Dark insulating saddles break
+      // the brass into separate, mechanically anchored metrology channels,
+      // rather than adding another floating luminous game-route stripe.
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-exposed-survey-conductor-' + index + '-' + side,
+          fiducialBrass, side * 1.14, 2.26, 0.96, 0.26, 2.84, 0.24);
+        for (const station of [1.12, 3.32]) {
+          box(scene, root, 'p28-g9-survey-conductor-isolator-' + index + '-' + side + '-' + station,
+            insulation, side * 1.14, station, 1.01, 0.51, 0.26, 0.41);
+          box(scene, root, 'p28-g9-survey-conductor-bolt-' + index + '-' + side + '-' + station,
+            fiducialBrass, side * 1.14, station + 0.16, 1.04, 0.17, 0.12, 0.18);
+        }
+      }
       // Recess the scales into dark PBR panels so alternating brass/cyan
       // graduations remain physically distinct instead of white bar stacks.
       for (const face of [-1, 1]) {
@@ -427,6 +441,23 @@ export class BabylonParallaxArrayPresentation {
           mark % 2 === 0 ? fiducialBrass : indexed, 0, 1.16 + mark * 0.41, 1.19,
           mark % 2 === 0 ? 1.35 : 0.80, 0.17, 0.12);
       }
+      // A real top-facing calibrated target, separate from the pale rotary
+      // interferometer rings, identifies the physical objective in the
+      // overhead camera even when the tall crown is obscured by the HUD.
+      // The dark metal backing preserves a crisp amber-on-graphite edge.
+      const objectiveDialBack = MeshBuilder.CreateCylinder('p28-g9-objective-deck-dial-backing-' + index,
+        { diameter: 1.84, height: 0.16, tessellation: 8 }, scene);
+      objectiveDialBack.parent = root;
+      objectiveDialBack.position.set(-1.58, 0.62, 1.58);
+      objectiveDialBack.material = graphite;
+      objectiveDialBack.isPickable = false;
+      const objectiveDial = MeshBuilder.CreateCylinder('p28-g9-objective-deck-diamond-' + index,
+        { diameter: 1.18, height: 0.20, tessellation: 4 }, scene);
+      objectiveDial.parent = root;
+      objectiveDial.position.set(-1.58, 0.76, 1.58);
+      objectiveDial.rotation.y = Math.PI / 4;
+      objectiveDial.material = objectiveGold;
+      objectiveDial.isPickable = false;
       // A broad near-deck objective fiducial remains visible even when the
       // high mast/crown are behind the top status HUD on the phone.
       box(scene, root, 'p28-g9-pylon-near-deck-objective-plate-' + index,
