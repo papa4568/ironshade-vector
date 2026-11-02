@@ -137,6 +137,8 @@ export class BabylonCryoReservePresentation {
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
   private readonly plumeMaterial: StandardMaterial;
   private readonly ambientColdVaporMaterial: StandardMaterial;
+  private readonly frostAlbedoTexture: DynamicTexture;
+  private readonly frostNormalTexture: DynamicTexture;
   private readonly ambientColdVaporTexture: DynamicTexture;
   private readonly ambientColdVents: Mesh[] = [];
   private readonly bossCueMaterial: StandardMaterial;
@@ -185,6 +187,44 @@ export class BabylonCryoReservePresentation {
     // Genuine opaque, rough hoarfrost crust at barrel scale: the tiny scars
     // alone disappeared at the Android gameplay camera distance.
     const frostCrust = pbr(scene, 'p28-g9-cryo-vacuum-hoarfrost', 0x9bcee0, 0.03, 0.99, 0x93d5e2, 0.085);
+    // Actual deterministic frosted-insulation surface relief, not just smooth
+    // white cylinders and telemetry text. Crackled blue-white albedo and a
+    // signed tangent-space normal field give 128x128 material microstructure.
+    this.frostAlbedoTexture = new DynamicTexture('p28-g9-cryo-frost-albedo-atlas',
+      { width: 128, height: 128 }, scene, false);
+    this.frostNormalTexture = new DynamicTexture('p28-g9-cryo-frost-normal-atlas',
+      { width: 128, height: 128 }, scene, false);
+    const frostPaint = this.frostAlbedoTexture.getContext();
+    const frostNormals = this.frostNormalTexture.getContext();
+    frostPaint.fillStyle = '#a5d0df';
+    frostPaint.fillRect(0, 0, 128, 128);
+    frostNormals.fillStyle = '#8080ff';
+    frostNormals.fillRect(0, 0, 128, 128);
+    for (let chip = 0; chip < 1550; chip++) {
+      const x = (chip * 73 + (chip * chip) % 127) % 128;
+      const y = (chip * 37 + Math.floor(chip / 11) * 19) % 128;
+      const dark = chip % 7 === 0;
+      frostPaint.fillStyle = dark ? '#527d91' : chip % 3 === 0 ? '#e1f3f5' : '#8fb9c9';
+      frostPaint.fillRect(x, y, 1 + chip % 5, 1 + chip % 3);
+      frostNormals.fillStyle = dark ? '#719bea' : chip % 3 === 0 ? '#a16fe4' : '#8885fb';
+      frostNormals.fillRect(x, y, 1 + chip % 5, 1 + chip % 3);
+    }
+    for (let fracture = 0; fracture < 18; fracture++) {
+      const x = (fracture * 43) % 128;
+      frostPaint.strokeStyle = fracture % 3 === 0 ? '#4b7387' : '#e3f4f5';
+      frostPaint.lineWidth = fracture % 4 === 0 ? 2 : 1;
+      frostPaint.beginPath();
+      frostPaint.moveTo(x, 0);
+      frostPaint.lineTo((x + 21 + fracture * 7) % 128, 128);
+      frostPaint.stroke();
+    }
+    this.frostAlbedoTexture.update();
+    this.frostNormalTexture.update();
+    frost.albedoTexture = this.frostAlbedoTexture;
+    frostCrust.albedoTexture = this.frostAlbedoTexture;
+    frozenPanel.albedoTexture = this.frostAlbedoTexture;
+    frostCrust.bumpTexture = this.frostNormalTexture;
+    frozenPanel.bumpTexture = this.frostNormalTexture;
     this.ambientColdVaporMaterial = new StandardMaterial('p28-g8-ambient-cold-vent-material', scene);
     // A single small alpha-feathered texture makes the neck vapor read as
     // translucent gas at the gameplay camera, not opaque gray discs.
@@ -298,7 +338,7 @@ export class BabylonCryoReservePresentation {
       // insulation and underlying machined steel stay visible at game zoom.
       for (const [collarIndex, elevation] of [1.62, 3.48].entries()) {
         const crust = MeshBuilder.CreateCylinder('p28-g9-cryo-hoarfrost-collar-' + index + '-' + collarIndex,
-          { height: collarIndex === 0 ? 0.64 : 0.54, diameter: 2.02, tessellation: 28 }, scene);
+          { height: collarIndex === 0 ? 0.64 : 0.54, diameter: 2.02, tessellation: 28, arc: 0.84 }, scene);
         crust.parent = root;
         crust.position.y = elevation;
         crust.material = frostCrust;
@@ -817,6 +857,8 @@ export class BabylonCryoReservePresentation {
     this.premiumSurfaces.dispose();
     this.plumeMaterial.dispose();
     this.ambientColdVaporMaterial.dispose();
+    this.frostAlbedoTexture.dispose();
+    this.frostNormalTexture.dispose();
     this.ambientColdVaporTexture.dispose();
     this.bossCueMaterial.dispose();
     this.hemisphere.dispose();
