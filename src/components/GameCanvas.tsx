@@ -1559,6 +1559,10 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       return message.split(' // ')[0];
     }
     if (activeMission.location === 'parallax-array') {
+      if (message.startsWith('TACTICAL ALERT') && message.includes('DAMAGED GRID'))
+        return 'GRID ARC LIVE // CLEAR FIELD';
+      if (message.startsWith('TACTICAL ALERT')) return message.split(' // ').slice(0, 2).join(' // ');
+      if (message.startsWith('REACTIVE PLATING')) return 'REACTIVE PLATING ACTIVE';
       if (message.startsWith('CISLUNAR PARALLAX ARRAY')) return 'ALIGN 3 REFERENCE PYLONS';
       if (message.startsWith('PARALLAX SHEAR')) return 'SHEAR FRONT LIVE // REFERENCES DISAGREE';
       if (message.startsWith('DEEP REFERENCE REVERSAL')) return 'DEEP REFERENCE // SHEAR REVERSAL';
