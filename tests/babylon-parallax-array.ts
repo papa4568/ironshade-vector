@@ -76,6 +76,9 @@ for (const detail of [
   'p28-g9-shear-anchor-metal-prong-', 'p28-g9-shear-anchor-machined-jaw-',
   'p28-g9-shear-anchor-brass-station-', 'p28-g9-shear-anchor-violet-inset-',
   'p28-g9-elite-controller-contact-warning',
+  'p28-g9-pylon-top-metrology-ruler-bed-', 'p28-g9-pylon-top-metrology-station-',
+  'p28-g9-counterweight-arched-fork-', 'p28-g9-counterweight-top-flight-rule-',
+  'p28-g9-shear-anchor-hex-dial-', 'p28-g9-shear-anchor-index-window-',
 ]) assert.ok(presentation.includes(detail), 'Parallax silhouette must expose calibrated hardware: ' + detail);
 
 // The overhead-view scale and target must be real scene geometry with
@@ -102,6 +105,18 @@ assert.ok(presentation.includes('const telegraphActive = baselineController.tele
   'strong elite alert must reflect a real combat telegraph, never an invented attack');
 assert.ok(presentation.includes("this.eliteTellRing.position.set(scaled(baselineController.x), 0.12"),
   'elite threat ring must follow real enemy world-space position');
+assert.ok(presentation.includes('objectiveDial.material = this.objectiveSignalMaterial'),
+  'the objective must have an unlit amber physical-target finish at actual gameplay zoom');
+assert.ok(presentation.includes("this.objectiveSignalMaterial.disableLighting = true"),
+  'overexposed shared PBR lights may not erase the objective signal');
+assert.ok(presentation.includes("station % 3 === 0 ? 0.31 : 0.18"),
+  'camera-scale pylon graduation ticks must not regress to sub-pixel stripes');
+assert.ok(presentation.includes("vectorWashes.length > 0 ? 0.30 : 0.06"),
+  'authored active reference shear must remain visibly distinct from the dark floor');
+assert.ok(presentation.includes("baselineController.telegraph > 0"),
+  'never fabricate attack warning when the real elite has not telegraphed');
+assert.ok(presentation.includes("this.objectiveSignalMaterial.dispose();"),
+  'the physical objective target must not leak a scene-owned material');
 
 assert.ok(presentation.includes('floor.emissiveColor = colorFromHex(0x42566f).scale(0.10)'),
   'PBR floor relief needs restrained bounce fill at gameplay zoom');
