@@ -21,6 +21,7 @@ const director = readFileSync('src/game/director.ts', 'utf8');
 const interdiction = readFileSync('src/game/postKhepriInterdiction.ts', 'utf8');
 const smoke = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
 const hudCss = readFileSync('src/combatHudGlance.css', 'utf8');
+const hudComponent = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 const workflow = readFileSync('.github/workflows/browser-e2e.yml', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
 
@@ -204,6 +205,17 @@ assert.ok(g8Capture.includes("d?.babylonScenario === 'cryo-reserve'"));
 assert.ok(g8Capture.includes('beforeMappedObjects: beforeVisual.mappedObjects'));
 assert.ok(g8Capture.includes('beforeAuthoredObjects: beforeVisual.authoredObjects'));
 assert.ok(g8Capture.includes('const current = target.url;'));
+assert.ok(hudComponent.includes("activeMission.location === 'cryo-reserve'")
+  && hudComponent.includes("message.startsWith('CRYOGENIC BOILOFF')")
+  && hudComponent.includes("message.startsWith('RESERVE PRESSURE RISE')")
+  && hudComponent.includes("return message.split(' // ')[0]")
+  && hudComponent.includes('aria-label={hud.eventT > 0 && !bossTransitionCue'),
+  'Cryo mobile events must be concise while retaining the complete accessible director transcript');
+assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .target-readout header b')
+  && hudCss.includes('.game-root[data-location="cryo-reserve"] .transient-alert-lane.event .combat-alert b')
+  && hudCss.includes('width: min(32vw, 26rem);')
+  && hudCss.includes('overflow-wrap: anywhere;'),
+  'Cryo target and tactical HUD must show full identities without ellipses or moving touch hitboxes');
 assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .boss-name'));
 assert.ok(hudCss.includes('white-space: normal;'));
 assert.ok(hudCss.includes('text-overflow: clip;'));
