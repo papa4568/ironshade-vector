@@ -2032,6 +2032,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
     const silhouette = enemyVariantSilhouette(enemy.variant);
     const speed = clamp01(Math.hypot(enemy.vx, enemy.vy) * 0.012);
+    const cryoSilhouette = this.canvas.dataset.babylonScenario === 'cryo-reserve';
+    visual.variantCue.scaling.set(cryoSilhouette ? 1.48 : 1, cryoSilhouette ? 1.28 : 1, cryoSilhouette ? 1.42 : 1);
     visual.variantCue.rotation.y = silhouette === 'drone' ? state.time * 1.8 : 0;
     visual.variantCue.rotation.z = (silhouette === 'mobile' ? -0.28 : silhouette === 'technical' ? 0.16 : 0)
       + (silhouette === 'mobile' ? Math.sin(state.time * 8 + enemy.id) * 0.08 * speed : 0);
@@ -2041,12 +2043,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Cool rim contribution makes dark enemy armor distinguishable from the
     // cryogenic deck without turning timed orange attack rings into decoration.
     visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      annexContrast ? 0.22 : cryoContrast ? 0.43 : momentumContrast ? 0.28 : 0.06)
-      .add(cryoContrast ? colorFromHex(0xa6d8e8).scale(0.27) : Color3.Black());
+      annexContrast ? 0.22 : cryoContrast ? 0.62 : momentumContrast ? 0.28 : 0.06)
+      .add(cryoContrast ? colorFromHex(0xa6d8e8).scale(0.34) : Color3.Black());
     visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(
       annexContrast ? 0.13 : cryoContrast ? 0.34 : momentumContrast ? 0.17 : 0);
     visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      (annexContrast ? 0.42 : cryoContrast ? 0.72 : momentumContrast ? 0.46 : 0.22)
+      (annexContrast ? 0.42 : cryoContrast ? 0.94 : momentumContrast ? 0.46 : 0.22)
       + damage.hit * 0.32 + damage.armorBreak * 0.24,
     );
   }
@@ -2725,8 +2727,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const px = state.player.x * WORLD_SCALE;
     const pz = state.player.y * WORLD_SCALE;
     const narrow = aspect < 1.15;
-    const cameraHeight = narrow ? 18 : this.coarse ? 14.8 : 12.8;
-    const cameraOffset = narrow ? 13.2 : this.coarse ? 11.2 : 9.8;
+    // Cryo's far service-bank hostiles and attack tell rings extend below/right
+    // of the touch HUD. Widen only this landscape view; no gameplay locations,
+    // telegraph ranges, touch hit regions or other mission cameras change.
+    const cryoWideFraming = !narrow && this.canvas.dataset.babylonScenario === 'cryo-reserve';
+    const cameraHeight = narrow ? 18 : cryoWideFraming ? (this.coarse ? 15.5 : 13.9) : this.coarse ? 14.8 : 12.8;
+    const cameraOffset = narrow ? 13.2 : cryoWideFraming ? (this.coarse ? 11.9 : 10.8) : this.coarse ? 11.2 : 9.8;
     const offsetX = cameraFeedback?.worldOffsetX ?? 0;
     const offsetZ = cameraFeedback?.worldOffsetZ ?? 0;
     // The Annex's active fight extends into the lower-right touch lane.
@@ -2753,7 +2759,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Cryo's far service-bank hostiles were clipped behind the right-side
     // buttons in real Android action/device frames. Preserve projection and
     // full-sized controls, translating eye and target toward the threat lane.
-    const cryoTouchLanePan = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 1.3 : 0;
+    const cryoTouchLanePan = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 5.2 : 0;
     const parallaxTouchLanePan = this.canvas.dataset.babylonScenario === 'parallax-array' && !narrow ? 2.4 : 0;
 
     this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan);
