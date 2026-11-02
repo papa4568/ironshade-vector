@@ -94,6 +94,15 @@ for (const marker of [
 ]) requireText(androidConfigurator, marker, 'P25-B Android configurator');
 // The Pixel 7 Pro landscape camera-cutout surface must be configured before
 // Capacitor measures/attaches its WebView, not only after first layout.
+// The native theme is attached before AppCompat or Capacitor inflation, so
+// display-cutout policy must be an idempotent styles.xml operation as well
+// as runtime Window flags. A late-only fix still leaves 144 white pixels.
+for (const marker of [
+  "const themePath = resolve('android/app/src/main/res/values/styles.xml');",
+  "['android:windowLayoutInDisplayCutoutMode', 'always']",
+  "['android:windowBackground', '#05090a']",
+  "if (themedCount < 2)",
+]) requireText(androidConfigurator, marker, 'Android full-bleed theme before WebView');
 const nativeOnCreate = androidConfigurator.slice(androidConfigurator.indexOf('public void onCreate(Bundle savedInstanceState)'));
 const cutoutSetup = nativeOnCreate.indexOf('configureWindowCutoutBeforeContent();');
 const capacitorCreate = nativeOnCreate.indexOf('super.onCreate(savedInstanceState);');
