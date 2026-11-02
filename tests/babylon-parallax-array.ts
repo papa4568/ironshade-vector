@@ -223,6 +223,16 @@ assert.ok(presentation.includes('p28-g9-physical-reference-baseline-')
   && presentation.includes('p28-g9-reference-isolator-foot-')
   && presentation.includes('physical-baseline:3+datum-graduation:39+isolator-foot:12'),
   'three long-baseline metrology rails must exist as calibrated physical hardware');
+assert.ok(presentation.includes("this.datumAlbedoTexture = new DynamicTexture('p28-g9-metrology-machined-etched-atlas'")
+  && presentation.includes("this.datumNormalTexture = new DynamicTexture('p28-g9-metrology-etched-normal-atlas'")
+  && presentation.includes('etched.bumpTexture = this.datumNormalTexture;')
+  && presentation.includes('this.datumNormalTexture.dispose();'),
+  'precision metrology housings must carry real normal and albedo relief');
+assert.ok(presentation.includes('p28-g9-physical-datum-objective-beacon')
+  && presentation.includes('p28-g9-objective-datum-beacon-crown-')
+  && presentation.includes('p28-g9-objective-calibration-chevron-')
+  && presentation.includes('objective-crown:9'),
+  'objective beacons must be unique, raised, warm-gold physical instruments at each pylon');
 assert.ok(presentation.includes("vectorWashes.length > 0 ? 0.17 : 0.06")
   && presentation.includes("colorFromHex(0xb195dc).scale(0.64"),
   'real violet shear stays visible but cannot obscure the entire metrology deck');
