@@ -250,6 +250,15 @@ assert.ok(presentation.includes("this.bossWarning = MeshBuilder.CreateTorus('p28
   && presentation.includes('patternHot ? 0xf2a35e : phaseTwo')
   && presentation.includes('this.bossWarning.scaling.set(pulse, pulse, pulse);'),
   'amber boss danger ring must reflect the real pattern wind-up and not a fabricated HUD hazard');
+assert.ok(presentation.includes('p28-g9-pylon-near-deck-objective-plate-')
+  && presentation.includes('p28-g9-pylon-near-deck-target-wing-')
+  && presentation.includes('p28-g9-bold-graduated-brass')
+  && presentation.includes('p28-g9-moving-inertial-counterweight')
+  && presentation.includes('p28-g9-insulated-violet-shear-ceramic')
+  && presentation.includes('p28-g9-calibration-console-screen')
+  && presentation.includes('p28-g9-console-large-metric-screen-')
+  && presentation.includes('p28-g9-console-calibration-channel-'),
+  'G9 requires real high-contrast physical objectives, moving masses, split ceramic anchors, and readable consoles at gameplay zoom');
 assert.ok(presentation.includes('p28-g9-physical-datum-objective-beacon')
   && presentation.includes('p28-g9-objective-datum-beacon-crown-')
   && presentation.includes('p28-g9-objective-calibration-chevron-')
