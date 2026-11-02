@@ -2,6 +2,7 @@ import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
 import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
 import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
@@ -140,6 +141,8 @@ export class BabylonMomentumExchangePresentation {
   private readonly iblTexture: CubeTexture;
   private iblReady = false;
   private readonly groundingTexture: RawTexture;
+  private readonly laminationAlbedo: DynamicTexture;
+  private readonly laminationNormal: DynamicTexture;
   private readonly groundingMaterial: StandardMaterial;
   private readonly groundingSource: Mesh;
   private readonly enemyGrounding = new Map<number, InstancedMesh>();
@@ -185,8 +188,30 @@ export class BabylonMomentumExchangePresentation {
     const edgeMetal = pbr(scene, 'p28-g7-exposed-machinery-trim', 0xa8bac0, 0.74, 0.29, 0x8ac3c8, 0.10);
     // Transfer rails must read as dark machined guideways, not white ribbons
     // that mask enemy telegraphs across the real mobile combat lane.
-    const railMetal = pbr(scene, 'p28-g9-recessed-transfer-rail-steel', 0x263a40, 0.61, 0.78, 0x19272e, 0.01);
+    const railMetal = pbr(scene, 'p28-g9-recessed-transfer-rail-steel', 0x10171b, 0.06, 0.98);
     const magneticCopper = pbr(scene, 'p28-g7-exposed-magnetic-copper', 0x9f7653, 0.76, 0.38, 0xc39b6c, 0.055);
+    // Readable turned-metal score lines at the actual 3120px Android capture.
+    // These normal/albedo textures are applied only to local wheel trim, not
+    // to the shared KTX2 materials or enemy telegraphs.
+    this.laminationAlbedo = new DynamicTexture('p28-g9-machined-flywheel-albedo',
+      { width: 128, height: 128 }, scene, false);
+    this.laminationNormal = new DynamicTexture('p28-g9-machined-flywheel-normal',
+      { width: 128, height: 128 }, scene, false);
+    const cutPaint = this.laminationAlbedo.getContext();
+    const cutNormals = this.laminationNormal.getContext();
+    cutPaint.fillStyle = '#c4d0d1'; cutPaint.fillRect(0, 0, 128, 128);
+    cutNormals.fillStyle = '#8080ff'; cutNormals.fillRect(0, 0, 128, 128);
+    for (let score = 0; score < 128; score += 4) {
+      cutPaint.fillStyle = score % 16 === 0 ? '#667e85' : '#98a7ab';
+      cutPaint.fillRect(score, 0, score % 16 === 0 ? 2 : 1, 128);
+      cutNormals.fillStyle = score % 16 === 0 ? '#5a80ef' : '#997ff4';
+      cutNormals.fillRect(score, 0, score % 16 === 0 ? 2 : 1, 128);
+    }
+    this.laminationAlbedo.update();
+    this.laminationNormal.update();
+    edgeMetal.albedoTexture = this.laminationAlbedo;
+    edgeMetal.bumpTexture = this.laminationNormal;
+    magneticCopper.bumpTexture = this.laminationNormal;
     const capture = pbr(scene, 'p27-c8-capture-service', 0x47798c, 0.48, 0.30, 0x67b5d5, 0.22);
     const reference = pbr(scene, 'p27-c8-reference-blue', 0x10252f, 0.42, 0.23, 0x67b5d5, 0.34);
     // Narrow, dark, rough deck inlays: hazards and combat actions own the bright cyan.
@@ -388,7 +413,7 @@ export class BabylonMomentumExchangePresentation {
     const navigation = getMapNavigationPlan('momentum-exchange');
     navigation.routes.forEach(route => {
       const material = route.kind === 'primary' ? routePrimary : routeSecondary;
-      const width = babylonRouteMarkingWidth(route.kind);
+      const width = Math.min(babylonRouteMarkingWidth(route.kind), route.kind === 'primary' ? 0.055 : 0.038);
       route.points.slice(0, -1).forEach((point, index) => {
         const next = route.points[index + 1];
         routeSegment(scene, this.root, material, 'p27-c8-route-' + route.id + '-' + index, scaled(point.x), scaled(point.y), scaled(next.x), scaled(next.y), width);
@@ -749,6 +774,8 @@ export class BabylonMomentumExchangePresentation {
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose());
     this.root.dispose();
     this.groundingMaterial.dispose();
+    this.laminationAlbedo.dispose();
+    this.laminationNormal.dispose();
     this.groundingTexture.dispose();
     if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
     this.iblTexture.dispose();
