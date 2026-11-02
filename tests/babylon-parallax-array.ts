@@ -69,7 +69,22 @@ for (const detail of [
   'p28-g9-shear-anchor-fork-',
   'p28-g9-anchor-indexed-dial-', 'p28-g9-anchor-measuring-hub-',
   'p28-g9-anchor-etched-conductor-', 'p28-g9-anchor-index-mark-',
+  'p28-g9-exposed-survey-conductor-', 'p28-g9-survey-conductor-isolator-',
+  'p28-g9-survey-conductor-bolt-',
+  'p28-g9-objective-deck-dial-backing-', 'p28-g9-objective-deck-diamond-',
 ]) assert.ok(presentation.includes(detail), 'Parallax silhouette must expose calibrated hardware: ' + detail);
+
+// The overhead-view scale and target must be real scene geometry with
+// contrasting mechanical insulation, not a status label or a bright route.
+assert.ok(presentation.includes("fiducialBrass, side * 1.14, 2.26, 0.96"),
+  'exposed reference conductors must use visible brass, not dark trim');
+assert.ok(presentation.includes("insulation, side * 1.14, station, 1.01"),
+  'conductors must have physically separate insulated support collars');
+assert.ok(presentation.includes("objectiveDial.rotation.y = Math.PI / 4"),
+  'objective beacon must form a camera-readable top-facing diamond');
+assert.ok(presentation.includes("objectiveDialBack.material = graphite"),
+  'bright objective markers need a grounded, dark metal backing');
+
 assert.ok(presentation.includes('floor.emissiveColor = colorFromHex(0x42566f).scale(0.10)'),
   'PBR floor relief needs restrained bounce fill at gameplay zoom');
 assert.ok(presentation.includes('0.94) : 0'), 'Parallax normal-quality PBR needs nonblack IBL');
