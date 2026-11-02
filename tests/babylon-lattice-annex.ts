@@ -236,6 +236,18 @@ const g6Controls = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 assert.ok(g6Controls.includes('data-location={activeMission.location}'));
 assert.ok(g6Hud.includes('.game-root[data-location="lattice-annex"] .touch-ability-fan .ability-0'));
 assert.ok(g6Hud.includes('bottom: 172px;'));
+assert.ok(g6Controls.includes("activeMission.location === 'lattice-annex'")
+  && g6Controls.includes("message.startsWith('KHEPRI SURVEY ANNEX')")
+  && g6Controls.includes("message.startsWith('DRONE ESCORT')")
+  && g6Controls.includes("return message.split(' // ')[0]"),
+  'G6 long director narrative must use a short actionable in-combat event while preserving original state');
+assert.ok(g6Hud.includes('width: min(29vw, 28rem);')
+  && g6Hud.includes('-webkit-line-clamp: 2;')
+  && presentation.includes("this.ceramicAlbedo = new DynamicTexture('p28-g9-lattice-survey-ceramic-albedo'")
+  && presentation.includes("this.ceramicNormal = new DynamicTexture('p28-g9-lattice-survey-ceramic-normal'")
+  && presentation.includes('ceramic.bumpTexture = this.ceramicNormal;')
+  && presentation.includes('this.ceramicNormal.dispose();'),
+  'G6 mobile HUD must remain compact and survey ceramic must have genuine textured surface relief');
 assert.ok(g6Hud.includes('.game-root[data-location="lattice-annex"] .transient-alert-lane:not([data-presentation="deployment"])')
   && g6Hud.includes('width: min(35vw, 35rem);')
   && g6Hud.includes('.game-root[data-location="lattice-annex"] .target-readout header b')
