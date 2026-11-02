@@ -1116,7 +1116,7 @@ export class BabylonParallaxArrayPresentation {
     this.canvas.dataset.environmentLandmark = 'three-point-long-baseline';
     this.canvas.dataset.environmentServiceDetails = 'reference-console:3+mass-carriage:' + profile.carriageInstances;
     this.canvas.dataset.environmentSurfaceDetail = 'reference-frame:' + profile.frameInstances + '+shear-anchor:' + profile.anchorInstances
-      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8+physical-baseline:3+datum-graduation:39+isolator-foot:12+objective-crown:9+side-objective-beacon:9+conductor-bar:6+pylon-large-mark:18+counterweight:3+ceramic-upright:16';
+      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8+physical-baseline:3+datum-graduation:39+isolator-foot:12+objective-crown:9+side-objective-beacon:9+conductor-bar:6+pylon-large-mark:18+counterweight:3+ceramic-upright:16+survey-floor-island:3+pylon-plinth:3+grounded-anchor:8+macro-ruler:3+carriage-top-meter:3+console-top-screen:3';
     this.canvas.dataset.environmentMachineDetail = 'baseline-pylon:3+mass-carriage:3+live-baseline-servo:' + baselineServos;
     this.canvas.dataset.environmentComposition = 'three-point-baseline+cross-track-frames+perimeter-shear-anchors';
     this.canvas.dataset.environmentMaterials = 'graphite-structure+reference-shell+violet-alignment+cyan-readout';
