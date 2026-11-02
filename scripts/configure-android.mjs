@@ -4,8 +4,9 @@ import { resolve } from 'node:path';
 const manifestPath = resolve('android/app/src/main/AndroidManifest.xml');
 const activityPath = resolve('android/app/src/main/java/app/ironshade/vector/MainActivity.java');
 const appGradlePath = resolve('android/app/build.gradle');
+const themePath = resolve('android/app/src/main/res/values/styles.xml');
 
-for (const requiredPath of [manifestPath, activityPath, appGradlePath]) {
+for (const requiredPath of [manifestPath, activityPath, appGradlePath, themePath]) {
   if (!existsSync(requiredPath)) {
     throw new Error('Android platform has not been generated. Run npx cap add android first.');
   }
@@ -58,6 +59,33 @@ for (const requiredChange of [
 activityTag = upsertAttribute(activityTag, 'android:configChanges', configChanges.join('|'), '            ');
 manifest = manifest.replace(activityPattern, activityTag);
 writeFileSync(manifestPath, manifest);
+
+// The theme is installed before MainActivity.onCreate. Android's display
+// cutout protection can paint a 144px white region before an activity gets a
+// chance to apply immersive flags. Give every active Capacitor game theme the
+// intended full-bleed policy and opaque backing in the theme itself.
+let themes = readFileSync(themePath, 'utf8');
+let themedCount = 0;
+themes = themes.replace(
+  /(<style\s+name="AppTheme(?:\.NoActionBar)?"[^>]*>)([\s\S]*?)(<\/style>)/g,
+  (_match, start, content, end) => {
+    themedCount++;
+    const entries = [
+      ['android:windowLayoutInDisplayCutoutMode', 'always'],
+      ['android:windowBackground', '#05090a'],
+      ['android:navigationBarColor', '#05090a'],
+      ['android:statusBarColor', '#05090a'],
+    ];
+    for (const [name, value] of entries) {
+      const item = new RegExp('<item\\s+name="' + name + '"[^>]*>[\\s\\S]*?<\\/item>');
+      const markup = '<item name="' + name + '">' + value + '</item>';
+      content = item.test(content) ? content.replace(item, markup) : content + '\n        ' + markup;
+    }
+    return start + content + end;
+  },
+);
+if (themedCount < 2) throw new Error('Expected Capacitor AppTheme and AppTheme.NoActionBar to configure cutout policy');
+writeFileSync(themePath, themes);
 
 let appGradle = readFileSync(appGradlePath, 'utf8');
 const versionCodeRaw = process.env.ANDROID_VERSION_CODE ?? '1';
