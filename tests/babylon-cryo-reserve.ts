@@ -310,7 +310,12 @@ assert.ok(babylon.includes("const cryoTouchLanePan = this.canvas.dataset.babylon
   && babylon.includes('momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan'),
   'Cryo combat camera must show real enemy silhouettes outside the unchanged right-side touch rail');
 assert.ok(babylon.includes("colorFromHex(0xa6d8e8).scale(0.27)"));
-assert.ok(presentation.includes("jacket.albedoColor = new Color3(0.73, 0.85, 0.94)"));
+assert.ok(presentation.includes("jacket.albedoColor = new Color3(0.49, 0.63, 0.71)"));
+assert.ok(presentation.includes('p28-g9-cryo-circular-thermal-dial-')
+  && presentation.includes('p28-g9-cryo-dial-needle-')
+  && presentation.includes('p28-g9-cryo-pressure-head-stud-')
+  && presentation.includes('p28-g9-cryo-frost-fracture-'),
+  'Cryo tanks need readable front-mounted instrumentation and separated frost/steel faces');
 assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n      || mission.location === 'parallax-array';"));
 assert.ok(readiness.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n       || mission.location === 'parallax-array');"));
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
