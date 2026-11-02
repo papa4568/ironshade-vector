@@ -204,7 +204,7 @@ assert.ok(presentation.includes("this.iblTexture.dispose()"));
 assert.ok(world.includes("|| mission.location === 'parallax-array';"));
 assert.ok(world.includes("const parallaxGravity = this.canvas.dataset.babylonScenario === 'parallax-array'")
   && world.includes("parallaxGravity ? 0.24 : momentumHazard ? 0.34 : 1")
-  && world.includes("parallaxGravity ? 0.13 + Math.sin(state.time * presentation.pulseHz) * 0.022"),
+  && /parallaxGravity\s*\?\s*0\.13\s*\+\s*Math\.sin\(state\.time \* presentation\.pulseHz\) \* 0\.022/.test(world),
   'Parallax gravity radius and active glyph must stay real but cannot obscure instrument relief with luminous loops');
 
 assert.ok(readiness.includes("|| mission.location === 'parallax-array');"));
