@@ -144,6 +144,7 @@ export class BabylonParallaxArrayPresentation {
   private readonly shearRigs: ShearRig[] = [];
   private readonly bossCueMaterial: StandardMaterial;
   private readonly eliteTellMaterial: StandardMaterial;
+  private readonly objectiveSignalMaterial: StandardMaterial;
   private readonly eliteTellRing: Mesh;
   private readonly bossCueRoot: TransformNode;
   private readonly bossCrown: Mesh[] = [];
@@ -190,6 +191,14 @@ export class BabylonParallaxArrayPresentation {
     const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.16);
     const referenceScreen = pbr(scene, 'p28-g9-calibration-console-screen', 0x163849, 0.18, 0.48, 0x72d1c7, 0.28);
     const objectiveGold = pbr(scene, 'p28-g9-physical-datum-objective-beacon', 0xd98229, 0.27, 0.46, 0xff9b38, 0.94);
+    // A saturated physical instrument target needs a stable, actual rendered
+    // orange surface even under the many white PBR survey work lights.
+    // Keep it bolted to the pylon, never to the camera or HUD overlay.
+    this.objectiveSignalMaterial = new StandardMaterial('p28-g9-amber-mechanical-target-signal', scene);
+    this.objectiveSignalMaterial.diffuseColor = colorFromHex(0x8e3b12);
+    this.objectiveSignalMaterial.emissiveColor = colorFromHex(0xf47720).scale(0.72);
+    this.objectiveSignalMaterial.specularColor = Color3.Black();
+    this.objectiveSignalMaterial.disableLighting = true;
     this.datumAlbedoTexture = new DynamicTexture('p28-g9-metrology-machined-etched-atlas',
       { width: 128, height: 128 }, scene, false);
     this.datumNormalTexture = new DynamicTexture('p28-g9-metrology-etched-normal-atlas',
@@ -443,6 +452,18 @@ export class BabylonParallaxArrayPresentation {
           mark % 2 === 0 ? fiducialBrass : indexed, 0, 1.16 + mark * 0.41, 1.19,
           mark % 2 === 0 ? 1.35 : 0.80, 0.17, 0.12);
       }
+      // Full-size ruled surface faces the actual overhead gameplay camera.
+      // Six visible 0.3-world-unit marks on graphite make the reference ruler
+      // readable without relying on sub-pixel painted texture lines.
+      box(scene, root, 'p28-g9-pylon-top-metrology-ruler-bed-' + index,
+        graphite, 0, 0.51, -1.85, 4.55, 0.23, 0.92);
+      for (let station = 0; station < 7; station++) {
+        box(scene, root, 'p28-g9-pylon-top-metrology-station-' + index + '-' + station,
+          station % 3 === 0 ? fiducialBrass : cyan,
+          (station - 3) * 0.60, 0.67, -1.85,
+          station % 3 === 0 ? 0.31 : 0.18, 0.11,
+          station % 3 === 0 ? 0.83 : 0.47);
+      }
       // A real top-facing calibrated target, separate from the pale rotary
       // interferometer rings, identifies the physical objective in the
       // overhead camera even when the tall crown is obscured by the HUD.
@@ -458,7 +479,7 @@ export class BabylonParallaxArrayPresentation {
       objectiveDial.parent = root;
       objectiveDial.position.set(-1.58, 0.86, 1.58);
       objectiveDial.rotation.y = Math.PI / 4;
-      objectiveDial.material = objectiveGold;
+      objectiveDial.material = this.objectiveSignalMaterial;
       objectiveDial.isPickable = false;
       // Four dark-backed outer stations make the diamond a countable
       // calibration target rather than another cream-colored circular rotor.
@@ -471,7 +492,7 @@ export class BabylonParallaxArrayPresentation {
       // A broad near-deck objective fiducial remains visible even when the
       // high mast/crown are behind the top status HUD on the phone.
       box(scene, root, 'p28-g9-pylon-near-deck-objective-plate-' + index,
-        objectiveGold, 0, 0.84, 1.36, 2.15, 0.64, 0.22);
+        this.objectiveSignalMaterial, 0, 0.84, 1.36, 2.15, 0.64, 0.22);
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-pylon-near-deck-target-wing-' + index + '-' + side,
           fiducialBrass, side * 1.30, 0.88, 1.10, 0.34, 0.90, 0.30);
@@ -709,6 +730,14 @@ export class BabylonParallaxArrayPresentation {
         shell, 0, 2.18, 0, 2.55, 0.14, 1.48);
       box(scene, root, 'p28-g9-counterweight-top-measuring-channel-' + index,
         insulation, 0, 2.30, 0, 2.18, 0.10, 0.96);
+      // Broad cobalt gauge steps and a transverse forked yoke establish a
+      // movable weight profile distinct from pylons and perimeter anchors.
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-counterweight-arched-fork-' + index + '-' + side,
+          counterweightMetal, side * 1.07, 2.02, -0.36, 0.30, 0.88, 0.70);
+        box(scene, root, 'p28-g9-counterweight-top-flight-rule-' + index + '-' + side,
+          cyan, side * 1.05, 2.51, -0.36, 0.30, 0.12, 0.62);
+      }
       for (let mark = 0; mark < 9; mark++) {
         box(scene, root, 'p28-g9-counterweight-macro-top-graduation-' + index + '-' + mark,
           mark % 4 === 0 ? objectiveGold : fiducialBrass, (mark - 4) * 0.24, 2.40, 0.04,
@@ -819,6 +848,17 @@ export class BabylonParallaxArrayPresentation {
       // two KTX2 metal prongs, with top-facing index pins and bolted knuckles.
       box(scene, root, 'p28-g9-shear-anchor-violet-inset-' + index,
         shearCeramic, 0, 2.65, 0.52, 1.45, 0.14, 0.21);
+      // A single exposed split-jaw dial sits above the steel saddle. Its
+      // dark top-facing hexagonal spindle and violet ceramic index visibly
+      // identify shear hardware without painting the whole fork lavender.
+      const jawDial = MeshBuilder.CreateCylinder('p28-g9-shear-anchor-hex-dial-' + index,
+        { diameter: 1.15, height: 0.26, tessellation: 6 }, scene);
+      jawDial.parent = root;
+      jawDial.position.set(0, 2.87, 0.52);
+      jawDial.material = graphite;
+      jawDial.isPickable = false;
+      box(scene, root, 'p28-g9-shear-anchor-index-window-' + index,
+        indexed, 0, 3.04, 0.52, 0.52, 0.11, 0.43);
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-shear-anchor-metal-prong-' + index + '-' + side,
           shell, side * 0.77, 1.61, 0.26, 0.24, 2.18, 0.48);
@@ -1095,8 +1135,8 @@ export class BabylonParallaxArrayPresentation {
       rig.ring.rotation.y = state.time * (index % 2 ? -0.72 : 0.72);
     });
     // Retain the real vector-wash extent, but let machined geometry show through.
-    this.shearMaterial.alpha = (vectorWashes.length > 0 ? 0.17 : 0.06) * renderBudget.transparencyScale;
-    this.shearMaterial.emissiveColor = colorFromHex(0xb195dc).scale(0.64 + Math.sin(state.time * 6.6) * 0.10);
+    this.shearMaterial.alpha = (vectorWashes.length > 0 ? 0.30 : 0.06) * renderBudget.transparencyScale;
+    this.shearMaterial.emissiveColor = colorFromHex(0xc9a0ff).scale(0.94 + Math.sin(state.time * 6.6) * 0.08);
 
     const gravityValues = state.sectors.slice(0, 3).map(sector => sector.gravity);
     const gravitySpread = gravityValues.length > 0 ? Math.max(...gravityValues) - Math.min(...gravityValues) : 0;
@@ -1270,6 +1310,7 @@ export class BabylonParallaxArrayPresentation {
     this.shearMaterial.dispose();
     this.bossCueMaterial.dispose();
     this.eliteTellMaterial.dispose();
+    this.objectiveSignalMaterial.dispose();
     this.hemisphere.dispose();
     this.keyLight.dispose();
     this.rimLight.dispose();
