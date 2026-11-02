@@ -236,5 +236,11 @@ const g6Controls = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 assert.ok(g6Controls.includes('data-location={activeMission.location}'));
 assert.ok(g6Hud.includes('.game-root[data-location="lattice-annex"] .touch-ability-fan .ability-0'));
 assert.ok(g6Hud.includes('bottom: 172px;'));
+assert.ok(g6Hud.includes('.game-root[data-location="lattice-annex"] .transient-alert-lane:not([data-presentation="deployment"])')
+  && g6Hud.includes('width: min(35vw, 35rem);')
+  && g6Hud.includes('.game-root[data-location="lattice-annex"] .target-readout header b')
+  && g6Hud.includes('overflow-wrap: anywhere;'),
+  'real G6 tactical and target identities must fit two lines rather than ellipsize on Android landscape');
+
 
 console.log('BABYLON_LATTICE_ANNEX_PASS identity=reference-pylons|survey-ceramic|metrology-teal|calibration-service routes=' + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' calibration=10s-near-zero-g>20s-shutter-index boss=veyra-senn');
