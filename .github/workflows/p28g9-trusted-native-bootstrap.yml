@@ -1,0 +1,68 @@
+name: P28-G9 One-Shot Trusted Native Source Bootstrap
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/p28g9-trusted-native-bootstrap.yml'
+      - 'tools/p28g9-one-shot-native-source-bootstrap.mjs'
+      - 'agent/task-graph.json'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-self-test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+      - name: Fail closed on unauthorized promotion and drifted objects
+        run: node tools/p28g9-one-shot-native-source-bootstrap.mjs self-test
+
+  owner-one-shot-native-promotion:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      github.event.issue.number == 445 &&
+      github.event.comment.user.login == 'papa4568' &&
+      github.event.sender.login == 'papa4568' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/p28g9-promote-native 445 c7bc451815980826946a2482be1e51b5987ae498'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: write
+      actions: read
+      issues: read
+      pull-requests: read
+    concurrency:
+      group: p28g9-one-shot-native-trusted-promotion
+      cancel-in-progress: false
+    steps:
+      - name: Check out trusted main, never PR code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+      - name: Require independently reviewed immutable helper blob
+        run: test "$(git hash-object tools/p28g9-one-shot-native-source-bootstrap.mjs)" = "c2a8bcb04fe9ce8ce24c0b51b67407105d4eef4d"
+      - name: Prove owner-only and exact Git-object safeguards before any writes
+        run: node tools/p28g9-one-shot-native-source-bootstrap.mjs self-test
+      - name: Promote three reviewed blobs and retire helper atomically
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/p28g9-one-shot-native-source-bootstrap.mjs promote
