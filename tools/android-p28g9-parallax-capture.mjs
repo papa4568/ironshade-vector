@@ -65,13 +65,13 @@ socket.addEventListener('message', event => {
   if (message.error) request.reject(new Error(message.error.message ?? 'CDP failure'));
   else request.resolve(message.result);
 });
-async function call(method, params = {}) {
+async function call(method, params = {}, timeoutMs = 25_000) {
   return await new Promise((resolve, reject) => {
     const id = ++nextId;
     const timer = setTimeout(() => {
       pending.delete(id);
       reject(new Error('P28-G9 CDP timeout: ' + method));
-    }, 25_000);
+    }, timeoutMs);
     pending.set(id, { resolve, reject, timer });
     socket.send(JSON.stringify({ id, method, params }));
   });
@@ -108,8 +108,12 @@ async function capture(path) {
 }
 
 try {
-  await call('Runtime.enable');
-  await call('Page.enable');
+  // A newly launched, software-rendered Android WebView may spend more than
+  // 25s compiling the first JavaScript frame before processing CDP enables.
+  // Give ONLY the pre-frame protocol startup an explicit 60s budget; the
+  // ordinary call limit, game-state assertions and pixel checks stay strict.
+  await call('Runtime.enable', {}, 60_000);
+  await call('Page.enable', {}, 60_000);
   // A cold Android WebView can stall while compiling the flagship client.
   // Retry only startup; all route, pixel and asset assertions remain strict.
   // The first cold WebView target can display the real class-intake screen
