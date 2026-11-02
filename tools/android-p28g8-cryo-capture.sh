@@ -84,7 +84,13 @@ run_gameplay_pair() {
   test -n "$pid" || return $?
   adb forward --remove tcp:9222 >/dev/null 2>&1 || true
   adb forward tcp:9222 "localabstract:webview_devtools_remote_${pid}" || return $?
-  CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g8-cryo-capture.mjs || return $?
+  # Retain the exact pre-frame CDP failure reason; a cold software-GPU
+  # WebView may accept the socket before it services Runtime/Page.enable.
+  local capture_status=0
+  CDP_ENDPOINT=http://127.0.0.1:9222 node tools/android-p28g8-cryo-capture.mjs \
+    > android-p28g8-capture-attempt.log 2>&1 || capture_status=$?
+  cat android-p28g8-capture-attempt.log
+  if (( capture_status != 0 )); then return "$capture_status"; fi
   node tools/verify-p28g8-gameplay-frames.mjs android-p28g8-cryo-reserve-normal.png android-p28g8-cryo-reserve-action.png android-p28g8-cryo-reserve-pixel-report.json android-p28g8-cryo-reserve.json || return $?
 }
 pair_ok=0
@@ -97,9 +103,16 @@ for attempt in 1 2 3; do
     echo 'P28-G8 no accepted raw cutout-free gameplay pair after bounded retries' >&2
     exit 1
   fi
-  # Startup failure has no valid pixel report and must remain fail-closed,
-  # rather than accidentally retrying a missing/blank capture as a cutout.
+  # Retry only the precisely observed pre-frame CDP enable transport timeout.
+  # Each retry force-stops and clears the app, starts a new native WebView,
+  # and replays all real route, FIRE, image and provenance checks from scratch.
+  # Missing gameplay pixels for any other reason remain a hard failure.
   if [[ ! -s android-p28g8-cryo-reserve-pixel-report.json ]]; then
+    if grep -qE 'Error: P28-G8 CDP timeout: (Runtime|Page)\.enable' android-p28g8-capture-attempt.log; then
+      echo "ANDROID_P28G8_CDP_STARTUP_RELAUNCH attempt=$attempt reason=protocol-enable"
+      sleep 2
+      continue
+    fi
     echo 'P28-G8 capture exited before valid pixel/provenance evidence' >&2
     exit 1
   fi
