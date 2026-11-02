@@ -118,7 +118,7 @@ assert.ok(presentation.includes("MeshBuilder.CreateCylinder('p27-c10-pylon-spine
 assert.ok(presentation.includes('spindle.material = shell'),
   'new three-dimensional pylon geometry must retain shared KTX2 PBR metal');
 assert.ok(presentation.includes('diamondFace.rotation.z = Math.PI / 4')
-  && presentation.includes('diamondFace.material') === false
+  && presentation.includes("const diamondFace = box(scene, root, 'p28-g9-objective-standalone-diamond-signal-'")
   && presentation.includes('this.objectiveSignalMaterial, -2.24, 2.80, 1.62'),
   'objective signal must be a tall physical orange diamond with a mechanical footing');
 assert.ok(presentation.includes('prong.material = insulation'),
