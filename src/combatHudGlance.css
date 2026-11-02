@@ -1306,3 +1306,21 @@
     line-height: 1.16;
   }
 }
+
+
+/* The accessible director briefing is intentionally longer than its short
+   Lattice combat cue. Bound the route-local alert to two compact lines so the
+   lower battlefield and active enemy rings remain directly visible. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="lattice-annex"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    width: min(29vw, 28rem);
+  }
+  .game-root[data-location="lattice-annex"] .transient-alert-lane.event .combat-alert b {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    text-overflow: clip;
+    line-height: 1.15;
+  }
+}
