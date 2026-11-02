@@ -1538,6 +1538,16 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
   // landscape callout contains the one immediate action the player needs.
   // Long mission titles previously hid the entire lower lab/transfer lane.
   const tacticalRouteCue = (message: string) => {
+    if (activeMission.location === 'cryo-reserve') {
+      // Android's compact combat banner is not the director transcript.
+      // Retain that full event in its existing accessible aria-label/title.
+      // Render only the immediate thermal warning in the playable viewport.
+      if (message.startsWith('CRYOGENIC BOILOFF')) return 'BOILOFF JET // GALLERY PURGE';
+      if (message.startsWith('RESERVE PRESSURE RISE')) return 'PRESSURE RISE // SECOND PURGE';
+      if (message.startsWith('PURGE ROUTE LOCKED')) return 'BOILOFF ROUTED TO VACUUM';
+      if (message.startsWith('THERMAL ROUTE STABLE')) return 'THERMAL ROUTE STABLE';
+      return message.split(' // ')[0];
+    }
     if (activeMission.location === 'lattice-annex') {
       if (message.startsWith('KHEPRI SURVEY ANNEX')) return 'ISOLATE BOTH GRID BRANCHES';
       if (message.startsWith('DRONE ESCORT')) return 'DRONE ESCORT // WATCH THE GRID';
