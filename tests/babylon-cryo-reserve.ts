@@ -310,6 +310,13 @@ assert.ok(babylon.includes("const cryoTouchLanePan = this.canvas.dataset.babylon
   && babylon.includes('momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan'),
   'Cryo combat camera must show real enemy silhouettes outside the unchanged right-side touch rail');
 assert.ok(babylon.includes("colorFromHex(0xa6d8e8).scale(0.27)"));
+assert.ok(presentation.includes("this.frostAlbedoTexture = new DynamicTexture('p28-g9-cryo-frost-albedo-atlas'")
+  && presentation.includes("this.frostNormalTexture = new DynamicTexture('p28-g9-cryo-frost-normal-atlas'")
+  && presentation.includes('frostCrust.bumpTexture = this.frostNormalTexture;')
+  && presentation.includes('frozenPanel.bumpTexture = this.frostNormalTexture;')
+  && presentation.includes('this.frostAlbedoTexture.dispose();')
+  && presentation.includes('this.frostNormalTexture.dispose();'),
+  'real Cryo frost surface relief must have deterministic albedo/normal atlases and release GPU resources');
 assert.ok(presentation.includes("jacket.albedoColor = new Color3(0.49, 0.63, 0.71)"));
 assert.ok(presentation.includes('p28-g9-cryo-circular-thermal-dial-')
   && presentation.includes('p28-g9-cryo-dial-needle-')
