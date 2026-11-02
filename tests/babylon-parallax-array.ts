@@ -202,6 +202,11 @@ assert.ok(presentation.includes("this.iblTexture = new CubeTexture('/assets/envi
 assert.ok(presentation.includes("this.premiumSurfaces.dispose()"));
 assert.ok(presentation.includes("this.iblTexture.dispose()"));
 assert.ok(world.includes("|| mission.location === 'parallax-array';"));
+assert.ok(world.includes("const parallaxGravity = this.canvas.dataset.babylonScenario === 'parallax-array'")
+  && world.includes("parallaxGravity ? 0.24 : momentumHazard ? 0.34 : 1")
+  && world.includes("parallaxGravity ? 0.13 + Math.sin(state.time * presentation.pulseHz) * 0.022"),
+  'Parallax gravity radius and active glyph must stay real but cannot obscure instrument relief with luminous loops');
+
 assert.ok(readiness.includes("|| mission.location === 'parallax-array');"));
 for (const detail of [
   'p28-g9-pylon-fiducial-', 'p28-g9-pylon-conductor-', 'p28-g9-frame-scale-',
