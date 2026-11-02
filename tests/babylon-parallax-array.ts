@@ -238,6 +238,18 @@ assert.ok(presentation.includes('p28-g9-calibrated-baseline-conductor-')
   && presentation.includes('p28-g9-physical-objective-index-')
   && presentation.includes('side-objective-beacon:9+conductor-bar:6'),
   'legible physical side objectives and shielded baseline bars must survive at Android camera scale');
+assert.ok(presentation.includes('p28-g9-pylon-exposed-metrology-ruler-')
+  && presentation.includes('p28-g9-pylon-datum-large-mark-')
+  && presentation.includes('p28-g9-instrumented-moving-counterweight-')
+  && presentation.includes('p28-g9-counterweight-travel-indicator-')
+  && presentation.includes('p28-g9-shear-anchor-insulated-upright-')
+  && presentation.includes('p28-g9-shear-anchor-violet-crosshead-'),
+  'Parallax fiducials, moving calibrated masses and insulated shear forks must be physically distinct at gameplay zoom');
+assert.ok(presentation.includes("this.bossWarning = MeshBuilder.CreateTorus('p28-g9-boss-attack-warning-ring'")
+  && presentation.includes('this.bossWarning.setEnabled(patternHot);')
+  && presentation.includes('patternHot ? 0xf2a35e : phaseTwo')
+  && presentation.includes('this.bossWarning.scaling.set(pulse, pulse, pulse);'),
+  'amber boss danger ring must reflect the real pattern wind-up and not a fabricated HUD hazard');
 assert.ok(presentation.includes('p28-g9-physical-datum-objective-beacon')
   && presentation.includes('p28-g9-objective-datum-beacon-crown-')
   && presentation.includes('p28-g9-objective-calibration-chevron-')
