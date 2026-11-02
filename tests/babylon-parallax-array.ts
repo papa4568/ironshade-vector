@@ -336,8 +336,12 @@ assert.equal(auditParallaxDeckRelief(plate(false)).valid, false,
 assert.equal(auditParallaxDeckRelief(plate(true)).valid, true,
   'raised metrology calibration plate must pass the same pixel-edge criterion');
 
-assert.ok(g9Shell.includes("grep -qF 'Error: P28-G9 CDP timeout: Runtime.enable'"),
-  'pre-frame Android CDP recovery must identify the exact observed transport failure');
+assert.ok(g9Shell.includes("grep -qE 'Error: P28-G9 CDP timeout: (Runtime|Page)\\.enable'"),
+  'pre-frame Android CDP recovery must distinguish the observed Runtime/Page enable transport stalls');
+assert.ok(g9Capture.includes("await call('Runtime.enable', {}, 60_000)")
+  && g9Capture.includes("await call('Page.enable', {}, 60_000)")
+  && g9Capture.includes("async function call(method, params = {}, timeoutMs = 25_000)"),
+  'only cold CDP domain startup gets a longer bounded wait; gameplay calls retain 25s deadlines');
 assert.ok(g9Shell.includes('ANDROID_P28G9_CDP_STARTUP_RELAUNCH attempt='),
   'pre-frame recovery must relaunch the real Android activity');
 assert.ok(g9Shell.includes('if [[ ! -s android-p28g9-parallax-array-pixel-report.json ]]'),
