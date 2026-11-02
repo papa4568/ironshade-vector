@@ -177,14 +177,14 @@ export class BabylonCryoReservePresentation {
     const fixture = this.premiumSurfaces.get('emissive-fixture');
     // Retain the shipped painted-metal base/normal/ORM maps. Cooler, darker
     // steel separates their microstructure from the bright insulated cuffs.
-    jacket.albedoColor = new Color3(0.73, 0.85, 0.94);
+    jacket.albedoColor = new Color3(0.49, 0.63, 0.71);
     jacket.emissiveColor = colorFromHex(0x80b5c5).scale(0.055);
     const frost = pbr(scene, 'p28-g8-frosted-vacuum-insulation', 0xb9dbe4, 0.09, 0.78, 0x8dd7ea, 0.11);
     const jacketPanel = pbr(scene, 'p28-g8-jacket-service-panels', 0x314b5a, 0.62, 0.53, 0x6caac0, 0.035);
     const frozenPanel = pbr(scene, 'p28-g8-frost-stippled-insulation', 0xc2dfe6, 0.08, 0.96, 0xb7e6ef, 0.17);
     // Genuine opaque, rough hoarfrost crust at barrel scale: the tiny scars
     // alone disappeared at the Android gameplay camera distance.
-    const frostCrust = pbr(scene, 'p28-g9-cryo-vacuum-hoarfrost', 0xd8eeef, 0.03, 0.99, 0x9acbd0, 0.09);
+    const frostCrust = pbr(scene, 'p28-g9-cryo-vacuum-hoarfrost', 0x9bcee0, 0.03, 0.99, 0x93d5e2, 0.085);
     this.ambientColdVaporMaterial = new StandardMaterial('p28-g8-ambient-cold-vent-material', scene);
     // A single small alpha-feathered texture makes the neck vapor read as
     // translucent gas at the gameplay camera, not opaque gray discs.
@@ -343,6 +343,38 @@ export class BabylonCryoReservePresentation {
           frost, Math.cos(angle) * 0.93, 2.6 + (frostIndex % 3) * 0.47,
           Math.sin(angle) * 0.93, 0.14, 0.66 + (frostIndex % 2) * 0.24, 0.055);
         patch.rotation.y = -angle - Math.PI / 2;
+      }
+      // Exposed thermal diagnostic clusters at visible scale. Offsetting the
+      // housing, gauge dial and isolation bolts ahead of the actual jacket
+      // makes the hardware identifiable from the overhead combat camera.
+      for (const face of [-1, 1]) {
+        const instrument = new TransformNode('p28-g9-cryo-pressure-head-' + index + '-' + face, scene);
+        instrument.parent = root;
+        instrument.position.set(face * 0.44, 2.85, 0.99);
+        box(scene, instrument, 'p28-g9-cryo-head-housing-' + index + '-' + face,
+          structural, 0, 0, 0, 0.66, 0.73, 0.19);
+        const dial = MeshBuilder.CreateCylinder('p28-g9-cryo-circular-thermal-dial-' + index + '-' + face,
+          { diameter: 0.48, height: 0.12, tessellation: 24 }, scene);
+        dial.parent = instrument;
+        dial.position.set(0, 0.13, 0.15);
+        dial.rotation.x = Math.PI / 2;
+        dial.material = frost;
+        dial.isPickable = false;
+        box(scene, instrument, 'p28-g9-cryo-dial-needle-' + index + '-' + face,
+          fixture, 0.10, 0.13, 0.23, 0.23, 0.055, 0.05);
+        for (const screw of [-1, 1]) {
+          box(scene, instrument, 'p28-g9-cryo-pressure-head-stud-' + index + '-' + face + '-' + screw,
+            frostCrust, screw * 0.23, -0.24, 0.13, 0.11, 0.14, 0.10);
+        }
+      }
+      // Large separated frost cracks have a visible dark insulating seam.
+      // They interrupt the bright collar without replacing the KTX2 jacket.
+      for (const elevation of [1.58, 3.45]) {
+        for (const side of [-1, 1]) {
+          const fracture = box(scene, root, 'p28-g9-cryo-frost-fracture-' + index + '-' + elevation + '-' + side,
+            jacketPanel, side * 0.38, elevation, 1.03, 0.13, 0.51, 0.11);
+          fracture.rotation.z = side * 0.24;
+        }
       }
       const gauge = MeshBuilder.CreateCylinder('p28-g8-tank-pressure-gauge-' + index,
         { height: 0.12, diameter: 0.40, tessellation: 24 }, scene);
