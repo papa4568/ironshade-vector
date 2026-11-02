@@ -111,7 +111,7 @@ assert.ok(presentation.includes("this.objectiveSignalMaterial.disableLighting = 
   'overexposed shared PBR lights may not erase the objective signal');
 assert.ok(presentation.includes("station % 3 === 0 ? 0.31 : 0.18"),
   'camera-scale pylon graduation ticks must not regress to sub-pixel stripes');
-assert.ok(presentation.includes("vectorWashes.length > 0 ? 0.30 : 0.06"),
+assert.ok(presentation.includes("vectorWashes.length > 0 ? 0.23 : 0.06"),
   'authored active reference shear must remain visibly distinct from the dark floor');
 assert.ok(presentation.includes("baselineController.telegraph > 0"),
   'never fabricate attack warning when the real elite has not telegraphed');
@@ -341,9 +341,11 @@ assert.ok(presentation.includes('p28-g9-physical-datum-objective-beacon')
   && presentation.includes('p28-g9-objective-calibration-chevron-')
   && presentation.includes('objective-crown:9'),
   'objective beacons must be unique, raised, warm-gold physical instruments at each pylon');
-assert.ok(presentation.includes("vectorWashes.length > 0 ? 0.17 : 0.06")
-  && presentation.includes("colorFromHex(0xb195dc).scale(0.64"),
-  'real violet shear stays visible but cannot obscure the entire metrology deck');
+const shearOpacity = presentation.match(/vectorWashes\.length > 0 \? ([0-9.]+) : ([0-9.]+)/);
+assert.ok(shearOpacity && Number(shearOpacity[1]) >= 0.20 && Number(shearOpacity[1]) <= 0.24
+  && Number(shearOpacity[2]) <= 0.06
+  && presentation.includes("colorFromHex(0xc9a0ff).scale(0.82"),
+  'real violet shear must be visible without masking the machined survey deck');
 assert.ok(hudGlance.includes('width: min(25vw, 20rem);')
   && gameCanvas.includes("message.startsWith('REFERENCE TECH')"),
   'G9 small tactical warnings should not occupy the main survey work surface');

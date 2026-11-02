@@ -1135,8 +1135,8 @@ export class BabylonParallaxArrayPresentation {
       rig.ring.rotation.y = state.time * (index % 2 ? -0.72 : 0.72);
     });
     // Retain the real vector-wash extent, but let machined geometry show through.
-    this.shearMaterial.alpha = (vectorWashes.length > 0 ? 0.30 : 0.06) * renderBudget.transparencyScale;
-    this.shearMaterial.emissiveColor = colorFromHex(0xc9a0ff).scale(0.94 + Math.sin(state.time * 6.6) * 0.08);
+    this.shearMaterial.alpha = (vectorWashes.length > 0 ? 0.23 : 0.06) * renderBudget.transparencyScale;
+    this.shearMaterial.emissiveColor = colorFromHex(0xc9a0ff).scale(0.82 + Math.sin(state.time * 6.6) * 0.08);
 
     const gravityValues = state.sectors.slice(0, 3).map(sector => sector.gravity);
     const gravitySpread = gravityValues.length > 0 ? Math.max(...gravityValues) - Math.min(...gravityValues) : 0;
