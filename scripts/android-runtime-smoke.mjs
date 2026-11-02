@@ -259,7 +259,10 @@ async function dispatchTouch(type, x, y, id = 1) {
   const touchPoints = type === 'touchEnd' || type === 'touchCancel'
     ? []
     : [{ x, y, id, radiusX: 1, radiusY: 1, force: 1 }];
-  await call('Input.dispatchTouchEvent', { type, touchPoints });
+  // A busy software-WebGL2 Android emulator can take >20 wall seconds to
+  // process a real touch while compiling shaders. Allow the *same real CDP
+  // event* a bounded slow-GPU budget; never fabricate touch/progress state.
+  await call('Input.dispatchTouchEvent', { type, touchPoints }, fastSmoke ? 40_000 : 20_000);
 }
 
 async function tap(selector, id = 1, holdMs = 90) {
@@ -1451,7 +1454,9 @@ if (fastSmoke) {
   const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
 
   let interactionObserved = false;
-  const interactionDeadline = Date.now() + 45_000;
+  // ACT must still be reached and verified by physical joystick+ACT touches,
+  // but do not equate slow emulator wall time with simulated movement time.
+  const interactionDeadline = Date.now() + 120_000;
   let movementAttempt = 0;
   while (Date.now() < interactionDeadline && !interactionObserved) {
     const state = await evaluate(`(() => {
