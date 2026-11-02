@@ -295,6 +295,12 @@ assert.ok(telegraphs.includes("const laneWidth = Math.max(0.08, scaled(profile.w
 assert.ok(telegraphs.includes("tick.setEnabled(annexWarning || momentumWarning || cryoWarning || parallaxWarning)"));
 assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;"));
 assert.ok(babylon.includes("const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
+assert.ok(babylon.includes("const cryoWideFraming = !narrow && this.canvas.dataset.babylonScenario === 'cryo-reserve';")
+  && babylon.includes("cryoWideFraming ? (this.coarse ? 15.5 : 13.9)")
+  && babylon.includes("cryoContrast ? 0.62")
+  && babylon.includes("cryoSilhouette ? 1.48 : 1"),
+  'real Cryo enemies and danger rings must be framed away from the touch control edge and retain visible rim cues');
+
 assert.ok(presentation.includes('p28-g9-cryo-hoarfrost-collar-')
   && presentation.includes('p28-g9-cryo-insulation-rime-')
   && presentation.includes('hoarfrost-collar:14+insulation-rime:56'),
@@ -305,7 +311,7 @@ assert.ok(presentation.includes("0x142b33, 0.10, 0.96")
 assert.ok(presentation.includes("p28-g8-tank-crystalline-rime-")
   && presentation.includes("0xc2dfe6, 0.08, 0.96, 0xb7e6ef, 0.17"),
   'Cryo frost must exist as lit, curved, visible insulation on actual tank jackets');
-assert.ok(babylon.includes("const cryoTouchLanePan = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 1.3 : 0;")
+assert.ok(babylon.includes("const cryoTouchLanePan = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 5.2 : 0;")
   && babylon.includes('momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan')
   && babylon.includes('momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan'),
   'Cryo combat camera must show real enemy silhouettes outside the unchanged right-side touch rail');
