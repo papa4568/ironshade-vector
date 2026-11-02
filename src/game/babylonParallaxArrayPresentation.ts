@@ -396,7 +396,35 @@ export class BabylonParallaxArrayPresentation {
           objectiveGold, -0.66 + lamp * 0.66, 1.12, 2.17, 0.42, 0.65, 0.34);
       }
       box(scene, root, 'p27-c10-pylon-foot-' + index, graphite, 0, 0.24, 0, 1.40, 0.48, 1.40);
-      box(scene, root, 'p27-c10-pylon-spine-' + index, shell, 0, 2.15, 0, 0.90, 4.30, 0.90);
+      // The primary reference standard is a tapered, ten-sided machine column,
+      // not a rectangular crate. The shipped KTX2 painted-metal PBR/normal/ORM
+      // channels remain on the substantial faceted body.
+      const spindle = MeshBuilder.CreateCylinder('p27-c10-pylon-spine-' + index,
+        { height: 4.30, diameterTop: 0.92, diameterBottom: 1.54, tessellation: 10 }, scene);
+      spindle.parent = root;
+      spindle.position.y = 2.15;
+      spindle.material = shell;
+      spindle.isPickable = false;
+      // These raised machined bearing collars and long flutes have actual
+      // silhouette/contact depth at Android camera distance, unlike tiny
+      // surface stickers on a flat cuboid.
+      for (const height of [0.96, 2.02, 3.10, 3.92]) {
+        const collar = MeshBuilder.CreateCylinder('p28-g9-pylon-machined-bearing-collar-' + index + '-' + height,
+          { height: 0.24, diameter: 1.84, tessellation: 10 }, scene);
+        collar.parent = root;
+        collar.position.y = height;
+        collar.material = height === 2.02 ? fiducialBrass : graphite;
+        collar.isPickable = false;
+      }
+      for (let flute = 0; flute < 6; flute++) {
+        const angle = flute * Math.PI / 3;
+        const rail = MeshBuilder.CreateCylinder('p28-g9-pylon-ribbed-metal-flute-' + index + '-' + flute,
+          { height: 3.07, diameter: 0.13, tessellation: 7 }, scene);
+        rail.parent = root;
+        rail.position.set(Math.cos(angle) * 0.65, 2.28, Math.sin(angle) * 0.65);
+        rail.material = flute % 2 ? graphite : etched;
+        rail.isPickable = false;
+      }
       // Three unmistakable high-value metrology pillars, not dark cubic
       // placeholders: exposed etched datum rails and graduated bidirectional
       // scales sit *outside* the textured PBR structural shell.
@@ -464,6 +492,26 @@ export class BabylonParallaxArrayPresentation {
           station % 3 === 0 ? 0.31 : 0.18, 0.11,
           station % 3 === 0 ? 0.83 : 0.47);
       }
+      // A bolted survey beacon with a standalone orange mechanical diamond
+      // stands above the deck at the pylon's accessible side. The vertical
+      // dark mast, diamond backing, and center bullseye are a different
+      // silhouette from pale circular calibration rings or violet hazards.
+      box(scene, root, 'p28-g9-objective-side-signal-foundation-' + index,
+        graphite, -2.24, 0.43, 1.32, 1.16, 0.85, 1.10);
+      const signalMast = MeshBuilder.CreateCylinder('p28-g9-objective-side-signal-mast-' + index,
+        { height: 2.20, diameter: 0.23, tessellation: 8 }, scene);
+      signalMast.parent = root;
+      signalMast.position.set(-2.24, 1.65, 1.32);
+      signalMast.material = shell;
+      signalMast.isPickable = false;
+      const diamondBack = box(scene, root, 'p28-g9-objective-standalone-diamond-backing-' + index,
+        graphite, -2.24, 2.80, 1.36, 1.82, 1.82, 0.38);
+      diamondBack.rotation.z = Math.PI / 4;
+      const diamondFace = box(scene, root, 'p28-g9-objective-standalone-diamond-signal-' + index,
+        this.objectiveSignalMaterial, -2.24, 2.80, 1.62, 1.30, 1.30, 0.24);
+      diamondFace.rotation.z = Math.PI / 4;
+      box(scene, root, 'p28-g9-objective-standalone-dark-bullseye-' + index,
+        graphite, -2.24, 2.80, 1.79, 0.38, 0.38, 0.18);
       // A real top-facing calibrated target, separate from the pale rotary
       // interferometer rings, identifies the physical objective in the
       // overhead camera even when the tall crown is obscured by the HUD.
@@ -836,8 +884,12 @@ export class BabylonParallaxArrayPresentation {
       // another pale circular survey coil. A continuous purple ceramic bridge
       // over two dark polymer sleeves makes the difference visible at zoom.
       for (const side of [-1, 1]) {
-        box(scene, root, 'p28-g9-shear-anchor-insulated-upright-' + index + '-' + side,
-          insulation, side * 0.56, 1.30, 0.52, 0.42, 2.16, 0.39);
+        const prong = MeshBuilder.CreateCylinder('p28-g9-shear-anchor-insulated-upright-' + index + '-' + side,
+          { height: 2.16, diameterTop: 0.34, diameterBottom: 0.58, tessellation: 6 }, scene);
+        prong.parent = root;
+        prong.position.set(side * 0.56, 1.30, 0.52);
+        prong.material = insulation;
+        prong.isPickable = false;
         box(scene, root, 'p28-g9-shear-anchor-ceramic-collar-' + index + '-' + side,
           indexed, side * 0.56, 2.18, 0.55, 0.48, 0.25, 0.44);
       }

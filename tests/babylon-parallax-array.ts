@@ -78,6 +78,11 @@ for (const detail of [
   'p28-g9-elite-controller-contact-warning',
   'p28-g9-pylon-top-metrology-ruler-bed-', 'p28-g9-pylon-top-metrology-station-',
   'p28-g9-counterweight-arched-fork-', 'p28-g9-counterweight-top-flight-rule-',
+  'p28-g9-pylon-machined-bearing-collar-', 'p28-g9-pylon-ribbed-metal-flute-',
+  'p28-g9-objective-side-signal-foundation-', 'p28-g9-objective-side-signal-mast-',
+  'p28-g9-objective-standalone-diamond-backing-',
+  'p28-g9-objective-standalone-diamond-signal-',
+  'p28-g9-objective-standalone-dark-bullseye-',
   'p28-g9-shear-anchor-hex-dial-', 'p28-g9-shear-anchor-index-window-',
 ]) assert.ok(presentation.includes(detail), 'Parallax silhouette must expose calibrated hardware: ' + detail);
 
@@ -107,6 +112,17 @@ assert.ok(presentation.includes("this.eliteTellRing.position.set(scaled(baseline
   'elite threat ring must follow real enemy world-space position');
 assert.ok(presentation.includes('objectiveDial.material = this.objectiveSignalMaterial'),
   'the objective must have an unlit amber physical-target finish at actual gameplay zoom');
+assert.ok(presentation.includes("MeshBuilder.CreateCylinder('p27-c10-pylon-spine-'")
+  && presentation.includes('diameterTop: 0.92, diameterBottom: 1.54, tessellation: 10'),
+  'reference pylons need faceted tapered machine bodies instead of placeholder crates');
+assert.ok(presentation.includes('spindle.material = shell'),
+  'new three-dimensional pylon geometry must retain shared KTX2 PBR metal');
+assert.ok(presentation.includes('diamondFace.rotation.z = Math.PI / 4')
+  && presentation.includes('diamondFace.material') === false
+  && presentation.includes('this.objectiveSignalMaterial, -2.24, 2.80, 1.62'),
+  'objective signal must be a tall physical orange diamond with a mechanical footing');
+assert.ok(presentation.includes('prong.material = insulation'),
+  'shear forks need cylindrical insulated prongs rather than flat painted placeholder blocks');
 assert.ok(presentation.includes("this.objectiveSignalMaterial.disableLighting = true"),
   'overexposed shared PBR lights may not erase the objective signal');
 assert.ok(presentation.includes("station % 3 === 0 ? 0.31 : 0.18"),
