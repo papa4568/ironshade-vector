@@ -234,6 +234,17 @@ for (const detail of [
 const g6Hud = readFileSync('src/combatHudGlance.css', 'utf8');
 const g6Controls = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 assert.ok(g6Controls.includes('data-location={activeMission.location}'));
+assert.ok(g6Controls.includes("message.startsWith('KHEPRI SURVEY ANNEX')")
+  && g6Controls.includes("message.startsWith('DRONE ESCORT')")
+  && g6Controls.includes("return message.split(' // ')[0]")
+  && g6Controls.includes('aria-label={hud.eventT > 0 && !bossTransitionCue'),
+  'the real director event remains accessible while the landscape HUD displays short commands');
+assert.ok(presentation.includes("this.ceramicAlbedo = new DynamicTexture('p28-g9-lattice-survey-ceramic-albedo'")
+  && presentation.includes("this.ceramicNormal = new DynamicTexture('p28-g9-lattice-survey-ceramic-normal'")
+  && presentation.includes("ceramic.bumpTexture = this.ceramicNormal;")
+  && presentation.includes("this.ceramicNormal.dispose();"),
+  'Annex pillar ceramics must be physically rough and patterned instead of white flat-shaded slabs');
+
 assert.ok(g6Hud.includes('.game-root[data-location="lattice-annex"] .touch-ability-fan .ability-0'));
 assert.ok(g6Hud.includes('bottom: 172px;'));
 assert.ok(g6Controls.includes("activeMission.location === 'lattice-annex'")
