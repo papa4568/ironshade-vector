@@ -347,6 +347,43 @@ export class BabylonParallaxArrayPresentation {
       const root = new TransformNode('p27-c10-baseline-pylon-' + index, scene);
       root.parent = this.root;
       root.position.set(scaled(x), 0, scaled(z));
+      // An anchored steel survey island separates each objective from the
+      // uniform diamond-plate floor. Its broad dark plinth, corner anchors,
+      // numbered gold scales and open objective frame are actual deck hardware,
+      // not a floating marker or a new simulation collider.
+      box(scene, root, 'p28-g9-pylon-machined-service-plinth-' + index,
+        graphite, 0, 0.14, 0, 5.40, 0.28, 4.65);
+      box(scene, root, 'p28-g9-pylon-plinth-center-ceramic-' + index,
+        shell, 0, 0.30, 0, 3.25, 0.06, 2.45);
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-pylon-plinth-long-guide-' + index + '-' + side,
+          insulation, side * 2.43, 0.34, 0, 0.32, 0.20, 4.02);
+        box(scene, root, 'p28-g9-pylon-plinth-objective-rail-' + index + '-' + side,
+          objectiveGold, side * 2.38, 0.43, 0, 0.20, 0.12, 3.36);
+        for (const front of [-1, 1]) {
+          const foot = box(scene, root, 'p28-g9-pylon-plinth-bolted-shoe-' + index + '-' + side + '-' + front,
+            shell, side * 2.25, 0.35, front * 1.80, 0.52, 0.25, 0.70);
+          foot.isPickable = false;
+          box(scene, root, 'p28-g9-pylon-plinth-objective-corner-' + index + '-' + side + '-' + front,
+            objectiveGold, side * 2.42, 0.53, front * 1.83, 0.40, 0.16, 0.45);
+        }
+      }
+      // The large, raised gold scale is perpendicular to the darker rails;
+      // major and minor stations can be counted in overhead real gameplay.
+      box(scene, root, 'p28-g9-pylon-large-front-scale-bed-' + index,
+        insulation, 0, 0.44, 2.04, 3.85, 0.18, 0.46);
+      for (let graduation = 0; graduation < 9; graduation++) {
+        box(scene, root, 'p28-g9-pylon-large-scale-tick-' + index + '-' + graduation,
+          graduation % 4 === 0 ? objectiveGold : fiducialBrass,
+          (graduation - 4) * 0.43, 0.55, 2.04, graduation % 4 === 0 ? 0.24 : 0.13, 0.11,
+          graduation % 4 === 0 ? 0.74 : 0.42);
+      }
+      // Triplet of unmistakable objective lamps on a real bolted pedestal.
+      // Unlike the pale rotary calibration rings, they use warm amber boxes.
+      for (let lamp = 0; lamp < 3; lamp++) {
+        box(scene, root, 'p28-g9-pylon-physical-align-target-' + index + '-' + lamp,
+          objectiveGold, -0.66 + lamp * 0.66, 1.12, 2.17, 0.42, 0.65, 0.34);
+      }
       box(scene, root, 'p27-c10-pylon-foot-' + index, graphite, 0, 0.24, 0, 1.40, 0.48, 1.40);
       box(scene, root, 'p27-c10-pylon-spine-' + index, shell, 0, 2.15, 0, 0.90, 4.30, 0.90);
       // Three unmistakable high-value metrology pillars, not dark cubic
@@ -494,6 +531,30 @@ export class BabylonParallaxArrayPresentation {
         objectiveGold, 0, 4.68, 0.92, 0.72, 0.17, 0.20);
       this.pylonRigs.push({ id, root, rings, core });
     });
+
+    // Coarse top-surface metal panel islands and enclosed service lanes
+    // interrupt the otherwise continuous repeated deck texture. They are
+    // grounded near actual machines, below hit/route logic and non-pickable.
+    for (const [zone, x, z, width, depth] of [
+      ['near-datum', worldW * 0.20, worldH * 0.54, 7.0, 4.0],
+      ['deep-datum', worldW * 0.79, worldH * 0.48, 6.4, 4.2],
+      ['cross-track', worldW * 0.51, worldH * 0.29, 9.0, 3.4],
+    ] as const) {
+      box(scene, this.root, 'p28-g9-survey-machine-floor-island-' + zone,
+        shell, x, 0.018, z, width, 0.055, depth);
+      box(scene, this.root, 'p28-g9-survey-machine-floor-inset-' + zone,
+        graphite, x, 0.054, z, width - 0.42, 0.018, depth - 0.42);
+      for (const edge of [-1, 1]) {
+        box(scene, this.root, 'p28-g9-survey-machine-floor-joint-' + zone + '-' + edge,
+          insulation, x, 0.072, z + edge * (depth / 2 - 0.31),
+          width - 0.50, 0.075, 0.18);
+        for (let bolt = 0; bolt < 5; bolt++) {
+          box(scene, this.root, 'p28-g9-survey-machine-floor-bolt-' + zone + '-' + edge + '-' + bolt,
+            graduation, x + (bolt - 2) * (width - 1.10) / 5, 0.119,
+            z + edge * (depth / 2 - 0.29), 0.17, 0.045, 0.16);
+        }
+      }
+    }
 
     ([[760, 340], [1080, 690], [1370, 390]] as const).forEach(([x, z], index) => {
       const root = new TransformNode('p27-c10-reference-frame-' + index, scene);
