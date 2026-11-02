@@ -1538,6 +1538,16 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
   // landscape callout contains the one immediate action the player needs.
   // Long mission titles previously hid the entire lower lab/transfer lane.
   const tacticalRouteCue = (message: string) => {
+    if (activeMission.location === 'lattice-annex') {
+      if (message.startsWith('KHEPRI SURVEY ANNEX')) return 'ISOLATE BOTH GRID BRANCHES';
+      if (message.startsWith('DRONE ESCORT')) return 'DRONE ESCORT // WATCH THE GRID';
+      if (message.startsWith('SURVEY SHIELD')) return 'SURVEY SHIELD // CUSTODIAN ACTIVE';
+      if (message.startsWith('DAMAGED GRID')) return 'GRID ARC LIVE // KEEP CLEAR';
+      if (message.startsWith('GRID ISOLATION')) return 'ISOLATE BOTH GRID BRANCHES';
+      // Unexpected longer director copy still shows its full first event
+      // identity, rather than a many-line modal that hides combat on mobile.
+      return message.split(' // ')[0];
+    }
     if (activeMission.location === 'parallax-array') {
       if (message.startsWith('CISLUNAR PARALLAX ARRAY')) return 'ALIGN 3 REFERENCE PYLONS';
       if (message.startsWith('PARALLAX SHEAR')) return 'SHEAR FRONT LIVE // REFERENCES DISAGREE';
