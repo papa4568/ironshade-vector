@@ -228,6 +228,16 @@ assert.ok(presentation.includes("this.datumAlbedoTexture = new DynamicTexture('p
   && presentation.includes('etched.bumpTexture = this.datumNormalTexture;')
   && presentation.includes('this.datumNormalTexture.dispose();'),
   'precision metrology housings must carry real normal and albedo relief');
+assert.ok(presentation.includes('p28-g9-outboard-metrology-hall-deck')
+  && presentation.includes('p28-g9-service-hall-back-wall-')
+  && presentation.includes('p28-g9-service-hall-survey-window-')
+  && presentation.includes('p28-g9-service-hall-calibration-ruler-'),
+  'real Parallax outside camera corners must depict textured physical laboratory rooms, not black void');
+assert.ok(presentation.includes('p28-g9-calibrated-baseline-conductor-')
+  && presentation.includes('p28-g9-objective-side-beacon-')
+  && presentation.includes('p28-g9-physical-objective-index-')
+  && presentation.includes('side-objective-beacon:9+conductor-bar:6'),
+  'legible physical side objectives and shielded baseline bars must survive at Android camera scale');
 assert.ok(presentation.includes('p28-g9-physical-datum-objective-beacon')
   && presentation.includes('p28-g9-objective-datum-beacon-crown-')
   && presentation.includes('p28-g9-objective-calibration-chevron-')
