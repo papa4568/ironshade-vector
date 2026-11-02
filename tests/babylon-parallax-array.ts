@@ -250,6 +250,12 @@ assert.ok(presentation.includes("this.bossWarning = MeshBuilder.CreateTorus('p28
   && presentation.includes('patternHot ? 0xf2a35e : phaseTwo')
   && presentation.includes('this.bossWarning.scaling.set(pulse, pulse, pulse);'),
   'amber boss danger ring must reflect the real pattern wind-up and not a fabricated HUD hazard');
+assert.ok(presentation.includes("const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0x856747, 0.35, 0.76);")
+  && presentation.includes("const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass'")
+  && presentation.includes("counterweightMetal.bumpTexture = this.datumNormalTexture;")
+  && presentation.includes("p28-g9-console-large-angled-housing-")
+  && presentation.includes("p28-g9-shear-anchor-violet-crosshead-"),
+  'heavy calibrated masses, consoles and dark shear ceramics must have distinct materials/relief from brass targets');
 assert.ok(presentation.includes('p28-g9-pylon-near-deck-objective-plate-')
   && presentation.includes('p28-g9-pylon-near-deck-target-wing-')
   && presentation.includes('p28-g9-bold-graduated-brass')
