@@ -206,6 +206,10 @@ assert.ok(world.includes("const parallaxGravity = this.canvas.dataset.babylonSce
   && world.includes("parallaxGravity ? 0.24 : momentumHazard ? 0.34 : 1")
   && /parallaxGravity\s*\?\s*0\.13\s*\+\s*Math\.sin\(state\.time \* presentation\.pulseHz\) \* 0\.022/.test(world),
   'Parallax gravity radius and active glyph must stay real but cannot obscure instrument relief with luminous loops');
+assert.ok(world.includes("const parallaxShearDuplicate = this.canvas.dataset.babylonScenario === 'parallax-array'")
+  && world.includes("hazard.kind === 'vectorWash'")
+  && /parallaxShearDuplicate\s*\?\s*0\.03/.test(world),
+  'already authored violet shear must not get a second large cyan world-ring over the same real hazard');
 
 assert.ok(readiness.includes("|| mission.location === 'parallax-array');"));
 for (const detail of [
