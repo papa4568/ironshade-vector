@@ -315,7 +315,7 @@ assert.ok(babylon.includes("const cryoTouchLanePan = this.canvas.dataset.babylon
   && babylon.includes('momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan')
   && babylon.includes('momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan'),
   'Cryo combat camera must show real enemy silhouettes outside the unchanged right-side touch rail');
-assert.ok(babylon.includes("colorFromHex(0xa6d8e8).scale(0.27)"));
+assert.ok(babylon.includes("colorFromHex(0xa6d8e8).scale(0.34)"));
 assert.ok(presentation.includes("this.frostAlbedoTexture = new DynamicTexture('p28-g9-cryo-frost-albedo-atlas'")
   && presentation.includes("this.frostNormalTexture = new DynamicTexture('p28-g9-cryo-frost-normal-atlas'")
   && presentation.includes('frostCrust.bumpTexture = this.frostNormalTexture;')
