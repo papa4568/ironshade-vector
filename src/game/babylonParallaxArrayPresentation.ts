@@ -146,6 +146,7 @@ export class BabylonParallaxArrayPresentation {
   private readonly bossCueRoot: TransformNode;
   private readonly bossCrown: Mesh[] = [];
   private readonly bossCore: Mesh;
+  private readonly bossWarning: Mesh;
   private readonly bossForks: Mesh[] = [];
   private readonly hemisphere: HemisphericLight;
   private readonly keyLight: DirectionalLight;
@@ -369,10 +370,18 @@ export class BabylonParallaxArrayPresentation {
       for (let tick = 0; tick < 9; tick++) {
         box(scene, root, 'p28-g9-pylon-fiducial-' + index + '-' + tick,
           tick % 3 === 0 ? graduation : etched,
-          0, 0.96 + tick * 0.36, 0.72, tick % 3 === 0 ? 0.80 : 0.44, 0.075, 0.12);
+          0, 0.96 + tick * 0.36, 0.86, tick % 3 === 0 ? 1.24 : 0.70, 0.14, 0.18);
         box(scene, root, 'p28-g9-pylon-rear-scale-' + index + '-' + tick,
           tick % 3 === 0 ? graduation : etched,
-          0, 0.96 + tick * 0.36, -0.72, tick % 3 === 0 ? 0.80 : 0.44, 0.075, 0.12);
+          0, 0.96 + tick * 0.36, -0.86, tick % 3 === 0 ? 1.24 : 0.70, 0.14, 0.18);
+      }
+      // Distinct raised dual-color depth scale, readable above deck grating.
+      box(scene, root, 'p28-g9-pylon-exposed-metrology-ruler-' + index,
+        graphite, 0, 2.18, 1.02, 1.58, 3.46, 0.22);
+      for (let mark = 0; mark < 6; mark++) {
+        box(scene, root, 'p28-g9-pylon-datum-large-mark-' + index + '-' + mark,
+          mark % 2 === 0 ? graduation : indexed, 0, 1.16 + mark * 0.41, 1.19,
+          mark % 2 === 0 ? 1.35 : 0.80, 0.17, 0.12);
       }
       const footReticle = MeshBuilder.CreateTorus('p28-g9-reference-foot-datum-' + index,
         { diameter: 2.34, thickness: 0.085, tessellation: 32 }, scene);
@@ -515,7 +524,7 @@ export class BabylonParallaxArrayPresentation {
       root.parent = this.root;
       root.position.set(worldW * x, 0, worldH * z);
       root.rotation.y = rotationY;
-      box(scene, root, 'p27-c10-carriage-base-' + index, graphite, 0, 0.30, 0, 2.30, 0.60, 1.10);
+      box(scene, root, 'p27-c10-carriage-base-' + index, graphite, 0, 0.30, 0, 2.90, 0.60, 1.48);
       box(scene, root, 'p27-c10-carriage-mass-' + index, shell, 0, 0.92, 0, 1.34, 0.76, 0.72);
       const rail = box(scene, root, 'p27-c10-carriage-rail-' + index, violet, 0, 0.09, 0, 3.40, 0.08, 0.14);
       rail.position.y = 0.08;
@@ -570,6 +579,21 @@ export class BabylonParallaxArrayPresentation {
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-carriage-rail-shoe-' + index + '-' + side,
           shell, side * 1.32, 0.24, 0.15, 0.58, 0.22, 0.87);
+      }
+      // Counterweight mass and orange-brass travel scale are a different
+      // silhouette from the pylons' loop coils and the anchor's split fork.
+      box(scene, root, 'p28-g9-instrumented-moving-counterweight-' + index,
+        shell, 0, 1.71, 0, 1.82, 0.52, 1.16);
+      box(scene, root, 'p28-g9-counterweight-travel-indicator-' + index,
+        graduation, 0, 2.02, 0.72, 1.56, 0.18, 0.20);
+      for (const side of [-1, 1]) {
+        const axle = MeshBuilder.CreateCylinder('p28-g9-carriage-exposed-axle-' + index + '-' + side,
+          { height: 0.64, diameter: 0.46, tessellation: 20 }, scene);
+        axle.parent = root;
+        axle.position.set(side * 1.12, 1.06, 0.44);
+        axle.rotation.z = Math.PI / 2;
+        axle.material = graduation;
+        axle.isPickable = false;
       }
       this.carriages.push(root);
     });
@@ -632,6 +656,17 @@ export class BabylonParallaxArrayPresentation {
           Math.sin(angle) * 0.64, 1.20 + Math.cos(angle) * 0.64, 0.81,
           0.20, 0.16, 0.15);
       }
+      // The insulated split mast is a physical shear-anchor signifier, not
+      // another pale circular survey coil. A continuous purple ceramic bridge
+      // over two dark polymer sleeves makes the difference visible at zoom.
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-shear-anchor-insulated-upright-' + index + '-' + side,
+          insulation, side * 0.56, 1.30, 0.52, 0.34, 2.16, 0.32);
+        box(scene, root, 'p28-g9-shear-anchor-ceramic-collar-' + index + '-' + side,
+          indexed, side * 0.56, 2.18, 0.55, 0.48, 0.25, 0.44);
+      }
+      box(scene, root, 'p28-g9-shear-anchor-violet-crosshead-' + index,
+        indexed, 0, 2.44, 0.52, 1.64, 0.25, 0.34);
       this.anchors.push(root);
     });
 
@@ -761,6 +796,16 @@ export class BabylonParallaxArrayPresentation {
     this.bossCore.position.y = 0.78;
     this.bossCore.material = this.bossCueMaterial;
     this.bossCore.isPickable = false;
+    // Display the real boss pattern wind-up as a grounded amber ring. Violet
+    // indicates world shear; amber signals this actor's attack specifically.
+    this.bossWarning = MeshBuilder.CreateTorus('p28-g9-boss-attack-warning-ring',
+      { diameter: 3.90, thickness: 0.22, tessellation: 40 }, scene);
+    this.bossWarning.parent = this.bossCueRoot;
+    this.bossWarning.position.y = 0.18;
+    this.bossWarning.rotation.x = Math.PI / 2;
+    this.bossWarning.material = this.bossCueMaterial;
+    this.bossWarning.isPickable = false;
+    this.bossWarning.setEnabled(false);
     this.bossCueRoot.setEnabled(false);
 
     const shared = new Set(this.premiumSurfaces.materials.values());
@@ -864,11 +909,13 @@ export class BabylonParallaxArrayPresentation {
       this.bossCueRoot.position.set(scaled(activeBoss.x), 0.05, scaled(activeBoss.y));
       const phaseTwo = activeBoss.bossPhase === 2;
       const patternHot = ['baselineFork', 'parallaxSweep', 'shearCollapse'].includes(activeBoss.bossPattern);
-      const bossColor = colorFromHex(phaseTwo ? 0xc7f3f5 : patternHot ? 0xb5a6df : 0x9a87cf);
+      const bossColor = colorFromHex(patternHot ? 0xf2a35e : phaseTwo ? 0xc7f3f5 : 0x9a87cf);
       this.bossCueMaterial.diffuseColor = bossColor.scale(0.22);
-      this.bossCueMaterial.emissiveColor = bossColor.scale(phaseTwo ? 1.02 : 0.86);
+      this.bossCueMaterial.emissiveColor = bossColor.scale(patternHot ? 1.25 : phaseTwo ? 1.02 : 0.86);
       this.bossCueMaterial.alpha = phaseTwo ? 0.72 : 0.58;
       const pulse = 1 + Math.sin(state.time * (patternHot ? 7.4 : phaseTwo ? 5.8 : 3.8) + activeBoss.patternIndex) * (patternHot ? 0.14 : 0.07);
+      this.bossWarning.setEnabled(patternHot);
+      this.bossWarning.scaling.set(pulse, pulse, pulse);
       this.bossCrown.forEach((ring, index) => {
         ring.scaling.set(pulse, pulse, pulse);
         ring.rotation.z = state.time * (phaseTwo ? 0.82 : 0.38) * (index % 2 ? -1 : 1);
@@ -941,7 +988,7 @@ export class BabylonParallaxArrayPresentation {
     this.canvas.dataset.environmentLandmark = 'three-point-long-baseline';
     this.canvas.dataset.environmentServiceDetails = 'reference-console:3+mass-carriage:' + profile.carriageInstances;
     this.canvas.dataset.environmentSurfaceDetail = 'reference-frame:' + profile.frameInstances + '+shear-anchor:' + profile.anchorInstances
-      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8+physical-baseline:3+datum-graduation:39+isolator-foot:12+objective-crown:9+side-objective-beacon:9+conductor-bar:6';
+      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8+physical-baseline:3+datum-graduation:39+isolator-foot:12+objective-crown:9+side-objective-beacon:9+conductor-bar:6+pylon-large-mark:18+counterweight:3+ceramic-upright:16';
     this.canvas.dataset.environmentMachineDetail = 'baseline-pylon:3+mass-carriage:3+live-baseline-servo:' + baselineServos;
     this.canvas.dataset.environmentComposition = 'three-point-baseline+cross-track-frames+perimeter-shear-anchors';
     this.canvas.dataset.environmentMaterials = 'graphite-structure+reference-shell+violet-alignment+cyan-readout';
