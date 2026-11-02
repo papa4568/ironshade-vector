@@ -7,7 +7,7 @@ import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imagePro
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
-import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
@@ -117,6 +117,16 @@ function parallaxCueLabel(object: CombatObject) {
 
 function enableCount<T extends { setEnabled(value: boolean): void }>(items: readonly T[], count: number) {
   items.forEach((item, index) => item.setEnabled(index < count));
+}
+
+// Project the center of the tall optical ornament into the real gameplay
+// viewport. A partly cropped holographic ring reads like a broken objective
+// marker at the bottom edge; hide only that ornament when its center is in the
+// lower edge zone, keeping the grounded PBR column and physical amber target.
+export function parallaxReferenceRingFitsFrame(projectedY: number, viewportTop: number, viewportHeight: number): boolean {
+  return Number.isFinite(projectedY) && Number.isFinite(viewportTop)
+    && Number.isFinite(viewportHeight) && viewportHeight > 0
+    && projectedY <= viewportTop + viewportHeight * 0.80;
 }
 
 type PylonRig = { id: string; root: TransformNode; rings: Mesh[]; core: Mesh };
@@ -1158,13 +1168,31 @@ export class BabylonParallaxArrayPresentation {
     this.pylonRigs.forEach((rig, index) => {
       const object = referenceNodes.find(item => item.id === rig.id);
       if (object) rig.root.position.set(scaled(object.x + object.w / 2), 0, scaled(object.y + object.h / 2));
+      // A prominent pale calibration orb clipped by the camera's lower edge
+      // was mistaken for an incomplete objective beacon in actual phone PNGs.
+      // Suppress only the projected bright rings/core at that edge. The live
+      // reference station, PBR silhouette and physically attached amber
+      // objective diamond remain rendered and interactive without moving the
+      // gameplay camera or affecting any simulation state.
+      const camera = this.scene.activeCamera;
+      let ringFitsFrame = true;
+      if (camera) {
+        const engine = this.scene.getEngine();
+        const viewport = camera.viewport.toGlobal(engine.getRenderWidth(), engine.getRenderHeight());
+        rig.core.computeWorldMatrix(true);
+        const projected = Vector3.Project(rig.core.getAbsolutePosition(), Matrix.Identity(),
+          this.scene.getTransformMatrix(), viewport);
+        ringFitsFrame = parallaxReferenceRingFitsFrame(projected.y, viewport.y, viewport.height);
+      }
       const aligned = Boolean(object?.exposed && object.hp > 0);
       const pulse = aligned ? 1.08 + Math.sin(state.time * 5.8 + index) * 0.08 : 0.96 + Math.sin(state.time * 2.5 + index) * 0.035;
       rig.rings.forEach((ring, ringIndex) => {
+        ring.setEnabled(ringFitsFrame);
         ring.scaling.set(pulse, pulse, pulse);
         ring.rotation.z = state.time * (aligned ? 0.66 : 0.18) * (ringIndex % 2 ? -1 : 1);
       });
       const coreScale = aligned ? 1.20 + Math.sin(state.time * 6.4 + index) * 0.08 : 0.96;
+      rig.core.setEnabled(ringFitsFrame);
       rig.core.scaling.set(coreScale, coreScale, coreScale);
     });
 

@@ -6,6 +6,7 @@ import {
   BABYLON_PARALLAX_PREMIUM_SURFACES,
   parallaxArrayRenderProfile,
   parallaxReferenceState,
+  parallaxReferenceRingFitsFrame,
   parallaxShearMode,
 } from '../src/game/babylonParallaxArrayPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
@@ -161,6 +162,19 @@ assert.equal(parallaxReferenceState(0, 0), 'offline');
 assert.equal(parallaxShearMode(1, 0.1), 'reference-shear');
 assert.equal(parallaxShearMode(0, 0.4), 'gravity-split');
 assert.equal(parallaxShearMode(0, 0.2), 'nominal');
+// Unlike clipping/recoloring a screenshot, this checks a real scene-only
+// visibility decision tied to the active camera: suppress bright ornamental
+// rings that would be truncated at the lower phone edge, not physical pylons.
+assert.equal(parallaxReferenceRingFitsFrame(650, 0, 900), true);
+assert.equal(parallaxReferenceRingFitsFrame(720, 0, 900), true);
+assert.equal(parallaxReferenceRingFitsFrame(721, 0, 900), false);
+assert.equal(parallaxReferenceRingFitsFrame(750, 20, 900), false);
+assert.equal(parallaxReferenceRingFitsFrame(700, 20, 900), true);
+assert.equal(parallaxReferenceRingFitsFrame(Number.NaN, 0, 900), false);
+assert.ok(presentation.includes('rig.core.setEnabled(ringFitsFrame)')
+  && presentation.includes('ring.setEnabled(ringFitsFrame)')
+  && presentation.includes('camera.viewport.toGlobal(engine.getRenderWidth(), engine.getRenderHeight())'),
+  'clip only bright scene-owned calibration ornament using real camera pixels; preserve physical reference station');
 
 const navigation = getMapNavigationPlan('parallax-array');
 assert.ok(navigation.routes.length >= 6);
