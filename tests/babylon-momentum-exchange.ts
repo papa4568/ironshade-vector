@@ -243,7 +243,7 @@ assert.ok(presentation.includes('tooth % 4 === 0 ? magneticCopper : structural')
 // This adds premium bindings without lowering the live >=100 acceptance gate.
 assert.ok(presentation.includes("const shared = new Set(this.premiumSurfaces.materials.values())"));
 assert.ok(presentation.includes('ring.material = ringIndex === 1 ? magneticCopper : edgeMetal'));
-assert.ok(renderWorldSource.includes('visual.ringMaterial.emissiveColor = color.scale(momentumHazard ? 0.34 : 1)'));
+assert.ok(renderWorldSource.includes('visual.ringMaterial.emissiveColor = color.scale(parallaxGravity ? 0.24 : momentumHazard ? 0.34 : 1)'));
 assert.ok(renderWorldSource.includes('momentumHazard && hazard.kind ==='));
 assert.ok(attackSource.includes('(momentumWarning ? 0.46 : parallaxWarning ? 0.54 : cryoWarning ? 0.60 : 0.66)'));
 assert.ok(babylon.includes('const momentumTouchLanePan = this.canvas.dataset.babylonScenario ==='));
