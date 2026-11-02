@@ -1023,6 +1023,8 @@ export class BabylonRefineryWorldPresentation {
       // the second world-overlay ring so it cannot hide the datum instruments.
       const parallaxGravity = this.canvas.dataset.babylonScenario === 'parallax-array'
         && hazard.kind === 'gravityWell';
+      const parallaxShearDuplicate = this.canvas.dataset.babylonScenario === 'parallax-array'
+        && hazard.kind === 'vectorWash';
       const momentumWash = momentumHazard && hazard.kind === 'vectorWash';
       // True gameplay hazard radius stays intact. Unlike the permanent teal
       // rail guides, the active magnetic wash uses an amber, thin, pulsing
@@ -1033,9 +1035,11 @@ export class BabylonRefineryWorldPresentation {
       visual.root.setEnabled(true);
       visual.root.position.set(scaled(hazard.x), 0.08, scaled(hazard.y));
       visual.ringMaterial.diffuseColor = color.scale(0.18);
-      visual.ringMaterial.emissiveColor = color.scale(parallaxGravity ? 0.24 : momentumHazard ? 0.34 : 1);
-      visual.ringMaterial.alpha = (parallaxGravity
-        ? 0.13 + Math.sin(state.time * presentation.pulseHz) * 0.022
+      visual.ringMaterial.emissiveColor = color.scale(parallaxShearDuplicate ? 0.12 : parallaxGravity ? 0.24 : momentumHazard ? 0.34 : 1);
+      visual.ringMaterial.alpha = (parallaxShearDuplicate
+        ? 0.03 + Math.sin(state.time * presentation.pulseHz) * 0.01
+        : parallaxGravity
+          ? 0.13 + Math.sin(state.time * presentation.pulseHz) * 0.022
         : momentumHazard
           ? (momentumWash ? 0.11 : 0.16) + Math.sin(state.time * presentation.pulseHz) * 0.025
           : 0.4 + Math.sin(state.time * presentation.pulseHz) * 0.1) * quality.hazardCueOpacity;
@@ -1043,7 +1047,7 @@ export class BabylonRefineryWorldPresentation {
       visual.ring.rotation.y = state.time * presentation.rotationSpeed * quality.stateMotionScale;
       visual.glyphMaterial.diffuseColor = color.scale(0.2);
       visual.glyphMaterial.emissiveColor = color;
-      visual.glyphMaterial.alpha = (parallaxGravity ? 0.86 : momentumWash ? 0.75 : 1) * quality.hazardCueOpacity;
+      visual.glyphMaterial.alpha = (parallaxShearDuplicate ? 0.70 : parallaxGravity ? 0.86 : momentumWash ? 0.75 : 1) * quality.hazardCueOpacity;
       const glyphScale = Math.max(0.34, Math.min(0.86, radius * 0.28));
       visual.glyph.scaling.set(glyphScale * presentation.scaleX, 1, glyphScale * presentation.scaleZ);
       visual.glyph.rotation.y = state.time * presentation.rotationSpeed * 0.7 * quality.stateMotionScale;
