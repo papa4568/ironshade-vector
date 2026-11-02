@@ -1324,3 +1324,35 @@
     line-height: 1.15;
   }
 }
+
+
+/* P28-G9 cross-route Android review: do not ellipsize the Cryo shield
+   boarder's target name or the director's combat alert. Only the compact
+   visible alert is shortened; the original event remains in aria-label. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="cryo-reserve"] .target-readout {
+    width: min(28vw, 22rem);
+  }
+  .game-root[data-location="cryo-reserve"] .target-readout header b,
+  .game-root[data-location="cryo-reserve"] .boss-hud.boss-hud--top .boss-name {
+    display: block;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.15;
+  }
+  .game-root[data-location="cryo-reserve"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    left: 47%;
+    width: min(32vw, 26rem);
+    transform: translateX(-50%);
+  }
+  .game-root[data-location="cryo-reserve"] .transient-alert-lane.event .combat-alert b {
+    display: block;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+    line-height: 1.15;
+  }
+}
