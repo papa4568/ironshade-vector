@@ -563,6 +563,8 @@ export class BabylonParallaxArrayPresentation {
       if (index === 1) root.rotation.y = Math.PI / 2;
       // Open optical survey gantry: a visible engraved datum arch, beam
       // insulators and suspended reticle distinguish this from a dark cuboid.
+      box(scene, root, 'p28-g9-optical-frame-mounted-service-plate-' + index,
+        graphite, 0, 0.16, 0, 3.60, 0.31, 2.00);
       box(scene, root, 'p27-c10-frame-left-' + index, shell, -0.98, 1.72, 0, 0.28, 3.44, 0.38);
       box(scene, root, 'p27-c10-frame-right-' + index, shell, 0.98, 1.72, 0, 0.28, 3.44, 0.38);
       box(scene, root, 'p27-c10-frame-top-' + index, etched, 0, 3.24, 0, 2.24, 0.22, 0.40);
@@ -660,6 +662,21 @@ export class BabylonParallaxArrayPresentation {
       // silhouette from the pylons' loop coils and the anchor's split fork.
       box(scene, root, 'p28-g9-instrumented-moving-counterweight-' + index,
         counterweightMetal, 0, 1.71, 0, 2.10, 0.82, 1.35);
+      // Wide exposed top face: machined ruler, high-contrast gauge sectors
+      // and travel stops remain visible when the front dial faces away.
+      box(scene, root, 'p28-g9-counterweight-hardened-upper-deck-' + index,
+        shell, 0, 2.18, 0, 2.55, 0.14, 1.48);
+      box(scene, root, 'p28-g9-counterweight-top-measuring-channel-' + index,
+        insulation, 0, 2.30, 0, 2.18, 0.10, 0.96);
+      for (let mark = 0; mark < 9; mark++) {
+        box(scene, root, 'p28-g9-counterweight-macro-top-graduation-' + index + '-' + mark,
+          mark % 4 === 0 ? objectiveGold : fiducialBrass, (mark - 4) * 0.24, 2.40, 0.04,
+          mark % 4 === 0 ? 0.14 : 0.08, 0.075, mark % 4 === 0 ? 0.88 : 0.49);
+      }
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-counterweight-axle-bearing-housing-' + index + '-' + side,
+          graphite, side * 1.22, 1.28, 0.10, 0.46, 0.95, 1.26);
+      }
       box(scene, root, 'p28-g9-counterweight-travel-indicator-' + index,
         fiducialBrass, 0, 2.20, 0.80, 1.78, 0.24, 0.26);
       for (const side of [-1, 1]) {
@@ -684,7 +701,20 @@ export class BabylonParallaxArrayPresentation {
       root.parent = this.root;
       root.position.set(worldW * x, 0, worldH * z);
       root.rotation.y = rotationY;
-      box(scene, root, 'p27-c10-anchor-base-' + index, graphite, 0, 0.24, 0, 0.78, 0.48, 0.78);
+      // Each real shear fork now grows out of a bolted floor socket with
+      // visible vertical mounting saddles. The violet ceramic no longer reads
+      // as a free-floating lavender rectangle at the gameplay camera angle.
+      box(scene, root, 'p28-g9-shear-anchor-bolted-floor-foundation-' + index,
+        graphite, 0, 0.18, 0.25, 2.40, 0.35, 2.10);
+      box(scene, root, 'p28-g9-shear-anchor-foundation-recess-' + index,
+        insulation, 0, 0.38, 0.28, 1.94, 0.12, 1.55);
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-shear-anchor-grounded-saddle-' + index + '-' + side,
+          shell, side * 0.56, 0.79, 0.42, 0.62, 1.38, 0.81);
+        box(scene, root, 'p28-g9-shear-anchor-mount-bolt-' + index + '-' + side,
+          fiducialBrass, side * 0.95, 0.50, 0.86, 0.24, 0.25, 0.25);
+      }
+      box(scene, root, 'p27-c10-anchor-base-' + index, graphite, 0, 0.24, 0, 1.70, 0.48, 1.50);
       const fin = box(scene, root, 'p27-c10-anchor-fin-' + index, shearCeramic, 0, 0.98, 0, 0.28, 1.68, 0.98);
       fin.rotation.z = index % 2 ? 0.10 : -0.10;
       const marker = MeshBuilder.CreateTorus('p27-c10-anchor-ring-' + index, { diameter: 0.72, thickness: 0.07, tessellation: 20 }, scene);
@@ -785,6 +815,15 @@ export class BabylonParallaxArrayPresentation {
         box(scene, root, 'p28-g9-console-calibration-channel-' + index + '-' + channel,
           channel === 1 ? fiducialBrass : etched, -0.45 + channel * 0.45, 1.49, 0.56,
           0.22, 0.54, 0.10);
+      }
+      // Sloped cyan readout and numbered brass channels also face up toward
+      // the overhead Android camera, not only toward the local console front.
+      box(scene, root, 'p28-g9-console-overhead-metric-glass-' + index,
+        referenceScreen, 0, 2.02, 0.12, 1.75, 0.10, 1.02);
+      for (let channel = 0; channel < 4; channel++) {
+        box(scene, root, 'p28-g9-console-overhead-readout-graduation-' + index + '-' + channel,
+          channel === 0 ? objectiveGold : fiducialBrass,
+          -0.57 + channel * 0.38, 2.11, 0.12, 0.16, 0.08, 0.78);
       }
       const consoleLens = MeshBuilder.CreateTorus('p28-g9-console-optical-port-' + index,
         { diameter: 0.40, thickness: 0.08, tessellation: 24 }, scene);
