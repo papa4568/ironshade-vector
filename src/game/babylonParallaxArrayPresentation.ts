@@ -143,6 +143,8 @@ export class BabylonParallaxArrayPresentation {
   private readonly shearMaterial: StandardMaterial;
   private readonly shearRigs: ShearRig[] = [];
   private readonly bossCueMaterial: StandardMaterial;
+  private readonly eliteTellMaterial: StandardMaterial;
+  private readonly eliteTellRing: Mesh;
   private readonly bossCueRoot: TransformNode;
   private readonly bossCrown: Mesh[] = [];
   private readonly bossCore: Mesh;
@@ -183,11 +185,11 @@ export class BabylonParallaxArrayPresentation {
     // A machined warm-metal standard separates instrument calibration from
     // violet danger cues and cyan status without replacing textured housings.
     const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0x856747, 0.35, 0.76);
-    const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0xc3a16b, 0.38, 0.62, 0xffd881, 0.15);
+    const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0x816a50, 0.54, 0.78, 0x8f7654, 0.025);
     const counterweightMetal = pbr(scene, 'p28-g9-moving-inertial-counterweight', 0x3f5b67, 0.48, 0.71, 0x204252, 0.055);
     const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.16);
     const referenceScreen = pbr(scene, 'p28-g9-calibration-console-screen', 0x163849, 0.18, 0.48, 0x72d1c7, 0.28);
-    const objectiveGold = pbr(scene, 'p28-g9-physical-datum-objective-beacon', 0xd5ab63, 0.38, 0.38, 0xffcd73, 0.82);
+    const objectiveGold = pbr(scene, 'p28-g9-physical-datum-objective-beacon', 0xd98229, 0.27, 0.46, 0xff9b38, 0.94);
     this.datumAlbedoTexture = new DynamicTexture('p28-g9-metrology-machined-etched-atlas',
       { width: 128, height: 128 }, scene, false);
     this.datumNormalTexture = new DynamicTexture('p28-g9-metrology-etched-normal-atlas',
@@ -446,18 +448,26 @@ export class BabylonParallaxArrayPresentation {
       // overhead camera even when the tall crown is obscured by the HUD.
       // The dark metal backing preserves a crisp amber-on-graphite edge.
       const objectiveDialBack = MeshBuilder.CreateCylinder('p28-g9-objective-deck-dial-backing-' + index,
-        { diameter: 1.84, height: 0.16, tessellation: 8 }, scene);
+        { diameter: 2.74, height: 0.18, tessellation: 8 }, scene);
       objectiveDialBack.parent = root;
-      objectiveDialBack.position.set(-1.58, 0.62, 1.58);
+      objectiveDialBack.position.set(-1.58, 0.64, 1.58);
       objectiveDialBack.material = graphite;
       objectiveDialBack.isPickable = false;
       const objectiveDial = MeshBuilder.CreateCylinder('p28-g9-objective-deck-diamond-' + index,
-        { diameter: 1.18, height: 0.20, tessellation: 4 }, scene);
+        { diameter: 2.06, height: 0.24, tessellation: 4 }, scene);
       objectiveDial.parent = root;
-      objectiveDial.position.set(-1.58, 0.76, 1.58);
+      objectiveDial.position.set(-1.58, 0.86, 1.58);
       objectiveDial.rotation.y = Math.PI / 4;
       objectiveDial.material = objectiveGold;
       objectiveDial.isPickable = false;
+      // Four dark-backed outer stations make the diamond a countable
+      // calibration target rather than another cream-colored circular rotor.
+      for (const quadrant of [-1, 1]) {
+        box(scene, root, 'p28-g9-objective-dial-index-rail-' + index + '-' + quadrant,
+          graphite, -1.58 + quadrant * 1.33, 0.70, 1.58, 0.34, 0.16, 1.15);
+        box(scene, root, 'p28-g9-objective-dial-index-lamp-' + index + '-' + quadrant,
+          objectiveGold, -1.58 + quadrant * 1.33, 0.84, 1.58, 0.18, 0.12, 0.43);
+      }
       // A broad near-deck objective fiducial remains visible even when the
       // high mast/crown are behind the top status HUD on the phone.
       box(scene, root, 'p28-g9-pylon-near-deck-objective-plate-' + index,
@@ -649,7 +659,7 @@ export class BabylonParallaxArrayPresentation {
         wheel.parent = root;
         wheel.position.set(side * 0.62, 1.04, 0.76);
         wheel.rotation.x = Math.PI / 2;
-        wheel.material = fiducialBrass;
+        wheel.material = counterweightMetal;
         wheel.isPickable = false;
         const gauge = MeshBuilder.CreateCylinder('p28-g9-carriage-mass-gauge-' + index + '-' + side,
           { diameter: 0.86, height: 0.16, tessellation: 20 }, scene);
@@ -798,12 +808,28 @@ export class BabylonParallaxArrayPresentation {
       // over two dark polymer sleeves makes the difference visible at zoom.
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-shear-anchor-insulated-upright-' + index + '-' + side,
-          shearCeramic, side * 0.56, 1.30, 0.52, 0.42, 2.16, 0.39);
+          insulation, side * 0.56, 1.30, 0.52, 0.42, 2.16, 0.39);
         box(scene, root, 'p28-g9-shear-anchor-ceramic-collar-' + index + '-' + side,
           indexed, side * 0.56, 2.18, 0.55, 0.48, 0.25, 0.44);
       }
       box(scene, root, 'p28-g9-shear-anchor-violet-crosshead-' + index,
-        shearCeramic, 0, 2.44, 0.52, 1.82, 0.32, 0.38);
+        shell, 0, 2.44, 0.52, 1.82, 0.32, 0.38);
+      // The anchor is an insulated steel interferometer fork, not a flat
+      // lavender monolith. A narrow ceramic hazard channel sits between
+      // two KTX2 metal prongs, with top-facing index pins and bolted knuckles.
+      box(scene, root, 'p28-g9-shear-anchor-violet-inset-' + index,
+        shearCeramic, 0, 2.65, 0.52, 1.45, 0.14, 0.21);
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-shear-anchor-metal-prong-' + index + '-' + side,
+          shell, side * 0.77, 1.61, 0.26, 0.24, 2.18, 0.48);
+        box(scene, root, 'p28-g9-shear-anchor-machined-jaw-' + index + '-' + side,
+          fiducialBrass, side * 0.78, 2.73, 0.35, 0.40, 0.24, 0.46);
+        for (let notch = 0; notch < 4; notch++) {
+          box(scene, root, 'p28-g9-shear-anchor-brass-station-' + index + '-' + side + '-' + notch,
+            fiducialBrass, side * 1.01, 0.78 + notch * 0.45, 0.39,
+            0.17, 0.13, 0.31);
+        }
+      }
       this.anchors.push(root);
     });
 
@@ -967,6 +993,22 @@ export class BabylonParallaxArrayPresentation {
     this.bossWarning.setEnabled(false);
     this.bossCueRoot.setEnabled(false);
 
+    // The real senior baseline controller is an elite, not the later
+    // Baseline Keeper boss. Ground a separate status/tell at the actual elite
+    // position; intensify the amber outline only during a real telegraph.
+    this.eliteTellMaterial = new StandardMaterial('p28-g9-baseline-controller-tell-material', scene);
+    this.eliteTellMaterial.diffuseColor = colorFromHex(0x8b572d).scale(0.18);
+    this.eliteTellMaterial.emissiveColor = colorFromHex(0xe58c42).scale(0.55);
+    this.eliteTellMaterial.alpha = 0.50;
+    this.eliteTellMaterial.disableLighting = true;
+    this.eliteTellRing = MeshBuilder.CreateTorus('p28-g9-elite-controller-contact-warning',
+      { diameter: 3.56, thickness: 0.20, tessellation: 32 }, scene);
+    this.eliteTellRing.parent = this.root;
+    this.eliteTellRing.rotation.x = Math.PI / 2;
+    this.eliteTellRing.material = this.eliteTellMaterial;
+    this.eliteTellRing.isPickable = false;
+    this.eliteTellRing.setEnabled(false);
+
     const shared = new Set(this.premiumSurfaces.materials.values());
     this.premiumBindingCount = this.root.getChildMeshes(false)
       .filter(mesh => mesh.material instanceof PBRMaterial && shared.has(mesh.material)).length;
@@ -1060,6 +1102,18 @@ export class BabylonParallaxArrayPresentation {
     const gravitySpread = gravityValues.length > 0 ? Math.max(...gravityValues) - Math.min(...gravityValues) : 0;
     const shearMode = parallaxShearMode(vectorWashes.length, gravitySpread);
     const cueCount = this.syncObjectCues(state);
+    const baselineController = state.enemies.find(enemy => enemy.active && !enemy.dead
+      && enemy.role === 'elite' && enemy.label.includes('Baseline Controller')) ?? null;
+    this.eliteTellRing.setEnabled(Boolean(baselineController));
+    if (baselineController) {
+      this.eliteTellRing.position.set(scaled(baselineController.x), 0.12, scaled(baselineController.y));
+      const telegraphActive = baselineController.telegraph > 0;
+      this.eliteTellMaterial.alpha = telegraphActive ? 0.90 : 0.42;
+      this.eliteTellMaterial.emissiveColor = colorFromHex(telegraphActive ? 0xff6649 : 0xe58c42)
+        .scale(telegraphActive ? 1.15 : 0.48);
+      const pulse = telegraphActive ? 1 + Math.sin(state.time * 12) * 0.08 : 1;
+      this.eliteTellRing.scaling.set(pulse, pulse, pulse);
+    }
     const configuredBoss = state.enemies.find(enemy => !enemy.dead && enemy.role === 'boss') ?? null;
     const activeBoss = configuredBoss?.active ? configuredBoss : null;
     const baselineKeeper = configuredBoss?.variant === 'baselineKeeper';
@@ -1215,6 +1269,7 @@ export class BabylonParallaxArrayPresentation {
     this.premiumSurfaces.dispose();
     this.shearMaterial.dispose();
     this.bossCueMaterial.dispose();
+    this.eliteTellMaterial.dispose();
     this.hemisphere.dispose();
     this.keyLight.dispose();
     this.rimLight.dispose();
