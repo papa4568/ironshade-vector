@@ -222,6 +222,15 @@ assert.ok(g8Workflow.includes('G8 Independent Copilot PNG Inspection'));
 assert.ok(g8Workflow.includes('--attachment android-p28g8-cryo-reserve-normal.png'));
 assert.ok(g8Workflow.includes('script: bash tools/android-p28g8-cryo-capture.sh'));
 assert.ok(g8Shell.includes('adb install -r "$APK"'));
+assert.ok(g8Capture.includes("await call('Runtime.enable', {}, 60_000)")
+  && g8Capture.includes("await call('Page.enable', {}, 60_000)")
+  && g8Capture.includes("async function call(method, params = {}, timeoutMs = 25_000)"),
+  'only Cryo CDP cold-start domain handshake gets 60s; actual game proof remains strict');
+assert.ok(g8Shell.includes("grep -qE 'Error: P28-G8 CDP timeout: (Runtime|Page)\\.enable'")
+  && g8Shell.includes('ANDROID_P28G8_CDP_STARTUP_RELAUNCH attempt=')
+  && g8Shell.includes('if [[ ! -s android-p28g8-cryo-reserve-pixel-report.json ]]'),
+  'Cryo may only re-launch an actual native WebView after a proven pre-frame domain timeout');
+
 assert.ok(g8Shell.includes('tools/verify-p28g8-gameplay-frames.mjs'));
 assert.ok(g8Shell.includes('node tools/p28g8-android-crash-audit.mjs android-p28g8-cryo-reserve-logcat.txt'));
 assert.ok(!g8Shell.includes("grep -E 'FATAL EXCEPTION|Process:"));
