@@ -2,6 +2,7 @@ import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
 import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
@@ -128,6 +129,8 @@ export class BabylonParallaxArrayPresentation {
   private readonly premiumSurfaces: BabylonPremiumPbrSurfaceLibrary;
   private readonly premiumBindingCount: number;
   private readonly iblTexture: CubeTexture;
+  private readonly datumAlbedoTexture: DynamicTexture;
+  private readonly datumNormalTexture: DynamicTexture;
   private iblReady = false;
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
   private readonly pylonRigs: PylonRig[] = [];
@@ -179,10 +182,39 @@ export class BabylonParallaxArrayPresentation {
     // A machined warm-metal standard separates instrument calibration from
     // violet danger cues and cyan status without replacing textured housings.
     const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0xb39566, 0.76, 0.38);
+    const objectiveGold = pbr(scene, 'p28-g9-physical-datum-objective-beacon', 0xbc9356, 0.53, 0.43, 0xf2c66c, 0.30);
+    this.datumAlbedoTexture = new DynamicTexture('p28-g9-metrology-machined-etched-atlas',
+      { width: 128, height: 128 }, scene, false);
+    this.datumNormalTexture = new DynamicTexture('p28-g9-metrology-etched-normal-atlas',
+      { width: 128, height: 128 }, scene, false);
+    const datumPaint = this.datumAlbedoTexture.getContext();
+    const datumNormal = this.datumNormalTexture.getContext();
+    datumPaint.fillStyle = '#a3b3bc'; datumPaint.fillRect(0, 0, 128, 128);
+    datumNormal.fillStyle = '#8080ff'; datumNormal.fillRect(0, 0, 128, 128);
+    // Longitudinal machine-scored relief and alternating major/minor fiducial
+    // ticks are real albedo+normal material channels, not decorative HUD text.
+    for (let graduationIndex = 0; graduationIndex < 128; graduationIndex += 4) {
+      const major = graduationIndex % 16 === 0;
+      datumPaint.fillStyle = major ? '#4a606b' : '#748995';
+      datumPaint.fillRect(graduationIndex, 0, major ? 2 : 1, 128);
+      datumNormal.fillStyle = major ? '#6980ef' : '#987ff5';
+      datumNormal.fillRect(graduationIndex, 0, major ? 2 : 1, 128);
+      if (major) {
+        datumPaint.fillStyle = '#d6d0b2';
+        datumPaint.fillRect(graduationIndex + 1, 14, 4, 3);
+        datumPaint.fillRect(graduationIndex + 1, 78, 4, 3);
+      }
+    }
+    this.datumAlbedoTexture.update();
+    this.datumNormalTexture.update();
+    etched.albedoTexture = this.datumAlbedoTexture;
+    etched.bumpTexture = this.datumNormalTexture;
+    indexed.bumpTexture = this.datumNormalTexture;
+    graduation.bumpTexture = this.datumNormalTexture;
     // Recessed navigational inlays never compete with vector-wash or boss telegraphs.
     const routePrimary = pbr(scene, 'p27-c10-route-primary', 0x29233b, 0.16, 0.90, 0x655485, 0.026);
     const routeSecondary = pbr(scene, 'p27-c10-route-secondary', 0x192c32, 0.14, 0.94, 0x36626a, 0.014);
-    this.ownedMaterials = [violet, cyan, etched, indexed, graduation, routePrimary, routeSecondary];
+    this.ownedMaterials = [violet, cyan, etched, indexed, graduation, objectiveGold, routePrimary, routeSecondary];
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.routeMaterials = [routePrimary, routeSecondary];
     // Diffuse bounced fill lifts dark floor relief without replacing KTX2 channels.
@@ -369,6 +401,23 @@ export class BabylonParallaxArrayPresentation {
       core.position.y = 5.26;
       core.material = cyan;
       core.isPickable = false;
+      // Unique warm-gold, tiered active-objective light over each real node.
+      // It is deliberately separate from the violet shear/rings and cyan
+      // navigation, and its base is bolted to the metrology tower.
+      const objectiveBase = box(scene, root, 'p28-g9-objective-datum-base-' + index,
+        graphite, 0, 4.10, 0.08, 1.22, 0.20, 0.96);
+      objectiveBase.isPickable = false;
+      for (let level = 0; level < 3; level++) {
+        const crown = MeshBuilder.CreateTorus('p28-g9-objective-datum-beacon-crown-' + index + '-' + level,
+          { diameter: 1.10 - level * 0.18, thickness: 0.12, tessellation: 28 }, scene);
+        crown.parent = root;
+        crown.position.set(0, 4.34 + level * 0.26, 0.08);
+        crown.rotation.x = Math.PI / 2;
+        crown.material = objectiveGold;
+        crown.isPickable = false;
+      }
+      box(scene, root, 'p28-g9-objective-calibration-chevron-' + index,
+        objectiveGold, 0, 4.68, 0.92, 0.72, 0.17, 0.20);
       this.pylonRigs.push({ id, root, rings, core });
     });
 
@@ -842,7 +891,7 @@ export class BabylonParallaxArrayPresentation {
     this.canvas.dataset.environmentLandmark = 'three-point-long-baseline';
     this.canvas.dataset.environmentServiceDetails = 'reference-console:3+mass-carriage:' + profile.carriageInstances;
     this.canvas.dataset.environmentSurfaceDetail = 'reference-frame:' + profile.frameInstances + '+shear-anchor:' + profile.anchorInstances
-      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8+physical-baseline:3+datum-graduation:39+isolator-foot:12';
+      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8+physical-baseline:3+datum-graduation:39+isolator-foot:12+objective-crown:9';
     this.canvas.dataset.environmentMachineDetail = 'baseline-pylon:3+mass-carriage:3+live-baseline-servo:' + baselineServos;
     this.canvas.dataset.environmentComposition = 'three-point-baseline+cross-track-frames+perimeter-shear-anchors';
     this.canvas.dataset.environmentMaterials = 'graphite-structure+reference-shell+violet-alignment+cyan-readout';
@@ -904,6 +953,8 @@ export class BabylonParallaxArrayPresentation {
     this.root.dispose();
     if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
     this.iblTexture.dispose();
+    this.datumAlbedoTexture.dispose();
+    this.datumNormalTexture.dispose();
     this.ownedMaterials.forEach(item => item.dispose());
     this.premiumSurfaces.dispose();
     this.shearMaterial.dispose();
