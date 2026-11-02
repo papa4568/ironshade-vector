@@ -1269,3 +1269,40 @@
     white-space: normal;
   }
 }
+
+
+/* P28-G9 exact-APK regression: preserve full tactical and assisted-target
+   identities on the Lattice Annex's narrow landscape HUD. The previous
+   22.4vw alert box and single-line target label ellipsized KHEPRI SURVEY,
+   DRONE ESCORT and SURVEY SHIELD CUSTODIAN in real action/device pixels.
+   Touch regions and all unrelated route layouts remain untouched. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="lattice-annex"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    left: 47%;
+    width: min(35vw, 35rem);
+    transform: translateX(-50%);
+  }
+
+  .game-root[data-location="lattice-annex"] .transient-alert-lane.event .combat-alert b {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+    white-space: normal;
+    line-height: 1.18;
+  }
+
+  .game-root[data-location="lattice-annex"] .target-readout {
+    width: min(27vw, 22rem);
+  }
+
+  .game-root[data-location="lattice-annex"] .target-readout header b {
+    display: block;
+    white-space: normal;
+    text-overflow: clip;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    line-height: 1.16;
+  }
+}
