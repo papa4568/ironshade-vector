@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 const OWNER = 'papa4568';
 const REPO = 'ironshade-vector';
 const PR = 445;
-const CANDIDATE = '5593d866d8ffb7c42bf10c24489f7c471d584619';
+const CANDIDATE = 'eb46aae15b8ca82397f3b4669b27b64c2762db3f';
 const HELPER = 'tools/p28g9-one-shot-native-source-bootstrap.mjs';
 const COMMAND = '/p28g9-promote-native 445 ' + CANDIDATE;
 const FILES = Object.freeze([
