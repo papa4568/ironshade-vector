@@ -156,6 +156,7 @@ export class BabylonParallaxArrayPresentation {
   private readonly eliteTellMaterial: StandardMaterial;
   private readonly objectiveSignalMaterial: StandardMaterial;
   private readonly eliteTellRing: Mesh;
+  private readonly eliteContactBeacon: Mesh;
   private readonly bossCueRoot: TransformNode;
   private readonly bossCrown: Mesh[] = [];
   private readonly bossCore: Mesh;
@@ -187,8 +188,8 @@ export class BabylonParallaxArrayPresentation {
     // These subtle tint multipliers preserve shipped KTX2 base/normal/ORM relief.
     // Distinct dark machine pockets give raised brass indices and objective signals
     // actual contrast instead of a wall of cream-colored fixture blocks.
-    graphite.albedoColor = colorFromHex(0x6e8290);
-    shell.albedoColor = colorFromHex(0x7b8ca0);
+    graphite.albedoColor = colorFromHex(0x53697b);
+    shell.albedoColor = colorFromHex(0x607586);
     const violet = pbr(scene, 'p27-c10-violet-alignment', 0x665680, 0.44, 0.46, 0x9a87cf, 0.34);
     const cyan = pbr(scene, 'p27-c10-cyan-readout', 0x48767b, 0.38, 0.39, 0x82d7df, 0.44);
     // Pale enamel indices are trim on shipped KTX2 painted/metal structure,
@@ -198,13 +199,13 @@ export class BabylonParallaxArrayPresentation {
     // A machined warm-metal standard separates instrument calibration from
     // violet danger cues and cyan status without replacing textured housings.
     const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0x856747, 0.35, 0.76);
-    const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0x816a50, 0.54, 0.78, 0x8f7654, 0.025);
+    const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0x9b7c48, 0.60, 0.70, 0xa78751, 0.04);
     const counterweightMetal = pbr(scene, 'p28-g9-moving-inertial-counterweight', 0x3f5b67, 0.48, 0.71, 0x204252, 0.055);
     const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.28);
     const referenceScreen = pbr(scene, 'p28-g9-calibration-console-screen', 0x163849, 0.18, 0.48, 0x72d1c7, 0.28);
     // Physically rough, warm metal is structural trim; do not let strong PBR
     // key light wash active objective lamps into ambiguous cream rings.
-    const objectiveGold = pbr(scene, 'p28-g9-physical-datum-objective-beacon', 0xa9551d, 0.30, 0.62, 0xe07b27, 0.36);
+    const objectiveGold = pbr(scene, 'p28-g9-physical-datum-objective-beacon', 0x815733, 0.40, 0.75, 0xa76c34, 0.16);
     // A saturated physical instrument target needs a stable, actual rendered
     // orange surface even under the many white PBR survey work lights.
     // Keep it bolted to the pylon, never to the camera or HUD overlay.
@@ -1166,7 +1167,7 @@ export class BabylonParallaxArrayPresentation {
     // position; intensify the amber outline only during a real telegraph.
     this.eliteTellMaterial = new StandardMaterial('p28-g9-baseline-controller-tell-material', scene);
     this.eliteTellMaterial.diffuseColor = colorFromHex(0x8b572d).scale(0.18);
-    this.eliteTellMaterial.emissiveColor = colorFromHex(0xe58c42).scale(0.55);
+    this.eliteTellMaterial.emissiveColor = colorFromHex(0x52bed8).scale(0.68);
     this.eliteTellMaterial.alpha = 0.50;
     this.eliteTellMaterial.disableLighting = true;
     // A raised, physically attached amber contact reticle must remain
@@ -1179,6 +1180,14 @@ export class BabylonParallaxArrayPresentation {
     this.eliteTellRing.material = this.eliteTellMaterial;
     this.eliteTellRing.isPickable = false;
     this.eliteTellRing.setEnabled(false);
+    // Separate contact identity from amber alignment fixtures: only an
+    // actual enemy telegraph turns this world-space optic red.
+    this.eliteContactBeacon = MeshBuilder.CreateCylinder('p28-g9-elite-controller-optical-sight',
+      { height: 0.76, diameterTop: 0.15, diameterBottom: 0.72, tessellation: 6 }, scene);
+    this.eliteContactBeacon.parent = this.root;
+    this.eliteContactBeacon.material = this.eliteTellMaterial;
+    this.eliteContactBeacon.isPickable = false;
+    this.eliteContactBeacon.setEnabled(false);
 
     const shared = new Set(this.premiumSurfaces.materials.values());
     this.premiumBindingCount = this.root.getChildMeshes(false)
@@ -1294,11 +1303,13 @@ export class BabylonParallaxArrayPresentation {
     const baselineController = state.enemies.find(enemy => enemy.active && !enemy.dead
       && enemy.role === 'elite' && enemy.label.includes('Baseline Controller')) ?? null;
     this.eliteTellRing.setEnabled(Boolean(baselineController));
+    this.eliteContactBeacon.setEnabled(Boolean(baselineController));
     if (baselineController) {
       this.eliteTellRing.position.set(scaled(baselineController.x), 0.26, scaled(baselineController.y));
+      this.eliteContactBeacon.position.set(scaled(baselineController.x), 2.55, scaled(baselineController.y));
       const telegraphActive = baselineController.telegraph > 0;
       this.eliteTellMaterial.alpha = telegraphActive ? 0.96 : 0.50;
-      this.eliteTellMaterial.emissiveColor = colorFromHex(telegraphActive ? 0xff6649 : 0xe58c42)
+      this.eliteTellMaterial.emissiveColor = colorFromHex(telegraphActive ? 0xff6649 : 0x52c7df)
         .scale(telegraphActive ? 1.15 : 0.48);
       const pulse = telegraphActive ? 1 + Math.sin(state.time * 12) * 0.08 : 1;
       this.eliteTellRing.scaling.set(pulse, pulse, pulse);
