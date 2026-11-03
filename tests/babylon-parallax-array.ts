@@ -365,6 +365,16 @@ assert.ok(presentation.includes('p28-g9-counterweight-macro-top-graduation-')
 assert.ok(gameCanvas.includes("message.startsWith('TACTICAL ALERT') && message.includes('DAMAGED GRID')")
   && gameCanvas.includes('GRID ARC LIVE // CLEAR FIELD'),
   'the live grid warning must remain actionable without filling the metrology instrument roof');
+// Real Android screens showed overexposed cream calibration rings obscuring
+// the active target identity. The objective toruses must remain physically
+// attached, but use the saturated unlit amber signal, not PBR brass.
+assert.ok(presentation.includes('target.material = this.objectiveSignalMaterial;')
+  && presentation.includes('crown.material = this.objectiveSignalMaterial;')
+  && presentation.includes("this.objectiveSignalMaterial.emissiveColor = colorFromHex(0xff861b).scale(1.06)")
+  && presentation.includes('p28-g9-objective-standalone-diamond-signal-')
+  && presentation.includes('p28-g9-pylon-top-metrology-ruler-bed-')
+  && presentation.includes('p28-g9-pylon-exposed-metrology-ruler-'),
+  'objective beacons must read as saturated amber instruments amid dark engraved PBR machines, not cream loops');
 assert.ok(presentation.includes('p28-g9-pylon-near-deck-objective-plate-')
   && presentation.includes('p28-g9-pylon-near-deck-target-wing-')
   && presentation.includes('p28-g9-bold-graduated-brass')

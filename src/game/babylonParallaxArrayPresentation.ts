@@ -185,7 +185,9 @@ export class BabylonParallaxArrayPresentation {
     const insulation = this.premiumSurfaces.get('polymer-rubber');
     const fixture = this.premiumSurfaces.get('emissive-fixture');
     // These subtle tint multipliers preserve shipped KTX2 base/normal/ORM relief.
-    graphite.albedoColor = colorFromHex(0xa1acba);
+    // Distinct dark machine pockets give raised brass indices and objective signals
+    // actual contrast instead of a wall of cream-colored fixture blocks.
+    graphite.albedoColor = colorFromHex(0x6e8290);
     shell.albedoColor = colorFromHex(0x7b8ca0);
     const violet = pbr(scene, 'p27-c10-violet-alignment', 0x665680, 0.44, 0.46, 0x9a87cf, 0.34);
     const cyan = pbr(scene, 'p27-c10-cyan-readout', 0x48767b, 0.38, 0.39, 0x82d7df, 0.44);
@@ -200,13 +202,15 @@ export class BabylonParallaxArrayPresentation {
     const counterweightMetal = pbr(scene, 'p28-g9-moving-inertial-counterweight', 0x3f5b67, 0.48, 0.71, 0x204252, 0.055);
     const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.16);
     const referenceScreen = pbr(scene, 'p28-g9-calibration-console-screen', 0x163849, 0.18, 0.48, 0x72d1c7, 0.28);
-    const objectiveGold = pbr(scene, 'p28-g9-physical-datum-objective-beacon', 0xd98229, 0.27, 0.46, 0xff9b38, 0.94);
+    // Physically rough, warm metal is structural trim; do not let strong PBR
+    // key light wash active objective lamps into ambiguous cream rings.
+    const objectiveGold = pbr(scene, 'p28-g9-physical-datum-objective-beacon', 0xa9551d, 0.30, 0.62, 0xe07b27, 0.36);
     // A saturated physical instrument target needs a stable, actual rendered
     // orange surface even under the many white PBR survey work lights.
     // Keep it bolted to the pylon, never to the camera or HUD overlay.
     this.objectiveSignalMaterial = new StandardMaterial('p28-g9-amber-mechanical-target-signal', scene);
-    this.objectiveSignalMaterial.diffuseColor = colorFromHex(0x8e3b12);
-    this.objectiveSignalMaterial.emissiveColor = colorFromHex(0xf47720).scale(0.72);
+    this.objectiveSignalMaterial.diffuseColor = colorFromHex(0xc4550b);
+    this.objectiveSignalMaterial.emissiveColor = colorFromHex(0xff861b).scale(1.06);
     this.objectiveSignalMaterial.specularColor = Color3.Black();
     this.objectiveSignalMaterial.disableLighting = true;
     this.datumAlbedoTexture = new DynamicTexture('p28-g9-metrology-machined-etched-atlas',
@@ -515,10 +519,10 @@ export class BabylonParallaxArrayPresentation {
       signalMast.material = shell;
       signalMast.isPickable = false;
       const diamondBack = box(scene, root, 'p28-g9-objective-standalone-diamond-backing-' + index,
-        graphite, -2.24, 2.80, 1.36, 1.82, 1.82, 0.38);
+        graphite, -2.24, 2.80, 1.36, 2.08, 2.08, 0.38);
       diamondBack.rotation.z = Math.PI / 4;
       const diamondFace = box(scene, root, 'p28-g9-objective-standalone-diamond-signal-' + index,
-        this.objectiveSignalMaterial, -2.24, 2.80, 1.62, 1.30, 1.30, 0.24);
+        this.objectiveSignalMaterial, -2.24, 2.80, 1.62, 1.65, 1.65, 0.24);
       diamondFace.rotation.z = Math.PI / 4;
       box(scene, root, 'p28-g9-objective-standalone-dark-bullseye-' + index,
         graphite, -2.24, 2.80, 1.79, 0.38, 0.38, 0.18);
@@ -627,7 +631,9 @@ export class BabylonParallaxArrayPresentation {
         target.parent = beaconRig;
         target.position.set(0, 2.24 + level * 0.35, 0);
         target.rotation.x = Math.PI / 2;
-        target.material = objectiveGold;
+        // Calibrated alignment is an active amber status signal, not pale
+        // metal like the surrounding inactive interferometer rotor.
+        target.material = this.objectiveSignalMaterial;
         target.isPickable = false;
       }
       box(scene, beaconRig, 'p28-g9-physical-objective-index-' + index,
@@ -644,7 +650,7 @@ export class BabylonParallaxArrayPresentation {
         crown.parent = root;
         crown.position.set(0, 4.34 + level * 0.26, 0.08);
         crown.rotation.x = Math.PI / 2;
-        crown.material = objectiveGold;
+        crown.material = this.objectiveSignalMaterial;
         crown.isPickable = false;
       }
       box(scene, root, 'p28-g9-objective-calibration-chevron-' + index,
