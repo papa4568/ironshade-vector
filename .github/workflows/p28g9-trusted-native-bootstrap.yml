@@ -37,7 +37,7 @@ jobs:
       github.event.comment.user.login == 'papa4568' &&
       github.event.sender.login == 'papa4568' &&
       github.event.comment.author_association == 'OWNER' &&
-      github.event.comment.body == '/p28g9-promote-native 445 eb46aae15b8ca82397f3b4669b27b64c2762db3f'
+      github.event.comment.body == '/p28g9-promote-native 445 96574a8f184898f985fac8347d402718527f4bd4'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     permissions:
@@ -59,7 +59,7 @@ jobs:
         with:
           node-version: '22.23.2'
       - name: Require independently reviewed immutable helper blob
-        run: test "$(git hash-object tools/p28g9-one-shot-native-source-bootstrap.mjs)" = "f3adb9279cf19cff9f5a230a2a9d372bb359bbb9"
+        run: test "$(git hash-object tools/p28g9-one-shot-native-source-bootstrap.mjs)" = "28e6ea23384923ed345c3a60f0c4f67885c14a7b"
       - name: Prove owner-only and exact Git-object safeguards before any writes
         run: node tools/p28g9-one-shot-native-source-bootstrap.mjs self-test
       - name: Promote three reviewed blobs and retire helper atomically
