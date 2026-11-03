@@ -83,11 +83,10 @@ function assertTechnicalJobs(jobs) {
   }
   const final = uniqueJob(jobs, 'PR Candidate Verification');
   assert.equal(final.status, 'completed');
-  assert(['success', 'failure'].includes(final.conclusion));
-  // No failure other than the existing trusted-source/review final gate is
-  // excused; the actual product and Android gates above must already succeed.
-  assert(jobs.every(job => job.conclusion !== 'failure'
-    || job.name === 'PR Candidate Verification'), 'unexpected CI failure');
+  // A review-only failure is NOT sufficient. The trusted independent review
+  // must approve the whole exact candidate and the final gate must rerun green.
+  assert.equal(final.conclusion, 'success', 'independent review or final candidate gate did not pass');
+  assert(jobs.every(job => job.conclusion !== 'failure'), 'unexpected CI failure');
 }
 
 function exactRun(runs, expectedName) {
@@ -135,6 +134,16 @@ async function promotion({ event, request, checkoutSha }) {
   for (const name of ['G9 Real Android Gameplay Pixels and Provenance', 'G9 Independent Copilot PNG Inspection']) {
     assert.equal(uniqueJob(visualJobResult.jobs, name).conclusion, 'success',
       'visual evidence gate failed: ' + name);
+  }
+  // The game candidate also changes shared presentation and capture sources.
+  // Never promote just because its own G9 visual passes while an affected
+  // sibling flagship (as in the real P28-G5 device clipping regression) fails.
+  const campaign = await request('GET', '/actions/runs?event=pull_request&head_sha=' + CANDIDATE + '&per_page=100');
+  assert.equal(campaign.total_count, campaign.workflow_runs?.length, 'truncated exact-SHA workflow inventory');
+  for (const task of ['G4', 'G5', 'G6', 'G7', 'G8', 'G9']) {
+    const name = 'P28-' + task + ' Exact APK ' + ({ G4: 'Jovian', G5: 'Ice', G6: 'Lattice', G7: 'Momentum', G8: 'Cryo', G9: 'Parallax' })[task] + ' Visual QA';
+    const run = exactRun(campaign.workflow_runs.filter(x => x.name === name), name);
+    assert.equal(run.conclusion, 'success', 'sibling flagship image gate failed: ' + name);
   }
   // The transaction updates precisely the reviewed native source objects and
   // deletes the privileged helper atomically. The retained workflow cannot
@@ -195,16 +204,17 @@ async function selfTest() {
     { ...candidateTree, truncated: true },
   ]) assert.throws(() => validateProtectedObjects(baseTree, mutated));
   const jobs = [...SUCCESS_JOBS, 'PR Candidate Verification'].map(name => ({
-    name, status: 'completed', conclusion: name === 'PR Candidate Verification' ? 'failure' : 'success',
+    name, status: 'completed', conclusion: 'success',
   }));
   assertTechnicalJobs(jobs);
   for (const bad of [
     jobs.map(j => j.name === 'Android PR / Android PR API 35 Smoke' ? { ...j, conclusion: 'failure' } : j),
     jobs.map(j => j.name === 'Browser E2E / browser-e2e (desktop)' ? { ...j, conclusion: 'failure' } : j),
     [...jobs, { name: 'Extra failed job', conclusion: 'failure' }],
+    jobs.map(j => j.name === 'PR Candidate Verification' ? { ...j, conclusion: 'failure' } : j),
   ]) assert.throws(() => assertTechnicalJobs(bad));
 
-  function mock({ e = event, tree = candidateTree, jobList = jobs, visualOutcome = 'success', base = baseTree } = {}) {
+  function mock({ e = event, tree = candidateTree, jobList = jobs, visualOutcome = 'success', siblingOutcome = 'success', base = baseTree } = {}) {
     const writes = [];
     async function request(method, path, data) {
       if (method !== 'GET') {
@@ -248,6 +258,14 @@ async function selfTest() {
         { name: 'G9 Real Android Gameplay Pixels and Provenance', conclusion: 'success' },
         { name: 'G9 Independent Copilot PNG Inspection', conclusion: 'success' },
       ] };
+      if (path.startsWith('/actions/runs?event=pull_request&head_sha=')) {
+        const names = ['Jovian', 'Ice', 'Lattice', 'Momentum', 'Cryo', 'Parallax'];
+        return { total_count: 6, workflow_runs: names.map((name, index) => ({
+          name: 'P28-G' + (index + 4) + ' Exact APK ' + name + ' Visual QA',
+          id: 401 + index, status: 'completed', conclusion: index === 1 ? siblingOutcome : 'success',
+          head_sha: CANDIDATE, event: 'pull_request', pull_requests: [{ number: PR }],
+        })) };
+      }
       throw new Error('unknown external dependency ' + path);
     }
     return { request, writes, event: e };
@@ -263,6 +281,7 @@ async function selfTest() {
       { path: 'scripts/unauthorized.sh', mode: '100644', type: 'blob', sha: '9'.repeat(40) }] } },
     { jobList: jobs.map(j => j.name === 'Android PR / Android PR API 35 Smoke' ? { ...j, conclusion: 'failure' } : j) },
     { visualOutcome: 'failure' },
+    { siblingOutcome: 'failure' },
     { base: { ...baseTree, tree: baseTree.tree.map(x => x.path === FILES[0].path ? { ...x, sha: '9'.repeat(40) } : x) } },
   ]) {
     const f = mock(options);
