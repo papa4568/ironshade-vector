@@ -2765,12 +2765,17 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // full-sized controls, translating eye and target toward the threat lane.
     const cryoTouchLanePan = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 5.2 : 0;
     const parallaxTouchLanePan = this.canvas.dataset.babylonScenario === 'parallax-array' && !narrow ? 2.4 : 0;
+    // In real API35 Ice Mine gameplay, a near-side red hostile moves beneath
+    // the lower tactical banner and outside the device frame during combat.
+    // Look toward that near-side threat lane (eye and target together), without
+    // moving the player, changing enemy positions, warning ranges or touch UI.
+    const iceMineNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.2 : 0;
 
-    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan);
+    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + iceMineNearThreatLookAhead, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + iceMineNearThreatLookAhead);
     this.cameraTarget.set(
-      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan,
+      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + iceMineNearThreatLookAhead,
       0.62,
-      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan,
+      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + iceMineNearThreatLookAhead,
     );
     this.camera.setTarget(this.cameraTarget);
     this.camera.getViewMatrix(true);
