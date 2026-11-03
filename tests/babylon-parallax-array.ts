@@ -274,6 +274,23 @@ assert.ok(workflow.includes('p27c10-parallax-array.png'));
 assert.ok(pkg.scripts['test:babylon-parallax-array']);
 assert.ok(pkg.scripts.build.includes('npm run test:babylon-parallax-array'));
 
+// Exposed real metrology hardware must not collapse back into a white bar
+// stack at Android gameplay zoom. Three calibrated vernier sleeves, six
+// physical triangulated frame ties, and three raised carriage bearings
+// establish different machine silhouettes without altering simulation.
+assert.ok(presentation.includes('p28-g9-pylon-machined-vernier-sleeve-')
+  && presentation.includes('p28-g9-pylon-vernier-radial-calibration-')
+  && presentation.includes('mark < 16')
+  && presentation.includes('p28-g9-cross-track-triangulated-guy-')
+  && presentation.includes('MeshBuilder.CreateTube')
+  && presentation.includes('p28-g9-carriage-top-machined-bearing-')
+  && presentation.includes('p28-g9-carriage-top-vernier-notch-')
+  && presentation.includes('vernier-sleeve:3+cross-track-tie:6+counterweight-bearing:3'),
+  'baseline pylons, cross-track frames and moving masses require distinct faceted calibrated hardware');
+assert.ok(presentation.includes('this.eliteTellRing.position.set(scaled(baselineController.x), 0.26, scaled(baselineController.y))')
+  && presentation.includes('this.eliteTellMaterial.alpha = telegraphActive ? 0.96 : 0.50;')
+  && presentation.includes('this.bossWarning.setEnabled(patternHot);'),
+  'real elite contact and telegraph phases must remain visible without inventing attacks');
 // P28-G9: shipped KTX2 PBR bindings (not metadata-only), shared authored
 // world objects and a fail-closed scene-readiness path are mandatory.
 assert.ok(presentation.includes("this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);"));
@@ -370,7 +387,7 @@ assert.ok(gameCanvas.includes("message.startsWith('TACTICAL ALERT') && message.i
 // attached, but use the saturated unlit amber signal, not PBR brass.
 assert.ok(presentation.includes('target.material = this.objectiveSignalMaterial;')
   && presentation.includes('crown.material = this.objectiveSignalMaterial;')
-  && presentation.includes("this.objectiveSignalMaterial.emissiveColor = colorFromHex(0xff861b).scale(1.06)")
+  && presentation.includes("this.objectiveSignalMaterial.emissiveColor = colorFromHex(0xff861b).scale(0.84)")
   && presentation.includes('p28-g9-objective-standalone-diamond-signal-')
   && presentation.includes('p28-g9-pylon-top-metrology-ruler-bed-')
   && presentation.includes('p28-g9-pylon-exposed-metrology-ruler-'),

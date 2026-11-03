@@ -200,7 +200,7 @@ export class BabylonParallaxArrayPresentation {
     const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0x856747, 0.35, 0.76);
     const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0x816a50, 0.54, 0.78, 0x8f7654, 0.025);
     const counterweightMetal = pbr(scene, 'p28-g9-moving-inertial-counterweight', 0x3f5b67, 0.48, 0.71, 0x204252, 0.055);
-    const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.16);
+    const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.28);
     const referenceScreen = pbr(scene, 'p28-g9-calibration-console-screen', 0x163849, 0.18, 0.48, 0x72d1c7, 0.28);
     // Physically rough, warm metal is structural trim; do not let strong PBR
     // key light wash active objective lamps into ambiguous cream rings.
@@ -210,7 +210,7 @@ export class BabylonParallaxArrayPresentation {
     // Keep it bolted to the pylon, never to the camera or HUD overlay.
     this.objectiveSignalMaterial = new StandardMaterial('p28-g9-amber-mechanical-target-signal', scene);
     this.objectiveSignalMaterial.diffuseColor = colorFromHex(0xc4550b);
-    this.objectiveSignalMaterial.emissiveColor = colorFromHex(0xff861b).scale(1.06);
+    this.objectiveSignalMaterial.emissiveColor = colorFromHex(0xff861b).scale(0.84);
     this.objectiveSignalMaterial.specularColor = Color3.Black();
     this.objectiveSignalMaterial.disableLighting = true;
     this.datumAlbedoTexture = new DynamicTexture('p28-g9-metrology-machined-etched-atlas',
@@ -439,6 +439,30 @@ export class BabylonParallaxArrayPresentation {
         rail.material = flute % 2 ? graphite : etched;
         rail.isPickable = false;
       }
+      // A real rotary vernier cap over the ten-sided standard replaces the
+      // silhouette of stacked pale cuboids with an exposed machined instrument.
+      // The 16 graduated radial notches are actual top-face relief, not a HUD
+      // reticle or a textured decal. Active orange remains objective-only.
+      const vernier = MeshBuilder.CreateCylinder('p28-g9-pylon-machined-vernier-sleeve-' + index,
+        { height: 0.38, diameterTop: 2.26, diameterBottom: 2.46, tessellation: 24 }, scene);
+      vernier.parent = root;
+      vernier.position.y = 3.26;
+      vernier.material = graphite;
+      vernier.isPickable = false;
+      const vernierRim = MeshBuilder.CreateTorus('p28-g9-pylon-vernier-brass-race-' + index,
+        { diameter: 2.48, thickness: 0.13, tessellation: 36 }, scene);
+      vernierRim.parent = root;
+      vernierRim.position.y = 3.49;
+      vernierRim.material = graduation;
+      vernierRim.isPickable = false;
+      for (let mark = 0; mark < 16; mark++) {
+        const angle = mark * Math.PI / 8;
+        const notch = box(scene, root, 'p28-g9-pylon-vernier-radial-calibration-' + index + '-' + mark,
+          mark % 4 === 0 ? fiducialBrass : etched,
+          Math.cos(angle) * 1.10, 3.49, Math.sin(angle) * 1.10,
+          mark % 4 === 0 ? 0.19 : 0.09, 0.065, mark % 4 === 0 ? 0.46 : 0.28);
+        notch.rotation.y = -angle;
+      }
       // Three unmistakable high-value metrology pillars, not dark cubic
       // placeholders: exposed etched datum rails and graduated bidirectional
       // scales sit *outside* the textured PBR structural shell.
@@ -525,7 +549,7 @@ export class BabylonParallaxArrayPresentation {
         this.objectiveSignalMaterial, -2.24, 2.80, 1.62, 1.65, 1.65, 0.24);
       diamondFace.rotation.z = Math.PI / 4;
       box(scene, root, 'p28-g9-objective-standalone-dark-bullseye-' + index,
-        graphite, -2.24, 2.80, 1.79, 0.38, 0.38, 0.18);
+        graphite, -2.24, 2.80, 1.79, 0.78, 0.78, 0.18);
       // A real top-facing calibrated target, separate from the pale rotary
       // interferometer rings, identifies the physical objective in the
       // overhead camera even when the tall crown is obscured by the HUD.
@@ -553,8 +577,10 @@ export class BabylonParallaxArrayPresentation {
       }
       // A broad near-deck objective fiducial remains visible even when the
       // high mast/crown are behind the top status HUD on the phone.
+      // Station plaque is matte bronze, not a second giant solid orange
+      // rectangle competing with the real hazardous amber telegraphs.
       box(scene, root, 'p28-g9-pylon-near-deck-objective-plate-' + index,
-        this.objectiveSignalMaterial, 0, 0.84, 1.36, 2.15, 0.64, 0.22);
+        objectiveGold, 0, 0.84, 1.36, 1.58, 0.45, 0.22);
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-pylon-near-deck-target-wing-' + index + '-' + side,
           fiducialBrass, side * 1.30, 0.88, 1.10, 0.34, 0.90, 0.30);
@@ -703,6 +729,18 @@ export class BabylonParallaxArrayPresentation {
       reticle.rotation.x = Math.PI / 2;
       reticle.material = indexed;
       reticle.isPickable = false;
+      // Triangulated tube stays visibly open behind the calibrated reticle;
+      // actual metal members, unlike another solid placeholder panel, keep
+      // the cross-track optical axis mechanically legible at phone zoom.
+      for (const side of [-1, 1]) {
+        const tie = MeshBuilder.CreateTube('p28-g9-cross-track-triangulated-guy-' + index + '-' + side, {
+          path: [new Vector3(side * 0.94, 0.38, 0.56), new Vector3(-side * 0.94, 3.09, 0.56)],
+          radius: 0.095, tessellation: 10,
+        }, scene);
+        tie.parent = root;
+        tie.material = graphite;
+        tie.isPickable = false;
+      }
       box(scene, root, 'p28-g9-frame-reticle-index-' + index, etched,
         0, 2.38, 0.52, 0.11, 1.32, 0.14);
       for (const side of [-1, 1]) {
@@ -794,6 +832,28 @@ export class BabylonParallaxArrayPresentation {
         shell, 0, 2.18, 0, 2.55, 0.14, 1.48);
       box(scene, root, 'p28-g9-counterweight-top-measuring-channel-' + index,
         insulation, 0, 2.30, 0, 2.18, 0.10, 0.96);
+      // A true machined top bearing and concentric calibrated race break
+      // the crate silhouette of the moving counterweight. This is grounded
+      // on the top housing; the real simulated travel range is unchanged.
+      const massBearing = MeshBuilder.CreateCylinder('p28-g9-carriage-top-machined-bearing-' + index,
+        { diameter: 1.42, height: 0.24, tessellation: 24 }, scene);
+      massBearing.parent = root;
+      massBearing.position.y = 2.59;
+      massBearing.material = counterweightMetal;
+      massBearing.isPickable = false;
+      const bearingRace = MeshBuilder.CreateTorus('p28-g9-carriage-top-indexed-bearing-race-' + index,
+        { diameter: 1.69, thickness: 0.17, tessellation: 30 }, scene);
+      bearingRace.parent = root;
+      bearingRace.position.y = 2.73;
+      bearingRace.material = fiducialBrass;
+      bearingRace.isPickable = false;
+      for (let station = 0; station < 8; station++) {
+        const angle = station * Math.PI / 4;
+        const tick = box(scene, root, 'p28-g9-carriage-top-vernier-notch-' + index + '-' + station,
+          station % 2 === 0 ? etched : graduation,
+          Math.cos(angle) * 0.70, 2.75, Math.sin(angle) * 0.70, 0.13, 0.065, 0.30);
+        tick.rotation.y = -angle;
+      }
       // Broad cobalt gauge steps and a transverse forked yoke establish a
       // movable weight profile distinct from pylons and perimeter anchors.
       for (const side of [-1, 1]) {
@@ -1109,8 +1169,11 @@ export class BabylonParallaxArrayPresentation {
     this.eliteTellMaterial.emissiveColor = colorFromHex(0xe58c42).scale(0.55);
     this.eliteTellMaterial.alpha = 0.50;
     this.eliteTellMaterial.disableLighting = true;
+    // A raised, physically attached amber contact reticle must remain
+    // visible over dark grid joints, even when the elite's body is tiny.
+    // Actual attack wind-ups still exclusively control the brighter state.
     this.eliteTellRing = MeshBuilder.CreateTorus('p28-g9-elite-controller-contact-warning',
-      { diameter: 3.56, thickness: 0.20, tessellation: 32 }, scene);
+      { diameter: 4.30, thickness: 0.28, tessellation: 40 }, scene);
     this.eliteTellRing.parent = this.root;
     this.eliteTellRing.rotation.x = Math.PI / 2;
     this.eliteTellRing.material = this.eliteTellMaterial;
@@ -1232,9 +1295,9 @@ export class BabylonParallaxArrayPresentation {
       && enemy.role === 'elite' && enemy.label.includes('Baseline Controller')) ?? null;
     this.eliteTellRing.setEnabled(Boolean(baselineController));
     if (baselineController) {
-      this.eliteTellRing.position.set(scaled(baselineController.x), 0.12, scaled(baselineController.y));
+      this.eliteTellRing.position.set(scaled(baselineController.x), 0.26, scaled(baselineController.y));
       const telegraphActive = baselineController.telegraph > 0;
-      this.eliteTellMaterial.alpha = telegraphActive ? 0.90 : 0.42;
+      this.eliteTellMaterial.alpha = telegraphActive ? 0.96 : 0.50;
       this.eliteTellMaterial.emissiveColor = colorFromHex(telegraphActive ? 0xff6649 : 0xe58c42)
         .scale(telegraphActive ? 1.15 : 0.48);
       const pulse = telegraphActive ? 1 + Math.sin(state.time * 12) * 0.08 : 1;
@@ -1327,7 +1390,7 @@ export class BabylonParallaxArrayPresentation {
     this.canvas.dataset.environmentLandmark = 'three-point-long-baseline';
     this.canvas.dataset.environmentServiceDetails = 'reference-console:3+mass-carriage:' + profile.carriageInstances;
     this.canvas.dataset.environmentSurfaceDetail = 'reference-frame:' + profile.frameInstances + '+shear-anchor:' + profile.anchorInstances
-      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8+physical-baseline:3+datum-graduation:39+isolator-foot:12+objective-crown:9+side-objective-beacon:9+conductor-bar:6+pylon-large-mark:18+counterweight:3+ceramic-upright:16+survey-floor-island:3+pylon-plinth:3+grounded-anchor:8+macro-ruler:3+carriage-top-meter:3+console-top-screen:3';
+      + '+pylon-fiducial:27+frame-scale:30+carriage-stud:18+console-knob:9+anchor-insulator:8+physical-baseline:3+datum-graduation:39+isolator-foot:12+objective-crown:9+side-objective-beacon:9+conductor-bar:6+pylon-large-mark:18+counterweight:3+ceramic-upright:16+survey-floor-island:3+pylon-plinth:3+grounded-anchor:8+macro-ruler:3+carriage-top-meter:3+console-top-screen:3+vernier-sleeve:3+cross-track-tie:6+counterweight-bearing:3';
     this.canvas.dataset.environmentMachineDetail = 'baseline-pylon:3+mass-carriage:3+live-baseline-servo:' + baselineServos;
     this.canvas.dataset.environmentComposition = 'three-point-baseline+cross-track-frames+perimeter-shear-anchors';
     this.canvas.dataset.environmentMaterials = 'graphite-structure+reference-shell+violet-alignment+cyan-readout';
