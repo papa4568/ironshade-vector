@@ -109,7 +109,9 @@ assert.ok(presentation.includes('this.eliteTellRing.setEnabled(Boolean(baselineC
   'elite warning/contact presentation must be bound to an actual live enemy');
 assert.ok(presentation.includes('const telegraphActive = baselineController.telegraph > 0;'),
   'strong elite alert must reflect a real combat telegraph, never an invented attack');
-assert.ok(presentation.includes("this.eliteTellRing.position.set(scaled(baselineController.x), 0.12"),
+// Route-relative grounding is verified here; the raised 0.26m contact cue
+// is specifically pinned by the P28-G9 legibility assertion below.
+assert.ok(presentation.includes("this.eliteTellRing.position.set(scaled(baselineController.x),"),
   'elite threat ring must follow real enemy world-space position');
 assert.ok(presentation.includes('objectiveDial.material = this.objectiveSignalMaterial'),
   'the objective must have an unlit amber physical-target finish at actual gameplay zoom');
