@@ -199,7 +199,7 @@ export class BabylonParallaxArrayPresentation {
     // A machined warm-metal standard separates instrument calibration from
     // violet danger cues and cyan status without replacing textured housings.
     const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0x856747, 0.35, 0.76);
-    const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0x9b7c48, 0.60, 0.70, 0xa78751, 0.04);
+    const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0x816a50, 0.54, 0.78, 0x8f7654, 0.025);
     const counterweightMetal = pbr(scene, 'p28-g9-moving-inertial-counterweight', 0x3f5b67, 0.48, 0.71, 0x204252, 0.055);
     const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.28);
     const referenceScreen = pbr(scene, 'p28-g9-calibration-console-screen', 0x163849, 0.18, 0.48, 0x72d1c7, 0.28);
