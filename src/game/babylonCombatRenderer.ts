@@ -491,7 +491,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private latticeAnnexPresentation: BabylonLatticeAnnexPresentation | null = null;
   private readonly momentumExchangePresentation: BabylonMomentumExchangePresentation;
   private readonly cryoReservePresentation: BabylonCryoReservePresentation;
-  private readonly parallaxArrayPresentation: BabylonParallaxArrayPresentation;
+  private parallaxArrayPresentation: BabylonParallaxArrayPresentation | null = null;
   private readonly perseidCapstonePresentation: BabylonPerseidCapstonePresentation;
   private readonly refineryLighting: BabylonRefineryLighting;
   private readonly refineryReflectionProbes: BabylonRefineryReflectionProbes;
@@ -549,7 +549,6 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.solarYardPresentation = new BabylonSolarYardPresentation(scene, canvas, qualityCoarse);
     this.momentumExchangePresentation = new BabylonMomentumExchangePresentation(scene, canvas, qualityCoarse);
     this.cryoReservePresentation = new BabylonCryoReservePresentation(scene, canvas, qualityCoarse);
-    this.parallaxArrayPresentation = new BabylonParallaxArrayPresentation(scene, canvas, qualityCoarse);
     this.perseidCapstonePresentation = new BabylonPerseidCapstonePresentation(scene, canvas, qualityCoarse);
     this.refineryLighting = new BabylonRefineryLighting(scene, canvas);
     this.refineryReflectionProbes = new BabylonRefineryReflectionProbes(scene, canvas);
@@ -746,7 +745,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.latticeAnnexPresentation?.release('scenario-exit');
       this.momentumExchangePresentation.release('scenario-exit');
       this.cryoReservePresentation.release('scenario-exit');
-      this.parallaxArrayPresentation.release('scenario-exit');
+      this.parallaxArrayPresentation?.release('scenario-exit');
       this.perseidCapstonePresentation.release('scenario-exit');
       this.k91CapstonePresentation.release('scenario-exit');
       this.orphelineCapstonePresentation.release('scenario-exit');
@@ -771,14 +770,14 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.latticeAnnexPresentation?.release('scenario-switch');
       this.momentumExchangePresentation.release('scenario-switch');
       this.cryoReservePresentation.release('scenario-switch');
-      this.parallaxArrayPresentation.release('scenario-switch');
+      this.parallaxArrayPresentation?.release('scenario-switch');
       this.ensureRefineryEnvironment(state, budget.detailScale);
     } else {
       this.refineryLighting.setEnabled(false);
       this.refineryPostProcessing.release('scenario-switch');
       this.releaseRefineryEnvironment('scenario-switch');
       if (!cryoReserveScenario) this.cryoReservePresentation.release('scenario-switch');
-      if (!parallaxArrayScenario) this.parallaxArrayPresentation.release('scenario-switch');
+      if (!parallaxArrayScenario) this.parallaxArrayPresentation?.release('scenario-switch');
       if (orbitalStationScenario) {
         this.damagedVesselPresentation.release('scenario-switch');
         this.spinHabitatPresentation.release('scenario-switch');
@@ -903,6 +902,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     } else if (cryoReserveScenario) {
       this.cryoReservePresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     } else {
+      // Creating every mission's high-detail KTX2/IBL scene on refinery boot
+      // competes with P28-F6's authored 19-asset cold-start cache. Allocate
+      // Parallax machinery only on the actual Parallax Array route; the
+      // object's release/dispose remain safe before first entry.
+      this.parallaxArrayPresentation ??= new BabylonParallaxArrayPresentation(this.scene, this.canvas, false);
       this.parallaxArrayPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     }
     if (mission.megastructure === 'generation-ship') {
@@ -1022,7 +1026,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.latticeAnnexPresentation?.dispose();
     this.momentumExchangePresentation.dispose();
     this.cryoReservePresentation.dispose();
-    this.parallaxArrayPresentation.dispose();
+    this.parallaxArrayPresentation?.dispose();
     this.perseidCapstonePresentation.dispose();
     this.k91CapstonePresentation.dispose();
     this.orphelineCapstonePresentation.dispose();

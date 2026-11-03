@@ -249,6 +249,14 @@ assert.ok(hudGlance.includes('P28-G9 real Android proof: reserve the *unoccupied
 assert.ok(gameCanvas.includes("aria-label={hud.eventT > 0 && !bossTransitionCue && !deploymentCueVisible ? hud.eventText : undefined}"),
   'compact alerts must preserve the full original director announcement for accessibility');
 
+// Do not preload the premium Parallax machinery on refinery/other routes:
+// that races the 19 authored family assets required by P28-F6 lifecycle QA.
+assert.ok(babylon.includes('private parallaxArrayPresentation: BabylonParallaxArrayPresentation | null = null'));
+assert.ok(babylon.includes('this.parallaxArrayPresentation ??= new BabylonParallaxArrayPresentation(this.scene, this.canvas, false)'));
+assert.ok(!babylon.includes('this.parallaxArrayPresentation = new BabylonParallaxArrayPresentation(scene, canvas, qualityCoarse)'));
+assert.ok(babylon.includes("this.parallaxArrayPresentation?.release('scenario-exit')"));
+assert.ok(babylon.includes("this.parallaxArrayPresentation?.release('scenario-switch')"));
+assert.ok(babylon.includes('this.parallaxArrayPresentation?.dispose()'));
 assert.ok(babylon.includes("this.parallaxArrayPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));"));
 assert.ok(babylon.includes('momentum-exchange,cryo-reserve,parallax-array'));
 assert.ok(babylon.includes('this.worldPresentation.sync(state, mission, budget.detailScale);'));
