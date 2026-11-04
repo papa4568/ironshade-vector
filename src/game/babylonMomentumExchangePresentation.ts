@@ -280,9 +280,9 @@ export class BabylonMomentumExchangePresentation {
       for (let tooth = 0; tooth < 16; tooth += 1) {
         const angle = tooth * Math.PI / 8;
         const toothMesh = box(scene, root, 'p28-g7-flywheel-flux-tooth-' + index + '-' + tooth,
-          tooth % 4 === 0 ? magneticCopper : structural,
+          tooth % 3 === 0 ? magneticCopper : structural,
           Math.sin(angle) * 2.42, 0.46, Math.cos(angle) * 2.42,
-          0.18, 0.13, 0.28);
+          0.26, 0.17, 0.36);
         toothMesh.parent = rotor;
         toothMesh.rotation.y = angle; // alternating high-contrast flux shoes on the exposed rotor face
       }
@@ -375,7 +375,7 @@ export class BabylonMomentumExchangePresentation {
       root.position.set(scaled(x), 0, scaled(z));
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g7-drum-retainer-' + id + '-' + side,
-          edgeMetal, side * 0.52, 0.88, 0, 0.16, 1.18, 0.84);
+          edgeMetal, side * 0.52, 0.91, 0, 0.23, 1.42, 0.92);
         box(scene, root, 'p28-g7-drum-latch-' + id + '-' + side,
           fixture, side * 0.51, 1.42, 0.33, 0.14, 0.16, 0.12);
       }
@@ -391,6 +391,13 @@ export class BabylonMomentumExchangePresentation {
       ring.rotation.x = Math.PI / 2;
       ring.material = capture;
       ring.isPickable = false;
+      const captureCollar = MeshBuilder.CreateTorus('p28-g9-capture-drum-copper-retainer-ring-' + id,
+        { diameter: 1.86, thickness: 0.15, tessellation: 28 }, scene);
+      captureCollar.parent = root;
+      captureCollar.position.y = 1.80;
+      captureCollar.rotation.x = Math.PI / 2;
+      captureCollar.material = magneticCopper;
+      captureCollar.isPickable = false;
       this.captureRigs.push({ id, root, ring, core });
     }
 
@@ -413,7 +420,10 @@ export class BabylonMomentumExchangePresentation {
     });
 
     const navigation = getMapNavigationPlan('momentum-exchange');
-    navigation.routes.forEach(route => {
+    // Draw one physical wayfinding spine, not all eight hidden simulation
+    // topology routes as a cyan crisscross over live fighters. Navigation,
+    // clearance and the three world landmarks still use the complete plan.
+    navigation.routes.filter(route => route.kind === 'primary').forEach(route => {
       const material = route.kind === 'primary' ? routePrimary : routeSecondary;
       const width = Math.min(babylonRouteMarkingWidth(route.kind), route.kind === 'primary' ? 0.055 : 0.038);
       route.points.slice(0, -1).forEach((point, index) => {
@@ -527,7 +537,7 @@ export class BabylonMomentumExchangePresentation {
     this.hemisphere = new HemisphericLight('p27-c8-momentum-hemisphere', new Vector3(-0.16, 1, 0.10), scene);
     this.hemisphere.diffuse = colorFromHex(0xc4d5dc);
     this.hemisphere.groundColor = colorFromHex(0x041019);
-    this.hemisphere.intensity = 0.30;
+    this.hemisphere.intensity = 0.43;
     this.keyLight = new DirectionalLight('p27-c8-momentum-key', new Vector3(-0.54, -1, 0.30).normalize(), scene);
     this.keyLight.position = new Vector3(worldW * 0.88, 24, worldH * 0.16);
     this.keyLight.diffuse = colorFromHex(lighting.keyColor);
@@ -541,7 +551,7 @@ export class BabylonMomentumExchangePresentation {
     this.emergencyLight.range = 11.6;
     this.readabilityLight = new PointLight('p27-c8-momentum-readability', new Vector3(cx, 2.8, cz), scene);
     this.readabilityLight.diffuse = colorFromHex(0xd4e5ed);
-    this.readabilityLight.range = 9.2;
+    this.readabilityLight.range = 14.2;
     this.practicalLights = [
       new PointLight('p27-c8-practical-transfer', new Vector3(worldW * 0.50, 2.9, worldH * 0.50), scene),
       new PointLight('p27-c8-practical-cradle', new Vector3(worldW * 0.80, 2.9, worldH * 0.58), scene),
@@ -630,7 +640,7 @@ export class BabylonMomentumExchangePresentation {
 
     const lighting = BABYLON_MOMENTUM_EXCHANGE_LIGHTING;
     const tierScale = renderBudget.tierName === 'high' ? 1 : renderBudget.tierName === 'balanced' ? 0.88 : 0.72;
-    this.hemisphere.intensity = 0.30 * (renderBudget.tierName === 'performance' ? 0.82 : 1);
+    this.hemisphere.intensity = 0.43 * (renderBudget.tierName === 'performance' ? 0.82 : 1);
     this.keyLight.intensity = lighting.keyIntensity * tierScale * (lowVisibility ? 0.94 : 1);
     this.rimLight.intensity = lighting.rimIntensity * (renderBudget.tierName === 'performance' ? 0.74 : 1);
     const px = scaled(state.player.x);
@@ -660,7 +670,7 @@ export class BabylonMomentumExchangePresentation {
       if (!nearby.has(id)) { contact.dispose(); this.enemyGrounding.delete(id); }
     }
     this.readabilityLight.position.set(px - 0.5, 2.8, pz + 0.7);
-    this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 3.7 : 5.3) * tierScale;
+    this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 4.4 : 6.2) * tierScale;
     this.emergencyLight.position.set(px + 1.6, 3.0, pz - 1.4);
     this.emergencyLight.intensity = lighting.emergencyIntensity * (renderBudget.tierName === 'performance' ? 0.72 : 1) * (hazardMode === 'nominal' ? 0.54 : 1.16) * (activeBoss?.bossPhase === 2 ? 1.10 : 1);
     const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;

@@ -297,6 +297,16 @@ assert.ok(hudGlance.includes('.game-root[data-location="parallax-array"] .target
   && hudGlance.includes('white-space: nowrap;'),
   'Parallax Baseline Controller HP and armor must not wrap in compact landscape');
 
+assert.ok(presentation.includes("new DynamicTexture('p28-g9-physical-datum-numbered-display'")
+  && presentation.includes("displayInk.fillText('DATUM', 34, 79);")
+  && presentation.includes('p28-g9-pylon-top-facing-numbered-calibration-')
+  && presentation.includes('p28-g9-console-numbered-readout-')
+  && presentation.includes('p28-g9-carriage-coaxial-reference-race-')
+  && presentation.includes('MeshBuilder.CreateCylinder(\'p27-c10-carriage-mass-\'')
+  && presentation.includes('this.calibrationDisplayTexture.dispose();')
+  && presentation.includes('this.calibrationDisplayMaterial.dispose();'),
+  'G9 actual phone zoom needs visible numbered metrology hardware, cylindrical masses and disposed instrument textures');
+
 // This contact optic tracks a real elite, but must never appear as a huge
 // opaque vertical ribbon across the player and calibrated apparatus.
 assert.ok(presentation.includes("{ diameter: 2.48, thickness: 0.10, tessellation: 40 }")

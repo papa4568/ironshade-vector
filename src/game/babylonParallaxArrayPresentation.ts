@@ -141,6 +141,8 @@ export class BabylonParallaxArrayPresentation {
   private readonly iblTexture: CubeTexture;
   private readonly datumAlbedoTexture: DynamicTexture;
   private readonly datumNormalTexture: DynamicTexture;
+  private readonly calibrationDisplayTexture: DynamicTexture;
+  private readonly calibrationDisplayMaterial: StandardMaterial;
   private iblReady = false;
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
   private readonly pylonRigs: PylonRig[] = [];
@@ -239,6 +241,48 @@ export class BabylonParallaxArrayPresentation {
     }
     this.datumAlbedoTexture.update();
     this.datumNormalTexture.update();
+    // Large instrument-grade top-facing engraving, not more tiny cuboid
+    // notches. The actual overhead phone camera can resolve its numbered
+    // reference scale and pointer while mechanical rails remain KTX2 PBR.
+    this.calibrationDisplayTexture = new DynamicTexture('p28-g9-physical-datum-numbered-display',
+      { width: 512, height: 256 }, scene, false);
+    const displayInk = this.calibrationDisplayTexture.getContext();
+    displayInk.fillStyle = '#0b1a23';
+    displayInk.fillRect(0, 0, 512, 256);
+    displayInk.strokeStyle = '#627d85';
+    displayInk.lineWidth = 9;
+    displayInk.strokeRect(8, 8, 496, 240);
+    displayInk.fillStyle = '#e2d3a5';
+    displayInk.font = 'bold 65px monospace';
+    displayInk.fillText('DATUM', 34, 79);
+    displayInk.fillStyle = '#61b8c6';
+    displayInk.fillRect(34, 96, 445, 7);
+    for (let station = 0; station <= 12; station++) {
+      const major = station % 3 === 0;
+      const x = 39 + station * 35;
+      displayInk.fillStyle = major ? '#e1c48d' : '#8cb9bb';
+      displayInk.fillRect(x, 116, major ? 10 : 6, major ? 66 : 37);
+      if (major) {
+        displayInk.font = 'bold 28px monospace';
+        displayInk.fillText(String(station).padStart(2, '0'), x - 8, 217);
+      }
+    }
+    displayInk.fillStyle = '#ff9a38';
+    displayInk.beginPath();
+    displayInk.moveTo(274, 109);
+    displayInk.lineTo(252, 143);
+    displayInk.lineTo(296, 143);
+    displayInk.closePath();
+    displayInk.fill();
+    this.calibrationDisplayTexture.update();
+    this.calibrationDisplayMaterial = new StandardMaterial('p28-g9-actual-engraved-metrology-display', scene);
+    this.calibrationDisplayMaterial.diffuseTexture = this.calibrationDisplayTexture;
+    this.calibrationDisplayMaterial.emissiveTexture = this.calibrationDisplayTexture;
+    this.calibrationDisplayMaterial.emissiveColor = Color3.White().scale(0.56);
+    this.calibrationDisplayMaterial.specularColor = Color3.Black();
+    this.calibrationDisplayMaterial.disableLighting = true;
+    this.calibrationDisplayMaterial.backFaceCulling = false;
+
     etched.albedoTexture = this.datumAlbedoTexture;
     etched.bumpTexture = this.datumNormalTexture;
     indexed.bumpTexture = this.datumNormalTexture;
@@ -491,6 +535,19 @@ export class BabylonParallaxArrayPresentation {
       referenceCenter.position.set(1.46, 5.55, 1.30);
       referenceCenter.material = graphite;
       referenceCenter.isPickable = false;
+      // A flat, numbered reference scale is actually visible from the
+      // high-angle mobile game camera. The machined bracket reaches back into
+      // the physical standard; the lit surface is intentionally instrument
+      // glass, not a world-sized navigation HUD slab.
+      box(scene, root, 'p28-g9-pylon-engraved-display-bracket-' + index,
+        graphite, 1.50, 3.53, 0.90, 3.45, 0.24, 1.87);
+      const pylonReadout = MeshBuilder.CreatePlane('p28-g9-pylon-top-facing-numbered-calibration-' + index,
+        { width: 3.14, height: 1.58 }, scene);
+      pylonReadout.parent = root;
+      pylonReadout.rotation.x = -Math.PI / 2;
+      pylonReadout.position.set(1.50, 3.675, 0.90);
+      pylonReadout.material = this.calibrationDisplayMaterial;
+      pylonReadout.isPickable = false;
       box(scene, root, 'p27-c10-pylon-foot-' + index, graphite, 0, 0.24, 0, 1.40, 0.48, 1.40);
       // The primary reference standard is a tapered, ten-sided machine column,
       // not a rectangular crate. The shipped KTX2 painted-metal PBR/normal/ORM
@@ -946,7 +1003,24 @@ export class BabylonParallaxArrayPresentation {
       root.position.set(worldW * x, 0, worldH * z);
       root.rotation.y = rotationY;
       box(scene, root, 'p27-c10-carriage-base-' + index, graphite, 0, 0.30, 0, 2.90, 0.60, 1.48);
-      box(scene, root, 'p27-c10-carriage-mass-' + index, shell, 0, 0.92, 0, 1.34, 0.76, 0.72);
+      // A real horizontal reference weight and coaxial gauge rings, not a
+      // generic cuboid that reads like cargo cover at phone gameplay zoom.
+      const massDrum = MeshBuilder.CreateCylinder('p27-c10-carriage-mass-' + index,
+        { height: 1.52, diameter: 1.62, tessellation: 24 }, scene);
+      massDrum.parent = root;
+      massDrum.position.set(0, 0.98, 0);
+      massDrum.rotation.z = Math.PI / 2;
+      massDrum.material = counterweightMetal;
+      massDrum.isPickable = false;
+      for (const side of [-1, 1]) {
+        const massBand = MeshBuilder.CreateTorus('p28-g9-carriage-coaxial-reference-race-' + index + '-' + side,
+          { diameter: 1.70, thickness: 0.16, tessellation: 28 }, scene);
+        massBand.parent = root;
+        massBand.position.set(side * 0.79, 0.98, 0);
+        massBand.rotation.z = Math.PI / 2;
+        massBand.material = calibrationInk;
+        massBand.isPickable = false;
+      }
       const rail = box(scene, root, 'p27-c10-carriage-rail-' + index, violet, 0, 0.09, 0, 3.40, 0.08, 0.14);
       rail.position.y = 0.08;
       for (const side of [-1, 1]) {
@@ -1240,6 +1314,13 @@ export class BabylonParallaxArrayPresentation {
       // the overhead Android camera, not only toward the local console front.
       box(scene, root, 'p28-g9-console-overhead-metric-glass-' + index,
         referenceScreen, 0, 2.02, 0.12, 1.75, 0.10, 1.02);
+      const consoleCalibration = MeshBuilder.CreatePlane('p28-g9-console-numbered-readout-' + index,
+        { width: 1.58, height: 0.80 }, scene);
+      consoleCalibration.parent = root;
+      consoleCalibration.rotation.x = -Math.PI / 2;
+      consoleCalibration.position.set(0, 2.085, 0.12);
+      consoleCalibration.material = this.calibrationDisplayMaterial;
+      consoleCalibration.isPickable = false;
       for (let channel = 0; channel < 4; channel++) {
         box(scene, root, 'p28-g9-console-overhead-readout-graduation-' + index + '-' + channel,
           channel === 0 ? objectiveGold : fiducialBrass,
@@ -1661,6 +1742,8 @@ export class BabylonParallaxArrayPresentation {
     this.iblTexture.dispose();
     this.datumAlbedoTexture.dispose();
     this.datumNormalTexture.dispose();
+    this.calibrationDisplayMaterial.dispose();
+    this.calibrationDisplayTexture.dispose();
     this.ownedMaterials.forEach(item => item.dispose());
     this.premiumSurfaces.dispose();
     this.shearMaterial.dispose();

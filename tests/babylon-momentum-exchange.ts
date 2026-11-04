@@ -160,6 +160,13 @@ assert.ok(presentation.includes("this.laminationAlbedo = new DynamicTexture('p28
   && presentation.includes('this.laminationNormal.dispose();'),
   'exposed rotor laminations must have actual turned-metal relief with disposed GPU textures');
 
+assert.ok(presentation.includes("navigation.routes.filter(route => route.kind === 'primary').forEach")
+  && presentation.includes('this.readabilityLight.range = 14.2;')
+  && presentation.includes('this.hemisphere.intensity = 0.43')
+  && presentation.includes('p28-g9-capture-drum-copper-retainer-ring-')
+  && presentation.includes('tooth % 3 === 0 ? magneticCopper : structural'),
+  'G7 real Android must preserve route topology but avoid cyan guide clutter and expose readable magnetic hardware');
+
 const g7Hud = readFileSync('src/combatHudGlance.css', 'utf8');
 assert.ok(g7Hud.includes('left: 28%;') && g7Hud.includes('width: min(12vw, 11rem);'),
   'narrow Momentum tactical roof must not collide with centered target HP panel');
@@ -197,7 +204,7 @@ assert.ok(g7CanvasSource.includes("message.startsWith('CISLUNAR MOMENTUM EXCHANG
   && g7CanvasSource.includes("return 'LATERAL VECTOR BURST'"),
   'real director messages must use concise roof captions without changing their accessible text');
 assert.ok(presentation.includes('p28-g9-momentum-machined-lamination-')
-  && presentation.includes('0.18, 0.13, 0.28'),
+  && presentation.includes('0.26, 0.17, 0.36'),
   'Momentum hardware must have fine real laminations rather than chunky flux cubes');
 assert.ok(babylon.includes("momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.42 : 0"),
   'Momentum operator must remain readable against dark industrial flooring');
