@@ -163,6 +163,10 @@ assert.ok(presentation.includes("this.laminationAlbedo = new DynamicTexture('p28
 const g7Hud = readFileSync('src/combatHudGlance.css', 'utf8');
 assert.ok(g7Hud.includes('left: 28%;') && g7Hud.includes('width: min(12vw, 11rem);'),
   'narrow Momentum tactical roof must not collide with centered target HP panel');
+assert.ok(presentation.includes("worldW * x, -0.02, worldH * z, length, 0.06, 0.16")
+  && presentation.includes("carrier.position.set(0, 0.04, side * 0.15);")
+  && babylon.includes("momentum-exchange' && !narrow ? 5.0 : 0;"),
+  'G7 transfer track must be deck-recessed and full flywheel framed outside touch controls');
 assert.ok(presentation.includes("p28-g9-recessed-transfer-rail-steel")
   && presentation.includes("'p27-c8-transfer-rail-' + index, railMetal")
   && presentation.includes("railMetal, rail.position.x"),

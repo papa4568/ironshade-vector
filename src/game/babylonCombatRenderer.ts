@@ -2762,7 +2762,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const momentumCombatPan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 1.8 : 0;
     // Translate eye and target together to reserve the unchanged right-side
     // RUSH button lane for real enemies and their warning rings.
-    const momentumTouchLanePan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 3.6 : 0;
+    const momentumTouchLanePan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 5.0 : 0;
     // Parallax's live fight reaches the right-side FIRE and DODGE lane. A
     // location-only lateral look-ahead preserves the original FOV, true
     // target positions, telegraph ranges and full-size touch hit regions.

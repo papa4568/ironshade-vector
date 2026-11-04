@@ -333,14 +333,16 @@ export class BabylonMomentumExchangePresentation {
       [0.79, 0.57, 8.5, 0.08],
     ] as const;
     railData.forEach(([x, z, length, rotation], index) => {
-      const rail = box(scene, this.root, 'p27-c8-transfer-rail-' + index, railMetal, worldW * x, 0.09, worldH * z, length, 0.18, 0.30);
+      // Recess the original broad, raised strips beneath the deck texture.
+      // Hazard warnings and real capture fixtures remain at full strength.
+      const rail = box(scene, this.root, 'p27-c8-transfer-rail-' + index, railMetal, worldW * x, -0.02, worldH * z, length, 0.06, 0.16);
       rail.rotation.y = rotation;
       for (const side of [-1, 1]) {
         const carrier = box(scene, this.root, 'p28-g7-transfer-rail-carrier-' + index + '-' + side,
-          railMetal, rail.position.x, 0.23, rail.position.z + side * 0.27, length, 0.12, 0.10);
+          railMetal, rail.position.x, 0.03, rail.position.z + side * 0.15, length, 0.035, 0.06);
         carrier.rotation.y = rotation;
         carrier.parent = rail;
-        carrier.position.set(0, 0.14, side * 0.27);
+        carrier.position.set(0, 0.04, side * 0.15);
       }
       this.transferRails.push(rail);
     });

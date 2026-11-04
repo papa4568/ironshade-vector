@@ -276,6 +276,13 @@ assert.ok(workflow.includes('p27c10-parallax-array.png'));
 assert.ok(pkg.scripts['test:babylon-parallax-array']);
 assert.ok(pkg.scripts.build.includes('npm run test:babylon-parallax-array'));
 
+// This contact optic tracks a real elite, but must never appear as a huge
+// opaque vertical ribbon across the player and calibrated apparatus.
+assert.ok(presentation.includes("{ diameter: 2.48, thickness: 0.10, tessellation: 40 }")
+  && presentation.includes('this.eliteTellRing.rotation.x = 0;')
+  && presentation.includes('telegraphActive ? 0.82 : 0.42;'),
+  'real Parallax elite contact must stay floor-bound and subordinate to danger tells');
+
 // Exposed real metrology hardware must not collapse back into a white bar
 // stack at Android gameplay zoom. Three calibrated vernier sleeves, six
 // physical triangulated frame ties, and three raised carriage bearings
@@ -292,7 +299,7 @@ assert.ok(presentation.includes('p28-g9-shear-anchor-optical-transducer-')
   && presentation.includes('notch < 3'),
   'insulated shear forks and nonrepetitive physical floor bays cannot remain cuboid stacks');
 assert.ok(babylon.includes("const parallaxSilhouette = this.canvas.dataset.babylonScenario === 'parallax-array';")
-  && presentation.includes('telegraphActive ? 0.96 : 0.78;')
+  && presentation.includes('telegraphActive ? 0.82 : 0.42;')
   && presentation.includes('telegraphActive ? 1.15 : 0.86')
   && presentation.includes('this.eliteContactBeacon.position.set(scaled(baselineController.x), 2.84, scaled(baselineController.y))'),
   'true Parallax elite contact must remain readable without inventing a timed attack');
@@ -318,8 +325,8 @@ assert.ok(presentation.includes('p28-g9-pylon-machined-vernier-sleeve-')
   && presentation.includes('p28-g9-carriage-top-vernier-notch-')
   && presentation.includes('vernier-sleeve:3+cross-track-tie:6+counterweight-bearing:3'),
   'baseline pylons, cross-track frames and moving masses require distinct faceted calibrated hardware');
-assert.ok(presentation.includes('this.eliteTellRing.position.set(scaled(baselineController.x), 0.26, scaled(baselineController.y))')
-  && presentation.includes('this.eliteTellMaterial.alpha = telegraphActive ? 0.96 : 0.78;')
+assert.ok(presentation.includes('this.eliteTellRing.position.set(scaled(baselineController.x), 0.13, scaled(baselineController.y))')
+  && presentation.includes('this.eliteTellMaterial.alpha = telegraphActive ? 0.82 : 0.42;')
   && presentation.includes('this.bossWarning.setEnabled(patternHot);'),
   'real elite contact and telegraph phases must remain visible without inventing attacks');
 // P28-G9: shipped KTX2 PBR bindings (not metadata-only), shared authored

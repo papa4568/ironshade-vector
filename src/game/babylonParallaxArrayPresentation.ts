@@ -1287,9 +1287,11 @@ export class BabylonParallaxArrayPresentation {
     // visible over dark grid joints, even when the elite's body is tiny.
     // Actual attack wind-ups still exclusively control the brighter state.
     this.eliteTellRing = MeshBuilder.CreateTorus('p28-g9-elite-controller-contact-warning',
-      { diameter: 4.30, thickness: 0.28, tessellation: 40 }, scene);
+      { diameter: 2.48, thickness: 0.10, tessellation: 40 }, scene);
     this.eliteTellRing.parent = this.root;
-    this.eliteTellRing.rotation.x = Math.PI / 2;
+    // The elite warning must hug the deck, not read as a giant opaque arc
+    // crossing actors and mechanical contacts at Android gameplay zoom.
+    this.eliteTellRing.rotation.x = 0;
     this.eliteTellRing.material = this.eliteTellMaterial;
     this.eliteTellRing.isPickable = false;
     this.eliteTellRing.setEnabled(false);
@@ -1418,10 +1420,10 @@ export class BabylonParallaxArrayPresentation {
     this.eliteTellRing.setEnabled(Boolean(baselineController));
     this.eliteContactBeacon.setEnabled(Boolean(baselineController));
     if (baselineController) {
-      this.eliteTellRing.position.set(scaled(baselineController.x), 0.26, scaled(baselineController.y));
+      this.eliteTellRing.position.set(scaled(baselineController.x), 0.13, scaled(baselineController.y));
       this.eliteContactBeacon.position.set(scaled(baselineController.x), 2.84, scaled(baselineController.y));
       const telegraphActive = baselineController.telegraph > 0;
-      this.eliteTellMaterial.alpha = telegraphActive ? 0.96 : 0.78;
+      this.eliteTellMaterial.alpha = telegraphActive ? 0.82 : 0.42;
       this.eliteTellMaterial.emissiveColor = colorFromHex(telegraphActive ? 0xff6649 : 0x52c7df)
         .scale(telegraphActive ? 1.15 : 0.86);
       const pulse = telegraphActive ? 1 + Math.sin(state.time * 12) * 0.08 : 1;
