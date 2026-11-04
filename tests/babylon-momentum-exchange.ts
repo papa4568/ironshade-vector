@@ -199,7 +199,7 @@ assert.ok(g7CanvasSource.includes("message.startsWith('CISLUNAR MOMENTUM EXCHANG
 assert.ok(presentation.includes('p28-g9-momentum-machined-lamination-')
   && presentation.includes('0.18, 0.13, 0.28'),
   'Momentum hardware must have fine real laminations rather than chunky flux cubes');
-assert.ok(babylon.includes("momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.27 : 0"),
+assert.ok(babylon.includes("momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.42 : 0"),
   'Momentum operator must remain readable against dark industrial flooring');
 assert.ok(babylon.includes("const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(babylon.includes("const momentumContrast = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
