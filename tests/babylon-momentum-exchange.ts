@@ -265,7 +265,7 @@ assert.ok(presentation.includes('laminated-rim:9+flux-tooth:48'));
 assert.ok(renderWorldSource.includes("this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(renderWorldSource.includes("hazard.kind === 'vectorWash'"));
 assert.ok(renderWorldSource.includes('momentumWash ? 0xf0a876'));
-assert.ok(attackSource.includes('visual.sideA.material = momentumWarning || cryoWarning || parallaxWarning || iceWarning ? visual.laneMaterial : visual.attackMaterial'));
+assert.ok(attackSource.includes('visual.sideA.material = annexWarning || momentumWarning || cryoWarning || parallaxWarning || iceWarning ? visual.laneMaterial : visual.attackMaterial'));
 assert.ok(attackSource.includes('tick.setEnabled(annexWarning || momentumWarning || cryoWarning || parallaxWarning)'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .target-readout'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"])'));
