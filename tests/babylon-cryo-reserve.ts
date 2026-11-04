@@ -319,7 +319,9 @@ assert.ok(babylon.includes("const cryoContrast = this.canvas.dataset.babylonScen
 assert.ok(babylon.includes("const cryoWideFraming = !narrow && this.canvas.dataset.babylonScenario === 'cryo-reserve';")
   && babylon.includes("cryoWideFraming ? (this.coarse ? 15.5 : 13.9)")
   && babylon.includes("cryoContrast ? 0.62")
-  && babylon.includes("cryoSilhouette ? 1.48 : 1"),
+  && babylon.includes("cryoSilhouette ? 1.48 : parallaxSilhouette ? 1.64 : 1")
+  && babylon.includes("cryoSilhouette ? 1.28 : parallaxSilhouette ? 1.42 : 1")
+  && babylon.includes("cryoSilhouette ? 1.42 : parallaxSilhouette ? 1.60 : 1"),
   'real Cryo enemies and danger rings must be framed away from the touch control edge and retain visible rim cues');
 
 assert.ok(presentation.includes('p28-g9-cryo-hoarfrost-collar-')
