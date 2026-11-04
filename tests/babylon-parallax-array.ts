@@ -241,11 +241,18 @@ assert.ok(hudGlance.includes('P28-G9/G7 exact-APK review')
   && hudGlance.includes('background: rgba(5, 11, 17, .78)'),
   'both compact tactical callouts must leave machinery and combat space visible');
 const gameCanvas = readFileSync('src/components/GameCanvas.tsx', 'utf8');
-for (const cue of ['ALIGN 3 REFERENCE PYLONS', 'SHEAR FRONT LIVE // REFERENCES DISAGREE',
+for (const cue of ['ALIGN 3 REFERENCE PYLONS', 'SHEAR FRONT LIVE // ALIGN PYLONS',
   'CAPTURE MOMENTUM TRANSFER DRUMS', 'COUNTERMASS FRONT LIVE']) {
   assert.ok(gameCanvas.includes(cue), 'Parallax/Momentum route events need concise readable messages: ' + cue);
 }
 assert.ok(gameCanvas.includes("MASS-WELL LOCK LIVE"), 'Momentum event must fit a safe upper-HUD gap');
+assert.ok(gameCanvas.includes("message.startsWith('DIRECTOR EVENT') && message.includes('LIFE-SUPPORT PURGE')")
+  && gameCanvas.includes("return 'LIFE-SUPPORT PURGE // AIR LOW';"),
+  'Parallax life-support warnings must stay legible in the roof, with full text accessible');
+assert.ok(hudGlance.includes('Parallax\'s warning in the roof band')
+  && hudGlance.includes('.game-root[data-location="parallax-array"] .transient-alert-lane.event > .combat-alert {')
+  && hudGlance.includes('background: rgba(5, 11, 17, .68);'),
+  'compact Parallax tactical warnings must not hide central physical metrology');
 assert.ok(hudGlance.includes('P28-G9 real Android proof: reserve the *unoccupied top status roof*'),
   'Parallax and Momentum tactical alerts must not overlap gameplay floor/rails');
 assert.ok(gameCanvas.includes("aria-label={hud.eventT > 0 && !bossTransitionCue && !deploymentCueVisible ? hud.eventText : undefined}"),
@@ -310,6 +317,8 @@ assert.ok(presentation.includes("new DynamicTexture('p28-g9-physical-datum-numbe
 assert.ok(presentation.includes('p28-g9-pylon-vertical-numbered-sight-glass-')
   && presentation.includes('p28-g9-pylon-sight-glass-support-')
   && presentation.includes('uprightScale.rotation.y = Math.PI / 4;')
+  && presentation.includes('uprightScale.position.set(2.55, 3.25, 2.42);')
+  && presentation.includes('{ width: 3.56, height: 1.92 }')
   && presentation.includes('uprightScale.material = this.calibrationDisplayMaterial;'),
   'each actual Parallax pylon needs a legible, bracket-mounted graduated face in the real mobile camera');
 

@@ -1238,6 +1238,32 @@
     width: min(25vw, 20rem);
   }
 
+  /* Keep Parallax's warning in the roof band, with all the event text
+     available to screen readers rather than painted over the metrology rig.
+     A stacked caption gives the short warning the whole panel width. */
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event > .combat-alert {
+    display: block;
+    text-align: center;
+    padding: .18rem .3rem;
+    background: rgba(5, 11, 17, .68);
+  }
+
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert small {
+    display: block;
+    margin: 0;
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert b {
+    display: block;
+    margin-top: .12rem;
+    font-size: 11px;
+    line-height: 1.12;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
   .game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"]) {
     top: max(.45rem, env(safe-area-inset-top));
     bottom: auto;

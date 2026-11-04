@@ -554,20 +554,24 @@ export class BabylonParallaxArrayPresentation {
       // sight-glass toward the diagonal overhead camera, with a physical
       // support arm back to the vertical spindle. Unlike the former top-only
       // plate, this upright face cannot disappear behind the upper yoke.
+      // Stand the numbered plate proud of the cast column and tilt it toward
+      // the actual +X/+Z overhead phone camera. On the previous exact APK the
+      // opaque machine housing and pale clamp blocks hid the marked face.
+      // This is a bolted physical scale, not an overlay or gameplay object.
       const sidePanelBracket = box(scene, root, 'p28-g9-pylon-vertical-numbered-sight-glass-bracket-' + index,
-        graphite, 1.62, 2.63, 1.69, 2.96, 1.68, 0.25);
+        graphite, 2.15, 3.18, 2.04, 3.88, 2.24, 0.28);
       sidePanelBracket.rotation.y = Math.PI / 4;
       const uprightScale = MeshBuilder.CreatePlane('p28-g9-pylon-vertical-numbered-sight-glass-' + index,
-        { width: 2.70, height: 1.42 }, scene);
+        { width: 3.56, height: 1.92 }, scene);
       uprightScale.parent = root;
-      uprightScale.position.set(1.79, 2.70, 1.85);
+      uprightScale.position.set(2.55, 3.25, 2.42);
       uprightScale.rotation.y = Math.PI / 4;
       uprightScale.material = this.calibrationDisplayMaterial;
       uprightScale.isPickable = false;
       for (const side of [-1, 1]) {
         const panelAnchor = MeshBuilder.CreateTube('p28-g9-pylon-sight-glass-support-' + index + '-' + side,
           { path: [new Vector3(side * 0.38, 2.20, 0.39),
-            new Vector3(1.62 + side * 0.50, 2.22, 1.69)], radius: 0.12, tessellation: 10 }, scene);
+            new Vector3(2.12 + side * 0.64, 2.98, 2.06)], radius: 0.12, tessellation: 10 }, scene);
         panelAnchor.parent = root;
         panelAnchor.material = graphite;
         panelAnchor.isPickable = false;

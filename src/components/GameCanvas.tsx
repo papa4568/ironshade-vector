@@ -1559,12 +1559,18 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       return message.split(' // ')[0];
     }
     if (activeMission.location === 'parallax-array') {
+      // Only the small landscape banner is shortened. The full original
+      // director event remains on the alert's aria-label and title.
+      if (message.startsWith('DIRECTOR EVENT') && message.includes('LIFE-SUPPORT PURGE'))
+        return 'LIFE-SUPPORT PURGE // AIR LOW';
+      if (message.startsWith('DIRECTOR EVENT'))
+        return message.split(' // ').slice(1, 3).join(' // ') || 'DIRECTOR EVENT LIVE';
       if (message.startsWith('TACTICAL ALERT') && message.includes('DAMAGED GRID'))
         return 'GRID ARC LIVE // CLEAR FIELD';
       if (message.startsWith('TACTICAL ALERT')) return message.split(' // ').slice(0, 2).join(' // ');
       if (message.startsWith('REACTIVE PLATING')) return 'REACTIVE PLATING ACTIVE';
       if (message.startsWith('CISLUNAR PARALLAX ARRAY')) return 'ALIGN 3 REFERENCE PYLONS';
-      if (message.startsWith('PARALLAX SHEAR')) return 'SHEAR FRONT LIVE // REFERENCES DISAGREE';
+      if (message.startsWith('PARALLAX SHEAR')) return 'SHEAR FRONT LIVE // ALIGN PYLONS';
       if (message.startsWith('DEEP REFERENCE REVERSAL')) return 'DEEP REFERENCE // SHEAR REVERSAL';
       if (message.startsWith('REFERENCE TECH')) return 'MASS STANDARD AT RISK';
       if (message.startsWith('BASELINE')) return 'BASELINE ALIGNMENT SHIFT';
