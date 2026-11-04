@@ -23,9 +23,10 @@ function assert(condition: unknown, message: string): asserts condition {
 const renderer = read('src/game/babylonCombatRenderer.ts');
 assert(renderer.includes("const iceMineNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.2 : 0"),
   'Ice Mine near-side live hostiles must stay above bottom-edge gameplay banner');
-assert(renderer.includes('parallaxTouchLanePan + iceMineNearThreatLookAhead')
-  && renderer.includes('parallaxTouchLanePan + iceMineNearThreatLookAhead, cameraHeight'),
-  'Ice Mine threat framing must translate camera eye and target without touching sim or controls');
+assert(renderer.includes('parallaxTouchLanePan + iceMineNearThreatLookAhead + cryoNearThreatLookAhead')
+  && renderer.includes('parallaxTouchLanePan + iceMineNearThreatLookAhead + cryoNearThreatLookAhead, cameraHeight')
+  && renderer.includes("const cryoNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 4.2 : 0;"),
+  'Ice Mine and Cryo camera translation must affect eye and target only on their own routes');
 const telegraphs = read('src/game/babylonEnemyTelegraphs.ts');
 const ice = read('src/game/babylonIceMinePresentation.ts');
 assert(telegraphs.includes("const iceWarning = this.canvas.dataset.babylonScenario === 'ice-mine'")
