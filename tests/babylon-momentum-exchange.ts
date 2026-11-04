@@ -167,6 +167,12 @@ assert.ok(presentation.includes("worldW * x, -0.02, worldH * z, length, 0.06, 0.
   && presentation.includes("carrier.position.set(0, 0.04, side * 0.15);")
   && babylon.includes("momentum-exchange' && !narrow ? 5.0 : 0;"),
   'G7 transfer track must be deck-recessed and full flywheel framed outside touch controls');
+assert.ok(presentation.includes('Math.sin(angle) * 2.42, 0.46, Math.cos(angle) * 2.42')
+  && presentation.includes('toothMesh.parent = rotor;')
+  && babylon.includes("momentumContrast ? 0.50 : 0.06)")
+  && babylon.includes("momentumContrast ? colorFromHex(0x91bfd1).scale(0.20)")
+  && babylon.includes("momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.42 : 0;"),
+  'magnetic teeth must sit on the moving rotor and actual G7 fighters must contrast with the deck');
 assert.ok(presentation.includes("p28-g9-recessed-transfer-rail-steel")
   && presentation.includes("'p27-c8-transfer-rail-' + index, railMetal")
   && presentation.includes("railMetal, rail.position.x"),

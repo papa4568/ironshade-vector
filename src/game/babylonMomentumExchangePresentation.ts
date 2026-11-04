@@ -281,7 +281,7 @@ export class BabylonMomentumExchangePresentation {
         const angle = tooth * Math.PI / 8;
         const toothMesh = box(scene, root, 'p28-g7-flywheel-flux-tooth-' + index + '-' + tooth,
           tooth % 4 === 0 ? magneticCopper : structural,
-          Math.sin(angle) * 2.42, 0.94, Math.cos(angle) * 2.42,
+          Math.sin(angle) * 2.42, 0.46, Math.cos(angle) * 2.42,
           0.18, 0.13, 0.28);
         toothMesh.parent = rotor;
         toothMesh.rotation.y = angle; // alternating high-contrast flux shoes on the exposed rotor face

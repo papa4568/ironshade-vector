@@ -276,6 +276,14 @@ assert.ok(workflow.includes('p27c10-parallax-array.png'));
 assert.ok(pkg.scripts['test:babylon-parallax-array']);
 assert.ok(pkg.scripts.build.includes('npm run test:babylon-parallax-array'));
 
+assert.ok(presentation.includes('p28-g9-pylon-front-graduated-ruler-bed-')
+  && presentation.includes('p28-g9-pylon-front-readable-graduation-')
+  && presentation.includes('station < 8')
+  && presentation.includes('p28-g9-pylon-front-isolated-conductor-')
+  && presentation.includes('p28-g9-pylon-front-objective-beacon-amber-')
+  && presentation.includes('beaconFace.rotation.z = Math.PI / 4;'),
+  'three real reference standards need readable, body-mounted scales and amber objective diamonds');
+
 // This contact optic tracks a real elite, but must never appear as a huge
 // opaque vertical ribbon across the player and calibrated apparatus.
 assert.ok(presentation.includes("{ diameter: 2.48, thickness: 0.10, tessellation: 40 }")

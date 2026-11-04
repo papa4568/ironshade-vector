@@ -410,6 +410,39 @@ export class BabylonParallaxArrayPresentation {
         box(scene, root, 'p28-g9-pylon-physical-align-target-' + index + '-' + lamp,
           objectiveGold, -0.66 + lamp * 0.66, 1.12, 2.17, 0.42, 0.65, 0.34);
       }
+      // At the real Android overhead zoom the former floor-level scale
+      // resolved as unlabelled cream flecks. Mount a bold, countable vernier
+      // on the actual near face of each standard, with paired insulated
+      // conductors and a distinct amber diamond attached to the steel body.
+      // All parts are world geometry; no HUD or simulation target is added.
+      box(scene, root, 'p28-g9-pylon-front-fiducial-bracket-' + index,
+        graphite, 0, 2.35, 1.54, 0.64, 2.78, 1.48);
+      box(scene, root, 'p28-g9-pylon-front-graduated-ruler-bed-' + index,
+        graphite, 0, 2.28, 2.36, 0.90, 3.08, 0.22);
+      for (let station = 0; station < 8; station++) {
+        const major = station % 3 === 0;
+        box(scene, root, 'p28-g9-pylon-front-readable-graduation-' + index + '-' + station,
+          major ? fiducialBrass : etched, 0, 1.02 + station * 0.36, 2.51,
+          major ? 0.82 : 0.48, major ? 0.17 : 0.12, 0.13);
+      }
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-pylon-front-isolated-conductor-' + index + '-' + side,
+          fiducialBrass, side * 0.76, 2.28, 2.31, 0.18, 2.92, 0.24);
+        for (const terminal of [1.12, 3.42]) {
+          box(scene, root, 'p28-g9-pylon-front-conductor-terminal-' + index + '-' + side + '-' + terminal,
+            insulation, side * 0.76, terminal, 2.48, 0.36, 0.20, 0.31);
+        }
+      }
+      // Backed amber diamond is a bolted reference-node objective, distinct
+      // from both pale rotary dials and the violet vector-shear hazard.
+      const beaconBacking = box(scene, root, 'p28-g9-pylon-front-objective-beacon-backing-' + index,
+        graphite, 0, 3.82, 2.57, 1.38, 1.38, 0.24);
+      beaconBacking.rotation.z = Math.PI / 4;
+      const beaconFace = box(scene, root, 'p28-g9-pylon-front-objective-beacon-amber-' + index,
+        this.objectiveSignalMaterial, 0, 3.82, 2.75, 0.98, 0.98, 0.18);
+      beaconFace.rotation.z = Math.PI / 4;
+      box(scene, root, 'p28-g9-pylon-front-objective-beacon-crosshair-' + index,
+        graphite, 0, 3.82, 2.88, 0.26, 0.26, 0.12);
       box(scene, root, 'p27-c10-pylon-foot-' + index, graphite, 0, 0.24, 0, 1.40, 0.48, 1.40);
       // The primary reference standard is a tapered, ten-sided machine column,
       // not a rectangular crate. The shipped KTX2 painted-metal PBR/normal/ORM
