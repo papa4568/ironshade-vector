@@ -2052,14 +2052,14 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Cool rim contribution makes dark enemy armor distinguishable from the
     // cryogenic deck without turning timed orange attack rings into decoration.
     visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      annexContrast ? 0.22 : cryoContrast ? 0.62 : parallaxContrast ? 0.48 : momentumContrast ? 0.50 : 0.06)
+      annexContrast ? 0.22 : cryoContrast ? 0.62 : parallaxContrast ? 0.48 : momentumContrast ? 0.77 : 0.06)
       .add(cryoContrast ? colorFromHex(0xa6d8e8).scale(0.34)
         : parallaxContrast ? colorFromHex(0xa6d8e8).scale(0.26)
-          : momentumContrast ? colorFromHex(0x91bfd1).scale(0.20) : Color3.Black());
+          : momentumContrast ? colorFromHex(0xa8d5e1).scale(0.30) : Color3.Black());
     visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(
-      annexContrast ? 0.13 : cryoContrast ? 0.34 : parallaxContrast ? 0.29 : momentumContrast ? 0.27 : 0);
+      annexContrast ? 0.13 : cryoContrast ? 0.34 : parallaxContrast ? 0.29 : momentumContrast ? 0.38 : 0);
     visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      (annexContrast ? 0.42 : cryoContrast ? 0.94 : parallaxContrast ? 0.68 : momentumContrast ? 0.68 : 0.22)
+      (annexContrast ? 0.42 : cryoContrast ? 0.94 : parallaxContrast ? 0.68 : momentumContrast ? 0.87 : 0.22)
       + damage.hit * 0.32 + damage.armorBreak * 0.24,
     );
   }
@@ -2742,8 +2742,15 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // of the touch HUD. Widen only this landscape view; no gameplay locations,
     // telegraph ranges, touch hit regions or other mission cameras change.
     const cryoWideFraming = !narrow && this.canvas.dataset.babylonScenario === 'cryo-reserve';
-    const cameraHeight = narrow ? 18 : cryoWideFraming ? (this.coarse ? 15.5 : 13.9) : this.coarse ? 14.8 : 12.8;
-    const cameraOffset = narrow ? 13.2 : cryoWideFraming ? (this.coarse ? 11.9 : 10.8) : this.coarse ? 11.2 : 9.8;
+    // Momentum's full transfer array and near-side hostiles extend beyond the
+    // tall phone's lower gameplay edge. A modest route-only overhead framing
+    // adjustment includes both wheels and actual combatants without moving
+    // enemies or compromising the full-size right-hand touch controls.
+    const momentumWideFraming = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow;
+    const cameraHeight = narrow ? 18 : cryoWideFraming ? (this.coarse ? 15.5 : 13.9)
+      : momentumWideFraming ? (this.coarse ? 17.0 : 15.2) : this.coarse ? 14.8 : 12.8;
+    const cameraOffset = narrow ? 13.2 : cryoWideFraming ? (this.coarse ? 11.9 : 10.8)
+      : momentumWideFraming ? (this.coarse ? 12.9 : 11.6) : this.coarse ? 11.2 : 9.8;
     const offsetX = cameraFeedback?.worldOffsetX ?? 0;
     const offsetZ = cameraFeedback?.worldOffsetZ ?? 0;
     // The Annex's active fight extends into the lower-right touch lane.

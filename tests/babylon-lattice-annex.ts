@@ -134,6 +134,13 @@ const dangerSource = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
 assert.ok(dangerSource.includes('p28-g6-attack-warning-tick-'));
 assert.ok(dangerSource.includes("this.canvas.dataset.babylonScenario === 'lattice-annex'"));
 assert.ok(dangerSource.includes('for (const tick of visual.annexAttackTicks) tick.setEnabled(false)'));
+assert.ok(dangerSource.includes("const annexWarning = this.canvas.dataset.babylonScenario === 'lattice-annex';")
+  && dangerSource.includes('visual.laneMaterial.alpha = annexWarning')
+  && dangerSource.includes('(annexWarning ? 0.64 : cryoWarning ? 0.68')
+  && dangerSource.includes('visual.sideA.material = annexWarning || momentumWarning')
+  && dangerSource.includes('tick.setEnabled(annexWarning || momentumWarning'),
+  'Lattice Annex keeps full threat reach, source rings and attack ticks but not opaque amber bands');
+
 const actorSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 assert.ok(actorSource.includes("const annexContrast = this.canvas.dataset.babylonScenario === 'lattice-annex'"));
 assert.ok(actorSource.includes("const annexActorLift = this.canvas.dataset.babylonScenario === 'lattice-annex'"));

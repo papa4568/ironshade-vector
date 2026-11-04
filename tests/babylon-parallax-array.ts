@@ -307,6 +307,12 @@ assert.ok(presentation.includes("new DynamicTexture('p28-g9-physical-datum-numbe
   && presentation.includes('this.calibrationDisplayMaterial.dispose();'),
   'G9 actual phone zoom needs visible numbered metrology hardware, cylindrical masses and disposed instrument textures');
 
+assert.ok(presentation.includes('p28-g9-pylon-vertical-numbered-sight-glass-')
+  && presentation.includes('p28-g9-pylon-sight-glass-support-')
+  && presentation.includes('uprightScale.rotation.y = Math.PI / 4;')
+  && presentation.includes('uprightScale.material = this.calibrationDisplayMaterial;'),
+  'each actual Parallax pylon needs a legible, bracket-mounted graduated face in the real mobile camera');
+
 // This contact optic tracks a real elite, but must never appear as a huge
 // opaque vertical ribbon across the player and calibrated apparatus.
 assert.ok(presentation.includes("{ diameter: 2.48, thickness: 0.10, tessellation: 40 }")

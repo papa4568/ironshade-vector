@@ -344,6 +344,26 @@ export class BabylonMomentumExchangePresentation {
         carrier.parent = rail;
         carrier.position.set(0, 0.04, side * 0.15);
       }
+
+      // Three visible running carriages per steel guideway. Crown, two copper
+      // bearings and short retaining wings distinguish mechanical transport
+      // from an unadorned floor ribbon without turning guides into danger
+      // telegraphs or creating new collision objects.
+      for (const station of [-2.3, 0, 2.3]) {
+        box(scene, rail, 'p28-g9-rail-rolling-shoe-' + index + '-' + station,
+          structural, station, 0.19, 0, 0.82, 0.24, 0.55);
+        box(scene, rail, 'p28-g9-rail-rolling-shoe-top-' + index + '-' + station,
+          edgeMetal, station, 0.33, 0, 0.62, 0.075, 0.46);
+        for (const side of [-1, 1]) {
+          const roller = MeshBuilder.CreateCylinder('p28-g9-rail-magnetic-roller-' + index + '-' + station + '-' + side,
+            { diameter: 0.32, height: 0.19, tessellation: 14 }, scene);
+          roller.parent = rail;
+          roller.position.set(station, 0.24, side * 0.36);
+          roller.rotation.x = Math.PI / 2;
+          roller.material = magneticCopper;
+          roller.isPickable = false;
+        }
+      }
       this.transferRails.push(rail);
     });
 

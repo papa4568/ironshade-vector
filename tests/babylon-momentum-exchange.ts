@@ -167,6 +167,13 @@ assert.ok(presentation.includes("navigation.routes.filter(route => route.kind ==
   && presentation.includes('tooth % 3 === 0 ? magneticCopper : structural'),
   'G7 real Android must preserve route topology but avoid cyan guide clutter and expose readable magnetic hardware');
 
+assert.ok(presentation.includes('p28-g9-rail-rolling-shoe-')
+  && presentation.includes('p28-g9-rail-magnetic-roller-')
+  && presentation.includes('roller.parent = rail;')
+  && babylon.includes('const momentumWideFraming = this.canvas.dataset.babylonScenario')
+  && babylon.includes('momentumWideFraming ? (this.coarse ? 17.0 : 15.2)'),
+  'Momentum must show physical copper-bearing carriers and preserve near-side actors in the camera');
+
 const g7Hud = readFileSync('src/combatHudGlance.css', 'utf8');
 assert.ok(g7Hud.includes('left: 28%;') && g7Hud.includes('width: min(12vw, 11rem);'),
   'narrow Momentum tactical roof must not collide with centered target HP panel');
@@ -176,8 +183,8 @@ assert.ok(presentation.includes("worldW * x, -0.02, worldH * z, length, 0.06, 0.
   'G7 transfer track must be deck-recessed and full flywheel framed outside touch controls');
 assert.ok(presentation.includes('Math.sin(angle) * 2.42, 0.46, Math.cos(angle) * 2.42')
   && presentation.includes('toothMesh.parent = rotor;')
-  && babylon.includes("momentumContrast ? 0.50 : 0.06)")
-  && babylon.includes("momentumContrast ? colorFromHex(0x91bfd1).scale(0.20)")
+  && babylon.includes("momentumContrast ? 0.77 : 0.06)")
+  && babylon.includes("momentumContrast ? colorFromHex(0xa8d5e1).scale(0.30)")
   && babylon.includes("momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.42 : 0;"),
   'magnetic teeth must sit on the moving rotor and actual G7 fighters must contrast with the deck');
 assert.ok(presentation.includes("p28-g9-recessed-transfer-rail-steel")
