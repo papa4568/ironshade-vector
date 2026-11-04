@@ -509,6 +509,38 @@ export class BabylonParallaxArrayPresentation {
         brace.material = graphite;
         brace.isPickable = false;
       }
+      // The overhead camera also sees a full-diameter *front* metrology dial,
+      // not just a top cap partially hidden behind the roof objective. The
+      // dark precision face, radial graduation stations and brass gnomon are
+      // bolted to the same KTX2 metal column, never projected into the HUD.
+      box(scene, root, 'p28-g9-pylon-front-dial-bearing-' + index,
+        graphite, 0, 2.46, 1.03, 1.50, 0.38, 0.88);
+      const frontDial = MeshBuilder.CreateCylinder('p28-g9-pylon-front-precision-face-' + index,
+        { diameter: 3.42, height: 0.24, tessellation: 36 }, scene);
+      frontDial.parent = root;
+      frontDial.position.set(0, 2.46, 1.54);
+      frontDial.rotation.x = Math.PI / 2;
+      frontDial.material = counterweightMetal;
+      frontDial.isPickable = false;
+      const frontRim = MeshBuilder.CreateTorus('p28-g9-pylon-front-precision-race-' + index,
+        { diameter: 3.58, thickness: 0.24, tessellation: 40 }, scene);
+      frontRim.parent = root;
+      frontRim.position.set(0, 2.46, 1.70);
+      frontRim.rotation.x = Math.PI / 2;
+      frontRim.material = fiducialBrass;
+      frontRim.isPickable = false;
+      for (let station = 0; station < 16; station++) {
+        const angle = station * Math.PI / 8;
+        const major = station % 4 === 0;
+        const tick = box(scene, root, 'p28-g9-pylon-front-macro-graduation-' + index + '-' + station,
+          major ? graduation : etched, Math.cos(angle) * 1.38,
+          2.46 + Math.sin(angle) * 1.38, 1.75,
+          major ? 0.42 : 0.23, major ? 0.20 : 0.13, 0.14);
+        tick.rotation.z = angle + Math.PI / 2;
+      }
+      const gnomon = box(scene, root, 'p28-g9-pylon-front-vernier-pointer-' + index,
+        fiducialBrass, 0.46, 2.72, 1.81, 1.02, 0.16, 0.15);
+      gnomon.rotation.z = 0.46;
       // Three unmistakable high-value metrology pillars, not dark cubic
       // placeholders: exposed etched datum rails and graduated bidirectional
       // scales sit *outside* the textured PBR structural shell.
@@ -751,6 +783,26 @@ export class BabylonParallaxArrayPresentation {
             graduation, x + (bolt - 2) * (width - 1.10) / 5, 0.119,
             z + edge * (depth / 2 - 0.29), 0.17, 0.045, 0.16);
         }
+      }
+    }
+
+    // Matte instrument service bays break up the repeating crosshatched
+    // floor at actual gameplay zoom. They remain lower than world objects,
+    // non-pickable and independent of navigation and combat hitboxes.
+    for (const [zone, x, z, width, depth] of [
+      ['service', worldW * 0.27, worldH * 0.29, 4.8, 3.4],
+      ['transfer', worldW * 0.62, worldH * 0.73, 5.6, 3.8],
+      ['reference', worldW * 0.73, worldH * 0.23, 4.6, 3.0],
+    ] as const) {
+      box(scene, this.root, 'p28-g9-calibration-floor-bay-' + zone,
+        graphite, x, 0.018, z, width, 0.035, depth);
+      box(scene, this.root, 'p28-g9-calibration-floor-centerplate-' + zone,
+        shell, x, 0.048, z, width - 0.42, 0.032, depth - 0.55);
+      for (let rail = -2; rail <= 2; rail++) {
+        box(scene, this.root, 'p28-g9-calibration-floor-ruled-track-' + zone + '-' + rail,
+          rail === 0 ? graduation : insulation,
+          x + rail * (width - 0.90) / 5, 0.068, z,
+          rail === 0 ? 0.22 : 0.10, 0.025, depth - 0.70);
       }
     }
 
@@ -1038,12 +1090,28 @@ export class BabylonParallaxArrayPresentation {
           shell, side * 0.77, 1.61, 0.26, 0.24, 2.18, 0.48);
         box(scene, root, 'p28-g9-shear-anchor-machined-jaw-' + index + '-' + side,
           fiducialBrass, side * 0.78, 2.73, 0.35, 0.40, 0.24, 0.46);
-        for (let notch = 0; notch < 4; notch++) {
+        // Three restrained fasteners, not a ladder of pale cuboid teeth.
+        for (let notch = 0; notch < 3; notch++) {
           box(scene, root, 'p28-g9-shear-anchor-brass-station-' + index + '-' + side + '-' + notch,
-            fiducialBrass, side * 1.01, 0.78 + notch * 0.45, 0.39,
-            0.17, 0.13, 0.31);
+            fiducialBrass, side * 1.01, 0.90 + notch * 0.56, 0.39,
+            0.12, 0.10, 0.23);
         }
       }
+      // An exposed instrument head crowns the split steel fork. Twelve
+      // faceted sidewalls and a recessed violet readout replace another
+      // anonymous pale stepped box at Android gameplay scale.
+      const transducer = MeshBuilder.CreateCylinder('p28-g9-shear-anchor-optical-transducer-' + index,
+        { height: 0.36, diameterTop: 0.65, diameterBottom: 0.92, tessellation: 12 }, scene);
+      transducer.parent = root;
+      transducer.position.set(0, 3.18, 0.52);
+      transducer.material = shearCeramic;
+      transducer.isPickable = false;
+      const transducerRim = MeshBuilder.CreateTorus('p28-g9-shear-anchor-transducer-index-ring-' + index,
+        { diameter: 1.16, thickness: 0.13, tessellation: 24 }, scene);
+      transducerRim.parent = root;
+      transducerRim.position.set(0, 3.38, 0.52);
+      transducerRim.material = indexed;
+      transducerRim.isPickable = false;
       this.anchors.push(root);
     });
 
@@ -1228,7 +1296,7 @@ export class BabylonParallaxArrayPresentation {
     // Separate contact identity from amber alignment fixtures: only an
     // actual enemy telegraph turns this world-space optic red.
     this.eliteContactBeacon = MeshBuilder.CreateCylinder('p28-g9-elite-controller-optical-sight',
-      { height: 0.76, diameterTop: 0.15, diameterBottom: 0.72, tessellation: 6 }, scene);
+      { height: 1.06, diameterTop: 0.17, diameterBottom: 1.10, tessellation: 8 }, scene);
     this.eliteContactBeacon.parent = this.root;
     this.eliteContactBeacon.material = this.eliteTellMaterial;
     this.eliteContactBeacon.isPickable = false;
@@ -1351,11 +1419,11 @@ export class BabylonParallaxArrayPresentation {
     this.eliteContactBeacon.setEnabled(Boolean(baselineController));
     if (baselineController) {
       this.eliteTellRing.position.set(scaled(baselineController.x), 0.26, scaled(baselineController.y));
-      this.eliteContactBeacon.position.set(scaled(baselineController.x), 2.55, scaled(baselineController.y));
+      this.eliteContactBeacon.position.set(scaled(baselineController.x), 2.84, scaled(baselineController.y));
       const telegraphActive = baselineController.telegraph > 0;
-      this.eliteTellMaterial.alpha = telegraphActive ? 0.96 : 0.50;
+      this.eliteTellMaterial.alpha = telegraphActive ? 0.96 : 0.78;
       this.eliteTellMaterial.emissiveColor = colorFromHex(telegraphActive ? 0xff6649 : 0x52c7df)
-        .scale(telegraphActive ? 1.15 : 0.48);
+        .scale(telegraphActive ? 1.15 : 0.86);
       const pulse = telegraphActive ? 1 + Math.sin(state.time * 12) * 0.08 : 1;
       this.eliteTellRing.scaling.set(pulse, pulse, pulse);
     }

@@ -234,6 +234,8 @@ for (const detail of [
 const g6Hud = readFileSync('src/combatHudGlance.css', 'utf8');
 const g6Controls = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 assert.ok(g6Controls.includes('data-location={activeMission.location}'));
+assert.ok(g6Controls.includes("if (message.startsWith('DRONE ESCORT')) return 'ENEMY DRONES DEPLOYED // ISOLATE GRID';"),
+  'G6 combat alert must distinguish enemy drone deployment from the simultaneous grid-isolation objective');
 assert.ok(g6Controls.includes("message.startsWith('KHEPRI SURVEY ANNEX')")
   && g6Controls.includes("message.startsWith('DRONE ESCORT')")
   && g6Controls.includes("return message.split(' // ')[0]")

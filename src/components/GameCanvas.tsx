@@ -1550,7 +1550,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     }
     if (activeMission.location === 'lattice-annex') {
       if (message.startsWith('KHEPRI SURVEY ANNEX')) return 'ISOLATE BOTH GRID BRANCHES';
-      if (message.startsWith('DRONE ESCORT')) return 'DRONE ESCORT // WATCH THE GRID';
+      if (message.startsWith('DRONE ESCORT')) return 'ENEMY DRONES DEPLOYED // ISOLATE GRID';
       if (message.startsWith('SURVEY SHIELD')) return 'SURVEY SHIELD // CUSTODIAN ACTIVE';
       if (message.startsWith('DAMAGED GRID')) return 'GRID ARC LIVE // KEEP CLEAR';
       if (message.startsWith('GRID ISOLATION')) return 'ISOLATE BOTH GRID BRANCHES';

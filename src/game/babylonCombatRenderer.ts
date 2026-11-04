@@ -2038,7 +2038,10 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const silhouette = enemyVariantSilhouette(enemy.variant);
     const speed = clamp01(Math.hypot(enemy.vx, enemy.vy) * 0.012);
     const cryoSilhouette = this.canvas.dataset.babylonScenario === 'cryo-reserve';
-    visual.variantCue.scaling.set(cryoSilhouette ? 1.48 : 1, cryoSilhouette ? 1.28 : 1, cryoSilhouette ? 1.42 : 1);
+    const parallaxSilhouette = this.canvas.dataset.babylonScenario === 'parallax-array';
+    visual.variantCue.scaling.set(cryoSilhouette ? 1.48 : parallaxSilhouette ? 1.64 : 1,
+      cryoSilhouette ? 1.28 : parallaxSilhouette ? 1.42 : 1,
+      cryoSilhouette ? 1.42 : parallaxSilhouette ? 1.60 : 1);
     visual.variantCue.rotation.y = silhouette === 'drone' ? state.time * 1.8 : 0;
     visual.variantCue.rotation.z = (silhouette === 'mobile' ? -0.28 : silhouette === 'technical' ? 0.16 : 0)
       + (silhouette === 'mobile' ? Math.sin(state.time * 8 + enemy.id) * 0.08 * speed : 0);
