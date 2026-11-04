@@ -280,6 +280,19 @@ assert.ok(pkg.scripts.build.includes('npm run test:babylon-parallax-array'));
 // stack at Android gameplay zoom. Three calibrated vernier sleeves, six
 // physical triangulated frame ties, and three raised carriage bearings
 // establish different machine silhouettes without altering simulation.
+assert.ok(presentation.includes('p28-g9-pylon-precision-dial-face-')
+  && presentation.includes('p28-g9-pylon-precision-dial-rim-')
+  && presentation.includes('p28-g9-pylon-precision-dial-index-')
+  && presentation.includes('p28-g9-pylon-upright-measuring-yoke-')
+  && presentation.includes('p28-g9-pylon-yoke-triangulation-')
+  && presentation.includes('dialRim.material = fiducialBrass')
+  && presentation.includes('measuringYoke.material = graphite'),
+  'Parallax pylons need non-HUD top-facing calibrated dials and measured structural yokes');
+assert.ok(babylon.includes("const parallaxActorLift = this.canvas.dataset.babylonScenario === 'parallax-array' ? 0.34 : 0;")
+  && babylon.includes("const parallaxContrast = this.canvas.dataset.babylonScenario === 'parallax-array';")
+  && babylon.includes('parallaxContrast ? 0.48')
+  && babylon.includes('parallaxContrast ? 0.68'),
+  'live player/enemy silhouettes must be distinguishable from the Parallax floor without fake attacks');
 assert.ok(presentation.includes('p28-g9-pylon-machined-vernier-sleeve-')
   && presentation.includes('p28-g9-pylon-vernier-radial-calibration-')
   && presentation.includes('mark < 16')

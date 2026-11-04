@@ -464,6 +464,51 @@ export class BabylonParallaxArrayPresentation {
           mark % 4 === 0 ? 0.19 : 0.09, 0.065, mark % 4 === 0 ? 0.46 : 0.28);
         notch.rotation.y = -angle;
       }
+      // Large physical survey instruments face the overhead gameplay camera.
+      // Indexed brass quadrants and a dark upright measuring yoke distinguish
+      // an actual metrology standard from repeated crate-like silhouettes.
+      const dialFace = MeshBuilder.CreateCylinder('p28-g9-pylon-precision-dial-face-' + index,
+        { height: 0.20, diameter: 2.86, tessellation: 32 }, scene);
+      dialFace.parent = root;
+      dialFace.position.set(0, 4.17, 0);
+      dialFace.material = graphite;
+      dialFace.isPickable = false;
+      const dialRim = MeshBuilder.CreateTorus('p28-g9-pylon-precision-dial-rim-' + index,
+        { diameter: 2.94, thickness: 0.23, tessellation: 36 }, scene);
+      dialRim.parent = root;
+      dialRim.position.set(0, 4.30, 0);
+      dialRim.rotation.x = Math.PI / 2;
+      dialRim.material = fiducialBrass;
+      dialRim.isPickable = false;
+      for (let station = 0; station < 12; station++) {
+        const angle = station * Math.PI / 6;
+        const major = station % 3 === 0;
+        const tick = box(scene, root, 'p28-g9-pylon-precision-dial-index-' + index + '-' + station,
+          major ? graduation : etched, Math.cos(angle) * 1.12, 4.31, Math.sin(angle) * 1.12,
+          major ? 0.38 : 0.22, 0.10, major ? 0.22 : 0.13);
+        tick.rotation.y = -angle;
+      }
+      const pointer = box(scene, root, 'p28-g9-pylon-precision-needle-' + index,
+        fiducialBrass, 0.42, 4.34, 0.24, 0.92, 0.13, 0.14);
+      pointer.rotation.y = -0.29;
+      const measuringYoke = MeshBuilder.CreateTorus('p28-g9-pylon-upright-measuring-yoke-' + index,
+        { diameter: 3.48, thickness: 0.24, tessellation: 36 }, scene);
+      measuringYoke.parent = root;
+      measuringYoke.position.set(0, 2.40, 1.07);
+      measuringYoke.rotation.x = Math.PI / 2;
+      measuringYoke.material = graphite;
+      measuringYoke.isPickable = false;
+      for (const side of [-1, 1]) {
+        const brace = MeshBuilder.CreateTube('p28-g9-pylon-yoke-triangulation-' + index + '-' + side, {
+          path: [new Vector3(side * 1.65, 0.38, 1.22),
+            new Vector3(side * 1.50, 2.35, 1.07),
+            new Vector3(side * 0.82, 4.02, 0.60)],
+          radius: 0.12, tessellation: 10,
+        }, scene);
+        brace.parent = root;
+        brace.material = graphite;
+        brace.isPickable = false;
+      }
       // Three unmistakable high-value metrology pillars, not dark cubic
       // placeholders: exposed etched datum rails and graduated bidirectional
       // scales sit *outside* the textured PBR structural shell.
