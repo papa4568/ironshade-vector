@@ -321,6 +321,18 @@ assert.ok(presentation.includes('p28-g9-pylon-vertical-numbered-sight-glass-')
   && presentation.includes('{ width: 3.56, height: 1.92 }')
   && presentation.includes('uprightScale.material = this.calibrationDisplayMaterial;'),
   'each actual Parallax pylon needs a legible, bracket-mounted graduated face in the real mobile camera');
+assert.ok(presentation.includes("new DynamicTexture('p28-g9-pylon-numbered-engraving-' + index")
+  && presentation.includes("indexInk.fillText(String(index + 1).padStart(2, '0'), 20, 99);")
+  && presentation.includes("'p28-g9-pylon-numbered-plate-' + index")
+  && presentation.includes("indexPlaque.position.set(2.88, 4.20, 2.57);")
+  && presentation.includes('indexPlaque.material = indexMaterial;')
+  && presentation.includes('this.pylonIndexMaterials.forEach(material => material.dispose());')
+  && presentation.includes('this.pylonIndexTextures.forEach(texture => texture.dispose());'),
+  'all three reference pylons require distinct camera-facing engraved identities with managed GPU resources');
+assert.ok(presentation.includes("MeshBuilder.CreateCylinder('p27-c10-pylon-core-' + index")
+  && presentation.includes('{ diameter: 1.38, height: 0.24, tessellation: 4 }')
+  && presentation.includes('core.material = this.objectiveSignalMaterial;'),
+  'a real orange objective diamond must stand apart from pale calibration rings');
 
 // This contact optic tracks a real elite, but must never appear as a huge
 // opaque vertical ribbon across the player and calibrated apparatus.

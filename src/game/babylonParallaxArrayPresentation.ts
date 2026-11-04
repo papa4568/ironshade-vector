@@ -143,6 +143,10 @@ export class BabylonParallaxArrayPresentation {
   private readonly datumNormalTexture: DynamicTexture;
   private readonly calibrationDisplayTexture: DynamicTexture;
   private readonly calibrationDisplayMaterial: StandardMaterial;
+  // One small, camera-readable engraved identity plate per real standard.
+  // Owned once per route and released with the presentation; never HUD text.
+  private readonly pylonIndexTextures: DynamicTexture[] = [];
+  private readonly pylonIndexMaterials: StandardMaterial[] = [];
   private iblReady = false;
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
   private readonly pylonRigs: PylonRig[] = [];
@@ -568,6 +572,41 @@ export class BabylonParallaxArrayPresentation {
       uprightScale.rotation.y = Math.PI / 4;
       uprightScale.material = this.calibrationDisplayMaterial;
       uprightScale.isPickable = false;
+      // The universal DATUM ruler has many graduations, but its numerals
+      // projected below readable phone size on the individual pylons. A large
+      // engraved 01/02/03 identity is physically mounted beside that ruler
+      // so each actual alignment standard can be identified in the scene.
+      const indexTexture = new DynamicTexture('p28-g9-pylon-numbered-engraving-' + index,
+        { width: 256, height: 128 }, scene, false);
+      const indexInk = indexTexture.getContext();
+      indexInk.fillStyle = '#101a22';
+      indexInk.fillRect(0, 0, 256, 128);
+      indexInk.strokeStyle = '#a98a5e';
+      indexInk.lineWidth = 8;
+      indexInk.strokeRect(6, 6, 244, 116);
+      indexInk.fillStyle = '#f1d49b';
+      indexInk.font = 'bold 100px monospace';
+      indexInk.fillText(String(index + 1).padStart(2, '0'), 20, 99);
+      indexTexture.update();
+      const indexMaterial = new StandardMaterial('p28-g9-pylon-numbered-plate-material-' + index, scene);
+      indexMaterial.diffuseTexture = indexTexture;
+      indexMaterial.emissiveTexture = indexTexture;
+      indexMaterial.emissiveColor = Color3.White().scale(0.62);
+      indexMaterial.specularColor = Color3.Black();
+      indexMaterial.disableLighting = true;
+      indexMaterial.backFaceCulling = false;
+      this.pylonIndexTextures.push(indexTexture);
+      this.pylonIndexMaterials.push(indexMaterial);
+      const indexPlaqueBracket = box(scene, root, 'p28-g9-pylon-numbered-plate-bracket-' + index,
+        graphite, 2.56, 4.16, 2.25, 3.08, 1.65, 0.24);
+      indexPlaqueBracket.rotation.y = Math.PI / 4;
+      const indexPlaque = MeshBuilder.CreatePlane('p28-g9-pylon-numbered-plate-' + index,
+        { width: 2.84, height: 1.46 }, scene);
+      indexPlaque.parent = root;
+      indexPlaque.position.set(2.88, 4.20, 2.57);
+      indexPlaque.rotation.y = Math.PI / 4;
+      indexPlaque.material = indexMaterial;
+      indexPlaque.isPickable = false;
       for (const side of [-1, 1]) {
         const panelAnchor = MeshBuilder.CreateTube('p28-g9-pylon-sight-glass-support-' + index + '-' + side,
           { path: [new Vector3(side * 0.38, 2.20, 0.39),
@@ -882,10 +921,16 @@ export class BabylonParallaxArrayPresentation {
         ring.isPickable = false;
         rings.push(ring);
       }
-      const core = MeshBuilder.CreateSphere('p27-c10-pylon-core-' + index, { diameter: 0.58, segments: 12 }, scene);
+      // The previous cyan dot disappeared inside the pale calibration halo
+      // on the source-bound phone image. A machined, top-facing amber diamond
+      // now identifies the real objective, with the actual alignment pulse
+      // still controlled by the live reference-node simulation state.
+      const core = MeshBuilder.CreateCylinder('p27-c10-pylon-core-' + index,
+        { diameter: 1.38, height: 0.24, tessellation: 4 }, scene);
       core.parent = root;
       core.position.y = 5.26;
-      core.material = cyan;
+      core.rotation.y = Math.PI / 4;
+      core.material = this.objectiveSignalMaterial;
       core.isPickable = false;
       // A conspicuous side-mounted fiducial is positioned below the top HUD,
       // unlike the tiny upper mast that can sit behind tactical alerts.
@@ -1773,6 +1818,8 @@ export class BabylonParallaxArrayPresentation {
     this.datumNormalTexture.dispose();
     this.calibrationDisplayMaterial.dispose();
     this.calibrationDisplayTexture.dispose();
+    this.pylonIndexMaterials.forEach(material => material.dispose());
+    this.pylonIndexTextures.forEach(texture => texture.dispose());
     this.ownedMaterials.forEach(item => item.dispose());
     this.premiumSurfaces.dispose();
     this.shearMaterial.dispose();
