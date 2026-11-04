@@ -1356,3 +1356,24 @@
     line-height: 1.15;
   }
 }
+
+/* P28-G9 exact Android pixel review: keep the Baseline Controller's two
+   numeric readouts on one legible line below the right-hand mission chip.
+   The touch-control layout, target data and other locations stay unchanged. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="parallax-array"] .target-readout {
+    width: min(22.5vw, 14.5rem);
+  }
+  .game-root[data-location="parallax-array"] .target-readout .target-values {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: .25rem;
+  }
+  .game-root[data-location="parallax-array"] .target-readout .target-values span {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+}

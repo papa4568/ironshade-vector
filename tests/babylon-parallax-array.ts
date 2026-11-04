@@ -284,6 +284,19 @@ assert.ok(presentation.includes('p28-g9-pylon-front-graduated-ruler-bed-')
   && presentation.includes('beaconFace.rotation.z = Math.PI / 4;'),
   'three real reference standards need readable, body-mounted scales and amber objective diamonds');
 
+assert.ok(presentation.includes('p28-g9-pylon-macro-ruler-housing-')
+  && presentation.includes('p28-g9-pylon-macro-face-index-')
+  && presentation.includes('p28-g9-pylon-macro-side-index-')
+  && presentation.includes('major ? calibrationInk : etched')
+  && presentation.includes('p28-g9-objective-top-amber-diamond-')
+  && presentation.includes('p28-g9-objective-top-diamond-backing-')
+  && presentation.includes('referenceDiamond.material = this.objectiveSignalMaterial;'),
+  'real reference pylons require countable two-axis fiducials and their own bolted amber objective');
+assert.ok(hudGlance.includes('.game-root[data-location="parallax-array"] .target-readout .target-values span')
+  && hudGlance.includes('flex: 0 0 auto;')
+  && hudGlance.includes('white-space: nowrap;'),
+  'Parallax Baseline Controller HP and armor must not wrap in compact landscape');
+
 // This contact optic tracks a real elite, but must never appear as a huge
 // opaque vertical ribbon across the player and calibrated apparatus.
 assert.ok(presentation.includes("{ diameter: 2.48, thickness: 0.10, tessellation: 40 }")

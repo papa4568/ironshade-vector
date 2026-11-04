@@ -200,6 +200,7 @@ export class BabylonParallaxArrayPresentation {
     // violet danger cues and cyan status without replacing textured housings.
     const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0x856747, 0.35, 0.76);
     const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0x816a50, 0.54, 0.78, 0x8f7654, 0.025);
+    const calibrationInk = pbr(scene, 'p28-g9-contrasting-machined-scale-graduations', 0xc6ad84, 0.58, 0.86, 0xb98f56, 0.21);
     const counterweightMetal = pbr(scene, 'p28-g9-moving-inertial-counterweight', 0x3f5b67, 0.48, 0.71, 0x204252, 0.055);
     const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.28);
     const referenceScreen = pbr(scene, 'p28-g9-calibration-console-screen', 0x163849, 0.18, 0.48, 0x72d1c7, 0.28);
@@ -248,7 +249,7 @@ export class BabylonParallaxArrayPresentation {
     // Recessed navigational inlays never compete with vector-wash or boss telegraphs.
     const routePrimary = pbr(scene, 'p27-c10-route-primary', 0x29233b, 0.16, 0.90, 0x655485, 0.026);
     const routeSecondary = pbr(scene, 'p27-c10-route-secondary', 0x192c32, 0.14, 0.94, 0x36626a, 0.014);
-    this.ownedMaterials = [violet, cyan, etched, indexed, graduation, fiducialBrass, counterweightMetal, shearCeramic, referenceScreen, objectiveGold, routePrimary, routeSecondary];
+    this.ownedMaterials = [violet, cyan, etched, indexed, graduation, fiducialBrass, calibrationInk, counterweightMetal, shearCeramic, referenceScreen, objectiveGold, routePrimary, routeSecondary];
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.routeMaterials = [routePrimary, routeSecondary];
     // Diffuse bounced fill lifts dark floor relief without replacing KTX2 channels.
@@ -443,6 +444,53 @@ export class BabylonParallaxArrayPresentation {
       beaconFace.rotation.z = Math.PI / 4;
       box(scene, root, 'p28-g9-pylon-front-objective-beacon-crosshair-' + index,
         graphite, 0, 3.82, 2.88, 0.26, 0.26, 0.12);
+      // Raised dual-plane optical ruler. The earlier faint face marks rendered
+      // as cream pin-dots on the exact-APK phone; broad alternating graduations
+      // face both visible camera axes and sit on a real braced steel housing.
+      box(scene, root, 'p28-g9-pylon-macro-ruler-housing-' + index,
+        graphite, 1.35, 2.35, 1.56, 1.50, 2.96, 0.36);
+      box(scene, root, 'p28-g9-pylon-macro-ruler-side-housing-' + index,
+        graphite, 1.87, 2.35, 0.92, 0.36, 2.96, 1.40);
+      box(scene, root, 'p28-g9-pylon-macro-ruler-brace-' + index,
+        shell, 0.83, 2.48, 0.84, 1.70, 0.18, 1.60);
+      for (let station = 0; station < 8; station++) {
+        const major = station % 3 === 0;
+        const y = 1.18 + station * 0.34;
+        box(scene, root, 'p28-g9-pylon-macro-face-index-' + index + '-' + station,
+          major ? calibrationInk : etched,
+          1.35, y, 1.82, major ? 1.20 : 0.72, major ? 0.16 : 0.10, 0.16);
+        box(scene, root, 'p28-g9-pylon-macro-side-index-' + index + '-' + station,
+          major ? calibrationInk : etched,
+          2.14, y, 0.92, 0.16, major ? 0.16 : 0.10, major ? 1.09 : 0.66);
+      }
+      // Physical objective: a dark-backed top-facing amber diamond, carried by
+      // the calibrated pylon itself. It is not a floor route, HUD overlay or
+      // orange combat telegraph, and it stays distinct from violet survey rings.
+      const referenceStem = MeshBuilder.CreateTube('p28-g9-reference-diamond-cantilever-' + index,
+        { path: [new Vector3(0.50, 3.86, 0.40), new Vector3(1.46, 5.17, 1.30)], radius: 0.11, tessellation: 8 }, scene);
+      referenceStem.parent = root;
+      referenceStem.material = graphite;
+      referenceStem.isPickable = false;
+      const referenceDiamondBacking = MeshBuilder.CreateCylinder('p28-g9-objective-top-diamond-backing-' + index,
+        { diameter: 1.86, height: 0.16, tessellation: 4 }, scene);
+      referenceDiamondBacking.parent = root;
+      referenceDiamondBacking.position.set(1.46, 5.24, 1.30);
+      referenceDiamondBacking.rotation.y = Math.PI / 4;
+      referenceDiamondBacking.material = graphite;
+      referenceDiamondBacking.isPickable = false;
+      const referenceDiamond = MeshBuilder.CreateCylinder('p28-g9-objective-top-amber-diamond-' + index,
+        { diameter: 1.43, height: 0.18, tessellation: 4 }, scene);
+      referenceDiamond.parent = root;
+      referenceDiamond.position.set(1.46, 5.41, 1.30);
+      referenceDiamond.rotation.y = Math.PI / 4;
+      referenceDiamond.material = this.objectiveSignalMaterial;
+      referenceDiamond.isPickable = false;
+      const referenceCenter = MeshBuilder.CreateCylinder('p28-g9-objective-top-diamond-aperture-' + index,
+        { diameter: 0.34, height: 0.09, tessellation: 12 }, scene);
+      referenceCenter.parent = root;
+      referenceCenter.position.set(1.46, 5.55, 1.30);
+      referenceCenter.material = graphite;
+      referenceCenter.isPickable = false;
       box(scene, root, 'p27-c10-pylon-foot-' + index, graphite, 0, 0.24, 0, 1.40, 0.48, 1.40);
       // The primary reference standard is a tapered, ten-sided machine column,
       // not a rectangular crate. The shipped KTX2 painted-metal PBR/normal/ORM
