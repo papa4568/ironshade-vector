@@ -365,7 +365,9 @@ export class BabylonMomentumExchangePresentation {
           roller.parent = rail;
           roller.position.set(station, 0.24, side * 0.36);
           roller.rotation.x = Math.PI / 2;
-          roller.material = magneticCopper;
+          // A steel running roller paired with the copper roller binds the
+          // shipped bare-metal KTX2 PBR without hiding the exposed copper mechanism.
+          roller.material = side < 0 ? structural : magneticCopper;
           roller.isPickable = false;
         }
       }

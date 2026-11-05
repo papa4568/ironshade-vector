@@ -226,6 +226,18 @@ assert.ok(babylon.includes("const momentumContrast = this.canvas.dataset.babylon
 assert.ok(readFileSync('src/game/babylonWorldPresentation.ts', 'utf8')
   .includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n      || mission.location === 'parallax-array';"));
 
+
+const runningShoeRollers = presentation.slice(
+  presentation.indexOf('for (const station of [-2.3, 0, 2.3])'),
+  presentation.indexOf('this.transferRails.push(rail);')
+);
+assert.ok(runningShoeRollers.includes('for (const side of [-1, 1])')
+  && runningShoeRollers.includes('roller.material = side < 0 ? structural : magneticCopper;'),
+  'all four rails must pair shared-KTX2 bare-metal running rollers with copper rollers without changing geometry');
+assert.ok(readFileSync('tools/android-p28g7-momentum-capture.mjs', 'utf8')
+  .includes('Number(d.momentumPremiumBindings || 0) >= 100'),
+  'G7 live readiness must still enforce at least 100 premium PBR mesh bindings');
+
 const validG7Proof = {
   capturedRoute: 'momentum-exchange', backend: 'webgl2', tier: 'high',
   captureMode: 'high-tier-qa-visual-only',
@@ -248,6 +260,7 @@ for (const [label, edit, reason] of [
   ['no-reentry', { mapReentry: '' }, 'missing-map-reentry-proof'],
   ['unmapped', { fallbackObjects: 1 }, 'procedural-box-or-unresolved-world-slot'],
   ['untextured', { premiumBindings: 3 }, 'missing-or-unready-premium-material'],
+  ['under-premium-threshold', { premiumBindings: 99 }, 'missing-or-unready-premium-material'],
   ['wide-ribbon', { routeMaxWidth: 0.48 }, 'oversized-route-material'],
   ['wash-slab', { washFootprint: 0.16 }, 'oversized-countermass-wash'],
   ['missing-rims', { surfaceDetail: 'flux-tooth:48' }, 'missing-transfer-depth-or-grounding'],
@@ -279,8 +292,8 @@ assert.ok(g7Hud.includes('left: 43%'));
 assert.ok(presentation.includes("const magneticCopper = pbr(scene, 'p28-g7-exposed-magnetic-copper'"));
 assert.ok(presentation.includes('tooth % 3 === 0 ? magneticCopper : edgeMetal'),
   'actual flywheel flux shoes must alternate copper and exposed machined faces');
-// 24 of the 48 indexed flux shoes now use the actual shared bare-metal PBR.
-// This adds premium bindings without lowering the live >=100 acceptance gate.
+// The real rail running-shoe roller pairs add 12 shipped bare-metal KTX2 bindings
+// without losing exposed copper contrast or lowering the live >=100 acceptance gate.
 assert.ok(presentation.includes("const shared = new Set(this.premiumSurfaces.materials.values())"));
 assert.ok(presentation.includes('ring.material = ringIndex === 1 ? magneticCopper : edgeMetal'));
 assert.ok(renderWorldSource.includes('visual.ringMaterial.emissiveColor = color.scale(parallaxShearDuplicate ? 0.12 : parallaxGravity ? 0.24 : momentumHazard ? 0.34 : 1)'));
