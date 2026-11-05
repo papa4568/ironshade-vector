@@ -277,14 +277,19 @@ export class BabylonMomentumExchangePresentation {
         lamination.material = groove % 2 ? magneticCopper : edgeMetal;
         lamination.isPickable = false;
       }
+      // The 48 actual rotor-mounted flux shoes were technically present but
+      // blended into their smooth metallic race at mobile gameplay distance.
+      // Extend each machined, low-profile shoe above the face of the rotor,
+      // alternate copper/bright-metal contact faces and retain the same live
+      // 16-station-per-wheel rotating mechanism.
       for (let tooth = 0; tooth < 16; tooth += 1) {
         const angle = tooth * Math.PI / 8;
         const toothMesh = box(scene, root, 'p28-g7-flywheel-flux-tooth-' + index + '-' + tooth,
-          tooth % 3 === 0 ? magneticCopper : structural,
-          Math.sin(angle) * 2.42, 0.46, Math.cos(angle) * 2.42,
-          0.26, 0.17, 0.36);
+          tooth % 3 === 0 ? magneticCopper : edgeMetal,
+          Math.sin(angle) * 2.53, 0.58, Math.cos(angle) * 2.53,
+          0.42, 0.24, 0.54);
         toothMesh.parent = rotor;
-        toothMesh.rotation.y = angle; // alternating high-contrast flux shoes on the exposed rotor face
+        toothMesh.rotation.y = angle; // real segmented flux teeth turn with the flywheel
       }
       for (const side of [-1, 1]) {
         const race = MeshBuilder.CreateTorus('p28-g7-bearing-race-' + index + '-' + side,
@@ -398,6 +403,12 @@ export class BabylonMomentumExchangePresentation {
           edgeMetal, side * 0.52, 0.91, 0, 0.23, 1.42, 0.92);
         box(scene, root, 'p28-g7-drum-latch-' + id + '-' + side,
           fixture, side * 0.51, 1.42, 0.33, 0.14, 0.16, 0.12);
+        // Distinct bolted retainer jaws, separate from the smooth copper
+        // capture ring, expose the real physical latch at phone zoom.
+        box(scene, root, 'p28-g7-drum-machined-retainer-jaw-' + id + '-' + side,
+          magneticCopper, side * 0.83, 1.41, 0.49, 0.48, 0.42, 0.60);
+        box(scene, root, 'p28-g7-drum-retainer-lockpin-' + id + '-' + side,
+          edgeMetal, side * 0.83, 1.68, 0.67, 0.22, 0.20, 0.28);
       }
       box(scene, root, id + '-pedestal', machinery, 0, 0.34, 0, 0.92, 0.68, 0.92);
       const core = MeshBuilder.CreateCylinder(id + '-core', { height: 1.36, diameter: 0.62, tessellation: 16 }, scene);

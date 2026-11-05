@@ -164,7 +164,7 @@ assert.ok(presentation.includes("navigation.routes.filter(route => route.kind ==
   && presentation.includes('this.readabilityLight.range = 14.2;')
   && presentation.includes('this.hemisphere.intensity = 0.43')
   && presentation.includes('p28-g9-capture-drum-copper-retainer-ring-')
-  && presentation.includes('tooth % 3 === 0 ? magneticCopper : structural'),
+  && presentation.includes('tooth % 3 === 0 ? magneticCopper : edgeMetal'),
   'G7 real Android must preserve route topology but avoid cyan guide clutter and expose readable magnetic hardware');
 
 assert.ok(presentation.includes('p28-g9-rail-rolling-shoe-')
@@ -181,7 +181,7 @@ assert.ok(presentation.includes("worldW * x, -0.02, worldH * z, length, 0.06, 0.
   && presentation.includes("carrier.position.set(0, 0.04, side * 0.15);")
   && babylon.includes("momentum-exchange' && !narrow ? 8.4 : 0;"),
   'G7 transfer track must be deck-recessed and full flywheel framed outside touch controls');
-assert.ok(presentation.includes('Math.sin(angle) * 2.42, 0.46, Math.cos(angle) * 2.42')
+assert.ok(presentation.includes('Math.sin(angle) * 2.53, 0.58, Math.cos(angle) * 2.53')
   && presentation.includes('toothMesh.parent = rotor;')
   && babylon.includes("momentumContrast ? 0.77 : 0.06)")
   && babylon.includes("momentumContrast ? colorFromHex(0xa8d5e1).scale(0.30)")
@@ -211,8 +211,14 @@ assert.ok(g7CanvasSource.includes("message.startsWith('CISLUNAR MOMENTUM EXCHANG
   && g7CanvasSource.includes("return 'LATERAL VECTOR BURST'"),
   'real director messages must use concise roof captions without changing their accessible text');
 assert.ok(presentation.includes('p28-g9-momentum-machined-lamination-')
-  && presentation.includes('0.26, 0.17, 0.36'),
+  && presentation.includes('0.42, 0.24, 0.54'),
   'Momentum hardware must have fine real laminations rather than chunky flux cubes');
+assert.ok(presentation.includes("'p28-g7-drum-machined-retainer-jaw-' + id + '-' + side")
+  && presentation.includes("'p28-g7-drum-retainer-lockpin-' + id + '-' + side")
+  && presentation.includes('magneticCopper, side * 0.83, 1.41, 0.49, 0.48, 0.42, 0.60')
+  && babylon.includes("const momentumNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 2.8 : 0;")
+  && (babylon.split('momentumNearThreatLookAhead + iceMineNearThreatLookAhead').length - 1) === 4,
+  'G7 actual-rotor flux teeth, physical capture retainer locks and near-side actor framing must remain readable');
 assert.ok(babylon.includes("momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.42 : 0"),
   'Momentum operator must remain readable against dark industrial flooring');
 assert.ok(babylon.includes("const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));

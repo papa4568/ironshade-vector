@@ -2771,6 +2771,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Translate eye and target together to reserve the unchanged right-side
     // RUSH button lane for real enemies and their warning rings.
     const momentumTouchLanePan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 8.4 : 0;
+    // Real G7 device pixels showed the near-edge rigger cropped below the
+    // floor while the right touch dock remained full sized. Translate eye
+    // and target equally into that actual threat lane, preserving FOV and
+    // gameplay/attack footprints. No other route camera is changed.
+    const momentumNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 2.8 : 0;
     // Parallax's live fight reaches the right-side FIRE and DODGE lane. A
     // location-only lateral look-ahead preserves the original FOV, true
     // target positions, telegraph ranges and full-size touch hit regions.
@@ -2788,11 +2793,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // under the unchanged location banner. Translate eye and target together.
     const cryoNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 4.2 : 0;
 
-    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + iceMineNearThreatLookAhead + cryoNearThreatLookAhead, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + iceMineNearThreatLookAhead + cryoNearThreatLookAhead);
+    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + cryoNearThreatLookAhead, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + cryoNearThreatLookAhead);
     this.cameraTarget.set(
-      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + iceMineNearThreatLookAhead + cryoNearThreatLookAhead,
+      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + cryoNearThreatLookAhead,
       0.62,
-      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + iceMineNearThreatLookAhead + cryoNearThreatLookAhead,
+      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + cryoNearThreatLookAhead,
     );
     this.camera.setTarget(this.cameraTarget);
     this.camera.getViewMatrix(true);

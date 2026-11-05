@@ -217,6 +217,11 @@ assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .target-read
   && hudCss.includes('overflow-wrap: anywhere;'),
   'Cryo target and tactical HUD must show full identities without ellipses or moving touch hitboxes');
 assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .boss-name'));
+assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .class-mechanic-hud {')
+  && hudCss.includes('left: max(6px, env(safe-area-inset-left));')
+  && hudCss.includes('top: 22%;')
+  && hudCss.includes('width: min(16vw, 13rem);'),
+  'G8 actual phone BREACH GUARD card must not hide left-side enemy or danger ring');
 assert.ok(hudCss.includes('white-space: normal;'));
 assert.ok(hudCss.includes('text-overflow: clip;'));
 assert.ok(presentation.includes("MeshBuilder.CreatePlane('p28-g8-ambient-cold-vent-"));

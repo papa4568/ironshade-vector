@@ -1383,6 +1383,21 @@
   }
 }
 
+/* P28-G9 sibling G8 real device pixel review: the transient BREACH GUARD
+   class status previously blocked a left-side enemy and its live warning arc.
+   Reserve the empty far-left strip above the MED utility control; preserve
+   the full status message and touch-control footprint. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="cryo-reserve"] .class-mechanic-hud {
+    position: absolute;
+    left: max(6px, env(safe-area-inset-left));
+    right: auto;
+    top: 22%;
+    bottom: auto;
+    width: min(16vw, 13rem);
+  }
+}
+
 /* P28-G9 exact Android pixel review: keep the Baseline Controller's two
    numeric readouts on one legible line below the right-hand mission chip.
    The touch-control layout, target data and other locations stay unchanged. */
