@@ -324,8 +324,10 @@ assert.ok(presentation.includes('p28-g9-pylon-vertical-numbered-sight-glass-')
 assert.ok(presentation.includes("new DynamicTexture('p28-g9-pylon-numbered-engraving-' + index")
   && presentation.includes("indexInk.fillText(String(index + 1).padStart(2, '0'), 20, 99);")
   && presentation.includes("'p28-g9-pylon-numbered-plate-' + index")
-  && presentation.includes("indexPlaque.position.set(2.88, 4.20, 2.57);")
+  && presentation.includes("indexPlaque.position.set(3.27, 3.80, 2.50);")
   && presentation.includes('indexPlaque.material = indexMaterial;')
+  && presentation.includes('{ width: 1.70, height: 0.92 }, scene);')
+  && presentation.includes('graphite, 3.02, 3.77, 2.22, 1.90, 1.04, 0.18);')
   && presentation.includes('this.pylonIndexMaterials.forEach(material => material.dispose());')
   && presentation.includes('this.pylonIndexTextures.forEach(texture => texture.dispose());'),
   'all three reference pylons require distinct camera-facing engraved identities with managed GPU resources');
@@ -609,6 +611,10 @@ assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, fallbackObjects: 1 }
 assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, routeMaxWidth: 0.5 }).valid);
 assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, shotsAfter: 2 }).valid);
 assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, beforeAssetIds: 'late-object-lod0' }).valid);
+
+assert.ok(presentation.includes('major ? calibrationInk : etched, 0, 1.02 + station * 0.36, 2.51,')
+  && presentation.includes('calibrationInk, side * 0.76, 2.28, 2.31, 0.24, 2.92, 0.28);'),
+  'physical pylon-facing graduation and insulated conductors need readable machined contrast');
 
 console.log('BABYLON_PARALLAX_ARRAY_PASS identity=baseline-pylons|metrology-composite|reference-violet|inertial-reference routes='
   + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' shear=8s>19s references=3');

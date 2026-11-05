@@ -311,6 +311,7 @@ export class BabylonRefineryWorldPresentation {
     this.canvas.dataset.babylonSharedWorldAuthoredCount = '0';
     this.canvas.dataset.babylonSharedWorldFallbackCount = '0';
     this.canvas.dataset.babylonSharedWorldAssets = '';
+    this.canvas.dataset.babylonSharedWorldObjectAssets = '[]';
     this.canvas.dataset.babylonSharedWorldPendingCount = '0';
     this.canvas.dataset.babylonSharedWorldFailedCount = '0';
     this.canvas.dataset.babylonSharedWorldFallbackReasons = '';
@@ -576,6 +577,9 @@ export class BabylonRefineryWorldPresentation {
     const quality = worldMaterialQualityProfile(worldQualityName(detailScale));
     const activeIds = new Set<string>();
     const activeAssets = new Set<string>();
+    // Identify the real active object behind each authored LOD0 asset family.
+    // The family-name set alone may change as world objects activate/deactivate.
+    const activeObjectAssets: Array<[string, string]> = [];
     let activeCount = 0;
     let interactableCount = 0;
     let premiumCoverCount = 0;
@@ -647,6 +651,7 @@ export class BabylonRefineryWorldPresentation {
         if (object.active) {
           authoredCount += 1;
           activeAssets.add(authoredWorld.assetId);
+          if (sharedPremiumScenario) activeObjectAssets.push([object.id, authoredWorld.assetId]);
           if (interactableWorldPresentation(object.kind)) mappedInteractableAuthoredCount += 1;
         }
       }
@@ -710,6 +715,8 @@ export class BabylonRefineryWorldPresentation {
     this.canvas.dataset.babylonSharedWorldAuthoredCount = String(sharedPremiumScenario ? authoredCount : 0);
     this.canvas.dataset.babylonSharedWorldFallbackCount = String(sharedPremiumScenario ? fallbackCount : 0);
     this.canvas.dataset.babylonSharedWorldAssets = sharedPremiumScenario ? [...activeAssets].sort().join(',') : '';
+    this.canvas.dataset.babylonSharedWorldObjectAssets = sharedPremiumScenario
+      ? JSON.stringify(activeObjectAssets.sort(([a], [b]) => a.localeCompare(b))) : '[]';
     this.canvas.dataset.babylonSharedWorldPendingCount = String(sharedPremiumScenario ? sharedPendingCount : 0);
     this.canvas.dataset.babylonSharedWorldFailedCount = String(sharedPremiumScenario ? sharedFailedCount : 0);
     this.canvas.dataset.babylonSharedWorldFallbackReasons = sharedPremiumScenario

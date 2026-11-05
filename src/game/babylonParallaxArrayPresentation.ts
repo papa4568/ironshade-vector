@@ -471,12 +471,12 @@ export class BabylonParallaxArrayPresentation {
       for (let station = 0; station < 8; station++) {
         const major = station % 3 === 0;
         box(scene, root, 'p28-g9-pylon-front-readable-graduation-' + index + '-' + station,
-          major ? fiducialBrass : etched, 0, 1.02 + station * 0.36, 2.51,
+          major ? calibrationInk : etched, 0, 1.02 + station * 0.36, 2.51,
           major ? 0.82 : 0.48, major ? 0.17 : 0.12, 0.13);
       }
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-pylon-front-isolated-conductor-' + index + '-' + side,
-          fiducialBrass, side * 0.76, 2.28, 2.31, 0.18, 2.92, 0.24);
+          calibrationInk, side * 0.76, 2.28, 2.31, 0.24, 2.92, 0.28);
         for (const terminal of [1.12, 3.42]) {
           box(scene, root, 'p28-g9-pylon-front-conductor-terminal-' + index + '-' + side + '-' + terminal,
             insulation, side * 0.76, terminal, 2.48, 0.36, 0.20, 0.31);
@@ -598,12 +598,12 @@ export class BabylonParallaxArrayPresentation {
       this.pylonIndexTextures.push(indexTexture);
       this.pylonIndexMaterials.push(indexMaterial);
       const indexPlaqueBracket = box(scene, root, 'p28-g9-pylon-numbered-plate-bracket-' + index,
-        graphite, 2.56, 4.16, 2.25, 3.08, 1.65, 0.24);
+        graphite, 3.02, 3.77, 2.22, 1.90, 1.04, 0.18);
       indexPlaqueBracket.rotation.y = Math.PI / 4;
       const indexPlaque = MeshBuilder.CreatePlane('p28-g9-pylon-numbered-plate-' + index,
-        { width: 2.84, height: 1.46 }, scene);
+        { width: 1.70, height: 0.92 }, scene);
       indexPlaque.parent = root;
-      indexPlaque.position.set(2.88, 4.20, 2.57);
+      indexPlaque.position.set(3.27, 3.80, 2.50);
       indexPlaque.rotation.y = Math.PI / 4;
       indexPlaque.material = indexMaterial;
       indexPlaque.isPickable = false;
