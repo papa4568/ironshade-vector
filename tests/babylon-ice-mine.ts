@@ -23,10 +23,23 @@ function assert(condition: unknown, message: string): asserts condition {
 const renderer = read('src/game/babylonCombatRenderer.ts');
 assert(renderer.includes("const iceMineNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.2 : 0"),
   'Ice Mine near-side live hostiles must stay above bottom-edge gameplay banner');
-assert(renderer.includes('parallaxTouchLanePan + iceMineNearThreatLookAhead + cryoNearThreatLookAhead')
-  && renderer.includes('parallaxTouchLanePan + iceMineNearThreatLookAhead + cryoNearThreatLookAhead, cameraHeight')
-  && renderer.includes("const cryoNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 4.2 : 0;"),
-  'Ice Mine and Cryo camera translation must affect eye and target only on their own routes');
+// Only match the actual camera eye/aim expressions. A new route-local offset
+// is allowed between the Ice and Cryo terms; each existing offset must still
+// translate both coordinates of the eye AND target, with no world-state change.
+const cameraEyeStart = renderer.indexOf('this.camera.position.set(px + cameraOffset');
+const cameraTargetStart = renderer.indexOf('this.cameraTarget.set(', cameraEyeStart);
+const cameraApplyStart = renderer.indexOf('this.camera.setTarget(this.cameraTarget);', cameraTargetStart);
+assert(cameraEyeStart !== -1 && cameraTargetStart > cameraEyeStart && cameraApplyStart > cameraTargetStart,
+  'Ice/Cryo visual regression must inspect the actual camera eye and target');
+const cameraEye = renderer.slice(cameraEyeStart, cameraTargetStart);
+const cameraAim = renderer.slice(cameraTargetStart, cameraApplyStart);
+assert(renderer.includes("const cryoNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 4.2 : 0;"),
+  'Cryo near-threat look-ahead must remain route-scoped');
+for (const routeOffset of ['iceMineNearThreatLookAhead', 'cryoNearThreatLookAhead']) {
+  const count = (text: string) => text.split(' + ' + routeOffset).length - 1;
+  assert(count(cameraEye) === 2 && count(cameraAim) === 2,
+    'Ice/Cryo camera offset must translate both eye and target axes: ' + routeOffset);
+}
 const telegraphs = read('src/game/babylonEnemyTelegraphs.ts');
 const ice = read('src/game/babylonIceMinePresentation.ts');
 assert(telegraphs.includes("const iceWarning = this.canvas.dataset.babylonScenario === 'ice-mine'")
