@@ -277,7 +277,8 @@ assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .target-
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"])'));
 assert.ok(g7Hud.includes('left: 43%'));
 assert.ok(presentation.includes("const magneticCopper = pbr(scene, 'p28-g7-exposed-magnetic-copper'"));
-assert.ok(presentation.includes('tooth % 3 === 0 ? magneticCopper : structural'));
+assert.ok(presentation.includes('tooth % 3 === 0 ? magneticCopper : edgeMetal'),
+  'actual flywheel flux shoes must alternate copper and exposed machined faces');
 // 24 of the 48 indexed flux shoes now use the actual shared bare-metal PBR.
 // This adds premium bindings without lowering the live >=100 acceptance gate.
 assert.ok(presentation.includes("const shared = new Set(this.premiumSurfaces.materials.values())"));
