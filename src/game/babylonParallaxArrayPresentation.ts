@@ -1697,18 +1697,20 @@ export class BabylonParallaxArrayPresentation {
         const projected = Vector3.Project(rig.core.getAbsolutePosition(), Matrix.Identity(),
           this.scene.getTransformMatrix(), viewport);
         ringFitsFrame = parallaxReferenceRingFitsFrame(projected.y, viewport.y, viewport.height);
-        // Hide the complete optional gauge only if its actual metal corners
-        // cross the phone viewport/HUD edge. The original calibrated tower,
-        // objective, simulation collider and attack cues remain visible.
+        // The full corner-hull guard rejected genuine distant instruments
+        // whose bracing crossed an edge while their face was fully onscreen.
+        // Gate only the world-space *face center* against the camera's safe
+        // top/bottom frame. This preserves real pylon scales at gameplay zoom
+        // and suppresses ornamental numbers approaching the lower touch HUD,
+        // never hiding the simulation object, objective or boss telegraph.
         rig.gaugeFace.computeWorldMatrix(true);
-        const gaugeFitsFrame = rig.gaugeFace.getBoundingInfo().boundingBox.vectorsWorld.every(corner => {
-          const point = Vector3.Project(corner, Matrix.Identity(), this.scene.getTransformMatrix(), viewport);
-          return Number.isFinite(point.x) && Number.isFinite(point.y)
-            && point.x >= viewport.x + viewport.width * 0.04
-            && point.x <= viewport.x + viewport.width * 0.96
-            && point.y >= viewport.y + viewport.height * 0.06
-            && point.y <= viewport.y + viewport.height * 0.86;
-        });
+        const faceCenter = Vector3.Project(rig.gaugeFace.getAbsolutePosition(),
+          Matrix.Identity(), this.scene.getTransformMatrix(), viewport);
+        const gaugeFitsFrame = Number.isFinite(faceCenter.x) && Number.isFinite(faceCenter.y)
+          && faceCenter.x >= viewport.x + viewport.width * 0.04
+          && faceCenter.x <= viewport.x + viewport.width * 0.96
+          && faceCenter.y >= viewport.y + viewport.height * 0.06
+          && faceCenter.y <= viewport.y + viewport.height * 0.78;
         rig.gauge.setEnabled(gaugeFitsFrame);
       }
       const aligned = Boolean(object?.exposed && object.hp > 0);

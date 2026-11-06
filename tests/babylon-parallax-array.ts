@@ -351,7 +351,8 @@ assert.ok(presentation.includes('p28-g9-pylon-overhead-engraved-head-')
   && presentation.includes('p28-g9-pylon-overhead-vernier-brace-')
   && presentation.includes('gaugeFace.rotation.x = -Math.PI / 2;')
   && presentation.includes('gauge.position.set(-1.20, 6.12, 0.78);')
-  && presentation.includes('rig.gaugeFace.getBoundingInfo().boundingBox.vectorsWorld.every')
+  && presentation.includes('rig.gaugeFace.getAbsolutePosition()')
+  && presentation.includes('faceCenter.y <= viewport.y + viewport.height * 0.78;')
   && presentation.includes('rig.gauge.setEnabled(gaugeFitsFrame);')
   && presentation.includes("indexInk.fillRect(153, 19 + graduation * 23"),
   'physical Parallax overhead gauges must expose readable, supported fiducials');
