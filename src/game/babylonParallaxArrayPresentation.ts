@@ -563,12 +563,12 @@ export class BabylonParallaxArrayPresentation {
       // opaque machine housing and pale clamp blocks hid the marked face.
       // This is a bolted physical scale, not an overlay or gameplay object.
       const sidePanelBracket = box(scene, root, 'p28-g9-pylon-vertical-numbered-sight-glass-bracket-' + index,
-        graphite, 2.15, 3.18, 2.04, 3.88, 2.24, 0.28);
+        graphite, 1.22, 3.16, 1.08, 2.36, 1.40, 0.22);
       sidePanelBracket.rotation.y = Math.PI / 4;
       const uprightScale = MeshBuilder.CreatePlane('p28-g9-pylon-vertical-numbered-sight-glass-' + index,
-        { width: 3.56, height: 1.92 }, scene);
+        { width: 2.02, height: 1.10 }, scene);
       uprightScale.parent = root;
-      uprightScale.position.set(2.55, 3.25, 2.42);
+      uprightScale.position.set(1.39, 3.22, 1.29);
       uprightScale.rotation.y = Math.PI / 4;
       uprightScale.material = this.calibrationDisplayMaterial;
       uprightScale.isPickable = false;
@@ -598,12 +598,12 @@ export class BabylonParallaxArrayPresentation {
       this.pylonIndexTextures.push(indexTexture);
       this.pylonIndexMaterials.push(indexMaterial);
       const indexPlaqueBracket = box(scene, root, 'p28-g9-pylon-numbered-plate-bracket-' + index,
-        graphite, 3.02, 3.77, 2.22, 1.90, 1.04, 0.18);
+        graphite, 2.03, 2.32, 1.34, 1.10, 0.78, 0.14);
       indexPlaqueBracket.rotation.y = Math.PI / 4;
       const indexPlaque = MeshBuilder.CreatePlane('p28-g9-pylon-numbered-plate-' + index,
-        { width: 1.70, height: 0.92 }, scene);
+        { width: 1.00, height: 0.62 }, scene);
       indexPlaque.parent = root;
-      indexPlaque.position.set(3.27, 3.80, 2.50);
+      indexPlaque.position.set(2.13, 2.34, 1.49);
       indexPlaque.rotation.y = Math.PI / 4;
       indexPlaque.material = indexMaterial;
       indexPlaque.isPickable = false;
@@ -739,9 +739,9 @@ export class BabylonParallaxArrayPresentation {
         const angle = station * Math.PI / 8;
         const major = station % 4 === 0;
         const tick = box(scene, root, 'p28-g9-pylon-front-macro-graduation-' + index + '-' + station,
-          major ? graduation : etched, Math.cos(angle) * 1.38,
+          major ? calibrationInk : indexed, Math.cos(angle) * 1.38,
           2.46 + Math.sin(angle) * 1.38, 1.75,
-          major ? 0.42 : 0.23, major ? 0.20 : 0.13, 0.14);
+          major ? 0.54 : 0.27, major ? 0.23 : 0.14, 0.17);
         tick.rotation.z = angle + Math.PI / 2;
       }
       const gnomon = box(scene, root, 'p28-g9-pylon-front-vernier-pointer-' + index,
@@ -1152,13 +1152,13 @@ export class BabylonParallaxArrayPresentation {
       // Counterweight mass and orange-brass travel scale are a different
       // silhouette from the pylons' loop coils and the anchor's split fork.
       box(scene, root, 'p28-g9-instrumented-moving-counterweight-' + index,
-        counterweightMetal, 0, 1.71, 0, 2.10, 0.82, 1.35);
+        counterweightMetal, 0, 1.71, 0, 1.60, 0.82, 1.05);
       // Wide exposed top face: machined ruler, high-contrast gauge sectors
       // and travel stops remain visible when the front dial faces away.
       box(scene, root, 'p28-g9-counterweight-hardened-upper-deck-' + index,
-        shell, 0, 2.18, 0, 2.55, 0.14, 1.48);
+        shell, 0, 2.18, 0, 2.18, 0.14, 1.18);
       box(scene, root, 'p28-g9-counterweight-top-measuring-channel-' + index,
-        insulation, 0, 2.30, 0, 2.18, 0.10, 0.96);
+        insulation, 0, 2.30, 0, 1.80, 0.10, 0.74);
       // A true machined top bearing and concentric calibrated race break
       // the crate silhouette of the moving counterweight. This is grounded
       // on the top housing; the real simulated travel range is unchanged.
@@ -1297,7 +1297,7 @@ export class BabylonParallaxArrayPresentation {
           indexed, side * 0.56, 2.18, 0.55, 0.48, 0.25, 0.44);
       }
       box(scene, root, 'p28-g9-shear-anchor-violet-crosshead-' + index,
-        shell, 0, 2.44, 0.52, 1.82, 0.32, 0.38);
+        shearCeramic, 0, 2.44, 0.52, 1.82, 0.32, 0.38);
       // The anchor is an insulated steel interferometer fork, not a flat
       // lavender monolith. A narrow ceramic hazard channel sits between
       // two KTX2 metal prongs, with top-facing index pins and bolted knuckles.
@@ -1316,7 +1316,7 @@ export class BabylonParallaxArrayPresentation {
         indexed, 0, 3.04, 0.52, 0.52, 0.11, 0.43);
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g9-shear-anchor-metal-prong-' + index + '-' + side,
-          shell, side * 0.77, 1.61, 0.26, 0.24, 2.18, 0.48);
+          graphite, side * 0.77, 1.61, 0.26, 0.24, 2.18, 0.48);
         box(scene, root, 'p28-g9-shear-anchor-machined-jaw-' + index + '-' + side,
           fiducialBrass, side * 0.78, 2.73, 0.35, 0.40, 0.24, 0.46);
         // Three restrained fasteners, not a ladder of pale cuboid teeth.

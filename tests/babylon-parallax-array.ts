@@ -317,17 +317,18 @@ assert.ok(presentation.includes("new DynamicTexture('p28-g9-physical-datum-numbe
 assert.ok(presentation.includes('p28-g9-pylon-vertical-numbered-sight-glass-')
   && presentation.includes('p28-g9-pylon-sight-glass-support-')
   && presentation.includes('uprightScale.rotation.y = Math.PI / 4;')
-  && presentation.includes('uprightScale.position.set(2.55, 3.25, 2.42);')
-  && presentation.includes('{ width: 3.56, height: 1.92 }')
-  && presentation.includes('uprightScale.material = this.calibrationDisplayMaterial;'),
+  && presentation.includes('uprightScale.position.set(1.39, 3.22, 1.29);')
+  && presentation.includes('{ width: 2.02, height: 1.10 }')
+  && presentation.includes('uprightScale.material = this.calibrationDisplayMaterial;')
+  && presentation.includes('graphite, 1.22, 3.16, 1.08, 2.36, 1.40, 0.22);'),
   'each actual Parallax pylon needs a legible, bracket-mounted graduated face in the real mobile camera');
 assert.ok(presentation.includes("new DynamicTexture('p28-g9-pylon-numbered-engraving-' + index")
   && presentation.includes("indexInk.fillText(String(index + 1).padStart(2, '0'), 20, 99);")
   && presentation.includes("'p28-g9-pylon-numbered-plate-' + index")
-  && presentation.includes("indexPlaque.position.set(3.27, 3.80, 2.50);")
+  && presentation.includes("indexPlaque.position.set(2.13, 2.34, 1.49);")
   && presentation.includes('indexPlaque.material = indexMaterial;')
-  && presentation.includes('{ width: 1.70, height: 0.92 }, scene);')
-  && presentation.includes('graphite, 3.02, 3.77, 2.22, 1.90, 1.04, 0.18);')
+  && presentation.includes('{ width: 1.00, height: 0.62 }, scene);')
+  && presentation.includes('graphite, 2.03, 2.32, 1.34, 1.10, 0.78, 0.14);')
   && presentation.includes('this.pylonIndexMaterials.forEach(material => material.dispose());')
   && presentation.includes('this.pylonIndexTextures.forEach(texture => texture.dispose());'),
   'all three reference pylons require distinct camera-facing engraved identities with managed GPU resources');
@@ -371,10 +372,10 @@ assert.ok(presentation.includes('p28-g9-pylon-precision-dial-face-')
   && presentation.includes('dialRim.material = fiducialBrass')
   && presentation.includes('measuringYoke.material = graphite'),
   'Parallax pylons need non-HUD top-facing calibrated dials and measured structural yokes');
-assert.ok(babylon.includes("const parallaxActorLift = this.canvas.dataset.babylonScenario === 'parallax-array' ? 0.34 : 0;")
+assert.ok(babylon.includes("const parallaxActorLift = this.canvas.dataset.babylonScenario === 'parallax-array' ? 0.50 : 0;")
   && babylon.includes("const parallaxContrast = this.canvas.dataset.babylonScenario === 'parallax-array';")
-  && babylon.includes('parallaxContrast ? 0.48')
-  && babylon.includes('parallaxContrast ? 0.68'),
+  && babylon.includes('parallaxContrast ? 0.60')
+  && babylon.includes('parallaxContrast ? 0.80'),
   'live player/enemy silhouettes must be distinguishable from the Parallax floor without fake attacks');
 assert.ok(presentation.includes('p28-g9-pylon-machined-vernier-sleeve-')
   && presentation.includes('p28-g9-pylon-vernier-radial-calibration-')
@@ -615,6 +616,20 @@ assert.ok(!auditParallaxVisualProvenance({ ...validG9Proof, beforeAssetIds: 'lat
 assert.ok(presentation.includes('major ? calibrationInk : etched, 0, 1.02 + station * 0.36, 2.51,')
   && presentation.includes('calibrationInk, side * 0.76, 2.28, 2.31, 0.24, 2.92, 0.28);'),
   'physical pylon-facing graduation and insulated conductors need readable machined contrast');
+
+assert.ok(presentation.includes('major ? calibrationInk : indexed, Math.cos(angle) * 1.38,')
+  && presentation.includes('major ? 0.54 : 0.27, major ? 0.23 : 0.14, 0.17);'),
+  'physical graduated pylon dial needs readable instrument-metal contrast');
+assert.ok(presentation.includes('counterweightMetal, 0, 1.71, 0, 1.60, 0.82, 1.05);')
+  && presentation.includes('shell, 0, 2.18, 0, 2.18, 0.14, 1.18);')
+  && presentation.includes('shearCeramic, 0, 2.44, 0.52, 1.82, 0.32, 0.38);')
+  && presentation.includes('graphite, side * 0.77, 1.61, 0.26, 0.24, 2.18, 0.48);'),
+  'real exposed mass race and insulated fork must not revert to pale cargo-box silhouettes');
+assert.ok(!presentation.includes('graphite, 2.15, 3.18, 2.04, 3.88, 2.24, 0.28);')
+  && !presentation.includes('indexPlaque.position.set(3.27, 3.80, 2.50);'),
+  'oversized central instrument billboard must remain off the active combat sightline');
+assert.ok(babylon.includes('parallaxContrast ? colorFromHex(0xa6d8e8).scale(0.32)'),
+  'Parallax-only actual enemy silhouette requires cool contact-fill');
 
 console.log('BABYLON_PARALLAX_ARRAY_PASS identity=baseline-pylons|metrology-composite|reference-violet|inertial-reference routes='
   + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' shear=8s>19s references=3');

@@ -1452,7 +1452,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const annexActorLift = this.canvas.dataset.babylonScenario === 'lattice-annex' ? 0.24 : 0;
     const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.42 : 0;
     const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;
-    const parallaxActorLift = this.canvas.dataset.babylonScenario === 'parallax-array' ? 0.34 : 0;
+    const parallaxActorLift = this.canvas.dataset.babylonScenario === 'parallax-array' ? 0.50 : 0;
     this.operatorAccentMaterial.emissiveColor.copyFrom(operatorColor.scale(
       0.18 + annexActorLift + momentumActorLift + cryoActorLift + parallaxActorLift + Math.min(0.35, heat * 0.16 + flash * 0.12),
     ));
@@ -2052,14 +2052,14 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Cool rim contribution makes dark enemy armor distinguishable from the
     // cryogenic deck without turning timed orange attack rings into decoration.
     visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      annexContrast ? 0.22 : cryoContrast ? 0.62 : parallaxContrast ? 0.48 : momentumContrast ? 0.77 : 0.06)
+      annexContrast ? 0.22 : cryoContrast ? 0.62 : parallaxContrast ? 0.60 : momentumContrast ? 0.77 : 0.06)
       .add(cryoContrast ? colorFromHex(0xa6d8e8).scale(0.34)
-        : parallaxContrast ? colorFromHex(0xa6d8e8).scale(0.26)
+        : parallaxContrast ? colorFromHex(0xa6d8e8).scale(0.32)
           : momentumContrast ? colorFromHex(0xa8d5e1).scale(0.30) : Color3.Black());
     visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(
-      annexContrast ? 0.13 : cryoContrast ? 0.34 : parallaxContrast ? 0.29 : momentumContrast ? 0.38 : 0);
+      annexContrast ? 0.13 : cryoContrast ? 0.34 : parallaxContrast ? 0.35 : momentumContrast ? 0.38 : 0);
     visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      (annexContrast ? 0.42 : cryoContrast ? 0.94 : parallaxContrast ? 0.68 : momentumContrast ? 0.87 : 0.22)
+      (annexContrast ? 0.42 : cryoContrast ? 0.94 : parallaxContrast ? 0.80 : momentumContrast ? 0.87 : 0.22)
       + damage.hit * 0.32 + damage.armorBreak * 0.24,
     );
   }
