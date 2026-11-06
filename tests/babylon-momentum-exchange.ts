@@ -10,8 +10,24 @@ import {
   momentumExchangeWashMode,
 } from '../src/game/babylonMomentumExchangePresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { refineryLongGateModules, refineryWorldObjectFamilyKey } from '../src/game/refineryWorldObjectAssets';
 import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
 import { auditMomentumVisualProvenance } from '../tools/p28g7-momentum-provenance.mjs';
+
+// The real G7 pressure gate has a 28x760-unit collision footprint.
+const pressureGate = { kind: 'cover' as const, w: 28, h: 760 };
+const modules = refineryLongGateModules(pressureGate);
+assert.equal(modules.count, 7);
+assert.equal(refineryWorldObjectFamilyKey(pressureGate), 'wallPanel');
+assert.ok(modules.scaleX > 1 && modules.scaleX < 2
+  && modules.scaleZ > 0.6 && modules.scaleZ < 1
+  && modules.segmentLength > 2 && modules.segmentLength < 2.4,
+  'G7 authored gate needs seven bounded metal sections, not an 18.5x stretched crate');
+assert.equal(refineryLongGateModules({ kind: 'cover', w: 120, h: 180 }).count, 1);
+assert.equal(refineryWorldObjectFamilyKey({ kind: 'cover', w: 120, h: 180 }), 'crate');
+assert.equal(refineryLongGateModules({ kind: 'cover', w: 28, h: 280 }).count, 1);
+assert.equal(refineryLongGateModules({ kind: 'cover', w: 0, h: 0 }).count, 1);
+assert.equal(refineryLongGateModules({ kind: 'breachPlate', w: 28, h: 760 }).count, 1);
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonMomentumExchangePresentation.ts', 'utf8');
@@ -225,6 +241,14 @@ assert.ok(babylon.includes("const momentumActorLift = this.canvas.dataset.babylo
 assert.ok(babylon.includes("const momentumContrast = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(readFileSync('src/game/babylonWorldPresentation.ts', 'utf8')
   .includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n      || mission.location === 'parallax-array';"));
+const gateWorld = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
+assert.ok(gateWorld.includes('p28-g7-authored-pressure-gate-module-')
+  && gateWorld.includes('for (let index = 0; index < modules.count; index++)')
+  && gateWorld.includes('segment.position.set(0, 0, (index + 0.5 - modules.count / 2) * modules.segmentLength)')
+  && gateWorld.includes('for (const instance of visual.extraInstances) instance.release()')
+  && gateWorld.includes('for (const instance of instances) instance.release()')
+  && gateWorld.includes('authoredWorld.mount.scaling.set(1, durabilityScale, 1)'),
+  'G7 long gate must use real modular GLBs and release each cache owner');
 
 
 const runningShoeRollers = presentation.slice(

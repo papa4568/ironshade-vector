@@ -22,6 +22,7 @@ import {
   refineryWorldObjectAssetFamily,
   refineryWorldObjectFamilyKey,
   refineryWorldObjectFit,
+  refineryLongGateModules,
   type RefineryWorldObjectFamilyKey,
 } from './refineryWorldObjectAssets';
 import type { BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
@@ -64,6 +65,8 @@ type AuthoredInteractableVisual = {
 
 type AuthoredWorldObjectVisual = {
   instance: BabylonGraphicsAssetInstance;
+  extraInstances: BabylonGraphicsAssetInstance[];
+  segmentMounts: TransformNode[];
   mount: TransformNode;
   assetId: string;
   family: RefineryWorldObjectFamilyKey;
@@ -227,10 +230,7 @@ export class BabylonRefineryWorldPresentation {
     this.premiumSharedWorldScenario = false;
     this.loadGeneration += 1;
 
-    for (const visual of this.authoredWorldObjects.values()) {
-      visual.instance.release();
-      visual.mount.dispose();
-    }
+    for (const visual of this.authoredWorldObjects.values()) this.releaseAuthoredWorldObject(visual);
     this.authoredWorldObjects.clear();
     this.refineryObjectRequests.clear();
     this.sharedWorldFailures.clear();
@@ -512,25 +512,42 @@ export class BabylonRefineryWorldPresentation {
 
     this.refineryObjectRequests.set(object.id, spec.id);
     const generation = this.loadGeneration;
+    const instances: BabylonGraphicsAssetInstance[] = [];
+    let mount: TransformNode | null = null;
     try {
-      const instance = await getBabylonGraphicsAssetRuntime(this.scene).instantiate(spec);
+      const modules = refineryLongGateModules(object, WORLD_SCALE);
+      // Reuse shipped source-bound LOD0 wall panels, not a hidden
+      // stretched crate or untracked procedural replacement.
+      for (let index = 0; index < modules.count; index++) {
+        instances.push(await getBabylonGraphicsAssetRuntime(this.scene).instantiate(spec));
+      }
       if (this.disposed
         || !this.active
         || generation !== this.loadGeneration
         || this.refineryObjectRequests.get(object.id) !== spec.id) {
-        instance.release();
+        for (const instance of instances) instance.release();
         return;
       }
-      const mount = new TransformNode('p28-c8-authored-world-object-' + object.id, this.scene);
+      mount = new TransformNode('p28-c8-authored-world-object-' + object.id, this.scene);
       mount.setEnabled(false);
-      instance.rootNodes.forEach(root => {
-        root.parent = mount;
-      });
+      const segmentMounts: TransformNode[] = [];
+      for (const [index, instance] of instances.entries()) {
+        const target = modules.count > 1
+          ? new TransformNode('p28-g7-authored-pressure-gate-module-' + object.id + '-' + index, this.scene)
+          : mount;
+        if (target !== mount) {
+          target.parent = mount;
+          segmentMounts.push(target);
+        }
+        instance.rootNodes.forEach(root => { root.parent = target; });
+      }
 
       const previous = this.authoredWorldObjects.get(object.id);
-      previous?.instance.release();
-      previous?.mount.dispose();
-      this.authoredWorldObjects.set(object.id, { instance, mount, assetId: spec.id, family: familyKey });
+      if (previous) this.releaseAuthoredWorldObject(previous);
+      this.authoredWorldObjects.set(object.id, {
+        instance: instances[0], extraInstances: instances.slice(1),
+        segmentMounts, mount, assetId: spec.id, family: familyKey,
+      });
       this.sharedWorldFailures.delete(object.id);
       const fallback = this.objectVisuals.get(object.id);
       if (fallback) {
@@ -547,6 +564,8 @@ export class BabylonRefineryWorldPresentation {
         this.canvas.dataset.interactableMode = 'refinery-family-mapped';
       }
     } catch (error) {
+      for (const instance of instances) instance.release();
+      mount?.dispose();
       if (this.disposed
         || generation !== this.loadGeneration
         || this.refineryObjectRequests.get(object.id) !== spec.id) return;
@@ -563,10 +582,18 @@ export class BabylonRefineryWorldPresentation {
     }
   }
 
+  private releaseAuthoredWorldObject(visual: AuthoredWorldObjectVisual) {
+    visual.instance.release();
+    for (const instance of visual.extraInstances) instance.release();
+    visual.mount.dispose();
+  }
+
   private setAuthoredWorldVisibility(visual: AuthoredWorldObjectVisual, visibility: number) {
-    for (const root of visual.instance.rootNodes) {
-      if (root instanceof AbstractMesh) root.visibility = visibility;
-      for (const mesh of root.getChildMeshes(false)) mesh.visibility = visibility;
+    for (const instance of [visual.instance, ...visual.extraInstances]) {
+      for (const root of instance.rootNodes) {
+        if (root instanceof AbstractMesh) root.visibility = visibility;
+        for (const mesh of root.getChildMeshes(false)) mesh.visibility = visibility;
+      }
     }
   }
 
@@ -645,8 +672,20 @@ export class BabylonRefineryWorldPresentation {
         const fit = refineryWorldObjectFit(object, WORLD_SCALE);
         authoredWorld.mount.setEnabled(object.active);
         authoredWorld.mount.position.set(scaled(object.x + object.w / 2), 0, scaled(object.y + object.h / 2));
-        authoredWorld.mount.rotation.y = fit.rotationY;
-        authoredWorld.mount.scaling.set(fit.scaleX, fit.scaleY * durabilityScale, fit.scaleZ);
+        if (authoredWorld.segmentMounts.length > 0) {
+          // The physics collider remains the unchanged simulation object.
+          // Its rendered footprint becomes exact, bounded authored sections.
+          const modules = refineryLongGateModules(object, WORLD_SCALE);
+          authoredWorld.mount.rotation.y = 0;
+          authoredWorld.mount.scaling.set(1, durabilityScale, 1);
+          authoredWorld.segmentMounts.forEach((segment, index) => {
+            segment.position.set(0, 0, (index + 0.5 - modules.count / 2) * modules.segmentLength);
+            segment.scaling.set(modules.scaleX, modules.scaleY, modules.scaleZ);
+          });
+        } else {
+          authoredWorld.mount.rotation.y = fit.rotationY;
+          authoredWorld.mount.scaling.set(fit.scaleX, fit.scaleY * durabilityScale, fit.scaleZ);
+        }
         this.setAuthoredWorldVisibility(authoredWorld, coverVisibility);
         if (object.active) {
           authoredCount += 1;

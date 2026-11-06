@@ -39,7 +39,27 @@ export type RefineryWorldObjectFit = {
   rotationY: number;
 };
 
-export function refineryWorldObjectFamilyKey(object: Pick<CombatObject, 'kind'>): RefineryWorldObjectFamilyKey {
+// Narrow, long, collision-solid gates use repeated authored wall panels
+// instead of a single crate distorted into a foreground-wide metal slab.
+export function refineryLongGateModules(object: Pick<CombatObject, 'kind' | 'w' | 'h'>, worldScale = 0.02) {
+  const width = Math.max(0.15, object.w * worldScale);
+  const length = Math.max(0.15, object.h * worldScale);
+  const count = object.kind === 'cover' && width <= 0.9 && length >= 6 && length / width >= 8
+    ? Math.min(8, Math.max(2, Math.ceil(length / 2.4))) : 1;
+  const footprint = REFINERY_WORLD_OBJECT_FOOTPRINTS.wallPanel;
+  const segmentLength = length / count;
+  const scaleX = width / footprint.width;
+  const scaleZ = segmentLength / footprint.depth;
+  return { count, segmentLength, scaleX, scaleZ,
+    scaleY: Math.max(0.42, Math.min(1.35, Math.sqrt(scaleX * scaleZ))) };
+}
+
+export function refineryWorldObjectFamilyKey(
+  object: Pick<CombatObject, 'kind'> & Partial<Pick<CombatObject, 'w' | 'h'>>,
+): RefineryWorldObjectFamilyKey {
+  if (typeof object.w === 'number' && typeof object.h === 'number'
+      && refineryLongGateModules({ kind: object.kind, w: object.w, h: object.h }).count > 1)
+    return 'wallPanel';
   return REFINERY_WORLD_OBJECT_FAMILY_BY_KIND[object.kind];
 }
 
