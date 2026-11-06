@@ -143,6 +143,8 @@ export class BabylonParallaxArrayPresentation {
   private readonly datumNormalTexture: DynamicTexture;
   private readonly calibrationDisplayTexture: DynamicTexture;
   private readonly calibrationDisplayMaterial: StandardMaterial;
+  private readonly pylonVernierTexture: DynamicTexture;
+  private readonly pylonVernierMaterial: StandardMaterial;
   // One small, camera-readable engraved identity plate per real standard.
   // Owned once per route and released with the presentation; never HUD text.
   private readonly pylonIndexTextures: DynamicTexture[] = [];
@@ -208,7 +210,7 @@ export class BabylonParallaxArrayPresentation {
     const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0x816a50, 0.54, 0.78, 0x8f7654, 0.025);
     const calibrationInk = pbr(scene, 'p28-g9-contrasting-machined-scale-graduations', 0xc6ad84, 0.58, 0.86, 0xb98f56, 0.21);
     const counterweightMetal = pbr(scene, 'p28-g9-moving-inertial-counterweight', 0x3f5b67, 0.48, 0.71, 0x204252, 0.055);
-    const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.28);
+    const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.36);
     const referenceScreen = pbr(scene, 'p28-g9-calibration-console-screen', 0x163849, 0.18, 0.48, 0x72d1c7, 0.28);
     // Physically rough, warm metal is structural trim; do not let strong PBR
     // key light wash active objective lamps into ambiguous cream rings.
@@ -286,6 +288,34 @@ export class BabylonParallaxArrayPresentation {
     this.calibrationDisplayMaterial.specularColor = Color3.Black();
     this.calibrationDisplayMaterial.disableLighting = true;
     this.calibrationDisplayMaterial.backFaceCulling = false;
+    // Real vertical optical vernier, physically bolted beside each spindle:
+    // large numbered major stations and readable intermediate tick lengths.
+    // A narrow dark instrument window avoids another full-width billboard.
+    this.pylonVernierTexture = new DynamicTexture('p28-g9-vertical-vernier-etched-metal-atlas',
+      { width: 256, height: 512 }, scene, false);
+    const vernierInk = this.pylonVernierTexture.getContext();
+    vernierInk.fillStyle = '#14222b';
+    vernierInk.fillRect(0, 0, 256, 512);
+    vernierInk.fillStyle = '#354c56';
+    vernierInk.fillRect(102, 36, 5, 432);
+    for (let station = 0; station < 9; station++) {
+      const y = 52 + station * 49;
+      const major = station % 4 === 0;
+      vernierInk.fillStyle = major ? '#f0d8a8' : '#8cc4cb';
+      vernierInk.fillRect(112, y, major ? 107 : 61, major ? 9 : 5);
+      if (major) {
+        vernierInk.font = 'bold 34px monospace';
+        vernierInk.fillText(String(station).padStart(2, '0'), 19, y + 11);
+      }
+    }
+    this.pylonVernierTexture.update();
+    this.pylonVernierMaterial = new StandardMaterial('p28-g9-vertical-vernier-instrument-glass', scene);
+    this.pylonVernierMaterial.diffuseTexture = this.pylonVernierTexture;
+    this.pylonVernierMaterial.emissiveTexture = this.pylonVernierTexture;
+    this.pylonVernierMaterial.emissiveColor = Color3.White().scale(0.52);
+    this.pylonVernierMaterial.specularColor = Color3.Black();
+    this.pylonVernierMaterial.disableLighting = true;
+    this.pylonVernierMaterial.backFaceCulling = false;
 
     etched.albedoTexture = this.datumAlbedoTexture;
     etched.bumpTexture = this.datumNormalTexture;
@@ -607,6 +637,28 @@ export class BabylonParallaxArrayPresentation {
       indexPlaque.rotation.y = Math.PI / 4;
       indexPlaque.material = indexMaterial;
       indexPlaque.isPickable = false;
+      // One narrow legible external vernier on each genuine pylon.
+      // A short bolted strut joins it to the machine, not to camera/HUD.
+      const verticalRulerBed = box(scene, root, 'p28-g9-pylon-camera-vernier-bolted-case-' + index,
+        graphite, 2.57, 2.32, 2.17, 1.34, 3.30, 0.19);
+      verticalRulerBed.rotation.y = Math.PI / 4;
+      const verticalRuler = MeshBuilder.CreatePlane('p28-g9-pylon-camera-vernier-indexed-scale-' + index,
+        { width: 1.12, height: 3.06 }, scene);
+      verticalRuler.parent = root;
+      verticalRuler.position.set(2.69, 2.32, 2.30);
+      verticalRuler.rotation.y = Math.PI / 4;
+      verticalRuler.material = this.pylonVernierMaterial;
+      verticalRuler.isPickable = false;
+      for (const station of [0.82, 3.86]) {
+        box(scene, root, 'p28-g9-pylon-camera-vernier-fastener-' + index + '-' + station,
+          fiducialBrass, 2.69, station, 2.38, 0.27, 0.20, 0.16);
+      }
+      const rulerBrace = MeshBuilder.CreateTube('p28-g9-pylon-camera-vernier-steel-mount-' + index,
+        { path: [new Vector3(0.96, 2.38, 0.64), new Vector3(2.55, 2.38, 2.07)],
+          radius: 0.10, tessellation: 8 }, scene);
+      rulerBrace.parent = root;
+      rulerBrace.material = graphite;
+      rulerBrace.isPickable = false;
       for (const side of [-1, 1]) {
         const panelAnchor = MeshBuilder.CreateTube('p28-g9-pylon-sight-glass-support-' + index + '-' + side,
           { path: [new Vector3(side * 0.38, 2.20, 0.39),
@@ -1523,7 +1575,7 @@ export class BabylonParallaxArrayPresentation {
     // visible over dark grid joints, even when the elite's body is tiny.
     // Actual attack wind-ups still exclusively control the brighter state.
     this.eliteTellRing = MeshBuilder.CreateTorus('p28-g9-elite-controller-contact-warning',
-      { diameter: 2.48, thickness: 0.10, tessellation: 40 }, scene);
+      { diameter: 2.48, thickness: 0.16, tessellation: 40 }, scene);
     this.eliteTellRing.parent = this.root;
     // The elite warning must hug the deck, not read as a giant opaque arc
     // crossing actors and mechanical contacts at Android gameplay zoom.
@@ -1818,6 +1870,8 @@ export class BabylonParallaxArrayPresentation {
     this.datumNormalTexture.dispose();
     this.calibrationDisplayMaterial.dispose();
     this.calibrationDisplayTexture.dispose();
+    this.pylonVernierMaterial.dispose();
+    this.pylonVernierTexture.dispose();
     this.pylonIndexMaterials.forEach(material => material.dispose());
     this.pylonIndexTextures.forEach(texture => texture.dispose());
     this.ownedMaterials.forEach(item => item.dispose());

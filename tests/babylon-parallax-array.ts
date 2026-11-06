@@ -372,10 +372,10 @@ assert.ok(presentation.includes('p28-g9-pylon-precision-dial-face-')
   && presentation.includes('dialRim.material = fiducialBrass')
   && presentation.includes('measuringYoke.material = graphite'),
   'Parallax pylons need non-HUD top-facing calibrated dials and measured structural yokes');
-assert.ok(babylon.includes("const parallaxActorLift = this.canvas.dataset.babylonScenario === 'parallax-array' ? 0.50 : 0;")
+assert.ok(babylon.includes("const parallaxActorLift = this.canvas.dataset.babylonScenario === 'parallax-array' ? 0.62 : 0;")
   && babylon.includes("const parallaxContrast = this.canvas.dataset.babylonScenario === 'parallax-array';")
-  && babylon.includes('parallaxContrast ? 0.60')
-  && babylon.includes('parallaxContrast ? 0.80'),
+  && babylon.includes('parallaxContrast ? 0.74')
+  && babylon.includes('parallaxContrast ? 0.96'),
   'live player/enemy silhouettes must be distinguishable from the Parallax floor without fake attacks');
 assert.ok(presentation.includes('p28-g9-pylon-machined-vernier-sleeve-')
   && presentation.includes('p28-g9-pylon-vernier-radial-calibration-')
@@ -628,8 +628,33 @@ assert.ok(presentation.includes('counterweightMetal, 0, 1.71, 0, 1.60, 0.82, 1.0
 assert.ok(!presentation.includes('graphite, 2.15, 3.18, 2.04, 3.88, 2.24, 0.28);')
   && !presentation.includes('indexPlaque.position.set(3.27, 3.80, 2.50);'),
   'oversized central instrument billboard must remain off the active combat sightline');
-assert.ok(babylon.includes('parallaxContrast ? colorFromHex(0xa6d8e8).scale(0.32)'),
+assert.ok(babylon.includes('parallaxContrast ? colorFromHex(0xa6d8e8).scale(0.42)'),
   'Parallax-only actual enemy silhouette requires cool contact-fill');
+
+// Original real PNG review found unreadable scale nubs and dark actor tells.
+assert.ok(presentation.includes("new DynamicTexture('p28-g9-vertical-vernier-etched-metal-atlas'")
+  && presentation.includes("vernierInk.fillText(String(station).padStart(2, '0'), 19, y + 11);")
+  && presentation.includes("MeshBuilder.CreatePlane('p28-g9-pylon-camera-vernier-indexed-scale-' + index")
+  && presentation.includes("verticalRuler.position.set(2.69, 2.32, 2.30);")
+  && presentation.includes("verticalRuler.material = this.pylonVernierMaterial;")
+  && presentation.includes("verticalRulerBed.rotation.y = Math.PI / 4;")
+  && presentation.includes("rulerBrace.material = graphite;")
+  && presentation.includes("this.pylonVernierMaterial.dispose();")
+  && presentation.includes("this.pylonVernierTexture.dispose();"),
+  'actual pylons need physical numbered verniers and managed GPU assets');
+assert.ok(presentation.includes("'p28-g9-pylon-camera-vernier-fastener-' + index")
+  && presentation.includes("p28-g9-pylon-camera-vernier-steel-mount-")
+  && presentation.includes("0x45345f, 0.08, 0.92, 0x7862b7, 0.36")
+  && presentation.includes("{ diameter: 2.48, thickness: 0.16, tessellation: 40 }"),
+  'distinct shear anchor insulation and real elite attack ring must remain legible');
+assert.ok(babylon.includes('parallaxContrast ? colorFromHex(0xa6d8e8).scale(0.42)')
+  && babylon.includes('parallaxContrast ? 0.43')
+  && babylon.includes('parallaxContrast ? 0.74')
+  && babylon.includes('parallaxContrast ? 0.96'),
+  'route-only actor contrast must improve without rewriting other scenario branches');
+assert.ok(!presentation.includes('verticalRuler.position.set(3.8')
+  && !presentation.includes("{ width: 3.56, height: 1.92 }"),
+  'instrument must remain a bounded physical ruler rather than opaque HUD-sized billboard');
 
 console.log('BABYLON_PARALLAX_ARRAY_PASS identity=baseline-pylons|metrology-composite|reference-violet|inertial-reference routes='
   + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' shear=8s>19s references=3');
