@@ -532,7 +532,7 @@ export class BabylonRefineryWorldPresentation {
       mount.setEnabled(false);
       const segmentMounts: TransformNode[] = [];
       for (const [index, instance] of instances.entries()) {
-        const target = modules.count > 1
+        const target: TransformNode = modules.count > 1
           ? new TransformNode('p28-g7-authored-pressure-gate-module-' + object.id + '-' + index, this.scene)
           : mount;
         if (target !== mount) {
