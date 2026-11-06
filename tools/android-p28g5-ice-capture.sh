@@ -8,6 +8,7 @@ APK=Ironshade-Vector-Android-Smoke.apk
 # the PR producer. This supplemental Ice visual QA installs the same verified
 # APK and independently proves real combat frames and native screenshot.
 test -s "$APK"
+adb shell settings put secure immersive_mode_confirmations confirmed >/dev/null 2>&1 || true
 adb install -r "$APK" >/dev/null
 adb shell pm path "$PACKAGE" | grep -q '^package:'
 # Preserve independent failure evidence even when a cold emulator/WebView stalls.
@@ -26,6 +27,47 @@ capture_diagnostics() {
   adb shell dumpsys activity activities > android-p28g5-ice-mine-activity.txt 2>/dev/null || true
 }
 trap capture_diagnostics EXIT
+# The exact-device failure at 566a0c5 was not a renderer flaw: Android's
+# "Viewing full screen / Got it" OS dialog covered the real Ice Mine frame.
+# This formerly ran inside generic fast smoke, which was removed as an
+# unrelated dependency. Own deterministic modal dismissal in this visual
+# launcher, and never dismiss non-system UI or bypass screenshot checks.
+confirm_immersive_mode_for_g5() {
+  adb shell settings put secure immersive_mode_confirmations confirmed >/dev/null 2>&1 || true
+  local remote_dump='/sdcard/ironshade-g5-immersive-window.xml'
+  local dump='' coords='' x='' y=''
+  for attempt in 1 2 3 4 5; do
+    adb shell uiautomator dump --compressed "$remote_dump" >/dev/null 2>&1 || true
+    dump="$(adb shell cat "$remote_dump" 2>/dev/null | tr -d '\r' || true)"
+    if [[ "$dump" != *'text="Viewing full screen"'* && "$dump" != *'text="Got it"'* ]]; then
+      echo "ANDROID_P28G5_IMMERSIVE_CONFIRMATION_PASS state=clear attempt=$attempt"
+      return 0
+    fi
+    coords="$(printf '%s' "$dump" | python3 -c 'import re, sys, xml.etree.ElementTree as ET
+text = sys.stdin.read()
+try:
+    root = ET.fromstring(text)
+except ET.ParseError:
+    raise SystemExit(0)
+for node in root.iter("node"):
+    if node.attrib.get("text") != "Got it":
+        continue
+    match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+    if match:
+        left, top, right, bottom = map(int, match.groups())
+        print((left + right) // 2, (top + bottom) // 2)
+        break')"
+    if [[ -n "$coords" ]]; then
+      read -r x y <<< "$coords"
+      adb shell input tap "$x" "$y"
+    fi
+    sleep 1
+  done
+  echo 'P28-G5 Android immersive confirmation still obscures gameplay' >&2
+  printf '%s\n' "$dump" >&2
+  return 1
+}
+
 # A cold Android WebView may replace its initial CDP target during startup.
 # Retry only a specifically diagnosed pre-frame transport failure. Each retry
 # starts a clean app/WebView and reruns the *entire* real-gameplay capture and
@@ -34,6 +76,7 @@ run_exact_ice_capture() {
   adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
   adb shell pm clear "$PACKAGE" >/dev/null || return $?
   adb shell am start -W -n "$ACTIVITY" || return $?
+  confirm_immersive_mode_for_g5 || return $?
   timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done' || return $?
   local pid
   pid="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
