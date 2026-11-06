@@ -322,7 +322,7 @@ assert.ok(telegraphs.includes("tick.setEnabled(annexWarning || momentumWarning |
 assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;"));
 assert.ok(babylon.includes("const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
 assert.ok(babylon.includes("const cryoWideFraming = !narrow && this.canvas.dataset.babylonScenario === 'cryo-reserve';")
-  && babylon.includes("cryoWideFraming ? (this.coarse ? 15.5 : 13.9)")
+  && babylon.includes("cryoWideFraming ? (this.coarse ? 16.8 : 15.1)")
   && babylon.includes("cryoContrast ? 0.62")
   && babylon.includes("cryoSilhouette ? 1.48 : parallaxSilhouette ? 1.64 : 1")
   && babylon.includes("cryoSilhouette ? 1.28 : parallaxSilhouette ? 1.42 : 1")
@@ -339,6 +339,28 @@ assert.ok(presentation.includes("0x142b33, 0.10, 0.96")
 assert.ok(presentation.includes("p28-g8-tank-crystalline-rime-")
   && presentation.includes("0xc2dfe6, 0.08, 0.96, 0xb7e6ef, 0.17"),
   'Cryo frost must exist as lit, curved, visible insulation on actual tank jackets');
+// The real 3120x1440 action/device captures clipped the rear tank cap.
+// Keep Cryo-only widen proportional, preserving view inclination and other
+// missions' camera/touch framing.
+const cryoCameraHeights = [16.8, 15.1] as const;
+const cryoCameraOffsets = [12.9, 11.7] as const;
+const oldCryoHeights = [15.5, 13.9] as const;
+const oldCryoOffsets = [11.9, 10.8] as const;
+for (let i = 0; i < 2; i++) {
+  const depthRatio = Math.hypot(cryoCameraHeights[i], cryoCameraOffsets[i] * Math.SQRT2)
+    / Math.hypot(oldCryoHeights[i], oldCryoOffsets[i] * Math.SQRT2);
+  const beforeAngle = Math.atan2(oldCryoHeights[i], oldCryoOffsets[i] * Math.SQRT2);
+  const afterAngle = Math.atan2(cryoCameraHeights[i], cryoCameraOffsets[i] * Math.SQRT2);
+  assert.ok(depthRatio >= 1.075 && depthRatio < 1.10
+    && Math.abs(afterAngle - beforeAngle) < 0.008,
+    'G8 camera must reveal the rear vessel without altering perspective inclination');
+}
+assert.ok(babylon.includes("cryoWideFraming ? (this.coarse ? 12.9 : 11.7)")
+  && babylon.includes("cryoWideFraming ? (this.coarse ? 16.8 : 15.1)")
+  && babylon.includes("momentumWideFraming ? (this.coarse ? 17.0 : 15.2)")
+  && babylon.includes("momentumWideFraming ? (this.coarse ? 12.9 : 11.6)"),
+  'Cryo camera must widen only its own landscape view, not sibling routes');
+
 assert.ok(babylon.includes("const cryoTouchLanePan = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 5.2 : 0;")
   && babylon.includes('momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan')
   && babylon.includes('momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan'),

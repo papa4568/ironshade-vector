@@ -2747,9 +2747,13 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // adjustment includes both wheels and actual combatants without moving
     // enemies or compromising the full-size right-hand touch controls.
     const momentumWideFraming = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow;
-    const cameraHeight = narrow ? 18 : cryoWideFraming ? (this.coarse ? 15.5 : 13.9)
+    // Real Cryo action/device frames clipped the rear vacuum jacket crown.
+    // Increase only Cryo landscape camera standoff by ~8%, scaling height
+    // and diagonal offset together to preserve inclination, enemy positions,
+    // gameplay warning ranges and the full-size touch HUD.
+    const cameraHeight = narrow ? 18 : cryoWideFraming ? (this.coarse ? 16.8 : 15.1)
       : momentumWideFraming ? (this.coarse ? 17.0 : 15.2) : this.coarse ? 14.8 : 12.8;
-    const cameraOffset = narrow ? 13.2 : cryoWideFraming ? (this.coarse ? 11.9 : 10.8)
+    const cameraOffset = narrow ? 13.2 : cryoWideFraming ? (this.coarse ? 12.9 : 11.7)
       : momentumWideFraming ? (this.coarse ? 12.9 : 11.6) : this.coarse ? 11.2 : 9.8;
     const offsetX = cameraFeedback?.worldOffsetX ?? 0;
     const offsetZ = cameraFeedback?.worldOffsetZ ?? 0;
