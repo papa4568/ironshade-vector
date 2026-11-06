@@ -339,7 +339,7 @@ assert.ok(presentation.includes("MeshBuilder.CreateCylinder('p27-c10-pylon-core-
 
 // This contact optic tracks a real elite, but must never appear as a huge
 // opaque vertical ribbon across the player and calibrated apparatus.
-assert.ok(presentation.includes("{ diameter: 2.48, thickness: 0.10, tessellation: 40 }")
+assert.ok(presentation.includes("{ diameter: 2.48, thickness: 0.16, tessellation: 40 }")
   && presentation.includes('this.eliteTellRing.rotation.x = 0;')
   && presentation.includes('telegraphActive ? 0.82 : 0.42;'),
   'real Parallax elite contact must stay floor-bound and subordinate to danger tells');
