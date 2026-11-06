@@ -129,7 +129,7 @@ export function parallaxReferenceRingFitsFrame(projectedY: number, viewportTop: 
     && projectedY <= viewportTop + viewportHeight * 0.80;
 }
 
-type PylonRig = { id: string; root: TransformNode; rings: Mesh[]; core: Mesh };
+type PylonRig = { id: string; root: TransformNode; rings: Mesh[]; core: Mesh; gauge: TransformNode; gaugeFace: Mesh };
 type ShearRig = { root: TransformNode; disc: Mesh; ring: Mesh };
 
 export class BabylonParallaxArrayPresentation {
@@ -644,26 +644,29 @@ export class BabylonParallaxArrayPresentation {
       indexPlaque.rotation.y = Math.PI / 4;
       indexPlaque.material = indexMaterial;
       indexPlaque.isPickable = false;
-      // The slanted face plate above can be occluded by the instrument yoke
-      // from the real Android camera. Duplicate its *engraved metal* surface
-      // on a physically braced, top-facing cantilever at the same reference
-      // standard. Unlike a HUD label it retains parallax, depth and shadows,
-      // and its two-digit ID plus five scale strokes survive combat zoom.
-      box(scene, root, 'p28-g9-pylon-overhead-engraved-head-' + index,
-        graphite, -1.62, 5.19, 1.42, 2.70, 0.24, 1.58);
-      const headPlate = MeshBuilder.CreatePlane('p28-g9-pylon-overhead-vernier-label-' + index,
-        { width: 2.48, height: 1.36 }, scene);
-      headPlate.parent = root;
-      headPlate.position.set(-1.62, 5.33, 1.42);
-      headPlate.rotation.x = -Math.PI / 2;
-      headPlate.material = indexMaterial;
-      headPlate.isPickable = false;
+      // Raise the engraved optical instrument above the rotary cap, so all
+      // three genuine pylon gauges face the overhead camera. The previous
+      // lower cantilever vanished behind distant yokes and cropped the near
+      // Android edge. The smaller, bolted housing remains genuine world-space
+      // machinery, never a HUD label or independent objective.
+      const gauge = new TransformNode('p28-g9-pylon-overhead-calibrated-rig-' + index, scene);
+      gauge.parent = root;
+      gauge.position.set(-1.20, 6.12, 0.78);
+      box(scene, gauge, 'p28-g9-pylon-overhead-engraved-head-' + index,
+        graphite, 0, 0, 0, 2.30, 0.23, 1.36);
+      const gaugeFace = MeshBuilder.CreatePlane('p28-g9-pylon-overhead-vernier-label-' + index,
+        { width: 2.06, height: 1.14 }, scene);
+      gaugeFace.parent = gauge;
+      gaugeFace.position.set(0, 0.14, 0);
+      gaugeFace.rotation.x = -Math.PI / 2;
+      gaugeFace.material = indexMaterial;
+      gaugeFace.isPickable = false;
       for (const side of [-1, 1]) {
         const headBrace = MeshBuilder.CreateTube('p28-g9-pylon-overhead-vernier-brace-' + index + '-' + side,
-          { path: [new Vector3(side * 0.54, 3.54, 0.28),
-            new Vector3(-1.62 + side * 0.86, 5.13, 1.42)],
+          { path: [new Vector3(1.20 + side * 0.54, -2.55, -0.50),
+            new Vector3(side * 0.76, -0.14, 0)],
             radius: 0.12, tessellation: 10 }, scene);
-        headBrace.parent = root;
+        headBrace.parent = gauge;
         headBrace.material = side === -1 ? graphite : fiducialBrass;
         headBrace.isPickable = false;
       }
@@ -1053,7 +1056,7 @@ export class BabylonParallaxArrayPresentation {
       }
       box(scene, root, 'p28-g9-objective-calibration-chevron-' + index,
         objectiveGold, 0, 4.68, 0.92, 0.72, 0.17, 0.20);
-      this.pylonRigs.push({ id, root, rings, core });
+      this.pylonRigs.push({ id, root, rings, core, gauge, gaugeFace });
     });
 
     // Coarse top-surface metal panel islands and enclosed service lanes
@@ -1694,6 +1697,19 @@ export class BabylonParallaxArrayPresentation {
         const projected = Vector3.Project(rig.core.getAbsolutePosition(), Matrix.Identity(),
           this.scene.getTransformMatrix(), viewport);
         ringFitsFrame = parallaxReferenceRingFitsFrame(projected.y, viewport.y, viewport.height);
+        // Hide the complete optional gauge only if its actual metal corners
+        // cross the phone viewport/HUD edge. The original calibrated tower,
+        // objective, simulation collider and attack cues remain visible.
+        rig.gaugeFace.computeWorldMatrix(true);
+        const gaugeFitsFrame = rig.gaugeFace.getBoundingInfo().boundingBox.vectorsWorld.every(corner => {
+          const point = Vector3.Project(corner, Matrix.Identity(), this.scene.getTransformMatrix(), viewport);
+          return Number.isFinite(point.x) && Number.isFinite(point.y)
+            && point.x >= viewport.x + viewport.width * 0.04
+            && point.x <= viewport.x + viewport.width * 0.96
+            && point.y >= viewport.y + viewport.height * 0.06
+            && point.y <= viewport.y + viewport.height * 0.86;
+        });
+        rig.gauge.setEnabled(gaugeFitsFrame);
       }
       const aligned = Boolean(object?.exposed && object.hp > 0);
       const pulse = aligned ? 1.08 + Math.sin(state.time * 5.8 + index) * 0.08 : 0.96 + Math.sin(state.time * 2.5 + index) * 0.035;

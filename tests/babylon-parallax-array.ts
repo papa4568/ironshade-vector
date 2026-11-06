@@ -349,7 +349,10 @@ assert.ok(presentation.includes("{ diameter: 2.48, thickness: 0.16, tessellation
 assert.ok(presentation.includes('p28-g9-pylon-overhead-engraved-head-')
   && presentation.includes('p28-g9-pylon-overhead-vernier-label-')
   && presentation.includes('p28-g9-pylon-overhead-vernier-brace-')
-  && presentation.includes('headPlate.rotation.x = -Math.PI / 2;')
+  && presentation.includes('gaugeFace.rotation.x = -Math.PI / 2;')
+  && presentation.includes('gauge.position.set(-1.20, 6.12, 0.78);')
+  && presentation.includes('rig.gaugeFace.getBoundingInfo().boundingBox.vectorsWorld.every')
+  && presentation.includes('rig.gauge.setEnabled(gaugeFitsFrame);')
   && presentation.includes("indexInk.fillRect(153, 19 + graduation * 23"),
   'physical Parallax overhead gauges must expose readable, supported fiducials');
 assert.ok(babylon.includes("const parallaxThreatScale = this.canvas.dataset.babylonScenario === 'parallax-array'")
