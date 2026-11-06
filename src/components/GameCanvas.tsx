@@ -1355,6 +1355,13 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
         accumulator -= fixed;
         steps += 1;
       }
+      // Observational QA only: real director clock/event flags explain why an
+      // Android screenshot missed a short-lived Parallax shear window.
+      if (activeMissionRef.current.location === 'parallax-array') {
+        canvas.dataset.parallaxDirectorElapsed = directorRef.current.elapsed.toFixed(2);
+        canvas.dataset.parallaxDirectorEventA = directorRef.current.locationEventA ? 'triggered' : 'pending';
+        canvas.dataset.parallaxDirectorEventB = directorRef.current.locationEventB ? 'triggered' : 'pending';
+      }
       const cpuMs = performance.now() - frameStartedAt;
       const animationStartedAt = performance.now();
       syncCanvasEnemyLifecycleMemory(state, canvasEnemyLifecycleRef.current);
@@ -1527,12 +1534,63 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     : tutorialStep === 4 && hud.contextLabel
       ? { label: 'FIELD COACH // 5/5', detail: compactLayout ? `ACT — ${hud.contextLabel}` : `X — ${hud.contextLabel}` }
       : null;
+  // The full director event stays in the accessible status, while the compact
+  // landscape callout contains the one immediate action the player needs.
+  // Long mission titles previously hid the entire lower lab/transfer lane.
+  const tacticalRouteCue = (message: string) => {
+    if (activeMission.location === 'cryo-reserve') {
+      // Android's compact combat banner is not the director transcript.
+      // Retain that full event in its existing accessible aria-label/title.
+      // Render only the immediate thermal warning in the playable viewport.
+      if (message.startsWith('CRYOGENIC BOILOFF')) return 'BOILOFF JET // GALLERY PURGE';
+      if (message.startsWith('RESERVE PRESSURE RISE')) return 'PRESSURE RISE // SECOND PURGE';
+      if (message.startsWith('PURGE ROUTE LOCKED')) return 'BOILOFF ROUTED TO VACUUM';
+      if (message.startsWith('THERMAL ROUTE STABLE')) return 'THERMAL ROUTE STABLE';
+      return message.split(' // ')[0];
+    }
+    if (activeMission.location === 'lattice-annex') {
+      if (message.startsWith('KHEPRI SURVEY ANNEX')) return 'ISOLATE BOTH GRID BRANCHES';
+      if (message.startsWith('DRONE ESCORT')) return 'ENEMY DRONES DEPLOYED // ISOLATE GRID';
+      if (message.startsWith('SURVEY SHIELD')) return 'SURVEY SHIELD // CUSTODIAN ACTIVE';
+      if (message.startsWith('DAMAGED GRID')) return 'GRID ARC LIVE // KEEP CLEAR';
+      if (message.startsWith('GRID ISOLATION')) return 'ISOLATE BOTH GRID BRANCHES';
+      // Unexpected longer director copy still shows its full first event
+      // identity, rather than a many-line modal that hides combat on mobile.
+      return message.split(' // ')[0];
+    }
+    if (activeMission.location === 'parallax-array') {
+      // Only the small landscape banner is shortened. The full original
+      // director event remains on the alert's aria-label and title.
+      if (message.startsWith('DIRECTOR EVENT') && message.includes('LIFE-SUPPORT PURGE'))
+        return 'LIFE-SUPPORT PURGE // AIR LOW';
+      if (message.startsWith('DIRECTOR EVENT'))
+        return message.split(' // ').slice(1, 3).join(' // ') || 'DIRECTOR EVENT LIVE';
+      if (message.startsWith('TACTICAL ALERT') && message.includes('DAMAGED GRID'))
+        return 'GRID ARC LIVE // CLEAR FIELD';
+      if (message.startsWith('TACTICAL ALERT')) return message.split(' // ').slice(0, 2).join(' // ');
+      if (message.startsWith('REACTIVE PLATING')) return 'REACTIVE PLATING ACTIVE';
+      if (message.startsWith('CISLUNAR PARALLAX ARRAY')) return 'ALIGN 3 REFERENCE PYLONS';
+      if (message.startsWith('PARALLAX SHEAR')) return 'SHEAR FRONT LIVE // ALIGN PYLONS';
+      if (message.startsWith('DEEP REFERENCE REVERSAL')) return 'DEEP REFERENCE // SHEAR REVERSAL';
+      if (message.startsWith('REFERENCE TECH')) return 'MASS STANDARD AT RISK';
+      if (message.startsWith('BASELINE')) return 'BASELINE ALIGNMENT SHIFT';
+    }
+    if (activeMission.location === 'momentum-exchange') {
+      if (message.startsWith('CISLUNAR MOMENTUM EXCHANGE')) return 'CAPTURE BOTH TRANSFER DRUMS';
+      if (message.startsWith('COUNTERMASS MOBILITY')) return 'LATERAL VECTOR BURST';
+      if (message.startsWith('MOMENTUM EXCHANGE')) return 'CAPTURE MOMENTUM TRANSFER DRUMS';
+      if (message.startsWith('COUNTERMASS WASH')) return 'COUNTERMASS FRONT LIVE';
+      if (message.startsWith('TRANSFER REVERSAL')) return 'SECOND WASH CROSSING LANE';
+      if (message.startsWith('MAGNETIC LOCK')) return 'MASS-WELL LOCK LIVE';
+    }
+    return message;
+  };
   const transientCue = bossTransitionCue
     ? { kind: 'event', label: bossTransitionCue.kicker, detail: `${bossTransitionCue.title} // ${bossTransitionCue.detail}` }
     : deploymentCueVisible && !hud.dead && !hud.complete
       ? { kind: 'event', label: `DROP VECTOR // OP T${activeMission.operationTier ?? 1}`, detail: activeMission.title }
       : hud.eventT > 0
-        ? { kind: 'event', label: 'TACTICAL', detail: hud.eventText }
+        ? { kind: 'event', label: 'TACTICAL', detail: tacticalRouteCue(hud.eventText) }
         : statusItems.length > 0
           ? { kind: 'status', label: 'STATUS', detail: statusItems.slice(0, 3).join(' · ') }
           : tutorialCue
@@ -1553,7 +1611,10 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     {postClearObjective && !hud.dead && <div className="post-clear-objective" data-hud-layer="context" role="status"><small>HOSTILES CLEARED // CONTRACT NOT COMPLETE</small><b>{objectiveStatus.detail}</b><span>{objectiveTarget ? `NEXT ACT // ${objectiveTarget.label.toUpperCase()} // ${objectiveRouteMode} ${objectiveDirection} // RANGE ${objectiveRange}` : 'SYSTEM RECOVERY IN PROGRESS // HOLD THE ZONE'}</span></div>}
     {extractionSweepActive && !hud.dead && <div className="post-clear-objective" data-hud-layer="context" role="status"><small>PRIMARY OBJECTIVE SECURED // EXTRACTION SWEEP</small><b>{hud.squadRemaining} hostile{hud.squadRemaining === 1 ? '' : 's'} remain</b><span>{nearestHostile ? `NEAREST // ${nearestHostile.label.toUpperCase()} // ${hostileRouteMode} ${hostileDirection} // RANGE ${hostileRange}` : 'TACTICAL TRACKER ACQUIRING LAST CONTACT'}</span></div>}
     {hud.bossActive && <div className="boss-hud boss-hud--top" data-hud-layer="context" aria-label="Boss status"><div className="boss-heading"><small>COMMAND TARGET</small><b className="boss-name">{hud.bossLabel.toUpperCase()}</b><span className="boss-phase">P{hud.bossPhase}</span></div><div className="boss-meter-row"><div className="boss-bars" aria-label="Boss health and armor"><i className="boss-health" style={{ width: pct(hud.bossHp, hud.bossMaxHp) }} /><i className="boss-armor" style={{ width: pct(hud.bossArmor, hud.bossMaxArmor) }} /></div><div className="boss-values"><span>HP {Math.ceil(hud.bossHp)} / {Math.ceil(hud.bossMaxHp)}</span><span className={hud.bossMaxArmor > 0 && hud.bossArmor <= 0 ? 'armor-broken' : ''}>{hud.bossMaxArmor <= 0 ? 'UNARMORED' : hud.bossArmor > 0 ? `AR ${Math.ceil(hud.bossArmor)} / ${Math.ceil(hud.bossMaxArmor)}` : 'ARMOR BROKEN · HEALTH EXPOSED'}</span></div></div><div className="boss-status-row">{hud.bossPattern !== 'none' && <small className="boss-tell">{hud.bossPattern.toUpperCase()} TELEGRAPH</small>}{hud.commandTargetMutationNames.length > 0 && <small className="boss-technical">COMMAND PACKAGE // {hud.commandTargetMutationNames.join(' + ')}</small>}{hud.bossPhaseMutationNames.length > 0 && <small className="boss-technical">PHASE MUTATION // {hud.bossPhaseMutationNames.join(' + ')} · {hud.bossPhase === 1 ? 'ARMED' : 'ACTIVE'}</small>}</div></div>}
-    {compactLayout && transientCue && !hud.dead && !hud.complete && <div className={`transient-alert-lane ${transientCue.kind}`} data-hud-layer="transient" data-presentation={bossTransitionCue ? 'boss-transition' : deploymentCueVisible ? 'deployment' : undefined} role="status" aria-live="polite" aria-atomic="true">{transientCue.kind === 'event' ? <div className="combat-alert"><small>{transientCue.label}</small><b>{transientCue.detail}</b></div> : transientCue.kind === 'status' ? <div className="status-rack" aria-label="Combat status"><small>{transientCue.label}</small><span>{transientCue.detail}</span></div> : <div className="tutorial-coach"><small>{transientCue.label}</small><b>{transientCue.detail}</b></div>}</div>}
+    {compactLayout && transientCue && !hud.dead && !hud.complete && <div className={`transient-alert-lane ${transientCue.kind}`} data-hud-layer="transient" data-presentation={bossTransitionCue ? 'boss-transition' : deploymentCueVisible ? 'deployment' : undefined} role="status" aria-live="polite" aria-atomic="true">{transientCue.kind === 'event' ? <div className="combat-alert"
+      aria-label={hud.eventT > 0 && !bossTransitionCue && !deploymentCueVisible ? hud.eventText : undefined}
+      title={hud.eventT > 0 && !bossTransitionCue && !deploymentCueVisible ? hud.eventText : undefined}>
+      <small>{transientCue.label}</small><b>{transientCue.detail}</b></div> : transientCue.kind === 'status' ? <div className="status-rack" aria-label="Combat status"><small>{transientCue.label}</small><span>{transientCue.detail}</span></div> : <div className="tutorial-coach"><small>{transientCue.label}</small><b>{transientCue.detail}</b></div>}</div>}
     {!compactLayout && hud.eventT > 0 && <div className="combat-alert">{hud.eventText}</div>}
     {!compactLayout && statusItems.length > 0 && <div className="status-rack" aria-label="Combat status">{statusItems.map(item => <span key={item}>{item}</span>)}</div>}
     <div className="weapon-hud"><small>{weapon.name}</small><strong>{hud.reload > 0 ? 'RLD' : `${hud.mag} / ${weapon.magazine}`}</strong><div className="heat-track"><i style={{ width: `${hud.heat * 100}%` }} /></div><span>{hud.venting ? 'VENTING' : hud.heat >= 0.98 ? 'OVERHEAT · V' : 'HEAT'}</span></div>

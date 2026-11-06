@@ -13,6 +13,18 @@ const verifier = await readFile(resolve(process.cwd(), 'scripts/verify-authored-
 const runtimeSmoke = await readFile(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');
 const interactableVerifier = await readFile(resolve(process.cwd(), 'scripts/verify-authored-interactables.mjs'), 'utf8');
 
+// The G7 obstacle must use bounded authored metal panels and preserve every
+// loaded GLB owner across route exit, renderer restart and failed loads.
+assert(mappings.includes('export function refineryLongGateModules(')
+  && mappings.includes("object.kind === 'cover' && width <= 0.9 && length >= 6 && length / width >= 8")
+  && mappings.includes("return 'wallPanel'"),
+  'narrow pressure gate must not map to a single hugely stretched crate');
+assert(world.includes('p28-g7-authored-pressure-gate-module-')
+  && world.includes('segment.position.set(0, 0, (index + 0.5 - modules.count / 2) * modules.segmentLength)')
+  && world.includes('for (const instance of visual.extraInstances) instance.release()')
+  && world.includes('if (previous) this.releaseAuthoredWorldObject(previous)'),
+  'G7 pressure gate must retain real module geometry and owner cleanup');
+
 const expectedMappings = {
   cover: 'crate',
   conduit: 'serviceConduit',

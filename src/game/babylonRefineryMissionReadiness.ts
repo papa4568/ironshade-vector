@@ -178,7 +178,8 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
       mission.location === 'orbital-station' || mission.location === 'damaged-vessel'
       || mission.location === 'spin-habitat' || mission.location === 'jovian-harvester'
        || mission.location === 'ice-mine' || mission.location === 'lattice-annex'
-       || mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve');
+       || mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'
+       || mission.location === 'parallax-array');
     if (this.readiness.phase === 'loading' || this.readiness.mode === 'fallback') {
       this.ensureGuardVisuals(state, missionKey);
     }

@@ -63,13 +63,13 @@ socket.addEventListener('message', event => {
   if (message.error) request.reject(new Error(message.error.message ?? 'CDP failure'));
   else request.resolve(message.result);
 });
-async function call(method, params = {}) {
+async function call(method, params = {}, timeoutMs = 25_000) {
   return await new Promise((resolve, reject) => {
     const id = ++nextId;
     const timer = setTimeout(() => {
       pending.delete(id);
       reject(new Error('P28-G7 CDP timeout: ' + method));
-    }, 25_000);
+    }, timeoutMs);
     pending.set(id, { resolve, reject, timer });
     socket.send(JSON.stringify({ id, method, params }));
   });
@@ -106,8 +106,11 @@ async function capture(path) {
 }
 
 try {
-  await call('Runtime.enable');
-  await call('Page.enable');
+  // API35 cold WebView compilation previously exhausted the normal 25s
+  // Runtime.enable budget. Only give the two startup protocol calls 60s;
+  // live gameplay, real input, image provenance and all assertions stay strict.
+  await call('Runtime.enable', {}, 60_000);
+  await call('Page.enable', {}, 60_000);
   // A cold Android WebView can stall while compiling the flagship client.
   // Retry only startup; all route, pixel and asset assertions remain strict.
   const current = await waitFor('location.href', 'initial cold WebView URL', 120_000);

@@ -464,22 +464,31 @@ export class BabylonEnemyTelegraphs {
     visual.attackMaterial.diffuseColor = signal.scale(0.18);
     visual.attackMaterial.emissiveColor = signal;
     const momentumWarning = this.canvas.dataset.babylonScenario === 'momentum-exchange';
+    // Lattice Annex retains the full warning endpoint, source ring and attack
+    // ticks. Only the semi-transparent *fill* of its long rifle lanes is
+    // reduced so the actual figures beneath the amber attack path remain
+    // recognizable at phone gameplay zoom.
+    const annexWarning = this.canvas.dataset.babylonScenario === 'lattice-annex';
     const cryoWarning = this.canvas.dataset.babylonScenario === 'cryo-reserve';
-    visual.attackMaterial.alpha = clamp01((momentumWarning ? 0.46 : cryoWarning ? 0.60 : 0.66)
-      + Math.sin(state.time * 10 + enemy.id * 0.73) * (momentumWarning ? 0.055 : 0.1));
+    const parallaxWarning = this.canvas.dataset.babylonScenario === 'parallax-array';
+    const iceWarning = this.canvas.dataset.babylonScenario === 'ice-mine';
+    visual.attackMaterial.alpha = clamp01((momentumWarning ? 0.46 : parallaxWarning ? 0.54 : cryoWarning ? 0.60 : 0.66)
+      + Math.sin(state.time * 10 + enemy.id * 0.73) * (momentumWarning || parallaxWarning ? 0.055 : 0.1));
     visual.laneMaterial.diffuseColor = signal.scale(0.18);
-    visual.laneMaterial.emissiveColor = signal.scale(cryoWarning ? 0.68 : 1);
-    visual.laneMaterial.alpha = momentumWarning
+    visual.laneMaterial.emissiveColor = signal.scale(cryoWarning || parallaxWarning ? 0.72 : 1);
+    visual.laneMaterial.alpha = annexWarning
+      ? clamp01(0.17 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.025)
+      : momentumWarning
       ? clamp01(0.09 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.020)
-      : cryoWarning
-        ? clamp01(0.14 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.025)
-        : this.canvas.dataset.babylonScenario === 'ice-mine'
-        ? clamp01(0.32 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.06)
+      : cryoWarning || parallaxWarning
+        ? clamp01((parallaxWarning ? 0.12 : 0.14) + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.025)
+        : iceWarning
+        ? clamp01(0.15 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.03)
         : visual.attackMaterial.alpha;
     // Keep bright, discrete origin/target rings and warning ticks, but not
     // continuous high-opacity salmon ribbons over moving actors and machinery.
-    visual.sideA.material = momentumWarning || cryoWarning ? visual.laneMaterial : visual.attackMaterial;
-    visual.sideB.material = momentumWarning || cryoWarning ? visual.laneMaterial : visual.attackMaterial;
+    visual.sideA.material = annexWarning || momentumWarning || cryoWarning || parallaxWarning || iceWarning ? visual.laneMaterial : visual.attackMaterial;
+    visual.sideB.material = annexWarning || momentumWarning || cryoWarning || parallaxWarning || iceWarning ? visual.laneMaterial : visual.attackMaterial;
 
     const originX = scaled(enemy.x);
     const originZ = scaled(enemy.y);
@@ -488,10 +497,9 @@ export class BabylonEnemyTelegraphs {
     visual.sourceRing.setEnabled(true);
     const sourceDiameter = enemy.role === 'boss' ? 2.3 : enemy.role === 'elite' ? 1.55 : 1.15;
     visual.sourceRing.scaling.set(sourceDiameter, sourceDiameter, sourceDiameter);
-    const annexWarning = this.canvas.dataset.babylonScenario === 'lattice-annex';
     for (const tick of visual.annexAttackTicks) {
-      tick.setEnabled(annexWarning || momentumWarning || cryoWarning);
-      tick.scaling.setAll(annexWarning || momentumWarning || cryoWarning ? 1 + 0.18 * Math.sin(state.time * 10) : 1);
+      tick.setEnabled(annexWarning || momentumWarning || cryoWarning || parallaxWarning);
+      tick.scaling.setAll(annexWarning || momentumWarning || cryoWarning || parallaxWarning ? 1 + 0.18 * Math.sin(state.time * 10) : 1);
     }
 
     let direction = normalizedDirection(enemy.telegraphAim.x, enemy.telegraphAim.y);
@@ -511,7 +519,7 @@ export class BabylonEnemyTelegraphs {
     const laneLength = Math.max(0.08, scaled(laneRange));
     // Preserve the full warning reach, source/target rings and orange attack
     // ticks, but stop a wide opaque Cryo laser slab hiding actors and tanks.
-    const laneWidth = Math.max(0.08, scaled(profile.width)) * (cryoWarning ? 0.68 : 1);
+    const laneWidth = Math.max(0.08, scaled(profile.width)) * (annexWarning ? 0.64 : cryoWarning ? 0.68 : parallaxWarning ? 0.74 : iceWarning ? 0.72 : 1);
     const setLane = (mesh: Mesh, widthScale = 1) => {
       mesh.position.x = laneLength / 2;
       mesh.scaling.set(laneLength, 1, laneWidth * widthScale);
@@ -608,7 +616,7 @@ export class BabylonEnemyTelegraphs {
     visual.phaseMaterial.diffuseColor = phaseSignal.scale(0.16);
     visual.phaseMaterial.emissiveColor = phaseSignal;
     visual.phaseMaterial.alpha = clamp01(
-      0.42
+      (this.canvas.dataset.babylonScenario === 'parallax-array' ? 0.27 : 0.42)
       + (phaseTwo ? 0.1 : 0)
       + lifecycle.phaseTransition * 0.24
       + Math.sin(state.time * (phaseTwo ? 5.8 : 3.2) + enemy.patternIndex) * 0.06,

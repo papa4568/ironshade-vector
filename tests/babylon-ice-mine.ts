@@ -21,7 +21,32 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 const renderer = read('src/game/babylonCombatRenderer.ts');
+assert(renderer.includes("const iceMineNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.2 : 0"),
+  'Ice Mine near-side live hostiles must stay above bottom-edge gameplay banner');
+// Only match the actual camera eye/aim expressions. A new route-local offset
+// is allowed between the Ice and Cryo terms; each existing offset must still
+// translate both coordinates of the eye AND target, with no world-state change.
+const cameraEyeStart = renderer.indexOf('this.camera.position.set(px + cameraOffset');
+const cameraTargetStart = renderer.indexOf('this.cameraTarget.set(', cameraEyeStart);
+const cameraApplyStart = renderer.indexOf('this.camera.setTarget(this.cameraTarget);', cameraTargetStart);
+assert(cameraEyeStart !== -1 && cameraTargetStart > cameraEyeStart && cameraApplyStart > cameraTargetStart,
+  'Ice/Cryo visual regression must inspect the actual camera eye and target');
+const cameraEye = renderer.slice(cameraEyeStart, cameraTargetStart);
+const cameraAim = renderer.slice(cameraTargetStart, cameraApplyStart);
+assert(renderer.includes("const cryoNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 4.2 : 0;"),
+  'Cryo near-threat look-ahead must remain route-scoped');
+for (const routeOffset of ['iceMineNearThreatLookAhead', 'cryoNearThreatLookAhead']) {
+  const count = (text: string) => text.split(' + ' + routeOffset).length - 1;
+  assert(count(cameraEye) === 2 && count(cameraAim) === 2,
+    'Ice/Cryo camera offset must translate both eye and target axes: ' + routeOffset);
+}
+const telegraphs = read('src/game/babylonEnemyTelegraphs.ts');
 const ice = read('src/game/babylonIceMinePresentation.ts');
+assert(telegraphs.includes("const iceWarning = this.canvas.dataset.babylonScenario === 'ice-mine'")
+  && telegraphs.includes("clamp01(0.15 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.03)")
+  && telegraphs.includes("parallaxWarning || iceWarning ? visual.laneMaterial")
+  && telegraphs.includes("iceWarning ? 0.72 : 1"),
+  'P28-G9 sibling proof must preserve Ice Mine danger rings without opaque salmon lane slabs');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');
 const workflow = read('.github/workflows/browser-e2e.yml');
@@ -235,6 +260,9 @@ assert(
     && capture.includes("d.babylonSharedWorldArtState === 'ready'")
     && capture.includes("d.missionVisualReadiness === 'ready'")
     && capture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
+    && capture.includes("actionInput: 'manual-aim+live-touch-fire'")
+    && capture.includes('shotsAfter > shotsBefore')
+    && capture.includes("Input.dispatchTouchEvent")
     && shell.includes('android-p28g5-ice-mine-normal.png')
     && shell.includes('if [[ ! -s android-p28g5-ice-mine-device.png ]]; then')
     && shell.includes('mv "$diagnostic_frame" android-p28g5-ice-mine-device.png')

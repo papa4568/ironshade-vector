@@ -21,6 +21,7 @@ const director = readFileSync('src/game/director.ts', 'utf8');
 const interdiction = readFileSync('src/game/postKhepriInterdiction.ts', 'utf8');
 const smoke = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
 const hudCss = readFileSync('src/combatHudGlance.css', 'utf8');
+const hudComponent = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 const workflow = readFileSync('.github/workflows/browser-e2e.yml', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
 
@@ -204,7 +205,23 @@ assert.ok(g8Capture.includes("d?.babylonScenario === 'cryo-reserve'"));
 assert.ok(g8Capture.includes('beforeMappedObjects: beforeVisual.mappedObjects'));
 assert.ok(g8Capture.includes('beforeAuthoredObjects: beforeVisual.authoredObjects'));
 assert.ok(g8Capture.includes('const current = target.url;'));
+assert.ok(hudComponent.includes("activeMission.location === 'cryo-reserve'")
+  && hudComponent.includes("message.startsWith('CRYOGENIC BOILOFF')")
+  && hudComponent.includes("message.startsWith('RESERVE PRESSURE RISE')")
+  && hudComponent.includes("return message.split(' // ')[0]")
+  && hudComponent.includes('aria-label={hud.eventT > 0 && !bossTransitionCue'),
+  'Cryo mobile events must be concise while retaining the complete accessible director transcript');
+assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .target-readout header b')
+  && hudCss.includes('.game-root[data-location="cryo-reserve"] .transient-alert-lane.event .combat-alert b')
+  && hudCss.includes('width: min(32vw, 26rem);')
+  && hudCss.includes('overflow-wrap: anywhere;'),
+  'Cryo target and tactical HUD must show full identities without ellipses or moving touch hitboxes');
 assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .boss-name'));
+assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .class-mechanic-hud {')
+  && hudCss.includes('left: max(6px, env(safe-area-inset-left));')
+  && hudCss.includes('top: 22%;')
+  && hudCss.includes('width: min(16vw, 13rem);'),
+  'G8 actual phone BREACH GUARD card must not hide left-side enemy or danger ring');
 assert.ok(hudCss.includes('white-space: normal;'));
 assert.ok(hudCss.includes('text-overflow: clip;'));
 assert.ok(presentation.includes("MeshBuilder.CreatePlane('p28-g8-ambient-cold-vent-"));
@@ -222,6 +239,15 @@ assert.ok(g8Workflow.includes('G8 Independent Copilot PNG Inspection'));
 assert.ok(g8Workflow.includes('--attachment android-p28g8-cryo-reserve-normal.png'));
 assert.ok(g8Workflow.includes('script: bash tools/android-p28g8-cryo-capture.sh'));
 assert.ok(g8Shell.includes('adb install -r "$APK"'));
+assert.ok(g8Capture.includes("await call('Runtime.enable', {}, 60_000)")
+  && g8Capture.includes("await call('Page.enable', {}, 60_000)")
+  && g8Capture.includes("async function call(method, params = {}, timeoutMs = 25_000)"),
+  'only Cryo CDP cold-start domain handshake gets 60s; actual game proof remains strict');
+assert.ok(g8Shell.includes("grep -qE 'Error: P28-G8 CDP timeout: (Runtime|Page)\\.enable'")
+  && g8Shell.includes('ANDROID_P28G8_CDP_STARTUP_RELAUNCH attempt=')
+  && g8Shell.includes('if [[ ! -s android-p28g8-cryo-reserve-pixel-report.json ]]'),
+  'Cryo may only re-launch an actual native WebView after a proven pre-frame domain timeout');
+
 assert.ok(g8Shell.includes('tools/verify-p28g8-gameplay-frames.mjs'));
 assert.ok(g8Shell.includes('node tools/p28g8-android-crash-audit.mjs android-p28g8-cryo-reserve-logcat.txt'));
 assert.ok(!g8Shell.includes("grep -E 'FATAL EXCEPTION|Process:"));
@@ -289,16 +315,75 @@ for (const marker of [
 // The true combat hazard remains mechanically legible; only the uninterrupted
 // slab opacity/width is reduced for Cryo, with bright source/target/tick cues.
 assert.ok(telegraphs.includes("const cryoWarning = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
-assert.ok(telegraphs.includes(': cryoWarning'));
-assert.ok(telegraphs.includes('? clamp01(0.14 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.025)'));
-assert.ok(telegraphs.includes("const laneWidth = Math.max(0.08, scaled(profile.width)) * (cryoWarning ? 0.68 : 1)"));
-assert.ok(telegraphs.includes("tick.setEnabled(annexWarning || momentumWarning || cryoWarning)"));
+assert.ok(telegraphs.includes(': cryoWarning || parallaxWarning'));
+assert.ok(telegraphs.includes('? clamp01((parallaxWarning ? 0.12 : 0.14) + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.025)'));
+assert.ok(telegraphs.includes("const laneWidth = Math.max(0.08, scaled(profile.width)) * (annexWarning ? 0.64 : cryoWarning ? 0.68 : parallaxWarning ? 0.74 : iceWarning ? 0.72 : 1)"));
+assert.ok(telegraphs.includes("tick.setEnabled(annexWarning || momentumWarning || cryoWarning || parallaxWarning)"));
 assert.ok(babylon.includes("const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;"));
 assert.ok(babylon.includes("const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';"));
-assert.ok(babylon.includes("colorFromHex(0xa6d8e8).scale(0.27)"));
-assert.ok(presentation.includes("jacket.albedoColor = new Color3(0.73, 0.85, 0.94)"));
-assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';"));
-assert.ok(readiness.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve');"));
+assert.ok(babylon.includes("const cryoWideFraming = !narrow && this.canvas.dataset.babylonScenario === 'cryo-reserve';")
+  && babylon.includes("cryoWideFraming ? (this.coarse ? 16.8 : 15.1)")
+  && babylon.includes("cryoContrast ? 0.62")
+  && babylon.includes("cryoSilhouette ? 1.48 : parallaxSilhouette ? 1.64 : 1")
+  && babylon.includes("cryoSilhouette ? 1.28 : parallaxSilhouette ? 1.42 : 1")
+  && babylon.includes("cryoSilhouette ? 1.42 : parallaxSilhouette ? 1.60 : 1"),
+  'real Cryo enemies and danger rings must be framed away from the touch control edge and retain visible rim cues');
+
+assert.ok(presentation.includes('p28-g9-cryo-hoarfrost-collar-')
+  && presentation.includes('p28-g9-cryo-insulation-rime-')
+  && presentation.includes('hoarfrost-collar:14+insulation-rime:56'),
+  'rough visible frost is physical geometry on the seven actual pressure tanks');
+assert.ok(presentation.includes("0x142b33, 0.10, 0.96")
+  && presentation.includes("colorFromHex(0x26434f).scale(0.009 * routePulse)"),
+  'Cryo floor markings must recede beneath readable machine and hazard cues');
+assert.ok(presentation.includes("p28-g8-tank-crystalline-rime-")
+  && presentation.includes("0xc2dfe6, 0.08, 0.96, 0xb7e6ef, 0.17"),
+  'Cryo frost must exist as lit, curved, visible insulation on actual tank jackets');
+// The real 3120x1440 action/device captures clipped the rear tank cap.
+// Keep Cryo-only widen proportional, preserving view inclination and other
+// missions' camera/touch framing.
+const cryoCameraHeights = [16.8, 15.1] as const;
+const cryoCameraOffsets = [12.9, 11.7] as const;
+const oldCryoHeights = [15.5, 13.9] as const;
+const oldCryoOffsets = [11.9, 10.8] as const;
+for (let i = 0; i < 2; i++) {
+  const depthRatio = Math.hypot(cryoCameraHeights[i], cryoCameraOffsets[i] * Math.SQRT2)
+    / Math.hypot(oldCryoHeights[i], oldCryoOffsets[i] * Math.SQRT2);
+  const beforeAngle = Math.atan2(oldCryoHeights[i], oldCryoOffsets[i] * Math.SQRT2);
+  const afterAngle = Math.atan2(cryoCameraHeights[i], cryoCameraOffsets[i] * Math.SQRT2);
+  assert.ok(depthRatio >= 1.075 && depthRatio < 1.10
+    && Math.abs(afterAngle - beforeAngle) < 0.008,
+    'G8 camera must reveal the rear vessel without altering perspective inclination');
+}
+assert.ok(babylon.includes("cryoWideFraming ? (this.coarse ? 12.9 : 11.7)")
+  && babylon.includes("cryoWideFraming ? (this.coarse ? 16.8 : 15.1)")
+  && babylon.includes("momentumWideFraming ? (this.coarse ? 17.0 : 15.2)")
+  && babylon.includes("momentumWideFraming ? (this.coarse ? 12.9 : 11.6)"),
+  'Cryo camera must widen only its own landscape view, not sibling routes');
+
+assert.ok(babylon.includes("const cryoTouchLanePan = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 5.2 : 0;")
+  && babylon.includes('momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan')
+  && babylon.includes('momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan'),
+  'Cryo combat camera must show real enemy silhouettes outside the unchanged right-side touch rail');
+assert.ok(babylon.includes("const cryoNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 4.2 : 0;")
+  && (babylon.match(/iceMineNearThreatLookAhead \+ cryoNearThreatLookAhead/g) || []).length === 4,
+  'Cryo camera must expose near-side live warnings without moving world actors or touch controls');
+assert.ok(babylon.includes("colorFromHex(0xa6d8e8).scale(0.34)"));
+assert.ok(presentation.includes("this.frostAlbedoTexture = new DynamicTexture('p28-g9-cryo-frost-albedo-atlas'")
+  && presentation.includes("this.frostNormalTexture = new DynamicTexture('p28-g9-cryo-frost-normal-atlas'")
+  && presentation.includes('frostCrust.bumpTexture = this.frostNormalTexture;')
+  && presentation.includes('frozenPanel.bumpTexture = this.frostNormalTexture;')
+  && presentation.includes('this.frostAlbedoTexture.dispose();')
+  && presentation.includes('this.frostNormalTexture.dispose();'),
+  'real Cryo frost surface relief must have deterministic albedo/normal atlases and release GPU resources');
+assert.ok(presentation.includes("jacket.albedoColor = new Color3(0.49, 0.63, 0.71)"));
+assert.ok(presentation.includes('p28-g9-cryo-circular-thermal-dial-')
+  && presentation.includes('p28-g9-cryo-dial-needle-')
+  && presentation.includes('p28-g9-cryo-pressure-head-stud-')
+  && presentation.includes('p28-g9-cryo-frost-fracture-'),
+  'Cryo tanks need readable front-mounted instrumentation and separated frost/steel faces');
+assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n      || mission.location === 'parallax-array';"));
+assert.ok(readiness.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n       || mission.location === 'parallax-array');"));
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
 assert.ok(!presentation.includes("const width = route.kind === 'primary' ? 0.12 : 0.076;"));
 

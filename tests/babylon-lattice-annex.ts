@@ -134,6 +134,13 @@ const dangerSource = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
 assert.ok(dangerSource.includes('p28-g6-attack-warning-tick-'));
 assert.ok(dangerSource.includes("this.canvas.dataset.babylonScenario === 'lattice-annex'"));
 assert.ok(dangerSource.includes('for (const tick of visual.annexAttackTicks) tick.setEnabled(false)'));
+assert.ok(dangerSource.includes("const annexWarning = this.canvas.dataset.babylonScenario === 'lattice-annex';")
+  && dangerSource.includes('visual.laneMaterial.alpha = annexWarning')
+  && dangerSource.includes('(annexWarning ? 0.64 : cryoWarning ? 0.68')
+  && dangerSource.includes('visual.sideA.material = annexWarning || momentumWarning')
+  && dangerSource.includes('tick.setEnabled(annexWarning || momentumWarning'),
+  'Lattice Annex keeps full threat reach, source rings and attack ticks but not opaque amber bands');
+
 const actorSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 assert.ok(actorSource.includes("const annexContrast = this.canvas.dataset.babylonScenario === 'lattice-annex'"));
 assert.ok(actorSource.includes("const annexActorLift = this.canvas.dataset.babylonScenario === 'lattice-annex'"));
@@ -141,7 +148,7 @@ assert.ok(presentation.includes('babylonRouteMarkingWidth(route.kind)'));
 assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
 assert.ok(world.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex'"));
-assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';"));
+assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n      || mission.location === 'parallax-array';"));
 assert.ok(readiness.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex'"));
 
 
@@ -234,7 +241,38 @@ for (const detail of [
 const g6Hud = readFileSync('src/combatHudGlance.css', 'utf8');
 const g6Controls = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 assert.ok(g6Controls.includes('data-location={activeMission.location}'));
+assert.ok(g6Controls.includes("if (message.startsWith('DRONE ESCORT')) return 'ENEMY DRONES DEPLOYED // ISOLATE GRID';"),
+  'G6 combat alert must distinguish enemy drone deployment from the simultaneous grid-isolation objective');
+assert.ok(g6Controls.includes("message.startsWith('KHEPRI SURVEY ANNEX')")
+  && g6Controls.includes("message.startsWith('DRONE ESCORT')")
+  && g6Controls.includes("return message.split(' // ')[0]")
+  && g6Controls.includes('aria-label={hud.eventT > 0 && !bossTransitionCue'),
+  'the real director event remains accessible while the landscape HUD displays short commands');
+assert.ok(presentation.includes("this.ceramicAlbedo = new DynamicTexture('p28-g9-lattice-survey-ceramic-albedo'")
+  && presentation.includes("this.ceramicNormal = new DynamicTexture('p28-g9-lattice-survey-ceramic-normal'")
+  && presentation.includes("ceramic.bumpTexture = this.ceramicNormal;")
+  && presentation.includes("this.ceramicNormal.dispose();"),
+  'Annex pillar ceramics must be physically rough and patterned instead of white flat-shaded slabs');
+
 assert.ok(g6Hud.includes('.game-root[data-location="lattice-annex"] .touch-ability-fan .ability-0'));
 assert.ok(g6Hud.includes('bottom: 172px;'));
+assert.ok(g6Controls.includes("activeMission.location === 'lattice-annex'")
+  && g6Controls.includes("message.startsWith('KHEPRI SURVEY ANNEX')")
+  && g6Controls.includes("message.startsWith('DRONE ESCORT')")
+  && g6Controls.includes("return message.split(' // ')[0]"),
+  'G6 long director narrative must use a short actionable in-combat event while preserving original state');
+assert.ok(g6Hud.includes('width: min(29vw, 28rem);')
+  && g6Hud.includes('-webkit-line-clamp: 2;')
+  && presentation.includes("this.ceramicAlbedo = new DynamicTexture('p28-g9-lattice-survey-ceramic-albedo'")
+  && presentation.includes("this.ceramicNormal = new DynamicTexture('p28-g9-lattice-survey-ceramic-normal'")
+  && presentation.includes('ceramic.bumpTexture = this.ceramicNormal;')
+  && presentation.includes('this.ceramicNormal.dispose();'),
+  'G6 mobile HUD must remain compact and survey ceramic must have genuine textured surface relief');
+assert.ok(g6Hud.includes('.game-root[data-location="lattice-annex"] .transient-alert-lane:not([data-presentation="deployment"])')
+  && g6Hud.includes('width: min(35vw, 35rem);')
+  && g6Hud.includes('.game-root[data-location="lattice-annex"] .target-readout header b')
+  && g6Hud.includes('overflow-wrap: anywhere;'),
+  'real G6 tactical and target identities must fit two lines rather than ellipsize on Android landscape');
+
 
 console.log('BABYLON_LATTICE_ANNEX_PASS identity=reference-pylons|survey-ceramic|metrology-teal|calibration-service routes=' + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' calibration=10s-near-zero-g>20s-shutter-index boss=veyra-senn');
