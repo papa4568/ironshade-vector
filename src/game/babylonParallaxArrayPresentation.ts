@@ -617,6 +617,13 @@ export class BabylonParallaxArrayPresentation {
       indexInk.fillStyle = '#f1d49b';
       indexInk.font = 'bold 100px monospace';
       indexInk.fillText(String(index + 1).padStart(2, '0'), 20, 99);
+      // Coarse five-station ruling on the actual physical ID glass. These
+      // deliberately resolve into countable strokes at 3120px Android zoom.
+      for (let graduation = 0; graduation < 5; graduation++) {
+        const major = graduation % 2 === 0;
+        indexInk.fillStyle = major ? '#e4c48a' : '#8fbcc4';
+        indexInk.fillRect(153, 19 + graduation * 23, major ? 79 : 48, major ? 7 : 5);
+      }
       indexTexture.update();
       const indexMaterial = new StandardMaterial('p28-g9-pylon-numbered-plate-material-' + index, scene);
       indexMaterial.diffuseTexture = indexTexture;
@@ -637,6 +644,29 @@ export class BabylonParallaxArrayPresentation {
       indexPlaque.rotation.y = Math.PI / 4;
       indexPlaque.material = indexMaterial;
       indexPlaque.isPickable = false;
+      // The slanted face plate above can be occluded by the instrument yoke
+      // from the real Android camera. Duplicate its *engraved metal* surface
+      // on a physically braced, top-facing cantilever at the same reference
+      // standard. Unlike a HUD label it retains parallax, depth and shadows,
+      // and its two-digit ID plus five scale strokes survive combat zoom.
+      box(scene, root, 'p28-g9-pylon-overhead-engraved-head-' + index,
+        graphite, -1.62, 5.19, 1.42, 2.70, 0.24, 1.58);
+      const headPlate = MeshBuilder.CreatePlane('p28-g9-pylon-overhead-vernier-label-' + index,
+        { width: 2.48, height: 1.36 }, scene);
+      headPlate.parent = root;
+      headPlate.position.set(-1.62, 5.33, 1.42);
+      headPlate.rotation.x = -Math.PI / 2;
+      headPlate.material = indexMaterial;
+      headPlate.isPickable = false;
+      for (const side of [-1, 1]) {
+        const headBrace = MeshBuilder.CreateTube('p28-g9-pylon-overhead-vernier-brace-' + index + '-' + side,
+          { path: [new Vector3(side * 0.54, 3.54, 0.28),
+            new Vector3(-1.62 + side * 0.86, 5.13, 1.42)],
+            radius: 0.12, tessellation: 10 }, scene);
+        headBrace.parent = root;
+        headBrace.material = side === -1 ? graphite : fiducialBrass;
+        headBrace.isPickable = false;
+      }
       // One narrow legible external vernier on each genuine pylon.
       // A short bolted strut joins it to the machine, not to camera/HUD.
       const verticalRulerBed = box(scene, root, 'p28-g9-pylon-camera-vernier-bolted-case-' + index,

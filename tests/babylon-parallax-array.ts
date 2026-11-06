@@ -344,6 +344,19 @@ assert.ok(presentation.includes("{ diameter: 2.48, thickness: 0.16, tessellation
   && presentation.includes('telegraphActive ? 0.82 : 0.42;'),
   'real Parallax elite contact must stay floor-bound and subordinate to danger tells');
 
+// A high-angle Android view must read each physical standard's numeral and
+// coarse scale without trusting tiny front-facing tick marks hidden by yokes.
+assert.ok(presentation.includes('p28-g9-pylon-overhead-engraved-head-')
+  && presentation.includes('p28-g9-pylon-overhead-vernier-label-')
+  && presentation.includes('p28-g9-pylon-overhead-vernier-brace-')
+  && presentation.includes('headPlate.rotation.x = -Math.PI / 2;')
+  && presentation.includes("indexInk.fillRect(153, 19 + graduation * 23"),
+  'physical Parallax overhead gauges must expose readable, supported fiducials');
+assert.ok(babylon.includes("const parallaxThreatScale = this.canvas.dataset.babylonScenario === 'parallax-array'")
+  && babylon.includes("enemy.role === 'elite' ? 1.22 : 1.12 : 1")
+  && babylon.includes("visual.root.scaling.set(parallaxThreatScale, parallaxThreatScale, parallaxThreatScale)"),
+  'only the Parallax rendered threat silhouette may grow; physics and other routes must be untouched');
+
 // Exposed real metrology hardware must not collapse back into a white bar
 // stack at Android gameplay zoom. Three calibrated vernier sleeves, six
 // physical triangulated frame ties, and three raised carriage bearings

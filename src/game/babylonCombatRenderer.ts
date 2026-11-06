@@ -1931,7 +1931,13 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         visual.headMaterial.alpha = 0.35;
         visual.accentMaterial.alpha = 0.45;
       } else {
-        visual.root.scaling.set(1, 1, 1);
+        // Raise only Parallax's rendered enemy silhouette to preserve a
+        // readable armor/weapon profile beside the large metrology machines.
+        // Simulation coordinates, collision, telegraph timers, and hitboxes
+        // are unchanged. Defeated rigs keep their existing death pose.
+        const parallaxThreatScale = this.canvas.dataset.babylonScenario === 'parallax-array'
+          ? enemy.role === 'elite' ? 1.22 : 1.12 : 1;
+        visual.root.scaling.set(parallaxThreatScale, parallaxThreatScale, parallaxThreatScale);
         visual.shellMaterial.alpha = 1;
         visual.headMaterial.alpha = 1;
         visual.accentMaterial.alpha = 1;
