@@ -142,7 +142,7 @@ assert.ok(presentation.includes('floor.emissiveColor = colorFromHex(0x42566f).sc
 assert.ok(presentation.includes('0.94) : 0'), 'Parallax normal-quality PBR needs nonblack IBL');
 assert.ok(telegraphs.includes("const parallaxWarning = this.canvas.dataset.babylonScenario === 'parallax-array'"));
 assert.ok(telegraphs.includes('parallaxWarning ? 0.12 : 0.14'), 'Parallax warning lanes must remain transparent');
-assert.ok(telegraphs.includes('parallaxWarning ? 0.74 : iceWarning ? 0.72 : 1'), 'Parallax combat lanes must not become wide route ribbons');
+assert.ok(telegraphs.includes('parallaxWarning ? 0.74 : iceWarning ? 0.48 : 1'), 'Parallax combat lanes must not become wide route ribbons');
 assert.ok(telegraphs.includes("this.canvas.dataset.babylonScenario === 'parallax-array' ? 0.27 : 0.42"),
   'Parallax boss phase rings must keep contact geometry visible');
 assert.ok(director.includes("'Baseline Controller', 182, 132"), 'elite target label must be phone readable');
