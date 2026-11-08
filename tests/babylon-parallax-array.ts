@@ -517,6 +517,15 @@ assert.ok(presentation.includes('p28-g9-pylon-near-deck-objective-plate-')
   && presentation.includes('p28-g9-console-large-metric-screen-')
   && presentation.includes('p28-g9-console-calibration-channel-'),
   'G9 requires real high-contrast physical objectives, moving masses, split ceramic anchors, and readable consoles at gameplay zoom');
+// Brightness and objective identity must be physical, not another floating
+// HUD marker or a blown-out cream PBR instrument cap at mobile zoom.
+assert.ok(presentation.includes("'p28-g9-pylon-objective-signal-fork-'")
+  && presentation.includes("'p28-g9-pylon-objective-diamond-shroud-'")
+  && presentation.includes("'p28-g9-pylon-objective-diamond-visible-'")
+  && presentation.includes("'p28-g9-pylon-objective-diamond-dark-aperture-'")
+  && presentation.includes('signalFace.material = this.objectiveSignalMaterial;')
+  && presentation.includes("0x344c59, 0.22, 0.94"),
+  'real pylon objectives need bright, supported top-facing diamonds and satin anti-glare caps');
 assert.ok(presentation.includes('p28-g9-physical-datum-objective-beacon')
   && presentation.includes('p28-g9-objective-datum-beacon-crown-')
   && presentation.includes('p28-g9-objective-calibration-chevron-')

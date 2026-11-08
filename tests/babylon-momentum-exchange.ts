@@ -300,6 +300,14 @@ for (const [label, edit, reason] of [
 
 const renderWorldSource = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
 const attackSource = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
+// Shared flywheel presentation is affected by Parallax actor-visibility work:
+ // protect the actual enemy and warning silhouettes behind rotating machinery.
+assert.ok(presentation.includes("'p28-g9-momentum-live-hostile-locator-'")
+  && presentation.includes("enemy.telegraph > 0 ? 1.0 : 0.70")
+  && presentation.includes("mesh.visibility = enemyBehindWheel ? 0.52 : 1;")
+  && presentation.includes("enemy.active && !enemy.dead")
+  && presentation.includes("this.hostileContactMaterial.dispose();"),
+  'G7 live hostile markers and localized optical cutaway must not fake attacks or leak meshes');
 assert.ok(presentation.includes('spoke.rotation.y = spokeRotation'));
 assert.ok(presentation.includes('ring.position.y = 0.36 + ringIndex * 0.19'));
 assert.ok(presentation.includes('toothMesh.rotation.y = angle'));

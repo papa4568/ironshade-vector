@@ -209,7 +209,7 @@ export class BabylonParallaxArrayPresentation {
     const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0x856747, 0.35, 0.76);
     const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0x816a50, 0.54, 0.78, 0x8f7654, 0.025);
     const calibrationInk = pbr(scene, 'p28-g9-contrasting-machined-scale-graduations', 0xc6ad84, 0.58, 0.86, 0xb98f56, 0.21);
-    const counterweightMetal = pbr(scene, 'p28-g9-moving-inertial-counterweight', 0x3f5b67, 0.48, 0.71, 0x204252, 0.055);
+    const counterweightMetal = pbr(scene, 'p28-g9-moving-inertial-counterweight', 0x344c59, 0.22, 0.94, 0x1b3641, 0.035);
     const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.36);
     const referenceScreen = pbr(scene, 'p28-g9-calibration-console-screen', 0x163849, 0.18, 0.48, 0x72d1c7, 0.28);
     // Physically rough, warm metal is structural trim; do not let strong PBR
@@ -569,6 +569,42 @@ export class BabylonParallaxArrayPresentation {
       referenceCenter.position.set(1.46, 5.55, 1.30);
       referenceCenter.material = graphite;
       referenceCenter.isPickable = false;
+      // The orange objective must survive the top-down combat camera as a
+      // *different silhouette* from all pale circular survey dials. A black
+      // four-sided mounting saddle and a bright, dark-aperture diamond sit
+      // on a short two-strut bracket outside the pylon's rotating yoke.
+      // These are scene meshes fixed to each genuine objective, not HUD art
+      // or simulation targets. Their color never invents an attack phase.
+      for (const side of [-1, 1]) {
+        const brace = MeshBuilder.CreateTube('p28-g9-pylon-objective-signal-fork-' + index + '-' + side, {
+          path: [new Vector3(side * 0.46, 3.44, -0.62),
+            new Vector3(-1.32 + side * 0.63, 4.87, -1.34)],
+          radius: 0.14, tessellation: 10,
+        }, scene);
+        brace.parent = root;
+        brace.material = graphite;
+        brace.isPickable = false;
+      }
+      const signalBacking = MeshBuilder.CreateCylinder('p28-g9-pylon-objective-diamond-shroud-' + index,
+        { diameter: 2.17, height: 0.23, tessellation: 4 }, scene);
+      signalBacking.parent = root;
+      signalBacking.position.set(-1.32, 4.95, -1.34);
+      signalBacking.rotation.y = Math.PI / 4;
+      signalBacking.material = graphite;
+      signalBacking.isPickable = false;
+      const signalFace = MeshBuilder.CreateCylinder('p28-g9-pylon-objective-diamond-visible-' + index,
+        { diameter: 1.77, height: 0.17, tessellation: 4 }, scene);
+      signalFace.parent = root;
+      signalFace.position.set(-1.32, 5.15, -1.34);
+      signalFace.rotation.y = Math.PI / 4;
+      signalFace.material = this.objectiveSignalMaterial;
+      signalFace.isPickable = false;
+      const signalAperture = MeshBuilder.CreateCylinder('p28-g9-pylon-objective-diamond-dark-aperture-' + index,
+        { diameter: 0.39, height: 0.095, tessellation: 12 }, scene);
+      signalAperture.parent = root;
+      signalAperture.position.set(-1.32, 5.29, -1.34);
+      signalAperture.material = graphite;
+      signalAperture.isPickable = false;
       // A flat, numbered reference scale is actually visible from the
       // high-angle mobile game camera. The machined bracket reaches back into
       // the physical standard; the lit surface is intentionally instrument

@@ -128,7 +128,7 @@ function enableCount<T extends { setEnabled(value: boolean): void }>(items: read
   items.forEach((item, index) => item.setEnabled(index < count));
 }
 
-type FlywheelRig = { root: TransformNode; rotor: Mesh; hub: Mesh };
+type FlywheelRig = { root: TransformNode; rotor: Mesh; hub: Mesh; cutawayMeshes: Mesh[] };
 type CaptureRig = { id: string; root: TransformNode; ring: Mesh; core: Mesh };
 
 export class BabylonMomentumExchangePresentation {
@@ -146,6 +146,8 @@ export class BabylonMomentumExchangePresentation {
   private readonly groundingMaterial: StandardMaterial;
   private readonly groundingSource: Mesh;
   private readonly enemyGrounding = new Map<number, InstancedMesh>();
+  private readonly hostileContactMaterial: StandardMaterial;
+  private readonly hostileContacts = new Map<number, Mesh>();
   private readonly staticGroundingCount: number;
   private readonly cueMaterial: PBRMaterial;
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
@@ -179,6 +181,15 @@ export class BabylonMomentumExchangePresentation {
     const cz = worldH * 0.5;
 
     this.root = new TransformNode('p27-c8-momentum-exchange-environment', scene);
+    // Optical contact locator is attached to a *live hostile* and is not a
+    // fake telegraph. It remains above the occluding flywheel rim during
+    // combat, while the original timed warning remains authoritative.
+    this.hostileContactMaterial = new StandardMaterial('p28-g9-momentum-hostile-contact-optic', scene);
+    this.hostileContactMaterial.diffuseColor = colorFromHex(0x8b2a20);
+    this.hostileContactMaterial.emissiveColor = colorFromHex(0xf36a52).scale(0.84);
+    this.hostileContactMaterial.specularColor = Color3.Black();
+    this.hostileContactMaterial.disableLighting = true;
+    this.hostileContactMaterial.alpha = 0.82;
     this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
     const floor = this.premiumSurfaces.get('deck-plate');
     const machinery = this.premiumSurfaces.get('painted-metal');
@@ -300,7 +311,11 @@ export class BabylonMomentumExchangePresentation {
           side * 0.68, 1.45, side * 1.20, 0.14, 1.6, 0.14);
       }
       rotor.metadata = { direction };
-      this.flywheels.push({ root, rotor, hub });
+      // Only moving rim/hub/axial laminations are cutaway candidates.
+      // Structural feet, transfer controls and world collision remain solid.
+      const cutawayMeshes = [rotor, hub,
+        ...rotor.getChildMeshes(false).filter((mesh): mesh is Mesh => mesh instanceof Mesh)];
+      this.flywheels.push({ root, rotor, hub, cutawayMeshes });
     });
 
     const framePlacements = [
@@ -612,6 +627,14 @@ export class BabylonMomentumExchangePresentation {
       const direction = Number(rig.rotor.metadata?.direction ?? (index % 2 ? 1 : -1));
       rig.rotor.rotation.z = state.time * (0.56 + index * 0.08) * direction;
       rig.hub.rotation.z = -state.time * (0.34 + index * 0.05) * direction;
+      // Real enemy and timed-warning silhouettes must not disappear behind
+      // the huge foreground axle. Cut away only the moving optical surfaces
+      // when a live foe physically occupies its footprint. The flywheel,
+      // braces, bearings and gameplay cover remain physically present.
+      const enemyBehindWheel = state.enemies.some(enemy => enemy.active && !enemy.dead
+        && Math.hypot(scaled(enemy.x) - rig.root.position.x,
+          scaled(enemy.y) - rig.root.position.z) < 3.65);
+      for (const mesh of rig.cutawayMeshes) mesh.visibility = enemyBehindWheel ? 0.52 : 1;
     });
 
     const vectorWashes = state.hazards.filter(hazard => hazard.active && hazard.kind === 'vectorWash');
@@ -698,9 +721,31 @@ export class BabylonMomentumExchangePresentation {
       contact.position.set(scaled(enemy.x), 0.043, scaled(enemy.y));
       contact.rotation.x = Math.PI / 2;
       contact.scaling.set(1.06 * scale, 0.78 * scale, 1);
+      // The floor contact ring is occluded by an upright rotor from the
+      // real overhead Android camera. A small state-bound *hostile locator*
+      // rides above the obstruction; actual attack warnings are unchanged.
+      let optic = this.hostileContacts.get(enemy.id);
+      if (!optic) {
+        optic = MeshBuilder.CreateTorus('p28-g9-momentum-live-hostile-locator-' + enemy.id,
+          { diameter: 1.34, thickness: 0.13, tessellation: 24 }, this.scene);
+        optic.parent = this.root;
+        optic.material = this.hostileContactMaterial;
+        optic.isPickable = false;
+        this.hostileContacts.set(enemy.id, optic);
+      }
+      const behindFlywheel = this.flywheels.some(rig =>
+        Math.hypot(scaled(enemy.x) - rig.root.position.x,
+          scaled(enemy.y) - rig.root.position.z) < 3.65);
+      optic.position.set(scaled(enemy.x), behindFlywheel ? 6.10 : 2.62, scaled(enemy.y));
+      optic.rotation.x = Math.PI / 2;
+      const opticScale = enemy.telegraph > 0 ? 1.0 : 0.70;
+      optic.scaling.set(opticScale, opticScale, opticScale);
     }
     for (const [id, contact] of this.enemyGrounding) {
       if (!nearby.has(id)) { contact.dispose(); this.enemyGrounding.delete(id); }
+    }
+    for (const [id, optic] of this.hostileContacts) {
+      if (!nearby.has(id)) { optic.dispose(); this.hostileContacts.delete(id); }
     }
     this.readabilityLight.position.set(px - 0.5, 2.8, pz + 0.7);
     this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 4.4 : 6.2) * tierScale;
@@ -816,6 +861,8 @@ export class BabylonMomentumExchangePresentation {
     this.release('renderer-dispose');
     for (const contact of this.enemyGrounding.values()) contact.dispose();
     this.enemyGrounding.clear();
+    for (const optic of this.hostileContacts.values()) optic.dispose();
+    this.hostileContacts.clear();
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose());
     this.root.dispose();
     this.groundingMaterial.dispose();
@@ -828,6 +875,7 @@ export class BabylonMomentumExchangePresentation {
     this.premiumSurfaces.dispose();
     this.impulseMaterial.dispose();
     this.bossCueMaterial.dispose();
+    this.hostileContactMaterial.dispose();
     this.hemisphere.dispose();
     this.keyLight.dispose();
     this.rimLight.dispose();
