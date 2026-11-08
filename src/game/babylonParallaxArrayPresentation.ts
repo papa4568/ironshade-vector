@@ -489,6 +489,58 @@ export class BabylonParallaxArrayPresentation {
         box(scene, root, 'p28-g9-pylon-physical-align-target-' + index + '-' + lamp,
           objectiveGold, -0.66 + lamp * 0.66, 1.12, 2.17, 0.42, 0.65, 0.34);
       }
+      // Real APK detail review: the three distant reference pylons still
+      // read as dark stacked crates, because sub-pixel front labels and a
+      // single pale top ring conceal the metrology profile. Expose a textured,
+      // faceted radial micrometer and *large* machined station marks on
+      // each physical column. All components are bolted to the real pylon,
+      // never the camera, HUD, navigation or simulation collision geometry.
+      const micrometerDrum = MeshBuilder.CreateCylinder('p28-g9-pylon-machined-faceted-micrometer-' + index,
+        { diameter: 2.76, height: 0.52, tessellation: 20 }, scene);
+      micrometerDrum.parent = root;
+      micrometerDrum.position.set(0, 3.67, 0);
+      micrometerDrum.material = counterweightMetal;
+      micrometerDrum.isPickable = false;
+      for (let station = 0; station < 12; station++) {
+        const angle = station * Math.PI / 6;
+        const major = station % 3 === 0;
+        const segment = box(scene, root,
+          'p28-g9-pylon-rotary-micrometer-engraved-station-' + index + '-' + station,
+          major ? calibrationInk : fiducialBrass,
+          Math.cos(angle) * 1.27, 3.99, Math.sin(angle) * 1.27,
+          major ? 0.32 : 0.18, 0.11, major ? 0.48 : 0.29);
+        segment.rotation.y = -angle;
+      }
+      // A physically linked, two-axis conductor pair and five-step bronze
+      // calibration comb distinguish an instrumented standard from plinth
+      // blocks at combat zoom. Tubular conductors retain round highlights;
+      // the rough metal drum retains the authored KTX2 machined atlas.
+      for (const side of [-1, 1]) {
+        const conductor = MeshBuilder.CreateTube(
+          'p28-g9-pylon-exposed-rounded-survey-conductor-' + index + '-' + side, {
+            path: [new Vector3(side * 1.43, 0.55, -1.38),
+              new Vector3(side * 1.43, 3.67, -1.38),
+              new Vector3(side * 0.90, 4.35, -0.82)],
+            radius: 0.17, tessellation: 12,
+          }, scene);
+        conductor.parent = root;
+        conductor.material = calibrationInk;
+        conductor.isPickable = false;
+        for (const level of [1.1, 2.22, 3.35]) {
+          box(scene, root, 'p28-g9-pylon-external-conductor-insulator-' + index + '-' + side + '-' + level,
+            insulation, side * 1.43, level, -1.38, 0.54, 0.22, 0.54);
+        }
+      }
+      const calibratedBed = box(scene, root, 'p28-g9-pylon-top-ruled-analog-bed-' + index,
+        graphite, -1.42, 4.52, -0.96, 1.92, 0.22, 2.36);
+      calibratedBed.isPickable = false;
+      for (let step = 0; step < 5; step++) {
+        const major = step % 2 === 0;
+        box(scene, root, 'p28-g9-pylon-top-readable-analog-notch-' + index + '-' + step,
+          major ? calibrationInk : fiducialBrass,
+          -1.42 + (step - 2) * 0.37, 4.68, -0.96,
+          major ? 0.21 : 0.12, 0.12, major ? 1.52 : 0.95);
+      }
       // At the real Android overhead zoom the former floor-level scale
       // resolved as unlabelled cream flecks. Mount a bold, countable vernier
       // on the actual near face of each standard, with paired insulated

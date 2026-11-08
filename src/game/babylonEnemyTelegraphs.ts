@@ -483,7 +483,10 @@ export class BabylonEnemyTelegraphs {
       : cryoWarning || parallaxWarning
         ? clamp01((parallaxWarning ? 0.12 : 0.14) + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.025)
         : iceWarning
-        ? clamp01(0.15 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.03)
+        // Keep the real orange source/target rings, reach and attack timing,
+        // but prevent translucent salmon floor fill from washing out Ice
+        // Mine operators and machinery on Android action/device frames.
+        ? clamp01(0.065 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.012)
         : visual.attackMaterial.alpha;
     // Keep bright, discrete origin/target rings and warning ticks, but not
     // continuous high-opacity salmon ribbons over moving actors and machinery.
@@ -519,7 +522,7 @@ export class BabylonEnemyTelegraphs {
     const laneLength = Math.max(0.08, scaled(laneRange));
     // Preserve the full warning reach, source/target rings and orange attack
     // ticks, but stop a wide opaque Cryo laser slab hiding actors and tanks.
-    const laneWidth = Math.max(0.08, scaled(profile.width)) * (annexWarning ? 0.64 : cryoWarning ? 0.68 : parallaxWarning ? 0.74 : iceWarning ? 0.72 : 1);
+    const laneWidth = Math.max(0.08, scaled(profile.width)) * (annexWarning ? 0.64 : cryoWarning ? 0.68 : parallaxWarning ? 0.74 : iceWarning ? 0.48 : 1);
     const setLane = (mesh: Mesh, widthScale = 1) => {
       mesh.position.x = laneLength / 2;
       mesh.scaling.set(laneLength, 1, laneWidth * widthScale);

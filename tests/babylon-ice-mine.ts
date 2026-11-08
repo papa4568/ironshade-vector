@@ -43,9 +43,9 @@ for (const routeOffset of ['iceMineNearThreatLookAhead', 'cryoNearThreatLookAhea
 const telegraphs = read('src/game/babylonEnemyTelegraphs.ts');
 const ice = read('src/game/babylonIceMinePresentation.ts');
 assert(telegraphs.includes("const iceWarning = this.canvas.dataset.babylonScenario === 'ice-mine'")
-  && telegraphs.includes("clamp01(0.15 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.03)")
+  && telegraphs.includes("clamp01(0.065 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.012)")
   && telegraphs.includes("parallaxWarning || iceWarning ? visual.laneMaterial")
-  && telegraphs.includes("iceWarning ? 0.72 : 1"),
+  && telegraphs.includes("iceWarning ? 0.48 : 1"),
   'P28-G9 sibling proof must preserve Ice Mine danger rings without opaque salmon lane slabs');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');

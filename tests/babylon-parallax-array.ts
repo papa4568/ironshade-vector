@@ -283,6 +283,20 @@ assert.ok(workflow.includes('p27c10-parallax-array.png'));
 assert.ok(pkg.scripts['test:babylon-parallax-array']);
 assert.ok(pkg.scripts.build.includes('npm run test:babylon-parallax-array'));
 
+// Actual Android frame review: distant standards must expose rounded conductors,
+ // countable machined analog graduations and an atlas-bound faceted drum instead
+ // of looking like dark crates with a pale circle on top.
+assert.ok(presentation.includes('p28-g9-pylon-machined-faceted-micrometer-')
+  && presentation.includes('p28-g9-pylon-rotary-micrometer-engraved-station-')
+  && presentation.includes('p28-g9-pylon-exposed-rounded-survey-conductor-')
+  && presentation.includes('p28-g9-pylon-external-conductor-insulator-')
+  && presentation.includes('p28-g9-pylon-top-ruled-analog-bed-')
+  && presentation.includes('p28-g9-pylon-top-readable-analog-notch-')
+  && presentation.includes('micrometerDrum.material = counterweightMetal;')
+  && presentation.includes('conductor.material = calibrationInk;')
+  && presentation.includes('station < 12')
+  && presentation.includes('step < 5'),
+  'physical KTX2-bound metrology details must remain visible at gameplay scale');
 assert.ok(presentation.includes('p28-g9-pylon-front-graduated-ruler-bed-')
   && presentation.includes('p28-g9-pylon-front-readable-graduation-')
   && presentation.includes('station < 8')
