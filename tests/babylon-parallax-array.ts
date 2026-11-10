@@ -401,7 +401,7 @@ assert.ok(presentation.includes('p28-g9-shear-anchor-optical-transducer-')
 assert.ok(babylon.includes("const parallaxSilhouette = this.canvas.dataset.babylonScenario === 'parallax-array';")
   && presentation.includes('telegraphActive ? 0.82 : 0.42;')
   && presentation.includes('telegraphActive ? 1.15 : 0.86')
-  && presentation.includes('this.eliteContactBeacon.position.set(scaled(baselineController.x), 2.84, scaled(baselineController.y))'),
+  && presentation.includes('this.eliteContactBeacon.position.set(scaled(baselineController.x), 3.20, scaled(baselineController.y))'),
   'true Parallax elite contact must remain readable without inventing a timed attack');
 assert.ok(presentation.includes('p28-g9-pylon-precision-dial-face-')
   && presentation.includes('p28-g9-pylon-precision-dial-rim-')
