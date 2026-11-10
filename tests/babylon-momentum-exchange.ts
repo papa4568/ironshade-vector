@@ -307,7 +307,7 @@ assert.ok(presentation.includes("'p28-g9-momentum-live-hostile-locator-'")
   && presentation.includes("rig.rotor.visibility = 1;")
   && presentation.includes("rig.hub.visibility = 1;")
   && !presentation.includes("cutawayMeshes")
-  && presentation.includes("enemy.active && !enemy.dead")
+  && presentation.includes("if (!enemy.active || enemy.dead) continue;")
   && presentation.includes("this.hostileContactMaterial.dispose();"),
   'G7 live hostile markers and localized optical cutaway must not fake attacks or leak meshes');
 assert.ok(presentation.includes('spoke.rotation.y = spokeRotation'));
