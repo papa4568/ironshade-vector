@@ -297,6 +297,19 @@ assert.ok(presentation.includes('p28-g9-pylon-machined-faceted-micrometer-')
   && presentation.includes('station < 12')
   && presentation.includes('step < 5'),
   'physical KTX2-bound metrology details must remain visible at gameplay scale');
+// The exact Android reviewer must be able to count real bold stations
+// *on each pylon*, rather than only on the central, separately mounted gauge.
+assert.ok(presentation.includes('p28-g9-pylon-body-mounted-vernier-cassette-')
+  && presentation.includes('standardCassette.parent = root;')
+  && presentation.includes('p28-g9-pylon-body-vernier-enamel-bed-')
+  && presentation.includes('p28-g9-pylon-body-vernier-machined-rail-')
+  && presentation.includes('p28-g9-pylon-body-vernier-braced-mount-')
+  && presentation.includes('p28-g9-pylon-body-vernier-number-')
+  && presentation.includes('standardNumber.material = indexMaterial;')
+  && presentation.includes('p28-g9-pylon-body-vernier-countable-tick-')
+  && presentation.includes('graduation < 5')
+  && presentation.includes('major ? 1.78 : 1.22'),
+  'the three real reference pylons must show countable high-contrast body-mounted fiducials');
 assert.ok(presentation.includes('p28-g9-pylon-survey-open-cheek-')
   && presentation.includes('p28-g9-pylon-survey-brass-conductor-')
   && presentation.includes('p28-g9-pylon-macro-cross-vernier-')

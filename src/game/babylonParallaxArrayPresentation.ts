@@ -753,6 +753,46 @@ export class BabylonParallaxArrayPresentation {
       indexPlaque.rotation.y = Math.PI / 4;
       indexPlaque.material = indexMaterial;
       indexPlaque.isPickable = false;
+      // Exact-APK normal/action/device pixel review showed readable ticks on
+      // the separate central instrument, but the *three actual objective
+      // pylons* still appeared as dark blocks with cream studs. Give each real
+      // pylon a single large, camera-facing mechanical ID/vernier cassette.
+      // Its broad dark enamel field, counted brass graduations and 01/02/03
+      // plate are integrated into the machine silhouette; there is no HUD
+      // overlay, virtual objective, route line, or simulation collision.
+      const standardCassette = new TransformNode('p28-g9-pylon-body-mounted-vernier-cassette-' + index, scene);
+      standardCassette.parent = root;
+      standardCassette.position.set(1.72, 2.38, 2.38);
+      standardCassette.rotation.y = Math.PI / 4;
+      box(scene, standardCassette, 'p28-g9-pylon-body-vernier-enamel-bed-' + index,
+        graphite, 0, 0, 0, 2.42, 3.20, 0.24);
+      for (const side of [-1, 1]) {
+        box(scene, standardCassette, 'p28-g9-pylon-body-vernier-machined-rail-' + index + '-' + side,
+          shell, side * 1.12, 0, 0.17, 0.19, 3.08, 0.25);
+        const fastener = MeshBuilder.CreateTube(
+          'p28-g9-pylon-body-vernier-braced-mount-' + index + '-' + side, {
+            path: [new Vector3(side * 0.78 - 0.78, 0, -1.95),
+              new Vector3(side * 0.88, 0, -0.22)],
+            radius: 0.14, tessellation: 10,
+          }, scene);
+        fastener.parent = standardCassette;
+        fastener.material = shell;
+        fastener.isPickable = false;
+      }
+      const standardNumber = MeshBuilder.CreatePlane('p28-g9-pylon-body-vernier-number-' + index,
+        { width: 1.92, height: 0.96 }, scene);
+      standardNumber.parent = standardCassette;
+      standardNumber.position.set(0, 0.97, 0.16);
+      standardNumber.material = indexMaterial;
+      standardNumber.isPickable = false;
+      for (let graduation = 0; graduation < 5; graduation++) {
+        const major = graduation % 2 === 0;
+        box(scene, standardCassette,
+          'p28-g9-pylon-body-vernier-countable-tick-' + index + '-' + graduation,
+          major ? calibrationInk : fiducialBrass,
+          major ? 0 : -0.18, 0.25 - graduation * 0.34, 0.21,
+          major ? 1.78 : 1.22, major ? 0.17 : 0.13, 0.11);
+      }
       // Raise the engraved optical instrument above the rotary cap, so all
       // three genuine pylon gauges face the overhead camera. The previous
       // lower cantilever vanished behind distant yokes and cropped the near
