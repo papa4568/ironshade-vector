@@ -314,6 +314,19 @@ assert.ok(presentation.includes("indexInk.fillText('ALIGN', 18, 117)")
   && presentation.includes('{ height: 1.10, diameterTop: 0.26, diameterBottom: 0.76')
   && presentation.includes('marker.material = cyan;'),
   'grounded cyan route bollards must not masquerade as amber physical objective pylons');
+// Keep a camera-safe physical service scale and objective signal while
+// avoiding the former huge in-world slab and multiple glowing orange caps.
+// Independently identify the eight violet shear forks vs the three standards.
+assert.ok(presentation.includes('standardCassette.scaling.set(0.80, 0.80, 0.80);')
+  && presentation.includes('standardCassette.position.set(2.18, 2.35, 2.10);')
+  && presentation.includes('p28-g9-pylon-spindle-exposed-datum-notch-')
+  && presentation.includes('station < 5')
+  && presentation.includes("p28-g9-shear-anchor-violet-powered-crosshead-")
+  && presentation.includes("transducerRim.material = shearCeramic;")
+  && presentation.includes("marker.material = shearCeramic;")
+  && presentation.includes("0x49336e, 0.16, 0.87, 0xa16be2, 0.24")
+  && presentation.includes("{ diameter: 1.54, height: 0.24, tessellation: 4 }"),
+  'three physical scales, amber targets and eight insulated shear keys must retain distinct silhouettes');
 assert.ok(presentation.includes('p28-g9-pylon-body-mounted-vernier-cassette-')
   && presentation.includes('standardCassette.parent = root;')
   && presentation.includes('p28-g9-pylon-body-vernier-enamel-bed-')

@@ -203,7 +203,7 @@ export class BabylonParallaxArrayPresentation {
     // Pale enamel indices are trim on shipped KTX2 painted/metal structure,
     // not replacement base materials or wide glowing navigation ribbons.
     const etched = pbr(scene, 'p28-g9-etched-datum-enamel', 0x718f9b, 0.48, 0.68, 0x37637b, 0.055);
-    const indexed = pbr(scene, 'p28-g9-indexed-violet-enamel', 0x82739c, 0.42, 0.48, 0x7760ba, 0.12);
+    const indexed = pbr(scene, 'p28-g9-indexed-violet-enamel', 0x49336e, 0.16, 0.87, 0xa16be2, 0.24);
     // A machined warm-metal standard separates instrument calibration from
     // violet danger cues and cyan status without replacing textured housings.
     const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0x856747, 0.35, 0.76);
@@ -630,7 +630,7 @@ export class BabylonParallaxArrayPresentation {
       referenceDiamondBacking.material = graphite;
       referenceDiamondBacking.isPickable = false;
       const referenceDiamond = MeshBuilder.CreateCylinder('p28-g9-objective-top-amber-diamond-' + index,
-        { diameter: 1.43, height: 0.18, tessellation: 4 }, scene);
+        { diameter: 1.16, height: 0.18, tessellation: 4 }, scene);
       referenceDiamond.parent = root;
       referenceDiamond.position.set(1.46, 5.41, 1.30);
       referenceDiamond.rotation.y = Math.PI / 4;
@@ -666,7 +666,7 @@ export class BabylonParallaxArrayPresentation {
       signalBacking.material = graphite;
       signalBacking.isPickable = false;
       const signalFace = MeshBuilder.CreateCylinder('p28-g9-pylon-objective-diamond-visible-' + index,
-        { diameter: 1.77, height: 0.17, tessellation: 4 }, scene);
+        { diameter: 1.43, height: 0.17, tessellation: 4 }, scene);
       signalFace.parent = root;
       signalFace.position.set(-1.32, 5.15, -1.34);
       signalFace.rotation.y = Math.PI / 4;
@@ -768,8 +768,13 @@ export class BabylonParallaxArrayPresentation {
       // overlay, virtual objective, route line, or simulation collision.
       const standardCassette = new TransformNode('p28-g9-pylon-body-mounted-vernier-cassette-' + index, scene);
       standardCassette.parent = root;
-      standardCassette.position.set(1.72, 2.38, 2.38);
+      // The full-size in-scene plate blocked the operator's sightline to
+      // the mass standard in all three accepted-origin device screenshots.
+      // Retain its real numbered/ticked geometry but restore the open
+      // machine silhouette by setting it alongside the frame at 80% scale.
+      standardCassette.position.set(2.18, 2.35, 2.10);
       standardCassette.rotation.y = Math.PI / 4;
+      standardCassette.scaling.set(0.80, 0.80, 0.80);
       box(scene, standardCassette, 'p28-g9-pylon-body-vernier-enamel-bed-' + index,
         graphite, 0, 0, 0, 2.42, 3.20, 0.24);
       for (const side of [-1, 1]) {
@@ -907,6 +912,18 @@ export class BabylonParallaxArrayPresentation {
       spindle.position.y = 2.15;
       spindle.material = shell;
       spindle.isPickable = false;
+      // Five measured stations are engraved on the real faceted column,
+      // not only on the separate camera-facing service cassette. The wide
+      // major/notch profile reads as a vernier when the small panel is
+      // partly hidden by the nearby mass assembly.
+      for (let station = 0; station < 5; station++) {
+        const major = station % 2 === 0;
+        const notch = box(scene, root, 'p28-g9-pylon-spindle-exposed-datum-notch-' + index + '-' + station,
+          major ? calibrationInk : fiducialBrass,
+          -0.32, 1.04 + station * 0.67, 1.03,
+          major ? 1.30 : 0.82, major ? 0.21 : 0.14, 0.15);
+        notch.rotation.y = Math.PI / 8;
+      }
       // These raised machined bearing collars and long flutes have actual
       // silhouette/contact depth at Android camera distance, unlike tiny
       // surface stickers on a flat cuboid.
@@ -1126,7 +1143,7 @@ export class BabylonParallaxArrayPresentation {
       objectiveDialBack.material = graphite;
       objectiveDialBack.isPickable = false;
       const objectiveDial = MeshBuilder.CreateCylinder('p28-g9-objective-deck-diamond-' + index,
-        { diameter: 2.06, height: 0.24, tessellation: 4 }, scene);
+        { diameter: 1.54, height: 0.24, tessellation: 4 }, scene);
       objectiveDial.parent = root;
       objectiveDial.position.set(-1.58, 0.86, 1.58);
       objectiveDial.rotation.y = Math.PI / 4;
@@ -1519,11 +1536,11 @@ export class BabylonParallaxArrayPresentation {
       box(scene, root, 'p27-c10-anchor-base-' + index, graphite, 0, 0.24, 0, 1.70, 0.48, 1.50);
       const fin = box(scene, root, 'p27-c10-anchor-fin-' + index, shearCeramic, 0, 0.98, 0, 0.28, 1.68, 0.98);
       fin.rotation.z = index % 2 ? 0.10 : -0.10;
-      const marker = MeshBuilder.CreateTorus('p27-c10-anchor-ring-' + index, { diameter: 0.72, thickness: 0.07, tessellation: 20 }, scene);
+      const marker = MeshBuilder.CreateTorus('p27-c10-anchor-ring-' + index, { diameter: 0.56, thickness: 0.09, tessellation: 6 }, scene);
       marker.parent = root;
       marker.position.y = 1.58;
       marker.rotation.x = Math.PI / 2;
-      marker.material = indexed;
+      marker.material = shearCeramic;
       marker.isPickable = false;
       box(scene, root, 'p28-g9-anchor-insulator-' + index,
         insulation, 0, 0.60, 0.34, 0.52, 0.30, 0.24);
@@ -1616,12 +1633,19 @@ export class BabylonParallaxArrayPresentation {
       transducer.position.set(0, 3.18, 0.52);
       transducer.material = shearCeramic;
       transducer.isPickable = false;
+      // A pale, round top race made these eight *shear anchors* resemble
+      // the three true reference pylons in actual Android pixels. Keep the
+      // optical readout but make the silhouette a dark faceted violet key,
+      // with a transverse ceramic bridge joining the powered split prongs.
       const transducerRim = MeshBuilder.CreateTorus('p28-g9-shear-anchor-transducer-index-ring-' + index,
-        { diameter: 1.16, thickness: 0.13, tessellation: 24 }, scene);
+        { diameter: 0.90, thickness: 0.14, tessellation: 6 }, scene);
       transducerRim.parent = root;
       transducerRim.position.set(0, 3.38, 0.52);
-      transducerRim.material = indexed;
+      transducerRim.rotation.y = Math.PI / 6;
+      transducerRim.material = shearCeramic;
       transducerRim.isPickable = false;
+      box(scene, root, 'p28-g9-shear-anchor-violet-powered-crosshead-' + index,
+        indexed, 0, 3.52, 0.52, 1.32, 0.17, 0.34);
       this.anchors.push(root);
     });
 
