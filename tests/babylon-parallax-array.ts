@@ -299,6 +299,21 @@ assert.ok(presentation.includes('p28-g9-pylon-machined-faceted-micrometer-')
   'physical KTX2-bound metrology details must remain visible at gameplay scale');
 // The exact Android reviewer must be able to count real bold stations
 // *on each pylon*, rather than only on the central, separately mounted gauge.
+// Real reference-node alignment targets must be unmistakable against
+// warm industrial caps and separate *navigation* bollards at phone zoom.
+assert.ok(presentation.includes("indexInk.fillText('ALIGN', 18, 117)")
+  && presentation.includes('p28-g9-pylon-align-optic-bracket-')
+  && presentation.includes('p28-g9-pylon-align-objective-shroud-')
+  && presentation.includes('p28-g9-pylon-align-machined-contrast-perimeter-')
+  && presentation.includes('alignPerimeter.material = calibrationInk;')
+  && presentation.includes('p28-g9-pylon-align-distinct-amber-diamond-')
+  && presentation.includes('alignSignal.material = this.objectiveSignalMaterial;')
+  && presentation.includes('p28-g9-pylon-align-dark-target-aperture-')
+  && presentation.includes('alignBracket.parent = root;')
+  && presentation.includes('p28-g9-wayfinding-grounded-bollard-shoe-')
+  && presentation.includes('{ height: 1.10, diameterTop: 0.26, diameterBottom: 0.76')
+  && presentation.includes('marker.material = cyan;'),
+  'grounded cyan route bollards must not masquerade as amber physical objective pylons');
 assert.ok(presentation.includes('p28-g9-pylon-body-mounted-vernier-cassette-')
   && presentation.includes('standardCassette.parent = root;')
   && presentation.includes('p28-g9-pylon-body-vernier-enamel-bed-')

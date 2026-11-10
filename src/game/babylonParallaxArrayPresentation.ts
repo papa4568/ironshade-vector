@@ -726,6 +726,12 @@ export class BabylonParallaxArrayPresentation {
       indexInk.fillStyle = '#f1d49b';
       indexInk.font = 'bold 100px monospace';
       indexInk.fillText(String(index + 1).padStart(2, '0'), 20, 99);
+      // Label the *actual alignment target*, not a navigation landmark or
+      // generic service console. This inscription is part of each machine's
+      // scene-owned engraved texture, shown on its bolted physical cassette.
+      indexInk.fillStyle = '#ffd88a';
+      indexInk.font = 'bold 23px monospace';
+      indexInk.fillText('ALIGN', 18, 117);
       // Coarse five-station ruling on the actual physical ID glass. These
       // deliberately resolve into countable strokes at 3120px Android zoom.
       for (let graduation = 0; graduation < 5; graduation++) {
@@ -793,6 +799,47 @@ export class BabylonParallaxArrayPresentation {
           major ? 0 : -0.18, 0.25 - graduation * 0.34, 0.21,
           major ? 1.78 : 1.22, major ? 0.17 : 0.13, 0.11);
       }
+      // A single unmistakable *world-space* diamond target crowns the
+      // numbered calibration cassette. Earlier amber caps blended into the
+      // other warm machine heads and tall ring-topped navigation landmarks
+      // were mistaken for the objectives in actual Android screenshots.
+      // The layered dark silhouette, pale machined perimeter, amber
+      // diamond and dark aperture together mean ALIGN, not a combat tell.
+      // This brace is fixed to each real reference-node root; no HUD plane,
+      // invented target, collision, or timer is introduced.
+      const alignBracket = MeshBuilder.CreateTube('p28-g9-pylon-align-optic-bracket-' + index,
+        { path: [new Vector3(1.52, 3.64, 1.79),
+          new Vector3(2.04, 4.58, 2.56)], radius: 0.17, tessellation: 10 }, scene);
+      alignBracket.parent = root;
+      alignBracket.material = shell;
+      alignBracket.isPickable = false;
+      const alignShroud = MeshBuilder.CreateCylinder('p28-g9-pylon-align-objective-shroud-' + index,
+        { diameter: 2.24, height: 0.20, tessellation: 4 }, scene);
+      alignShroud.parent = root;
+      alignShroud.position.set(2.04, 4.64, 2.56);
+      alignShroud.rotation.y = Math.PI / 4;
+      alignShroud.material = graphite;
+      alignShroud.isPickable = false;
+      const alignPerimeter = MeshBuilder.CreateTorus('p28-g9-pylon-align-machined-contrast-perimeter-' + index,
+        { diameter: 2.37, thickness: 0.16, tessellation: 4 }, scene);
+      alignPerimeter.parent = root;
+      alignPerimeter.position.set(2.04, 4.76, 2.56);
+      alignPerimeter.rotation.y = Math.PI / 4;
+      alignPerimeter.material = calibrationInk;
+      alignPerimeter.isPickable = false;
+      const alignSignal = MeshBuilder.CreateCylinder('p28-g9-pylon-align-distinct-amber-diamond-' + index,
+        { diameter: 1.74, height: 0.18, tessellation: 4 }, scene);
+      alignSignal.parent = root;
+      alignSignal.position.set(2.04, 4.86, 2.56);
+      alignSignal.rotation.y = Math.PI / 4;
+      alignSignal.material = this.objectiveSignalMaterial;
+      alignSignal.isPickable = false;
+      const alignReticle = MeshBuilder.CreateCylinder('p28-g9-pylon-align-dark-target-aperture-' + index,
+        { diameter: 0.56, height: 0.11, tessellation: 12 }, scene);
+      alignReticle.parent = root;
+      alignReticle.position.set(2.04, 5.00, 2.56);
+      alignReticle.material = graphite;
+      alignReticle.isPickable = false;
       // Raise the engraved optical instrument above the rotary cap, so all
       // three genuine pylon gauges face the overhead camera. The previous
       // lower cantilever vanished behind distant yokes and cropped the near
@@ -1655,17 +1702,30 @@ export class BabylonParallaxArrayPresentation {
       });
     });
     navigation.landmarks.forEach((landmark, index) => {
-      const beacon = MeshBuilder.CreateCylinder('p27-c10-landmark-' + landmark.id, { height: 3.40, diameterTop: 0.12, diameterBottom: 0.58, tessellation: 8 }, scene);
+      // These three wayfinding beacons are NOT the three live alignment
+      // standards. Their former 3.4m ring-topped spires resembled pylons in
+      // actual phone pixels and made the objective appear unidentifiable.
+      // Retain the same grounded navigation points but use low cyan bollards,
+      // unmistakably shorter than each instrumented amber ALIGN target.
+      const beacon = MeshBuilder.CreateCylinder('p27-c10-landmark-' + landmark.id,
+        { height: 1.10, diameterTop: 0.26, diameterBottom: 0.76, tessellation: 8 }, scene);
       beacon.parent = this.root;
-      beacon.position.set(scaled(landmark.x), 1.70, scaled(landmark.y));
-      beacon.material = index === 1 ? etched : cyan;
+      beacon.position.set(scaled(landmark.x), 0.55, scaled(landmark.y));
+      beacon.material = graphite;
       beacon.isPickable = false;
-      const marker = MeshBuilder.CreateTorus('p27-c10-landmark-ring-' + index, { diameter: 1.18, thickness: 0.13, tessellation: 24 }, scene);
+      const marker = MeshBuilder.CreateTorus('p27-c10-landmark-ring-' + index,
+        { diameter: 0.70, thickness: 0.11, tessellation: 20 }, scene);
       marker.parent = this.root;
-      marker.position.set(scaled(landmark.x), 3.18, scaled(landmark.y));
+      marker.position.set(scaled(landmark.x), 1.08, scaled(landmark.y));
       marker.rotation.x = Math.PI / 2;
-      marker.material = etched;
+      marker.material = cyan;
       marker.isPickable = false;
+      const shoe = MeshBuilder.CreateCylinder('p28-g9-wayfinding-grounded-bollard-shoe-' + index,
+        { diameter: 1.02, height: 0.12, tessellation: 12 }, scene);
+      shoe.parent = this.root;
+      shoe.position.set(scaled(landmark.x), 0.07, scaled(landmark.y));
+      shoe.material = shell;
+      shoe.isPickable = false;
     });
 
     this.shearMaterial = new StandardMaterial('p27-c10-reference-shear-material', scene);
