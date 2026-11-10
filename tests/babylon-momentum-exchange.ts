@@ -304,7 +304,9 @@ const attackSource = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
  // protect the actual enemy and warning silhouettes behind rotating machinery.
 assert.ok(presentation.includes("'p28-g9-momentum-live-hostile-locator-'")
   && presentation.includes("enemy.telegraph > 0 ? 1.0 : 0.70")
-  && presentation.includes("mesh.visibility = enemyBehindWheel ? 0.52 : 1;")
+  && presentation.includes("rig.rotor.visibility = 1;")
+  && presentation.includes("rig.hub.visibility = 1;")
+  && !presentation.includes("cutawayMeshes")
   && presentation.includes("enemy.active && !enemy.dead")
   && presentation.includes("this.hostileContactMaterial.dispose();"),
   'G7 live hostile markers and localized optical cutaway must not fake attacks or leak meshes');

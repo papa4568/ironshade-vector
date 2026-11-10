@@ -40,6 +40,12 @@ for (const routeOffset of ['iceMineNearThreatLookAhead', 'cryoNearThreatLookAhea
   assert(count(cameraEye) === 2 && count(cameraAim) === 2,
     'Ice/Cryo camera offset must translate both eye and target axes: ' + routeOffset);
 }
+assert(renderer.includes("const iceContrast = this.canvas.dataset.babylonScenario === 'ice-mine'")
+  && renderer.includes("iceContrast ? colorFromHex(0x8ccfe4).scale(0.38)")
+  && renderer.includes("iceMineTouchLanePan = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.4 : 0")
+  && renderer.includes("iceMineNearThreatLookAhead - iceMineTouchLanePan")
+  && renderer.includes("iceMineNearThreatLookAhead + iceMineTouchLanePan"),
+  'Ice Mine real hostile mesh contrast and touch-lane framing must remain route-local');
 const telegraphs = read('src/game/babylonEnemyTelegraphs.ts');
 const ice = read('src/game/babylonIceMinePresentation.ts');
 assert(telegraphs.includes("const iceWarning = this.canvas.dataset.babylonScenario === 'ice-mine'")

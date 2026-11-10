@@ -2055,17 +2055,19 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const momentumContrast = this.canvas.dataset.babylonScenario === 'momentum-exchange';
     const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';
     const parallaxContrast = this.canvas.dataset.babylonScenario === 'parallax-array';
+    const iceContrast = this.canvas.dataset.babylonScenario === 'ice-mine';
     // Cool rim contribution makes dark enemy armor distinguishable from the
     // cryogenic deck without turning timed orange attack rings into decoration.
     visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      annexContrast ? 0.22 : cryoContrast ? 0.62 : parallaxContrast ? 0.74 : momentumContrast ? 0.77 : 0.06)
-      .add(cryoContrast ? colorFromHex(0xa6d8e8).scale(0.34)
-        : parallaxContrast ? colorFromHex(0xa6d8e8).scale(0.42)
-          : momentumContrast ? colorFromHex(0xa8d5e1).scale(0.30) : Color3.Black());
+      annexContrast ? 0.22 : iceContrast ? 0.55 : cryoContrast ? 0.62 : parallaxContrast ? 0.74 : momentumContrast ? 0.77 : 0.06)
+      .add(iceContrast ? colorFromHex(0x8ccfe4).scale(0.38)
+        : cryoContrast ? colorFromHex(0xa6d8e8).scale(0.34)
+          : parallaxContrast ? colorFromHex(0xa6d8e8).scale(0.42)
+            : momentumContrast ? colorFromHex(0xa8d5e1).scale(0.30) : Color3.Black());
     visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(
-      annexContrast ? 0.13 : cryoContrast ? 0.34 : parallaxContrast ? 0.43 : momentumContrast ? 0.38 : 0);
+      annexContrast ? 0.13 : iceContrast ? 0.28 : cryoContrast ? 0.34 : parallaxContrast ? 0.43 : momentumContrast ? 0.38 : 0);
     visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      (annexContrast ? 0.42 : cryoContrast ? 0.94 : parallaxContrast ? 0.96 : momentumContrast ? 0.87 : 0.22)
+      (annexContrast ? 0.42 : iceContrast ? 0.86 : cryoContrast ? 0.94 : parallaxContrast ? 0.96 : momentumContrast ? 0.87 : 0.22)
       + damage.hit * 0.32 + damage.armorBreak * 0.24,
     );
   }
@@ -2799,15 +2801,18 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Look toward that near-side threat lane (eye and target together), without
     // moving the player, changing enemy positions, warning ranges or touch UI.
     const iceMineNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.2 : 0;
+    // Shift eye and target into the real far-right threat lane without
+    // affecting FOV, touch hitboxes or any simulated actor position.
+    const iceMineTouchLanePan = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.4 : 0;
     // The G8 actual-device image shows a near-side enemy attack warning
     // under the unchanged location banner. Translate eye and target together.
     const cryoNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 4.2 : 0;
 
-    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + cryoNearThreatLookAhead, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + cryoNearThreatLookAhead);
+    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + iceMineTouchLanePan + cryoNearThreatLookAhead, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead - iceMineTouchLanePan + cryoNearThreatLookAhead);
     this.cameraTarget.set(
-      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + cryoNearThreatLookAhead,
+      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + iceMineTouchLanePan + cryoNearThreatLookAhead,
       0.62,
-      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + cryoNearThreatLookAhead,
+      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead - iceMineTouchLanePan + cryoNearThreatLookAhead,
     );
     this.camera.setTarget(this.cameraTarget);
     this.camera.getViewMatrix(true);

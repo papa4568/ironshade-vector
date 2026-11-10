@@ -297,6 +297,14 @@ assert.ok(presentation.includes('p28-g9-pylon-machined-faceted-micrometer-')
   && presentation.includes('station < 12')
   && presentation.includes('step < 5'),
   'physical KTX2-bound metrology details must remain visible at gameplay scale');
+assert.ok(presentation.includes('p28-g9-pylon-survey-open-cheek-')
+  && presentation.includes('p28-g9-pylon-survey-brass-conductor-')
+  && presentation.includes('p28-g9-pylon-macro-cross-vernier-')
+  && presentation.includes('p28-g9-pylon-open-scale-notch-')
+  && presentation.includes('station < 4')
+  && presentation.includes('rig.gauge.setEnabled(gaugeFitsFrame);')
+  && presentation.includes('this.eliteContactBeacon.position.set(scaled(baselineController.x), 3.20'),
+  'macro optical stations and world-space elite optics must survive at Android zoom');
 assert.ok(presentation.includes('p28-g9-pylon-front-graduated-ruler-bed-')
   && presentation.includes('p28-g9-pylon-front-readable-graduation-')
   && presentation.includes('station < 8')
@@ -366,7 +374,7 @@ assert.ok(presentation.includes('p28-g9-pylon-overhead-engraved-head-')
   && presentation.includes('gaugeFace.rotation.x = -Math.PI / 2;')
   && presentation.includes('gauge.position.set(-1.20, 6.12, 0.78);')
   && presentation.includes('rig.gaugeFace.getAbsolutePosition()')
-  && presentation.includes('faceCenter.y <= viewport.y + viewport.height * 0.78;')
+  && presentation.includes('faceCenter.y <= viewport.y + viewport.height * 0.66;')
   && presentation.includes('rig.gauge.setEnabled(gaugeFitsFrame);')
   && presentation.includes("indexInk.fillRect(153, 19 + graduation * 23"),
   'physical Parallax overhead gauges must expose readable, supported fiducials');

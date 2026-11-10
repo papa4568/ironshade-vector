@@ -128,7 +128,7 @@ function enableCount<T extends { setEnabled(value: boolean): void }>(items: read
   items.forEach((item, index) => item.setEnabled(index < count));
 }
 
-type FlywheelRig = { root: TransformNode; rotor: Mesh; hub: Mesh; cutawayMeshes: Mesh[] };
+type FlywheelRig = { root: TransformNode; rotor: Mesh; hub: Mesh };
 type CaptureRig = { id: string; root: TransformNode; ring: Mesh; core: Mesh };
 
 export class BabylonMomentumExchangePresentation {
@@ -311,11 +311,10 @@ export class BabylonMomentumExchangePresentation {
           side * 0.68, 1.45, side * 1.20, 0.14, 1.6, 0.14);
       }
       rotor.metadata = { direction };
-      // Only moving rim/hub/axial laminations are cutaway candidates.
-      // Structural feet, transfer controls and world collision remain solid.
-      const cutawayMeshes = [rotor, hub,
-        ...rotor.getChildMeshes(false).filter((mesh): mesh is Mesh => mesh instanceof Mesh)];
-      this.flywheels.push({ root, rotor, hub, cutawayMeshes });
+      // Do not alpha-stack real rotor, hub and lamination meshes: that made
+      // a doubled, translucent left wheel in exact-APK device screenshots.
+      // Hostile contact optics already rise above nearby opaque machinery.
+      this.flywheels.push({ root, rotor, hub });
     });
 
     const framePlacements = [
@@ -627,14 +626,11 @@ export class BabylonMomentumExchangePresentation {
       const direction = Number(rig.rotor.metadata?.direction ?? (index % 2 ? 1 : -1));
       rig.rotor.rotation.z = state.time * (0.56 + index * 0.08) * direction;
       rig.hub.rotation.z = -state.time * (0.34 + index * 0.05) * direction;
-      // Real enemy and timed-warning silhouettes must not disappear behind
-      // the huge foreground axle. Cut away only the moving optical surfaces
-      // when a live foe physically occupies its footprint. The flywheel,
-      // braces, bearings and gameplay cover remain physically present.
-      const enemyBehindWheel = state.enemies.some(enemy => enemy.active && !enemy.dead
-        && Math.hypot(scaled(enemy.x) - rig.root.position.x,
-          scaled(enemy.y) - rig.root.position.z) < 3.65);
-      for (const mesh of rig.cutawayMeshes) mesh.visibility = enemyBehindWheel ? 0.52 : 1;
+      // Keep rim, teeth, spokes and hubs solid in every live combat state.
+      // Timed attack telegraphs stay authoritative; only the small
+      // live-enemy optical locator projects above an obstructing wheel.
+      rig.rotor.visibility = 1;
+      rig.hub.visibility = 1;
     });
 
     const vectorWashes = state.hazards.filter(hazard => hazard.active && hazard.kind === 'vectorWash');

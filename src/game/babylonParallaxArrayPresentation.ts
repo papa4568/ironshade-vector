@@ -196,8 +196,8 @@ export class BabylonParallaxArrayPresentation {
     // These subtle tint multipliers preserve shipped KTX2 base/normal/ORM relief.
     // Distinct dark machine pockets give raised brass indices and objective signals
     // actual contrast instead of a wall of cream-colored fixture blocks.
-    graphite.albedoColor = colorFromHex(0x53697b);
-    shell.albedoColor = colorFromHex(0x607586);
+    graphite.albedoColor = colorFromHex(0x617d90);
+    shell.albedoColor = colorFromHex(0x708897);
     const violet = pbr(scene, 'p27-c10-violet-alignment', 0x665680, 0.44, 0.46, 0x9a87cf, 0.34);
     const cyan = pbr(scene, 'p27-c10-cyan-readout', 0x48767b, 0.38, 0.39, 0x82d7df, 0.44);
     // Pale enamel indices are trim on shipped KTX2 painted/metal structure,
@@ -563,6 +563,27 @@ export class BabylonParallaxArrayPresentation {
           box(scene, root, 'p28-g9-pylon-front-conductor-terminal-' + index + '-' + side + '-' + terminal,
             insulation, side * 0.76, terminal, 2.48, 0.36, 0.20, 0.31);
         }
+      }
+      // The mobile camera resolves the previous fine relief as dark
+      // blocks. Frame an open vertical metrology comb with real cast cheek
+      // rails and wide stepped brass notches attached to each datum column.
+      // The four counted stations remain below the high objective optic,
+      // clear of the enemy tell and all unmodified simulation colliders.
+      for (const side of [-1, 1]) {
+        box(scene, root, 'p28-g9-pylon-survey-open-cheek-' + index + '-' + side,
+          shell, side * 1.27, 2.31, 2.68, 0.26, 3.40, 0.42);
+        box(scene, root, 'p28-g9-pylon-survey-brass-conductor-' + index + '-' + side,
+          calibrationInk, side * 1.27, 2.31, 2.94, 0.20, 3.08, 0.14);
+      }
+      for (let station = 0; station < 4; station++) {
+        const major = station % 2 === 0;
+        box(scene, root, 'p28-g9-pylon-macro-cross-vernier-' + index + '-' + station,
+          major ? calibrationInk : fiducialBrass,
+          0, 1.23 + station * 0.75, 3.01,
+          major ? 2.05 : 1.52, major ? 0.23 : 0.16, 0.22);
+        box(scene, root, 'p28-g9-pylon-open-scale-notch-' + index + '-' + station,
+          graphite, station % 2 ? -0.65 : 0.65, 1.23 + station * 0.75, 3.16,
+          0.13, 0.14, 0.13);
       }
       // Backed amber diamond is a bolted reference-node objective, distinct
       // from both pale rotary dials and the violet vector-shear hazard.
@@ -1707,7 +1728,7 @@ export class BabylonParallaxArrayPresentation {
     // Separate contact identity from amber alignment fixtures: only an
     // actual enemy telegraph turns this world-space optic red.
     this.eliteContactBeacon = MeshBuilder.CreateCylinder('p28-g9-elite-controller-optical-sight',
-      { height: 1.06, diameterTop: 0.17, diameterBottom: 1.10, tessellation: 8 }, scene);
+      { height: 1.46, diameterTop: 0.17, diameterBottom: 1.26, tessellation: 8 }, scene);
     this.eliteContactBeacon.parent = this.root;
     this.eliteContactBeacon.material = this.eliteTellMaterial;
     this.eliteContactBeacon.isPickable = false;
@@ -1798,7 +1819,7 @@ export class BabylonParallaxArrayPresentation {
           && faceCenter.x >= viewport.x + viewport.width * 0.04
           && faceCenter.x <= viewport.x + viewport.width * 0.96
           && faceCenter.y >= viewport.y + viewport.height * 0.06
-          && faceCenter.y <= viewport.y + viewport.height * 0.78;
+          && faceCenter.y <= viewport.y + viewport.height * 0.66;
         rig.gauge.setEnabled(gaugeFitsFrame);
       }
       const aligned = Boolean(object?.exposed && object.hp > 0);
@@ -1845,7 +1866,7 @@ export class BabylonParallaxArrayPresentation {
     this.eliteContactBeacon.setEnabled(Boolean(baselineController));
     if (baselineController) {
       this.eliteTellRing.position.set(scaled(baselineController.x), 0.13, scaled(baselineController.y));
-      this.eliteContactBeacon.position.set(scaled(baselineController.x), 2.84, scaled(baselineController.y));
+      this.eliteContactBeacon.position.set(scaled(baselineController.x), 3.20, scaled(baselineController.y));
       const telegraphActive = baselineController.telegraph > 0;
       this.eliteTellMaterial.alpha = telegraphActive ? 0.82 : 0.42;
       this.eliteTellMaterial.emissiveColor = colorFromHex(telegraphActive ? 0xff6649 : 0x52c7df)
