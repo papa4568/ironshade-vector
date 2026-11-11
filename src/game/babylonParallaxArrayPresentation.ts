@@ -34,11 +34,11 @@ export const BABYLON_PARALLAX_ARRAY_IDENTITY = Object.freeze({
 
 export const BABYLON_PARALLAX_ARRAY_LIGHTING = Object.freeze({
   id: 'reference-violet',
-  keyColor: 0xe2ddf1,
-  rimColor: 0x9a87cf,
+  keyColor: 0xc3c9e6,
+  rimColor: 0x9666dc,
   emergencyColor: 0x7864ba,
-  keyIntensity: 2.5,
-  rimIntensity: 1.4,
+  keyIntensity: 2.4,
+  rimIntensity: 1.75,
   emergencyIntensity: 7.5,
   exposure: 1.12,
 });
@@ -812,39 +812,61 @@ export class BabylonParallaxArrayPresentation {
       // diamond and dark aperture together mean ALIGN, not a combat tell.
       // This brace is fixed to each real reference-node root; no HUD plane,
       // invented target, collision, or timer is introduced.
-      const alignBracket = MeshBuilder.CreateTube('p28-g9-pylon-align-optic-bracket-' + index,
-        { path: [new Vector3(1.52, 3.64, 1.79),
-          new Vector3(2.04, 4.58, 2.56)], radius: 0.17, tessellation: 10 }, scene);
-      alignBracket.parent = root;
-      alignBracket.material = shell;
-      alignBracket.isPickable = false;
+      // Source-bound Android pixels exposed a legibility defect: the former
+      // amber objective sat among indistinguishable orange rotary caps and its
+      // engraved ruler disappeared behind the machine yokes. Elevate ONE
+      // optical target above each real reference-node spindle, accompanied by
+      // a five-station machine ruler. No HUD, path or combat simulation changes.
+      for (const side of [-1, 1]) {
+        const opticSupport = MeshBuilder.CreateTube(
+          'p28-g9-pylon-high-optic-steel-strut-' + index + '-' + side, {
+            path: [new Vector3(side * 0.67, 3.82, -0.42),
+              new Vector3(0.90 + side * 0.64, 6.57, -0.52)],
+            radius: 0.14, tessellation: 10,
+          }, scene);
+        opticSupport.parent = root;
+        opticSupport.material = shell;
+        opticSupport.isPickable = false;
+      }
       const alignShroud = MeshBuilder.CreateCylinder('p28-g9-pylon-align-objective-shroud-' + index,
-        { diameter: 2.24, height: 0.20, tessellation: 4 }, scene);
+        { diameter: 2.54, height: 0.25, tessellation: 4 }, scene);
       alignShroud.parent = root;
-      alignShroud.position.set(2.04, 4.64, 2.56);
+      alignShroud.position.set(0.90, 6.62, -0.52);
       alignShroud.rotation.y = Math.PI / 4;
       alignShroud.material = graphite;
       alignShroud.isPickable = false;
       const alignPerimeter = MeshBuilder.CreateTorus('p28-g9-pylon-align-machined-contrast-perimeter-' + index,
-        { diameter: 2.37, thickness: 0.16, tessellation: 4 }, scene);
+        { diameter: 2.54, thickness: 0.17, tessellation: 4 }, scene);
       alignPerimeter.parent = root;
-      alignPerimeter.position.set(2.04, 4.76, 2.56);
+      alignPerimeter.position.set(0.90, 6.79, -0.52);
       alignPerimeter.rotation.y = Math.PI / 4;
-      alignPerimeter.material = calibrationInk;
+      alignPerimeter.material = cyan;
       alignPerimeter.isPickable = false;
       const alignSignal = MeshBuilder.CreateCylinder('p28-g9-pylon-align-distinct-amber-diamond-' + index,
-        { diameter: 1.74, height: 0.18, tessellation: 4 }, scene);
+        { diameter: 1.88, height: 0.18, tessellation: 4 }, scene);
       alignSignal.parent = root;
-      alignSignal.position.set(2.04, 4.86, 2.56);
+      alignSignal.position.set(0.90, 6.91, -0.52);
       alignSignal.rotation.y = Math.PI / 4;
       alignSignal.material = this.objectiveSignalMaterial;
       alignSignal.isPickable = false;
       const alignReticle = MeshBuilder.CreateCylinder('p28-g9-pylon-align-dark-target-aperture-' + index,
-        { diameter: 0.56, height: 0.11, tessellation: 12 }, scene);
+        { diameter: 0.60, height: 0.10, tessellation: 12 }, scene);
       alignReticle.parent = root;
-      alignReticle.position.set(2.04, 5.00, 2.56);
+      alignReticle.position.set(0.90, 7.06, -0.52);
       alignReticle.material = graphite;
       alignReticle.isPickable = false;
+      // Top-facing alternating brass/cyan graduations are bolted to the
+      // objective standard. A shallow, scaled instrument avoids a floating
+      // billboard while its five countable marks clear the opaque yokes.
+      const highRulerBed = box(scene, root, 'p28-g9-pylon-high-five-station-scale-bed-' + index,
+        graphite, -1.90, 6.56, -0.52, 2.86, 0.20, 1.05);
+      highRulerBed.isPickable = false;
+      for (let station = 0; station < 5; station++) {
+        box(scene, root, 'p28-g9-pylon-high-visible-station-tick-' + index + '-' + station,
+          station % 2 === 0 ? calibrationInk : cyan,
+          -1.90 + (station - 2) * 0.49, 6.73, -0.52,
+          station % 2 === 0 ? 0.23 : 0.13, 0.12, station % 2 === 0 ? 0.84 : 0.50);
+      }
       // Raise the engraved optical instrument above the rotary cap, so all
       // three genuine pylon gauges face the overhead camera. The previous
       // lower cantilever vanished behind distant yokes and cropped the near
@@ -1871,7 +1893,7 @@ export class BabylonParallaxArrayPresentation {
 
     const lighting = BABYLON_PARALLAX_ARRAY_LIGHTING;
     this.hemisphere = new HemisphericLight('p27-c10-parallax-hemisphere', new Vector3(-0.10, 1, 0.14), scene);
-    this.hemisphere.diffuse = colorFromHex(0xe7e1f2);
+    this.hemisphere.diffuse = colorFromHex(0xd8d0f1);
     this.hemisphere.groundColor = colorFromHex(0x242331);
     this.hemisphere.intensity = 0.90;
     this.keyLight = new DirectionalLight('p27-c10-parallax-key', new Vector3(-0.52, -1, 0.30).normalize(), scene);
@@ -1892,9 +1914,9 @@ export class BabylonParallaxArrayPresentation {
       new PointLight('p27-c10-practical-baseline', new Vector3(worldW * 0.42, 2.8, worldH * 0.36), scene),
       new PointLight('p27-c10-practical-deep-reference', new Vector3(worldW * 0.78, 2.8, worldH * 0.42), scene),
     ] as const;
-    this.practicalLights[0].diffuse = colorFromHex(0x9a87cf);
+    this.practicalLights[0].diffuse = colorFromHex(0x9e70e2);
     this.practicalLights[0].range = 8.8;
-    this.practicalLights[1].diffuse = colorFromHex(0x82d7df);
+    this.practicalLights[1].diffuse = colorFromHex(0x72d9e7);
     this.practicalLights[1].range = 8.2;
     this.setLightingEnabled(false);
   }

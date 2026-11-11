@@ -38,11 +38,11 @@ assert.deepEqual(BABYLON_PARALLAX_ARRAY_IDENTITY, {
 });
 assert.deepEqual(BABYLON_PARALLAX_ARRAY_LIGHTING, {
   id: 'reference-violet',
-  keyColor: 0xe2ddf1,
-  rimColor: 0x9a87cf,
+  keyColor: 0xc3c9e6,
+  rimColor: 0x9666dc,
   emergencyColor: 0x7864ba,
-  keyIntensity: 2.5,
-  rimIntensity: 1.4,
+  keyIntensity: 2.4,
+  rimIntensity: 1.75,
   emergencyIntensity: 7.5,
   exposure: 1.12,
 });
@@ -86,6 +86,19 @@ for (const detail of [
   'p28-g9-objective-standalone-dark-bullseye-',
   'p28-g9-shear-anchor-hex-dial-', 'p28-g9-shear-anchor-index-window-',
 ]) assert.ok(presentation.includes(detail), 'Parallax silhouette must expose calibrated hardware: ' + detail);
+
+// Distinct, source-bound optical targets and ruled scales must remain on
+// each real reference-node root, rather than a HUD or navigation marker.
+assert.ok(presentation.includes('p28-g9-pylon-high-optic-steel-strut-')
+  && presentation.includes('new Vector3(0.90 + side * 0.64, 6.57, -0.52)')
+  && presentation.includes('alignPerimeter.material = cyan')
+  && presentation.includes('alignSignal.position.set(0.90, 6.91, -0.52)')
+  && presentation.includes('p28-g9-pylon-high-five-station-scale-bed-')
+  && presentation.includes('p28-g9-pylon-high-visible-station-tick-')
+  && presentation.includes('station % 2 === 0 ? calibrationInk : cyan')
+  && presentation.includes('this.practicalLights[0].diffuse = colorFromHex(0x9e70e2)')
+  && presentation.includes('this.practicalLights[1].diffuse = colorFromHex(0x72d9e7)'),
+  'reference pylons need independent visible objectives, station rulings, and violet/cyan lights');
 
 // The overhead-view scale and target must be real scene geometry with
 // contrasting mechanical insulation, not a status label or a bright route.
