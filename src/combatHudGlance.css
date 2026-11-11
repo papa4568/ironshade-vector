@@ -1398,6 +1398,24 @@
   }
 }
 
+/* P28-G9 sibling G5 Android direct-image review: the Long Arc Jury-Rig
+   Foreman was ellipsized despite a readable two-line target panel. Keep
+   full combatant identity visible on Ice Mine only; no change to action
+   cluster geometry or global interface sizing. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="ice-mine"] .target-readout {
+    width: min(28vw, 22rem);
+  }
+  .game-root[data-location="ice-mine"] .target-readout header b {
+    display: block;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.15;
+  }
+}
+
 /* P28-G9 exact Android pixel review: keep the Baseline Controller's two
    numeric readouts on one legible line below the right-hand mission chip.
    The touch-control layout, target data and other locations stay unchanged. */

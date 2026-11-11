@@ -20,6 +20,17 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
+// Cross-location exact APK review showed the Ice Mine assist target
+// (Long Arc Jury-Rig Foreman) truncating its full identity at phone zoom.
+// This source contract binds the fix to the informational HUD only.
+const combatHud = read('src/combatHudGlance.css');
+assert(combatHud.includes('.game-root[data-location="ice-mine"] .target-readout {')
+  && combatHud.includes('width: min(28vw, 22rem);')
+  && combatHud.includes('.game-root[data-location="ice-mine"] .target-readout header b {')
+  && combatHud.includes('white-space: normal;')
+  && combatHud.includes('text-overflow: clip;')
+  && combatHud.includes('overflow-wrap: anywhere;'),
+  'G5 target identification must not ellipsize the Foreman on landscape Android');
 const renderer = read('src/game/babylonCombatRenderer.ts');
 assert(renderer.includes("const iceMineNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.2 : 0"),
   'Ice Mine near-side live hostiles must stay above bottom-edge gameplay banner');
