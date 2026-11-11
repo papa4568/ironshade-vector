@@ -315,14 +315,14 @@ assert.ok(presentation.includes('p28-g9-pylon-machined-faceted-micrometer-')
 // Real reference-node alignment targets must be unmistakable against
 // warm industrial caps and separate *navigation* bollards at phone zoom.
 assert.ok(presentation.includes("indexInk.fillText('ALIGN', 18, 117)")
-  && presentation.includes('p28-g9-pylon-align-optic-bracket-')
+  && presentation.includes('p28-g9-pylon-high-optic-steel-strut-')
   && presentation.includes('p28-g9-pylon-align-objective-shroud-')
   && presentation.includes('p28-g9-pylon-align-machined-contrast-perimeter-')
-  && presentation.includes('alignPerimeter.material = calibrationInk;')
+  && presentation.includes('alignPerimeter.material = cyan;')
   && presentation.includes('p28-g9-pylon-align-distinct-amber-diamond-')
   && presentation.includes('alignSignal.material = this.objectiveSignalMaterial;')
   && presentation.includes('p28-g9-pylon-align-dark-target-aperture-')
-  && presentation.includes('alignBracket.parent = root;')
+  && presentation.includes('opticSupport.parent = root;')
   && presentation.includes('p28-g9-wayfinding-grounded-bollard-shoe-')
   && presentation.includes('{ height: 1.10, diameterTop: 0.26, diameterBottom: 0.76')
   && presentation.includes('marker.material = cyan;'),
