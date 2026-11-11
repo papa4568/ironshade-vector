@@ -775,7 +775,7 @@ assert.ok(presentation.includes("new DynamicTexture('p28-g9-vertical-vernier-etc
   'actual pylons need physical numbered verniers and managed GPU assets');
 assert.ok(presentation.includes("'p28-g9-pylon-camera-vernier-fastener-' + index")
   && presentation.includes("p28-g9-pylon-camera-vernier-steel-mount-")
-  && presentation.includes("0x45345f, 0.08, 0.92, 0x7862b7, 0.36")
+  && presentation.includes("0x2e2646, 0.08, 0.96, 0x7350ae, 0.15")
   && presentation.includes("{ diameter: 2.48, thickness: 0.16, tessellation: 40 }"),
   'distinct shear anchor insulation and real elite attack ring must remain legible');
 assert.ok(babylon.includes('parallaxContrast ? colorFromHex(0xa6d8e8).scale(0.42)')
