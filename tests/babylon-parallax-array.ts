@@ -90,15 +90,26 @@ for (const detail of [
 // Distinct, source-bound optical targets and ruled scales must remain on
 // each real reference-node root, rather than a HUD or navigation marker.
 assert.ok(presentation.includes('p28-g9-pylon-high-optic-steel-strut-')
-  && presentation.includes('new Vector3(0.90 + side * 0.64, 6.57, -0.52)')
+  && presentation.includes('new Vector3(1.70 + side * 0.45, 5.45, -1.56)')
   && presentation.includes('alignPerimeter.material = cyan')
-  && presentation.includes('alignSignal.position.set(0.90, 6.91, -0.52)')
-  && presentation.includes('p28-g9-pylon-high-five-station-scale-bed-')
-  && presentation.includes('p28-g9-pylon-high-visible-station-tick-')
+  && presentation.includes('alignSignal.position.set(1.70, 5.75, -1.56)')
+  && presentation.includes('p28-g9-pylon-deck-five-station-scale-bed-')
+  && presentation.includes('p28-g9-pylon-deck-visible-station-tick-')
   && presentation.includes('station % 2 === 0 ? calibrationInk : cyan')
   && presentation.includes('this.practicalLights[0].diffuse = colorFromHex(0x9e70e2)')
   && presentation.includes('this.practicalLights[1].diffuse = colorFromHex(0x72d9e7)'),
   'reference pylons need independent visible objectives, station rulings, and violet/cyan lights');
+
+// Source-bound device frames must preserve the operator's combat sightline.
+// One compact amber objective per real reference pylon: ancillary service
+// caps are matte PBR brass, not duplicate orange HUD-like markers.
+assert.equal((presentation.match(/\.material = this\.objectiveSignalMaterial;/g) ?? []).length, 1,
+  'only the genuine compact alignment optic may use the active amber signal');
+assert.ok(presentation.includes('graphite, 1.26, 0.52, -1.60, 2.54, 0.12, 0.68')
+  && presentation.includes('alignShroud.position.set(1.70, 5.50, -1.56);')
+  && presentation.includes('{ diameter: 1.06, height: 0.15, tessellation: 4 }')
+  && presentation.includes('fiducialBrass, 0, 0.055, side * 0.36'),
+  'deck-bound metrology scales and subdued reference conductors must keep combat visible');
 
 // The overhead-view scale and target must be real scene geometry with
 // contrasting mechanical insulation, not a status label or a bright route.
@@ -126,7 +137,7 @@ assert.ok(presentation.includes('const telegraphActive = baselineController.tele
 // is specifically pinned by the P28-G9 legibility assertion below.
 assert.ok(presentation.includes("this.eliteTellRing.position.set(scaled(baselineController.x),"),
   'elite threat ring must follow real enemy world-space position');
-assert.ok(presentation.includes('objectiveDial.material = this.objectiveSignalMaterial'),
+assert.ok(presentation.includes('objectiveDial.material = objectiveGold'),
   'the objective must have an unlit amber physical-target finish at actual gameplay zoom');
 assert.ok(presentation.includes("MeshBuilder.CreateCylinder('p27-c10-pylon-spine-'")
   && presentation.includes('diameterTop: 0.92, diameterBottom: 1.54, tessellation: 10'),
@@ -135,7 +146,7 @@ assert.ok(presentation.includes('spindle.material = shell'),
   'new three-dimensional pylon geometry must retain shared KTX2 PBR metal');
 assert.ok(presentation.includes('diamondFace.rotation.z = Math.PI / 4')
   && presentation.includes("const diamondFace = box(scene, root, 'p28-g9-objective-standalone-diamond-signal-'")
-  && presentation.includes('this.objectiveSignalMaterial, -2.24, 2.80, 1.62'),
+  && presentation.includes('objectiveGold, -2.24, 2.80, 1.62'),
   'objective signal must be a tall physical orange diamond with a mechanical footing');
 assert.ok(presentation.includes('prong.material = insulation'),
   'shear forks need cylindrical insulated prongs rather than flat painted placeholder blocks');
@@ -373,7 +384,7 @@ assert.ok(presentation.includes('p28-g9-pylon-macro-ruler-housing-')
   && presentation.includes('major ? calibrationInk : etched')
   && presentation.includes('p28-g9-objective-top-amber-diamond-')
   && presentation.includes('p28-g9-objective-top-diamond-backing-')
-  && presentation.includes('referenceDiamond.material = this.objectiveSignalMaterial;'),
+  && presentation.includes('referenceDiamond.material = objectiveGold;'),
   'real reference pylons require countable two-axis fiducials and their own bolted amber objective');
 assert.ok(hudGlance.includes('.game-root[data-location="parallax-array"] .target-readout .target-values span')
   && hudGlance.includes('flex: 0 0 auto;')
@@ -410,7 +421,7 @@ assert.ok(presentation.includes("new DynamicTexture('p28-g9-pylon-numbered-engra
   'all three reference pylons require distinct camera-facing engraved identities with managed GPU resources');
 assert.ok(presentation.includes("MeshBuilder.CreateCylinder('p27-c10-pylon-core-' + index")
   && presentation.includes('{ diameter: 1.38, height: 0.24, tessellation: 4 }')
-  && presentation.includes('core.material = this.objectiveSignalMaterial;'),
+  && presentation.includes('core.material = objectiveGold;'),
   'a real orange objective diamond must stand apart from pale calibration rings');
 
 // This contact optic tracks a real elite, but must never appear as a huge
@@ -577,8 +588,8 @@ assert.ok(gameCanvas.includes("message.startsWith('TACTICAL ALERT') && message.i
 // Real Android screens showed overexposed cream calibration rings obscuring
 // the active target identity. The objective toruses must remain physically
 // attached, but use the saturated unlit amber signal, not PBR brass.
-assert.ok(presentation.includes('target.material = this.objectiveSignalMaterial;')
-  && presentation.includes('crown.material = this.objectiveSignalMaterial;')
+assert.ok(presentation.includes('target.material = objectiveGold;')
+  && presentation.includes('crown.material = objectiveGold;')
   && presentation.includes("this.objectiveSignalMaterial.emissiveColor = colorFromHex(0xff861b).scale(0.84)")
   && presentation.includes('p28-g9-objective-standalone-diamond-signal-')
   && presentation.includes('p28-g9-pylon-top-metrology-ruler-bed-')
@@ -599,7 +610,7 @@ assert.ok(presentation.includes("'p28-g9-pylon-objective-signal-fork-'")
   && presentation.includes("'p28-g9-pylon-objective-diamond-shroud-'")
   && presentation.includes("'p28-g9-pylon-objective-diamond-visible-'")
   && presentation.includes("'p28-g9-pylon-objective-diamond-dark-aperture-'")
-  && presentation.includes('signalFace.material = this.objectiveSignalMaterial;')
+  && presentation.includes('signalFace.material = objectiveGold;')
   && presentation.includes("0x344c59, 0.22, 0.94"),
   'real pylon objectives need bright, supported top-facing diamonds and satin anti-glare caps');
 assert.ok(presentation.includes('p28-g9-physical-datum-objective-beacon')

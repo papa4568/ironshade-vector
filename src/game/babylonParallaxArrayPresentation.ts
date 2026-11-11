@@ -439,7 +439,7 @@ export class BabylonParallaxArrayPresentation {
       // reference, not a dotted route painted on the floor.
       for (const side of [-1, 1]) {
         box(scene, datum, 'p28-g9-calibrated-baseline-conductor-' + baseline + '-' + side,
-          graduation, 0, 0.055, side * 0.36, length - 0.34, 0.08, 0.095);
+          fiducialBrass, 0, 0.055, side * 0.36, length - 0.34, 0.06, 0.065);
       }
       for (let foot = 1; foot < 5; foot++) {
         const support = box(scene, datum, 'p28-g9-reference-isolator-foot-' + baseline + '-' + foot,
@@ -591,7 +591,7 @@ export class BabylonParallaxArrayPresentation {
         graphite, 0, 3.82, 2.57, 1.38, 1.38, 0.24);
       beaconBacking.rotation.z = Math.PI / 4;
       const beaconFace = box(scene, root, 'p28-g9-pylon-front-objective-beacon-amber-' + index,
-        this.objectiveSignalMaterial, 0, 3.82, 2.75, 0.98, 0.98, 0.18);
+        objectiveGold, 0, 3.82, 2.75, 0.98, 0.98, 0.18);
       beaconFace.rotation.z = Math.PI / 4;
       box(scene, root, 'p28-g9-pylon-front-objective-beacon-crosshair-' + index,
         graphite, 0, 3.82, 2.88, 0.26, 0.26, 0.12);
@@ -634,7 +634,7 @@ export class BabylonParallaxArrayPresentation {
       referenceDiamond.parent = root;
       referenceDiamond.position.set(1.46, 5.41, 1.30);
       referenceDiamond.rotation.y = Math.PI / 4;
-      referenceDiamond.material = this.objectiveSignalMaterial;
+      referenceDiamond.material = objectiveGold;
       referenceDiamond.isPickable = false;
       const referenceCenter = MeshBuilder.CreateCylinder('p28-g9-objective-top-diamond-aperture-' + index,
         { diameter: 0.34, height: 0.09, tessellation: 12 }, scene);
@@ -670,7 +670,7 @@ export class BabylonParallaxArrayPresentation {
       signalFace.parent = root;
       signalFace.position.set(-1.32, 5.15, -1.34);
       signalFace.rotation.y = Math.PI / 4;
-      signalFace.material = this.objectiveSignalMaterial;
+      signalFace.material = objectiveGold;
       signalFace.isPickable = false;
       const signalAperture = MeshBuilder.CreateCylinder('p28-g9-pylon-objective-diamond-dark-aperture-' + index,
         { diameter: 0.39, height: 0.095, tessellation: 12 }, scene);
@@ -812,60 +812,60 @@ export class BabylonParallaxArrayPresentation {
       // diamond and dark aperture together mean ALIGN, not a combat tell.
       // This brace is fixed to each real reference-node root; no HUD plane,
       // invented target, collision, or timer is introduced.
-      // Source-bound Android pixels exposed a legibility defect: the former
-      // amber objective sat among indistinguishable orange rotary caps and its
-      // engraved ruler disappeared behind the machine yokes. Elevate ONE
-      // optical target above each real reference-node spindle, accompanied by
-      // a five-station machine ruler. No HUD, path or combat simulation changes.
+      // Independent Android review showed that the huge overhead ruler and
+      // multiple orange caps obscured the actual operator and combat floor.
+      // A single compact alignment optic sits on each live reference-node
+      // spindle, while a readable five-station scale is grounded to its base.
+      // These are real, non-pickable world meshes, not HUD or attack signals.
       for (const side of [-1, 1]) {
         const opticSupport = MeshBuilder.CreateTube(
           'p28-g9-pylon-high-optic-steel-strut-' + index + '-' + side, {
             path: [new Vector3(side * 0.67, 3.82, -0.42),
-              new Vector3(0.90 + side * 0.64, 6.57, -0.52)],
-            radius: 0.14, tessellation: 10,
+              new Vector3(1.70 + side * 0.45, 5.45, -1.56)],
+            radius: 0.11, tessellation: 10,
           }, scene);
         opticSupport.parent = root;
         opticSupport.material = shell;
         opticSupport.isPickable = false;
       }
       const alignShroud = MeshBuilder.CreateCylinder('p28-g9-pylon-align-objective-shroud-' + index,
-        { diameter: 2.54, height: 0.25, tessellation: 4 }, scene);
+        { diameter: 1.56, height: 0.18, tessellation: 4 }, scene);
       alignShroud.parent = root;
-      alignShroud.position.set(0.90, 6.62, -0.52);
+      alignShroud.position.set(1.70, 5.50, -1.56);
       alignShroud.rotation.y = Math.PI / 4;
       alignShroud.material = graphite;
       alignShroud.isPickable = false;
       const alignPerimeter = MeshBuilder.CreateTorus('p28-g9-pylon-align-machined-contrast-perimeter-' + index,
-        { diameter: 2.54, thickness: 0.17, tessellation: 4 }, scene);
+        { diameter: 1.66, thickness: 0.14, tessellation: 4 }, scene);
       alignPerimeter.parent = root;
-      alignPerimeter.position.set(0.90, 6.79, -0.52);
+      alignPerimeter.position.set(1.70, 5.63, -1.56);
       alignPerimeter.rotation.y = Math.PI / 4;
       alignPerimeter.material = cyan;
       alignPerimeter.isPickable = false;
       const alignSignal = MeshBuilder.CreateCylinder('p28-g9-pylon-align-distinct-amber-diamond-' + index,
-        { diameter: 1.88, height: 0.18, tessellation: 4 }, scene);
+        { diameter: 1.06, height: 0.15, tessellation: 4 }, scene);
       alignSignal.parent = root;
-      alignSignal.position.set(0.90, 6.91, -0.52);
+      alignSignal.position.set(1.70, 5.75, -1.56);
       alignSignal.rotation.y = Math.PI / 4;
       alignSignal.material = this.objectiveSignalMaterial;
       alignSignal.isPickable = false;
       const alignReticle = MeshBuilder.CreateCylinder('p28-g9-pylon-align-dark-target-aperture-' + index,
-        { diameter: 0.60, height: 0.10, tessellation: 12 }, scene);
+        { diameter: 0.33, height: 0.09, tessellation: 12 }, scene);
       alignReticle.parent = root;
-      alignReticle.position.set(0.90, 7.06, -0.52);
+      alignReticle.position.set(1.70, 5.88, -1.56);
       alignReticle.material = graphite;
       alignReticle.isPickable = false;
-      // Top-facing alternating brass/cyan graduations are bolted to the
-      // objective standard. A shallow, scaled instrument avoids a floating
-      // billboard while its five countable marks clear the opaque yokes.
-      const highRulerBed = box(scene, root, 'p28-g9-pylon-high-five-station-scale-bed-' + index,
-        graphite, -1.90, 6.56, -0.52, 2.86, 0.20, 1.05);
-      highRulerBed.isPickable = false;
+      // The broad numbered ruler formerly floated above the combat lane.
+      // Its five major/minor graduations now sit on the real machine plinth,
+      // physically below the operator's line of sight and with no collision.
+      const deckScaleBed = box(scene, root, 'p28-g9-pylon-deck-five-station-scale-bed-' + index,
+        graphite, 1.26, 0.52, -1.60, 2.54, 0.12, 0.68);
+      deckScaleBed.isPickable = false;
       for (let station = 0; station < 5; station++) {
-        box(scene, root, 'p28-g9-pylon-high-visible-station-tick-' + index + '-' + station,
+        box(scene, root, 'p28-g9-pylon-deck-visible-station-tick-' + index + '-' + station,
           station % 2 === 0 ? calibrationInk : cyan,
-          -1.90 + (station - 2) * 0.49, 6.73, -0.52,
-          station % 2 === 0 ? 0.23 : 0.13, 0.12, station % 2 === 0 ? 0.84 : 0.50);
+          1.26 + (station - 2) * 0.46, 0.66, -1.60,
+          station % 2 === 0 ? 0.24 : 0.14, 0.10, station % 2 === 0 ? 0.56 : 0.33);
       }
       // Raise the engraved optical instrument above the rotary cap, so all
       // three genuine pylon gauges face the overhead camera. The previous
@@ -1150,7 +1150,7 @@ export class BabylonParallaxArrayPresentation {
         graphite, -2.24, 2.80, 1.36, 2.08, 2.08, 0.38);
       diamondBack.rotation.z = Math.PI / 4;
       const diamondFace = box(scene, root, 'p28-g9-objective-standalone-diamond-signal-' + index,
-        this.objectiveSignalMaterial, -2.24, 2.80, 1.62, 1.65, 1.65, 0.24);
+        objectiveGold, -2.24, 2.80, 1.62, 1.65, 1.65, 0.24);
       diamondFace.rotation.z = Math.PI / 4;
       box(scene, root, 'p28-g9-objective-standalone-dark-bullseye-' + index,
         graphite, -2.24, 2.80, 1.79, 0.78, 0.78, 0.18);
@@ -1169,7 +1169,7 @@ export class BabylonParallaxArrayPresentation {
       objectiveDial.parent = root;
       objectiveDial.position.set(-1.58, 0.86, 1.58);
       objectiveDial.rotation.y = Math.PI / 4;
-      objectiveDial.material = this.objectiveSignalMaterial;
+      objectiveDial.material = objectiveGold;
       objectiveDial.isPickable = false;
       // Four dark-backed outer stations make the diamond a countable
       // calibration target rather than another cream-colored circular rotor.
@@ -1250,7 +1250,7 @@ export class BabylonParallaxArrayPresentation {
       core.parent = root;
       core.position.y = 5.26;
       core.rotation.y = Math.PI / 4;
-      core.material = this.objectiveSignalMaterial;
+      core.material = objectiveGold;
       core.isPickable = false;
       // A conspicuous side-mounted fiducial is positioned below the top HUD,
       // unlike the tiny upper mast that can sit behind tactical alerts.
@@ -1269,7 +1269,7 @@ export class BabylonParallaxArrayPresentation {
         target.rotation.x = Math.PI / 2;
         // Calibrated alignment is an active amber status signal, not pale
         // metal like the surrounding inactive interferometer rotor.
-        target.material = this.objectiveSignalMaterial;
+        target.material = objectiveGold;
         target.isPickable = false;
       }
       box(scene, beaconRig, 'p28-g9-physical-objective-index-' + index,
@@ -1286,7 +1286,7 @@ export class BabylonParallaxArrayPresentation {
         crown.parent = root;
         crown.position.set(0, 4.34 + level * 0.26, 0.08);
         crown.rotation.x = Math.PI / 2;
-        crown.material = this.objectiveSignalMaterial;
+        crown.material = objectiveGold;
         crown.isPickable = false;
       }
       box(scene, root, 'p28-g9-objective-calibration-chevron-' + index,
