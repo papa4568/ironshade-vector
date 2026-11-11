@@ -111,6 +111,24 @@ assert.ok(presentation.includes('graphite, 1.26, 0.52, -1.60, 2.54, 0.12, 0.68')
   && presentation.includes('fiducialBrass, 0, 0.055, side * 0.36'),
   'deck-bound metrology scales and subdued reference conductors must keep combat visible');
 
+// A source-bound Android screenshot must distinguish three numbered alignment
+// pylons, eight low split-jaw shear keys, and the sliding counterweight drums.
+// Do not reintroduce tall bright lavender caps or white-hot machine rims.
+assert.ok(presentation.includes('root.scaling.set(1.18, 0.68, 1.08);')
+  && presentation.includes('p28-g9-shear-anchor-split-jaw-blade-')
+  && presentation.includes('p28-g9-shear-anchor-split-jaw-ceramic-tip-')
+  && presentation.includes('p28-g9-pylon-deck-engraved-serial-')
+  && presentation.includes('stationSerial.rotation.x = -Math.PI / 2;')
+  && presentation.includes('stationSerial.material = indexMaterial;')
+  && presentation.includes('p28-g9-carriage-top-travel-scale-notch-')
+  && presentation.includes('massBand.material = fiducialBrass;'),
+  'phone-scale metrology hardware must have three distinct grounded silhouettes');
+assert.ok(presentation.includes("0x967954, 0.40, 0.90, 0x8c754e, 0.10")
+  && presentation.includes("0x2e2646, 0.08, 0.96, 0x7350ae, 0.15")
+  && presentation.includes("tierName === 'performance' ? 3.1 : 4.2")
+  && presentation.includes("index === 0 ? 4.0 : 3.6"),
+  'highlight control must preserve machined relief instead of white-blue bloom');
+
 // The overhead-view scale and target must be real scene geometry with
 // contrasting mechanical insulation, not a status label or a bright route.
 assert.ok(presentation.includes("fiducialBrass, side * 1.14, 2.26, 0.96"),

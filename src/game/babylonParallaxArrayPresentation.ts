@@ -208,9 +208,9 @@ export class BabylonParallaxArrayPresentation {
     // violet danger cues and cyan status without replacing textured housings.
     const graduation = pbr(scene, 'p28-g9-machined-brass-datum', 0x856747, 0.35, 0.76);
     const fiducialBrass = pbr(scene, 'p28-g9-bold-graduated-brass', 0x816a50, 0.54, 0.78, 0x8f7654, 0.025);
-    const calibrationInk = pbr(scene, 'p28-g9-contrasting-machined-scale-graduations', 0xc6ad84, 0.58, 0.86, 0xb98f56, 0.21);
+    const calibrationInk = pbr(scene, 'p28-g9-contrasting-machined-scale-graduations', 0x967954, 0.40, 0.90, 0x8c754e, 0.10);
     const counterweightMetal = pbr(scene, 'p28-g9-moving-inertial-counterweight', 0x344c59, 0.22, 0.94, 0x1b3641, 0.035);
-    const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x45345f, 0.08, 0.92, 0x7862b7, 0.36);
+    const shearCeramic = pbr(scene, 'p28-g9-insulated-violet-shear-ceramic', 0x2e2646, 0.08, 0.96, 0x7350ae, 0.15);
     const referenceScreen = pbr(scene, 'p28-g9-calibration-console-screen', 0x163849, 0.18, 0.48, 0x72d1c7, 0.28);
     // Physically rough, warm metal is structural trim; do not let strong PBR
     // key light wash active objective lamps into ambiguous cream rings.
@@ -749,6 +749,20 @@ export class BabylonParallaxArrayPresentation {
       indexMaterial.backFaceCulling = false;
       this.pylonIndexTextures.push(indexTexture);
       this.pylonIndexMaterials.push(indexMaterial);
+      // The engraved 01/02/03 + ALIGN index must be physically attached to
+      // the real station, not to one of the eight shear anchors or the HUD.
+      // This low, compact top-facing serial on the machined plinth survives
+      // the overhead Android camera without towering into the combat lane.
+      const stationSerialSeat = box(scene, root, 'p28-g9-pylon-deck-engraved-serial-seat-' + index,
+        graphite, 1.55, 0.59, -1.67, 1.96, 0.13, 1.02);
+      stationSerialSeat.isPickable = false;
+      const stationSerial = MeshBuilder.CreatePlane('p28-g9-pylon-deck-engraved-serial-' + index,
+        { width: 1.82, height: 0.88 }, scene);
+      stationSerial.parent = root;
+      stationSerial.position.set(1.55, 0.69, -1.67);
+      stationSerial.rotation.x = -Math.PI / 2;
+      stationSerial.material = indexMaterial;
+      stationSerial.isPickable = false;
       const indexPlaqueBracket = box(scene, root, 'p28-g9-pylon-numbered-plate-bracket-' + index,
         graphite, 2.03, 2.32, 1.34, 1.10, 0.78, 0.14);
       indexPlaqueBracket.rotation.y = Math.PI / 4;
@@ -1412,7 +1426,7 @@ export class BabylonParallaxArrayPresentation {
         massBand.parent = root;
         massBand.position.set(side * 0.79, 0.98, 0);
         massBand.rotation.z = Math.PI / 2;
-        massBand.material = calibrationInk;
+        massBand.material = fiducialBrass;
         massBand.isPickable = false;
       }
       const rail = box(scene, root, 'p27-c10-carriage-rail-' + index, violet, 0, 0.09, 0, 3.40, 0.08, 0.14);
@@ -1451,6 +1465,17 @@ export class BabylonParallaxArrayPresentation {
         box(scene, root, 'p28-g9-carriage-graduation-' + index + '-' + tick,
           tick % 2 ? etched : graduation, (tick - 2) * 0.25, 1.34, 0.30,
           0.12, 0.08, 0.12);
+      }
+      // The moving inertial weight has its own exposed travel indicator,
+      // separate from the pylon's numbered ALIGN plate and the shear jaws.
+      // The five notches are embedded on an actual machined housing.
+      box(scene, root, 'p28-g9-carriage-top-travel-scale-bed-' + index,
+        graphite, 0, 2.40, -0.70, 2.08, 0.12, 0.44);
+      for (let notch = 0; notch < 5; notch++) {
+        box(scene, root, 'p28-g9-carriage-top-travel-scale-notch-' + index + '-' + notch,
+          notch % 2 === 0 ? cyan : fiducialBrass,
+          (notch - 2) * 0.39, 2.50, -0.70,
+          notch % 2 === 0 ? 0.16 : 0.10, 0.09, notch % 2 === 0 ? 0.38 : 0.21);
       }
       // The mass carriage is a rail-guided counterweight, not two loose
       // decorative wheels. Expose its shaft, service bearing and indexed head.
@@ -1542,6 +1567,11 @@ export class BabylonParallaxArrayPresentation {
       root.parent = this.root;
       root.position.set(worldW * x, 0, worldH * z);
       root.rotation.y = rotationY;
+      // The eight shear keys are low, broad split-jaw fixtures, never tall
+      // lavender-topped pylons that could be mistaken for the THREE actual
+      // long-baseline alignment standards at live phone camera distance.
+      // This local scaling affects presentation only, not mission collision.
+      root.scaling.set(1.18, 0.68, 1.08);
       // Each real shear fork now grows out of a bolted floor socket with
       // visible vertical mounting saddles. The violet ceramic no longer reads
       // as a free-floating lavender rectangle at the gameplay camera angle.
@@ -1668,6 +1698,17 @@ export class BabylonParallaxArrayPresentation {
       transducerRim.isPickable = false;
       box(scene, root, 'p28-g9-shear-anchor-violet-powered-crosshead-' + index,
         indexed, 0, 3.52, 0.52, 1.32, 0.17, 0.34);
+      // Two sloping violet-insulated knives form a short, unmistakable
+      // bifurcated hazard actuator. The center stays open and dark; the
+      // reader sees a SHEAR fork, never a violet calibration mast/crown.
+      for (const side of [-1, 1]) {
+        const jaw = box(scene, root, 'p28-g9-shear-anchor-split-jaw-blade-' + index + '-' + side,
+          graphite, side * 0.98, 2.73, 0.42, 0.32, 1.25, 0.32);
+        jaw.rotation.z = side * 0.48;
+        const electrode = box(scene, root, 'p28-g9-shear-anchor-split-jaw-ceramic-tip-' + index + '-' + side,
+          indexed, side * 1.22, 3.22, 0.44, 0.22, 0.40, 0.18);
+        electrode.rotation.z = side * 0.48;
+      }
       this.anchors.push(root);
     });
 
@@ -2058,7 +2099,7 @@ export class BabylonParallaxArrayPresentation {
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
     this.readabilityLight.position.set(px - 0.4, 2.8, pz + 0.7);
-    this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 3.8 : 5.3) * tierScale;
+    this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 3.1 : 4.2) * tierScale;
     this.emergencyLight.position.set(px + 1.4, 3.0, pz - 1.2);
     this.emergencyLight.intensity = lighting.emergencyIntensity * (renderBudget.tierName === 'performance' ? 0.72 : 1)
       * (hazardMode === 'nominal' ? 0.46 : hazardMode === 'gravity-split' ? 0.72 : 1.16)
@@ -2067,7 +2108,7 @@ export class BabylonParallaxArrayPresentation {
     this.practicalLights.forEach((light, index) => {
       const enabled = index < practicalCount;
       light.setEnabled(enabled);
-      light.intensity = enabled ? (index === 0 ? 5.1 : 4.6) * tierScale : 0;
+      light.intensity = enabled ? (index === 0 ? 4.0 : 3.6) * tierScale : 0;
     });
     const routePulse = 0.86 + Math.sin(state.time * 3.5) * 0.14;
     this.routeMaterials[0].emissiveColor = colorFromHex(0x655485).scale(0.026 * routePulse);
