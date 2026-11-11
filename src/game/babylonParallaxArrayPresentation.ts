@@ -143,6 +143,8 @@ export class BabylonParallaxArrayPresentation {
   private readonly datumNormalTexture: DynamicTexture;
   private readonly calibrationDisplayTexture: DynamicTexture;
   private readonly calibrationDisplayMaterial: StandardMaterial;
+  private readonly massScaleTexture: DynamicTexture;
+  private readonly massScaleMaterial: StandardMaterial;
   private readonly pylonVernierTexture: DynamicTexture;
   private readonly pylonVernierMaterial: StandardMaterial;
   // One small, camera-readable engraved identity plate per real standard.
@@ -197,7 +199,7 @@ export class BabylonParallaxArrayPresentation {
     // Distinct dark machine pockets give raised brass indices and objective signals
     // actual contrast instead of a wall of cream-colored fixture blocks.
     graphite.albedoColor = colorFromHex(0x617d90);
-    shell.albedoColor = colorFromHex(0x708897);
+    shell.albedoColor = colorFromHex(0x627887);
     const violet = pbr(scene, 'p27-c10-violet-alignment', 0x665680, 0.44, 0.46, 0x9a87cf, 0.34);
     const cyan = pbr(scene, 'p27-c10-cyan-readout', 0x48767b, 0.38, 0.39, 0x82d7df, 0.44);
     // Pale enamel indices are trim on shipped KTX2 painted/metal structure,
@@ -288,6 +290,37 @@ export class BabylonParallaxArrayPresentation {
     this.calibrationDisplayMaterial.specularColor = Color3.Black();
     this.calibrationDisplayMaterial.disableLighting = true;
     this.calibrationDisplayMaterial.backFaceCulling = false;
+    // A physically bolted carriage has an independent MASS/TRAVEL vernier,
+    // not a duplicate objective signal or a free-floating navigation overlay.
+    // One scene-owned atlas is shared across the three actual weight rigs.
+    this.massScaleTexture = new DynamicTexture('p28-g9-carriage-machined-travel-scale-atlas',
+      { width: 384, height: 128 }, scene, false);
+    const massInk = this.massScaleTexture.getContext();
+    massInk.fillStyle = '#101f28';
+    massInk.fillRect(0, 0, 384, 128);
+    massInk.strokeStyle = '#7295a3';
+    massInk.lineWidth = 6;
+    massInk.strokeRect(6, 6, 372, 116);
+    massInk.font = 'bold 42px monospace';
+    massInk.fillStyle = '#c0cbd0';
+    massInk.fillText('MASS', 19, 47);
+    for (let station = 0; station < 7; station++) {
+      const major = station % 3 === 0;
+      massInk.fillStyle = major ? '#d5ac68' : '#66aab9';
+      massInk.fillRect(30 + station * 52, 55, major ? 9 : 5, major ? 42 : 24);
+      if (major) {
+        massInk.font = 'bold 21px monospace';
+        massInk.fillText(String(station * 5).padStart(2, '0'), 17 + station * 52, 119);
+      }
+    }
+    this.massScaleTexture.update();
+    this.massScaleMaterial = new StandardMaterial('p28-g9-carriage-etched-physical-travel-glass', scene);
+    this.massScaleMaterial.diffuseTexture = this.massScaleTexture;
+    this.massScaleMaterial.emissiveTexture = this.massScaleTexture;
+    this.massScaleMaterial.emissiveColor = Color3.White().scale(0.38);
+    this.massScaleMaterial.specularColor = Color3.Black();
+    this.massScaleMaterial.disableLighting = true;
+    this.massScaleMaterial.backFaceCulling = false;
     // Real vertical optical vernier, physically bolted beside each spindle:
     // large numbered major stations and readable intermediate tick lengths.
     // A narrow dark instrument window avoids another full-width billboard.
@@ -324,6 +357,7 @@ export class BabylonParallaxArrayPresentation {
     counterweightMetal.albedoTexture = this.datumAlbedoTexture;
     counterweightMetal.bumpTexture = this.datumNormalTexture;
     fiducialBrass.bumpTexture = this.datumNormalTexture;
+    calibrationInk.bumpTexture = this.datumNormalTexture;
     // Recessed navigational inlays never compete with vector-wash or boss telegraphs.
     const routePrimary = pbr(scene, 'p27-c10-route-primary', 0x29233b, 0.16, 0.90, 0x655485, 0.026);
     const routeSecondary = pbr(scene, 'p27-c10-route-secondary', 0x192c32, 0.14, 0.94, 0x36626a, 0.014);
@@ -425,26 +459,33 @@ export class BabylonParallaxArrayPresentation {
       const centerX = scaled((ax + bx) / 2);
       const centerZ = scaled((az + bz) / 2);
       const datum = box(scene, this.root, 'p28-g9-physical-reference-baseline-' + baseline,
-        graphite, centerX, 0.10, centerZ, length, 0.18, 0.26);
+        graphite, centerX, 0.10, centerZ, length, 0.18, 0.58);
       datum.rotation.y = rotationY;
       for (let index = 1; index < 14; index++) {
         const fraction = index / 14 - 0.5;
         const localX = fraction * length;
         const tick = box(scene, datum, 'p28-g9-physical-datum-graduation-' + baseline + '-' + index,
-          index % 5 === 0 ? graduation : etched, localX, 0.11, 0, 0.16, 0.045,
-          index % 5 === 0 ? 0.60 : 0.36);
+          index % 5 === 0 ? calibrationInk : fiducialBrass,
+          localX, 0.20, 0, index % 5 === 0 ? 0.54 : 0.28, 0.11,
+          index % 5 === 0 ? 1.10 : 0.64);
         tick.isPickable = false;
       }
       // Paired shielded conductor bars make this a working interferometer
       // reference, not a dotted route painted on the floor.
       for (const side of [-1, 1]) {
         box(scene, datum, 'p28-g9-calibrated-baseline-conductor-' + baseline + '-' + side,
-          fiducialBrass, 0, 0.055, side * 0.36, length - 0.34, 0.06, 0.065);
+          fiducialBrass, 0, 0.055, side * 0.36, length - 0.34, 0.11, 0.12);
       }
       for (let foot = 1; foot < 5; foot++) {
         const support = box(scene, datum, 'p28-g9-reference-isolator-foot-' + baseline + '-' + foot,
           insulation, (foot / 5 - 0.5) * length, -0.04, 0, 0.36, 0.18, 0.42);
         support.isPickable = false;
+        // Insulated transverse timing contacts interrupt the conductor pair
+        // at surveyed stations, not a uniform white navigation band.
+        box(scene, datum, 'p28-g9-baseline-insulated-cross-tie-' + baseline + '-' + foot,
+          insulation, (foot / 5 - 0.5) * length, 0.15, 0, 0.29, 0.12, 1.04);
+        box(scene, datum, 'p28-g9-baseline-major-brass-station-' + baseline + '-' + foot,
+          calibrationInk, (foot / 5 - 0.5) * length, 0.24, 0, 0.16, 0.09, 0.98);
       }
     });
 
@@ -1496,14 +1537,39 @@ export class BabylonParallaxArrayPresentation {
       }
       // Counterweight mass and orange-brass travel scale are a different
       // silhouette from the pylons' loop coils and the anchor's split fork.
-      box(scene, root, 'p28-g9-instrumented-moving-counterweight-' + index,
-        counterweightMetal, 0, 1.71, 0, 1.60, 0.82, 1.05);
+      const weightDrum = MeshBuilder.CreateCylinder('p28-g9-instrumented-moving-counterweight-' + index,
+        { height: 1.60, diameter: 1.12, tessellation: 24 }, scene);
+      weightDrum.parent = root;
+      weightDrum.position.set(0, 1.71, 0);
+      weightDrum.rotation.z = Math.PI / 2;
+      weightDrum.material = counterweightMetal;
+      weightDrum.isPickable = false;
+      for (const side of [-1, 1]) {
+        const race = MeshBuilder.CreateTorus('p28-g9-carriage-machined-drum-collar-' + index + '-' + side,
+          { diameter: 1.22, thickness: 0.12, tessellation: 24 }, scene);
+        race.parent = root;
+        race.position.set(side * 0.62, 1.71, 0);
+        race.rotation.z = Math.PI / 2;
+        race.material = fiducialBrass;
+        race.isPickable = false;
+      }
       // Wide exposed top face: machined ruler, high-contrast gauge sectors
       // and travel stops remain visible when the front dial faces away.
       box(scene, root, 'p28-g9-counterweight-hardened-upper-deck-' + index,
         shell, 0, 2.18, 0, 2.18, 0.14, 1.18);
       box(scene, root, 'p28-g9-counterweight-top-measuring-channel-' + index,
         insulation, 0, 2.30, 0, 1.80, 0.10, 0.74);
+      // Top-facing, steel-backed numeric mass gauge, independent of alignment
+      // and shear iconography; the 00/15/30 travel positions are legible.
+      box(scene, root, 'p28-g9-carriage-bolted-mass-serial-bed-' + index,
+        graphite, 0, 2.85, -1.02, 2.42, 0.14, 0.98);
+      const massSerial = MeshBuilder.CreatePlane('p28-g9-carriage-mass-travel-readout-' + index,
+        { width: 2.20, height: 0.82 }, scene);
+      massSerial.parent = root;
+      massSerial.position.set(0, 2.94, -1.02);
+      massSerial.rotation.x = -Math.PI / 2;
+      massSerial.material = this.massScaleMaterial;
+      massSerial.isPickable = false;
       // A true machined top bearing and concentric calibrated race break
       // the crate silhouette of the moving counterweight. This is grounded
       // on the top housing; the real simulated travel range is unchanged.
@@ -1586,7 +1652,7 @@ export class BabylonParallaxArrayPresentation {
           fiducialBrass, side * 0.95, 0.50, 0.86, 0.24, 0.25, 0.25);
       }
       box(scene, root, 'p27-c10-anchor-base-' + index, graphite, 0, 0.24, 0, 1.70, 0.48, 1.50);
-      const fin = box(scene, root, 'p27-c10-anchor-fin-' + index, shearCeramic, 0, 0.98, 0, 0.28, 1.68, 0.98);
+      const fin = box(scene, root, 'p27-c10-anchor-fin-' + index, counterweightMetal, 0, 0.98, 0, 0.28, 1.68, 0.98);
       fin.rotation.z = index % 2 ? 0.10 : -0.10;
       const marker = MeshBuilder.CreateTorus('p27-c10-anchor-ring-' + index, { diameter: 0.56, thickness: 0.09, tessellation: 6 }, scene);
       marker.parent = root;
@@ -1600,7 +1666,7 @@ export class BabylonParallaxArrayPresentation {
         etched, 0, 1.20, 0.48, 0.18, 0.54, 0.12);
       for (const side of [-1, 1]) {
         const strut = box(scene, root, 'p28-g9-shear-anchor-fork-' + index + '-' + side,
-          shearCeramic, side * 0.48, 1.13, 0.18, 0.29, 1.78, 0.28);
+          counterweightMetal, side * 0.48, 1.13, 0.18, 0.29, 1.78, 0.28);
         strut.rotation.z = side * 0.18;
       }
       // Every baseline shear anchor has its own exposed optical index dial
@@ -1647,7 +1713,7 @@ export class BabylonParallaxArrayPresentation {
           indexed, side * 0.56, 2.18, 0.55, 0.48, 0.25, 0.44);
       }
       box(scene, root, 'p28-g9-shear-anchor-violet-crosshead-' + index,
-        shearCeramic, 0, 2.44, 0.52, 1.82, 0.32, 0.38);
+        counterweightMetal, 0, 2.44, 0.52, 1.82, 0.32, 0.38);
       // The anchor is an insulated steel interferometer fork, not a flat
       // lavender monolith. A narrow ceramic hazard channel sits between
       // two KTX2 metal prongs, with top-facing index pins and bolted knuckles.
@@ -1683,7 +1749,7 @@ export class BabylonParallaxArrayPresentation {
         { height: 0.36, diameterTop: 0.65, diameterBottom: 0.92, tessellation: 12 }, scene);
       transducer.parent = root;
       transducer.position.set(0, 3.18, 0.52);
-      transducer.material = shearCeramic;
+      transducer.material = counterweightMetal;
       transducer.isPickable = false;
       // A pale, round top race made these eight *shear anchors* resemble
       // the three true reference pylons in actual Android pixels. Keep the
@@ -1694,10 +1760,12 @@ export class BabylonParallaxArrayPresentation {
       transducerRim.parent = root;
       transducerRim.position.set(0, 3.38, 0.52);
       transducerRim.rotation.y = Math.PI / 6;
-      transducerRim.material = shearCeramic;
+      transducerRim.material = indexed;
       transducerRim.isPickable = false;
       box(scene, root, 'p28-g9-shear-anchor-violet-powered-crosshead-' + index,
-        indexed, 0, 3.52, 0.52, 1.32, 0.17, 0.34);
+        counterweightMetal, 0, 3.52, 0.52, 1.32, 0.17, 0.34);
+      box(scene, root, 'p28-g9-shear-anchor-powered-ceramic-slit-' + index,
+        indexed, 0, 3.65, 0.52, 0.58, 0.08, 0.22);
       // Two sloping violet-insulated knives form a short, unmistakable
       // bifurcated hazard actuator. The center stays open and dark; the
       // reader sees a SHEAR fork, never a violet calibration mast/crown.
@@ -2214,6 +2282,8 @@ export class BabylonParallaxArrayPresentation {
     this.datumNormalTexture.dispose();
     this.calibrationDisplayMaterial.dispose();
     this.calibrationDisplayTexture.dispose();
+    this.massScaleMaterial.dispose();
+    this.massScaleTexture.dispose();
     this.pylonVernierMaterial.dispose();
     this.pylonVernierTexture.dispose();
     this.pylonIndexMaterials.forEach(material => material.dispose());

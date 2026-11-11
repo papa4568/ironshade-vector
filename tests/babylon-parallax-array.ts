@@ -129,6 +129,28 @@ assert.ok(presentation.includes("0x967954, 0.40, 0.90, 0x8c754e, 0.10")
   && presentation.includes("index === 0 ? 4.0 : 3.6"),
   'highlight control must preserve machined relief instead of white-blue bloom');
 
+// Macro-scale long-baseline markings must be physically bolted to the real
+// conductor bars (not tiny subpixel stripes or wide navigation ribbons).
+assert.ok(presentation.includes("p28-g9-baseline-insulated-cross-tie-")
+  && presentation.includes("p28-g9-baseline-major-brass-station-")
+  && presentation.includes("index % 5 === 0 ? 1.10 : 0.64")
+  && presentation.includes("fiducialBrass, 0, 0.055, side * 0.36, length - 0.34, 0.11, 0.12")
+  && presentation.includes("calibrationInk.bumpTexture = this.datumNormalTexture;"),
+  'calibrated conductors must have countable brass rulings and textured relief');
+assert.ok(presentation.includes("new DynamicTexture('p28-g9-carriage-machined-travel-scale-atlas'")
+  && presentation.includes("massInk.fillText('MASS', 19, 47);")
+  && presentation.includes("p28-g9-carriage-machined-drum-collar-")
+  && presentation.includes("MeshBuilder.CreateCylinder('p28-g9-instrumented-moving-counterweight-'")
+  && presentation.includes("p28-g9-carriage-mass-travel-readout-")
+  && presentation.includes("massSerial.material = this.massScaleMaterial;")
+  && presentation.includes("this.massScaleMaterial.dispose();")
+  && presentation.includes("this.massScaleTexture.dispose();"),
+  'measured moving masses need cylindrical machinery and properly disposed real scales');
+assert.ok(presentation.includes("transducer.material = counterweightMetal;")
+  && presentation.includes("transducerRim.material = indexed;")
+  && presentation.includes("p28-g9-shear-anchor-powered-ceramic-slit-"),
+  'short shear jaws must remain visibly different from pale reference pylons');
+
 // The overhead-view scale and target must be real scene geometry with
 // contrasting mechanical insulation, not a status label or a bright route.
 assert.ok(presentation.includes("fiducialBrass, side * 1.14, 2.26, 0.96"),
@@ -751,9 +773,9 @@ assert.ok(presentation.includes('major ? calibrationInk : etched, 0, 1.02 + stat
 assert.ok(presentation.includes('major ? calibrationInk : indexed, Math.cos(angle) * 1.38,')
   && presentation.includes('major ? 0.54 : 0.27, major ? 0.23 : 0.14, 0.17);'),
   'physical graduated pylon dial needs readable instrument-metal contrast');
-assert.ok(presentation.includes('counterweightMetal, 0, 1.71, 0, 1.60, 0.82, 1.05);')
+assert.ok(presentation.includes('weightDrum.material = counterweightMetal;')
   && presentation.includes('shell, 0, 2.18, 0, 2.18, 0.14, 1.18);')
-  && presentation.includes('shearCeramic, 0, 2.44, 0.52, 1.82, 0.32, 0.38);')
+  && presentation.includes('counterweightMetal, 0, 2.44, 0.52, 1.82, 0.32, 0.38);')
   && presentation.includes('graphite, side * 0.77, 1.61, 0.26, 0.24, 2.18, 0.48);'),
   'real exposed mass race and insulated fork must not revert to pale cargo-box silhouettes');
 assert.ok(!presentation.includes('graphite, 2.15, 3.18, 2.04, 3.88, 2.24, 0.28);')
