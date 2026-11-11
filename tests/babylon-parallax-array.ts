@@ -386,7 +386,7 @@ assert.ok(presentation.includes('standardCassette.scaling.set(0.80, 0.80, 0.80);
   && presentation.includes('p28-g9-pylon-spindle-exposed-datum-notch-')
   && presentation.includes('station < 5')
   && presentation.includes("p28-g9-shear-anchor-violet-powered-crosshead-")
-  && presentation.includes("transducerRim.material = shearCeramic;")
+  && presentation.includes("transducerRim.material = indexed;")
   && presentation.includes("marker.material = shearCeramic;")
   && presentation.includes("0x49336e, 0.16, 0.87, 0xa16be2, 0.24")
   && presentation.includes("{ diameter: 1.54, height: 0.24, tessellation: 4 }"),
