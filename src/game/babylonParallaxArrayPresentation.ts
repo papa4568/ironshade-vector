@@ -464,10 +464,11 @@ export class BabylonParallaxArrayPresentation {
       for (let index = 1; index < 14; index++) {
         const fraction = index / 14 - 0.5;
         const localX = fraction * length;
+        const majorStation = index % 5 === 0;
         const tick = box(scene, datum, 'p28-g9-physical-datum-graduation-' + baseline + '-' + index,
-          index % 5 === 0 ? calibrationInk : fiducialBrass,
-          localX, 0.20, 0, index % 5 === 0 ? 0.54 : 0.28, 0.11,
-          index % 5 === 0 ? 1.10 : 0.64);
+          majorStation ? calibrationInk : counterweightMetal,
+          localX, 0.20, 0, majorStation ? 0.48 : 0.22, 0.11,
+          majorStation ? 0.96 : 0.56);
         tick.isPickable = false;
       }
       // Paired shielded conductor bars make this a working interferometer
@@ -478,12 +479,13 @@ export class BabylonParallaxArrayPresentation {
       }
       for (let foot = 1; foot < 5; foot++) {
         const support = box(scene, datum, 'p28-g9-reference-isolator-foot-' + baseline + '-' + foot,
-          insulation, (foot / 5 - 0.5) * length, -0.04, 0, 0.36, 0.18, 0.42);
+          counterweightMetal, (foot / 5 - 0.5) * length, -0.04, 0, 0.36, 0.18, 0.42);
         support.isPickable = false;
-        // Insulated transverse timing contacts interrupt the conductor pair
-        // at surveyed stations, not a uniform white navigation band.
+        // Insulated transverse timing contacts interrupt the conductor pair.
+        // Dark textured metal keeps the long physical baseline legible without
+        // repeating pale fence rungs across the live combat sightline.
         box(scene, datum, 'p28-g9-baseline-insulated-cross-tie-' + baseline + '-' + foot,
-          insulation, (foot / 5 - 0.5) * length, 0.15, 0, 0.29, 0.12, 1.04);
+          counterweightMetal, (foot / 5 - 0.5) * length, 0.15, 0, 0.29, 0.12, 1.04);
         box(scene, datum, 'p28-g9-baseline-major-brass-station-' + baseline + '-' + foot,
           calibrationInk, (foot / 5 - 0.5) * length, 0.24, 0, 0.16, 0.09, 0.98);
       }

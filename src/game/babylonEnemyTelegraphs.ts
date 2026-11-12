@@ -472,7 +472,7 @@ export class BabylonEnemyTelegraphs {
     const cryoWarning = this.canvas.dataset.babylonScenario === 'cryo-reserve';
     const parallaxWarning = this.canvas.dataset.babylonScenario === 'parallax-array';
     const iceWarning = this.canvas.dataset.babylonScenario === 'ice-mine';
-    visual.attackMaterial.alpha = clamp01((momentumWarning ? 0.46 : parallaxWarning ? 0.54 : cryoWarning ? 0.60 : 0.66)
+    visual.attackMaterial.alpha = clamp01((momentumWarning ? 0.46 : parallaxWarning ? 0.36 : cryoWarning ? 0.60 : 0.66)
       + Math.sin(state.time * 10 + enemy.id * 0.73) * (momentumWarning || parallaxWarning ? 0.055 : 0.1));
     visual.laneMaterial.diffuseColor = signal.scale(0.18);
     visual.laneMaterial.emissiveColor = signal.scale(cryoWarning || parallaxWarning ? 0.72 : 1);

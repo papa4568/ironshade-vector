@@ -569,6 +569,15 @@ assert.ok(presentation.includes('p28-g9-physical-reference-baseline-')
   && presentation.includes('p28-g9-reference-isolator-foot-')
   && presentation.includes('physical-baseline:3+datum-graduation:39+isolator-foot:12'),
   'three long-baseline metrology rails must exist as calibrated physical hardware');
+assert.ok(presentation.includes("majorStation ? calibrationInk : counterweightMetal")
+  && presentation.includes("p28-g9-baseline-insulated-cross-tie-' + baseline + '-' + foot,\n          counterweightMetal")
+  && presentation.includes("p28-g9-reference-isolator-foot-' + baseline + '-' + foot,\n          counterweightMetal"),
+  'Parallax surveyed bars need dark metal secondary stations and insulated ties, not bright floor ladders');
+assert.ok(telegraphs.includes('parallaxWarning ? 0.36 : cryoWarning ? 0.60')
+  && telegraphs.includes('tick.setEnabled(annexWarning || momentumWarning || cryoWarning || parallaxWarning)')
+  && telegraphs.includes('visual.sourceRing.setEnabled(true)'),
+  'Parallax threat fill must reveal operators while keeping genuine attack warning rings and ticks');
+
 assert.ok(presentation.includes("this.datumAlbedoTexture = new DynamicTexture('p28-g9-metrology-machined-etched-atlas'")
   && presentation.includes("this.datumNormalTexture = new DynamicTexture('p28-g9-metrology-etched-normal-atlas'")
   && presentation.includes('etched.bumpTexture = this.datumNormalTexture;')
