@@ -332,7 +332,7 @@ assert.ok(presentation.includes("const shared = new Set(this.premiumSurfaces.mat
 assert.ok(presentation.includes('ring.material = ringIndex === 1 ? magneticCopper : edgeMetal'));
 assert.ok(renderWorldSource.includes('visual.ringMaterial.emissiveColor = color.scale(parallaxShearDuplicate ? 0.12 : parallaxGravity ? 0.24 : momentumHazard ? 0.34 : 1)'));
 assert.ok(renderWorldSource.includes('momentumHazard && hazard.kind ==='));
-assert.ok(attackSource.includes('(momentumWarning ? 0.46 : parallaxWarning ? 0.54 : cryoWarning ? 0.60 : 0.66)'));
+assert.ok(attackSource.includes('(momentumWarning ? 0.46 : parallaxWarning ? 0.36 : cryoWarning ? 0.60 : 0.66)'));
 assert.ok(babylon.includes('const momentumTouchLanePan = this.canvas.dataset.babylonScenario ==='));
 
 assert.ok(babylon.includes("const momentumCombatPan = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
