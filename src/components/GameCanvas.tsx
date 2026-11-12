@@ -35,6 +35,7 @@ import { groundLootPresentation, type GroundLootReceipt } from '../game/fieldLoo
 import { carryExpeditionLoot } from '../game/expeditionCarry';
 import { classSkillIconAssets, operatorClassIconAssets } from '../game/mobileUiAssets';
 import { biomeWorldState, hazardWorldPresentation, interactableWorldPresentation } from '../game/worldMaterialPolish';
+import { compactTacticalHazardCue } from '../game/compactTacticalCue';
 
 type Props = { build: CombatBuild; mission: Contract; profileSettings: ProfileSettings; consumables: ConsumableInventory; buildLabel: string; operatorFaction: EquipmentFaction | null; onProfileSettingsChange: (settings: Partial<ProfileSettings>) => void; onConsumablesChange: (consumables: ConsumableInventory) => void; onMissionResolve: (telemetry: Telemetry, depth: 'safe' | 'deep', salvageTags: number, expeditionProgress?: ExpeditionProgress, fieldLoot?: GroundLootReceipt[]) => void; onAttemptFailed: (telemetry: Telemetry) => void; onReturnToHub: () => void };
 type HudState = { classId: 'vanguard' | 'vector' | 'systems' | 'none'; classLabel: string; classDetail: string; classActive: boolean; hp: number; maxHp: number; armor: number; maxArmor: number; capacitor: number; maxCapacitor: number; mag: number; heat: number; weapon: WeaponId; ability: [number, number, number]; dodge: number; reload: number; venting: boolean; dead: boolean; complete: boolean; kills: number; squadRemaining: number; extractionReady: boolean; pressureState: string; pressure: number; gravity: number; eventText: string; eventT: number; contextLabel: string; bossActive: boolean; bossLabel: string; bossHp: number; bossMaxHp: number; bossArmor: number; bossMaxArmor: number; bossPhase: number; bossPattern: string; commandTargetMutationNames: string[]; bossPhaseMutationNames: string[]; vacuumExposure: number; disrupted: number; consumableCooldown: number; damageDealt: number; damageTaken: number; shots: Record<WeaponId, number>; abilityUses: [number, number, number] };
@@ -1546,7 +1547,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       if (message.startsWith('RESERVE PRESSURE RISE')) return 'PRESSURE RISE // SECOND PURGE';
       if (message.startsWith('PURGE ROUTE LOCKED')) return 'BOILOFF ROUTED TO VACUUM';
       if (message.startsWith('THERMAL ROUTE STABLE')) return 'THERMAL ROUTE STABLE';
-      return message.split(' // ')[0];
+      return compactTacticalHazardCue(message);
     }
     if (activeMission.location === 'lattice-annex') {
       if (message.startsWith('KHEPRI SURVEY ANNEX')) return 'ISOLATE BOTH GRID BRANCHES';
@@ -1554,9 +1555,9 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       if (message.startsWith('SURVEY SHIELD')) return 'SURVEY SHIELD // CUSTODIAN ACTIVE';
       if (message.startsWith('DAMAGED GRID')) return 'GRID ARC LIVE // KEEP CLEAR';
       if (message.startsWith('GRID ISOLATION')) return 'ISOLATE BOTH GRID BRANCHES';
-      // Unexpected longer director copy still shows its full first event
-      // identity, rather than a many-line modal that hides combat on mobile.
-      return message.split(' // ')[0];
+      // Keep the hazard identity AND immediate consequence visible in two
+      // compact lines; the full event remains in the accessible transcript.
+      return compactTacticalHazardCue(message);
     }
     if (activeMission.location === 'parallax-array') {
       // Only the small landscape banner is shortened. The full original

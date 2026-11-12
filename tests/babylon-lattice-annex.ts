@@ -11,6 +11,7 @@ import {
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
 import { auditLatticeVisualProvenance } from '../tools/p28g6-lattice-provenance.mjs';
+import { compactTacticalHazardCue } from '../src/game/compactTacticalCue';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
@@ -21,6 +22,15 @@ const director = readFileSync('src/game/director.ts', 'utf8');
 const smoke = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
 const workflow = readFileSync('.github/workflows/browser-e2e.yml', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
+
+// The live director can emit shared hazards beyond authored annex mission
+// cues. The visible compact banner must retain both cause and consequence.
+assert.equal(compactTacticalHazardCue('DIRECTOR EVENT // LIFE-SUPPORT PURGE // TEMPORARY ATMOSPHERE DEFICIT'),
+  'LIFE-SUPPORT PURGE // TEMPORARY ATMOSPHERE DEFICIT');
+assert.equal(compactTacticalHazardCue('TACTICAL ALERT // DAMAGED GRID // CLEAR THE ARC'),
+  'DAMAGED GRID // CLEAR THE ARC');
+assert.equal(compactTacticalHazardCue('DIRECTOR EVENT'), 'DIRECTOR EVENT');
+
 
 assert.deepEqual(BABYLON_LATTICE_ANNEX_IDENTITY, {
   silhouette: 'reference-pylons',
@@ -245,7 +255,7 @@ assert.ok(g6Controls.includes("if (message.startsWith('DRONE ESCORT')) return 'E
   'G6 combat alert must distinguish enemy drone deployment from the simultaneous grid-isolation objective');
 assert.ok(g6Controls.includes("message.startsWith('KHEPRI SURVEY ANNEX')")
   && g6Controls.includes("message.startsWith('DRONE ESCORT')")
-  && g6Controls.includes("return message.split(' // ')[0]")
+  && g6Controls.includes("return compactTacticalHazardCue(message);")
   && g6Controls.includes('aria-label={hud.eventT > 0 && !bossTransitionCue'),
   'the real director event remains accessible while the landscape HUD displays short commands');
 assert.ok(presentation.includes("this.ceramicAlbedo = new DynamicTexture('p28-g9-lattice-survey-ceramic-albedo'")
@@ -259,7 +269,7 @@ assert.ok(g6Hud.includes('bottom: 172px;'));
 assert.ok(g6Controls.includes("activeMission.location === 'lattice-annex'")
   && g6Controls.includes("message.startsWith('KHEPRI SURVEY ANNEX')")
   && g6Controls.includes("message.startsWith('DRONE ESCORT')")
-  && g6Controls.includes("return message.split(' // ')[0]"),
+  && g6Controls.includes("return compactTacticalHazardCue(message);"),
   'G6 long director narrative must use a short actionable in-combat event while preserving original state');
 assert.ok(g6Hud.includes('width: min(29vw, 28rem);')
   && g6Hud.includes('-webkit-line-clamp: 2;')

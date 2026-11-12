@@ -10,6 +10,7 @@ import {
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 import { auditCryoVisualProvenance } from '../tools/p28g8-cryo-provenance.mjs';
 import { auditCryoAndroidAppCrash } from '../tools/p28g8-android-crash-audit.mjs';
+import { compactTacticalHazardCue } from '../src/game/compactTacticalCue';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
@@ -24,6 +25,16 @@ const hudCss = readFileSync('src/combatHudGlance.css', 'utf8');
 const hudComponent = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 const workflow = readFileSync('.github/workflows/browser-e2e.yml', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
+
+// Shared environmental director messages can strike Cryo regardless of the
+// route-specific boiloff warning. Never display just "DIRECTOR EVENT".
+assert.equal(compactTacticalHazardCue('DIRECTOR EVENT // LIFE-SUPPORT PURGE // TEMPORARY ATMOSPHERE DEFICIT'),
+  'LIFE-SUPPORT PURGE // TEMPORARY ATMOSPHERE DEFICIT');
+assert.equal(compactTacticalHazardCue('DIRECTOR EVENT // COOLANT RUPTURE // THERMAL DANGER ACTIVE'),
+  'COOLANT RUPTURE // THERMAL DANGER ACTIVE');
+assert.equal(compactTacticalHazardCue('SURVEY STATUS // PURGE VALVE OPEN // COOLING'),
+  'SURVEY STATUS // PURGE VALVE OPEN');
+
 
 assert.deepEqual(BABYLON_CRYO_RESERVE_IDENTITY, {
   silhouette: 'tank-gallery',
@@ -208,7 +219,7 @@ assert.ok(g8Capture.includes('const current = target.url;'));
 assert.ok(hudComponent.includes("activeMission.location === 'cryo-reserve'")
   && hudComponent.includes("message.startsWith('CRYOGENIC BOILOFF')")
   && hudComponent.includes("message.startsWith('RESERVE PRESSURE RISE')")
-  && hudComponent.includes("return message.split(' // ')[0]")
+  && hudComponent.includes("return compactTacticalHazardCue(message);")
   && hudComponent.includes('aria-label={hud.eventT > 0 && !bossTransitionCue'),
   'Cryo mobile events must be concise while retaining the complete accessible director transcript');
 assert.ok(hudCss.includes('.game-root[data-location="cryo-reserve"] .target-readout header b')
