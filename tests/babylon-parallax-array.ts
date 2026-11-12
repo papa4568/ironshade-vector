@@ -133,7 +133,8 @@ assert.ok(presentation.includes("0x967954, 0.40, 0.90, 0x8c754e, 0.10")
 // conductor bars (not tiny subpixel stripes or wide navigation ribbons).
 assert.ok(presentation.includes("p28-g9-baseline-insulated-cross-tie-")
   && presentation.includes("p28-g9-baseline-major-brass-station-")
-  && presentation.includes("index % 5 === 0 ? 1.10 : 0.64")
+  && presentation.includes("majorStation ? 0.96 : 0.56")
+  && presentation.includes("majorStation ? calibrationInk : counterweightMetal")
   && presentation.includes("fiducialBrass, 0, 0.055, side * 0.36, length - 0.34, 0.11, 0.12")
   && presentation.includes("calibrationInk.bumpTexture = this.datumNormalTexture;"),
   'calibrated conductors must have countable brass rulings and textured relief');
