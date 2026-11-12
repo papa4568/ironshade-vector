@@ -673,6 +673,55 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-17",
+      "title": "Prepare independently reviewed one-use trusted-native-source bootstrap for P28-G9",
+      "priority": 170,
+      "status": "verifying",
+      "dependsOn": [
+        "AO-16"
+      ],
+      "acceptance": [
+        "A distinct reviewable, source-bound trusted-main helper proposes promotion of only three exact Git-object-pinned P28-G9 native consumer files; it does not change the EV-9 observer or weaken candidate gates.",
+        "Only a repository-owner-authored exact comment on PR #445 can trigger the helper after it is installed on trusted main; its event, checkout, pinned main/candidate blobs, other scripts, exact-head CI/APK/API35/API36 and real G9 visual/Copilot proof must be authenticated before any write.",
+        "The atomic, non-force Git transaction promotes precisely the three reviewed source blobs and deletes the privileged helper in the same commit, leaving the workflow inert and not merging PR #445.",
+        "The preparation PR must pass the unchanged trusted security observer and obtain a fresh exact-SHA independent Copilot security review; final source promotion is not authorized by preparing, reviewing, or merging the helper alone and requires a subsequent explicit owner instruction."
+      ],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "ci",
+        "repository-governance"
+      ],
+      "proofs": [
+        {
+          "id": "one-shot-native-bootstrap-regressions",
+          "kind": "test",
+          "required": true,
+          "description": "Owner-only event, immutable file pins, exact-SHA CI and visual gating, strict mutation/rejection cases and atomic helper retirement.",
+          "command": "node tools/p28g9-one-shot-native-source-bootstrap.mjs self-test"
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Keep trusted PR, Android, browser, and EV-9 observer implementations unchanged."
+        },
+        {
+          "id": "candidate-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Exact-head producer, APK/API35/API36, browser and unchanged trusted source observer for bootstrap PR."
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "Read-only trusted Copilot explicitly reviews the privileged one-use helper before any promotion is allowed."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }
