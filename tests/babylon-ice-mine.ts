@@ -233,6 +233,17 @@ const proof = {
   fractureLanguage: 'shared-hazards+brittle-support-fracture',
 };
 assert(auditAuthoredVisualProvenance(proof).valid, 'P28-G5 legitimate Ice Mine provenance must pass.');
+assert(auditAuthoredVisualProvenance({
+  ...proof,
+  beforeAssetIds: 'refinery-pipe-rack-lod0,' + proof.assetIds,
+}).valid, 'Camera-culling an initially visible authored asset is not late asset pop-in.');
+const introducedLod = auditAuthoredVisualProvenance({
+  ...proof,
+  beforeAssetIds: 'refinery-pipe-rack-lod0',
+});
+assert(!introducedLod.valid && introducedLod.problems.includes('late-asset-pop-in'),
+  'Newly visible authored assets absent from the ready-before view must fail G5 provenance.');
+
 for (const [name, change, expected] of [
   ['wrong-route', {capturedRoute: 'jovian-harvester'}, 'wrong-map-or-backend'],
   ['fallback', {fallbackObjects: 1}, 'procedural-box-or-unresolved-world-slot'],

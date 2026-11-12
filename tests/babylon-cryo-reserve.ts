@@ -218,6 +218,8 @@ assert.ok(g8Capture.includes('beforeAuthoredObjects: beforeVisual.authoredObject
 assert.ok(g8Capture.includes('const current = target.url;'));
 assert.ok(hudComponent.includes("activeMission.location === 'cryo-reserve'")
   && hudComponent.includes("message.startsWith('CRYOGENIC BOILOFF')")
+  && hudComponent.includes("message.startsWith('UMBRA CRYOGENIC PROPELLANT RESERVE')")
+  && hudComponent.includes("return 'ROUTE BOTH PURGE VALVES // CLEAR GALLERY';")
   && hudComponent.includes("message.startsWith('RESERVE PRESSURE RISE')")
   && hudComponent.includes("return compactTacticalHazardCue(message);")
   && hudComponent.includes('aria-label={hud.eventT > 0 && !bossTransitionCue'),

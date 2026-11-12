@@ -1543,6 +1543,11 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       // Android's compact combat banner is not the director transcript.
       // Retain that full event in its existing accessible aria-label/title.
       // Render only the immediate thermal warning in the playable viewport.
+      // This authored operation briefing is several sentences long. Keep
+      // its full original message available to screen readers rather than
+      // obscuring the lower-center combat floor with the visual transcript.
+      if (message.startsWith('UMBRA CRYOGENIC PROPELLANT RESERVE'))
+        return 'ROUTE BOTH PURGE VALVES // CLEAR GALLERY';
       if (message.startsWith('CRYOGENIC BOILOFF')) return 'BOILOFF JET // GALLERY PURGE';
       if (message.startsWith('RESERVE PRESSURE RISE')) return 'PRESSURE RISE // SECOND PURGE';
       if (message.startsWith('PURGE ROUTE LOCKED')) return 'BOILOFF ROUTED TO VACUUM';
