@@ -299,10 +299,14 @@ assert.ok(presentation.includes("hazard.active && hazard.kind === 'vectorWash'")
 assert.ok(presentation.includes("['baselineFork', 'parallaxSweep', 'shearCollapse'].includes(activeBoss.bossPattern)"));
 assert.ok(babylon.includes("import { BabylonParallaxArrayPresentation } from './babylonParallaxArrayPresentation';"));
 assert.ok(babylon.includes("const parallaxArrayScenario = mission.location === 'parallax-array';"));
-assert.ok(babylon.includes("const parallaxTouchLanePan = this.canvas.dataset.babylonScenario === 'parallax-array' && !narrow ? 2.4 : 0;"),
+assert.ok(babylon.includes("const parallaxTouchLanePan = this.canvas.dataset.babylonScenario === 'parallax-array' && !narrow ? 4.6 : 0;"),
   'Parallax combat framing must protect the existing right-side FIRE touch lane');
 assert.ok(babylon.includes('momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan'),
   'Parallax camera should translate eye and target without changing simulation');
+assert.ok(babylon.includes("const parallaxWideFraming = this.canvas.dataset.babylonScenario === 'parallax-array' && !narrow;")
+  && babylon.includes('parallaxWideFraming ? (this.coarse ? 15.5 : 14.0)')
+  && babylon.includes('parallaxWideFraming ? (this.coarse ? 11.7 : 10.7)'),
+  'Parallax Android camera must keep near-deck hardware and live controller inside the world view');
 assert.ok(hudGlance.includes('.game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert b'),
   'Parallax tactical alert lane must have a route-scoped mobile treatment');
 assert.ok(hudGlance.includes('P28-G9/G7 exact-APK review')
@@ -413,7 +417,7 @@ assert.ok(presentation.includes('p28-g9-pylon-survey-open-cheek-')
   && presentation.includes('p28-g9-pylon-open-scale-notch-')
   && presentation.includes('station < 4')
   && presentation.includes('rig.gauge.setEnabled(gaugeFitsFrame);')
-  && presentation.includes('this.eliteContactBeacon.position.set(scaled(baselineController.x), 3.20'),
+  && presentation.includes('this.eliteContactBeacon.position.set(scaled(baselineController.x), 3.62'),
   'macro optical stations and world-space elite optics must survive at Android zoom');
 assert.ok(presentation.includes('p28-g9-pylon-front-graduated-ruler-bed-')
   && presentation.includes('p28-g9-pylon-front-readable-graduation-')
@@ -511,7 +515,7 @@ assert.ok(presentation.includes('p28-g9-shear-anchor-optical-transducer-')
 assert.ok(babylon.includes("const parallaxSilhouette = this.canvas.dataset.babylonScenario === 'parallax-array';")
   && presentation.includes('telegraphActive ? 0.82 : 0.42;')
   && presentation.includes('telegraphActive ? 1.15 : 0.86')
-  && presentation.includes('this.eliteContactBeacon.position.set(scaled(baselineController.x), 3.20, scaled(baselineController.y))'),
+  && presentation.includes('this.eliteContactBeacon.position.set(scaled(baselineController.x), 3.62, scaled(baselineController.y))'),
   'true Parallax elite contact must remain readable without inventing a timed attack');
 assert.ok(presentation.includes('p28-g9-pylon-precision-dial-face-')
   && presentation.includes('p28-g9-pylon-precision-dial-rim-')
@@ -536,9 +540,12 @@ assert.ok(presentation.includes('p28-g9-pylon-machined-vernier-sleeve-')
   && presentation.includes('vernier-sleeve:3+cross-track-tie:6+counterweight-bearing:3'),
   'baseline pylons, cross-track frames and moving masses require distinct faceted calibrated hardware');
 assert.ok(presentation.includes('this.eliteTellRing.position.set(scaled(baselineController.x), 0.13, scaled(baselineController.y))')
-  && presentation.includes('this.eliteTellMaterial.alpha = telegraphActive ? 0.82 : 0.42;')
+  && presentation.includes('this.eliteTellMaterial.alpha = telegraphActive ? 0.90 : 0.56;')
   && presentation.includes('this.bossWarning.setEnabled(patternHot);'),
   'real elite contact and telegraph phases must remain visible without inventing attacks');
+assert.ok(presentation.includes('{ height: 2.08, diameterTop: 0.20, diameterBottom: 1.44, tessellation: 8 }')
+  && presentation.includes('.scale(telegraphActive ? 1.26 : 0.96);'),
+  'Parallax contact optic must remain legible during real high-tier play without fabricating an attack');
 // P28-G9: shipped KTX2 PBR bindings (not metadata-only), shared authored
 // world objects and a fail-closed scene-readiness path are mandatory.
 assert.ok(presentation.includes("this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);"));

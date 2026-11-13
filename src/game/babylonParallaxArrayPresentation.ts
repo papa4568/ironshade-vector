@@ -1999,7 +1999,7 @@ export class BabylonParallaxArrayPresentation {
     // Separate contact identity from amber alignment fixtures: only an
     // actual enemy telegraph turns this world-space optic red.
     this.eliteContactBeacon = MeshBuilder.CreateCylinder('p28-g9-elite-controller-optical-sight',
-      { height: 1.46, diameterTop: 0.17, diameterBottom: 1.26, tessellation: 8 }, scene);
+      { height: 2.08, diameterTop: 0.20, diameterBottom: 1.44, tessellation: 8 }, scene);
     this.eliteContactBeacon.parent = this.root;
     this.eliteContactBeacon.material = this.eliteTellMaterial;
     this.eliteContactBeacon.isPickable = false;
@@ -2137,11 +2137,11 @@ export class BabylonParallaxArrayPresentation {
     this.eliteContactBeacon.setEnabled(Boolean(baselineController));
     if (baselineController) {
       this.eliteTellRing.position.set(scaled(baselineController.x), 0.13, scaled(baselineController.y));
-      this.eliteContactBeacon.position.set(scaled(baselineController.x), 3.20, scaled(baselineController.y));
+      this.eliteContactBeacon.position.set(scaled(baselineController.x), 3.62, scaled(baselineController.y));
       const telegraphActive = baselineController.telegraph > 0;
-      this.eliteTellMaterial.alpha = telegraphActive ? 0.82 : 0.42;
+      this.eliteTellMaterial.alpha = telegraphActive ? 0.90 : 0.56;
       this.eliteTellMaterial.emissiveColor = colorFromHex(telegraphActive ? 0xff6649 : 0x52c7df)
-        .scale(telegraphActive ? 1.15 : 0.86);
+        .scale(telegraphActive ? 1.26 : 0.96);
       const pulse = telegraphActive ? 1 + Math.sin(state.time * 12) * 0.08 : 1;
       this.eliteTellRing.scaling.set(pulse, pulse, pulse);
     }
