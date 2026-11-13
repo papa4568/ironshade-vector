@@ -477,7 +477,7 @@ assert.ok(presentation.includes("MeshBuilder.CreateCylinder('p27-c10-pylon-core-
 // opaque vertical ribbon across the player and calibrated apparatus.
 assert.ok(presentation.includes("{ diameter: 2.48, thickness: 0.16, tessellation: 40 }")
   && presentation.includes('this.eliteTellRing.rotation.x = 0;')
-  && presentation.includes('telegraphActive ? 0.82 : 0.42;'),
+  && presentation.includes('telegraphActive ? 0.90 : 0.56;'),
   'real Parallax elite contact must stay floor-bound and subordinate to danger tells');
 
 // A high-angle Android view must read each physical standard's numeral and
@@ -513,8 +513,8 @@ assert.ok(presentation.includes('p28-g9-shear-anchor-optical-transducer-')
   && presentation.includes('notch < 3'),
   'insulated shear forks and nonrepetitive physical floor bays cannot remain cuboid stacks');
 assert.ok(babylon.includes("const parallaxSilhouette = this.canvas.dataset.babylonScenario === 'parallax-array';")
-  && presentation.includes('telegraphActive ? 0.82 : 0.42;')
-  && presentation.includes('telegraphActive ? 1.15 : 0.86')
+  && presentation.includes('telegraphActive ? 0.90 : 0.56;')
+  && presentation.includes('telegraphActive ? 1.26 : 0.96')
   && presentation.includes('this.eliteContactBeacon.position.set(scaled(baselineController.x), 3.62, scaled(baselineController.y))'),
   'true Parallax elite contact must remain readable without inventing a timed attack');
 assert.ok(presentation.includes('p28-g9-pylon-precision-dial-face-')
