@@ -16,8 +16,34 @@ export function auditAuthoredVisualProvenance(state) {
   if (state?.objectiveCue !== 'beacon+navigation-path' || !(finite('worldObjects') >= 1))
     problems.push('missing-or-occluded-objective');
   if (!state?.assetIds || !(finite('groundProps') >= 4)) problems.push('missing-asset-provenance');
-  if (state?.beforeAssetIds !== state?.assetIds || state?.beforeArtState !== 'ready'
-      || state?.beforePremium !== 'ready' || state?.beforeIbl !== 'shared-prefiltered:ready')
+  // An active object family can change after real gameplay input without any
+  // new GLB loading. Only the mounted asset of a persistent object must remain
+  // identical. Validate both snapshots and their complete authored mappings.
+  const toBindings = (entries, expected) => {
+    if (!Array.isArray(entries) || !(expected > 0) || entries.length !== expected) return null;
+    const result = new Map();
+    for (const entry of entries) {
+      if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== 'string'
+          || !entry[0] || typeof entry[1] !== 'string' || !entry[1].endsWith('-lod0')
+          || result.has(entry[0])) return null;
+      result.set(entry[0], entry[1]);
+    }
+    return result;
+  };
+  const before = toBindings(state?.beforeObjectAssets, finite('beforeAuthoredObjects'));
+  const after = toBindings(state?.objectAssets, authored);
+  const familyNames = bindings => bindings ? [...new Set(bindings.values())].sort().join(',') : '';
+  const persistent = before && after ? [...before].filter(([id]) => after.has(id)) : [];
+  if (!before || !after || persistent.length === 0
+      || state?.beforeAssetIds !== familyNames(before)
+      || state?.assetIds !== familyNames(after)
+      || persistent.some(([id, family]) => after.get(id) !== family)
+      || !(finite('beforeMappedObjects') > 0
+        && finite('beforeMappedObjects') === finite('beforeAuthoredObjects')
+        && finite('beforeFallbackObjects') === 0
+        && finite('beforePendingCount') === 0 && finite('beforeFailedCount') === 0)
+      || state?.beforeArtState !== 'ready' || state?.beforePremium !== 'ready'
+      || state?.beforeIbl !== 'shared-prefiltered:ready')
     problems.push('late-asset-pop-in');
   return { valid: problems.length === 0, problems };
 }

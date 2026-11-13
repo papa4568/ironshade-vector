@@ -70,6 +70,14 @@ jobs:
                 echo "P28G6_EXACT_APK_PRODUCER_READY sha=$CANDIDATE_SHA run=$run_id"
                 exit 0
               fi
+              # Fail promptly when the upstream exact-SHA artifact producer has
+              # already reached a terminal non-success result. A missing APK
+              # remains a blocking failure, never a visual-review waiver.
+              producer_failure="$(gh api "/repos/$REPO/actions/runs/$run_id/jobs?filter=latest&per_page=100" --jq '[.jobs[] | select(.name == "Candidate Build and Full Verification" or .name == "Android PR / Android PR APK") | select(.conclusion != null and .conclusion != "success") | (.name + "=" + .conclusion)] | join(", ")')"
+              if [[ -n "$producer_failure" ]]; then
+                echo "Exact-candidate APK producer failed: $producer_failure (sha=$CANDIDATE_SHA run=$run_id)" >&2
+                exit 1
+              fi
               status="$(gh api "/repos/$REPO/actions/runs/$run_id" --jq '.status')"
               if [[ "$status" == completed ]]; then
                 echo "Producer completed without exact candidate APK" >&2

@@ -219,6 +219,14 @@ try {
   })()`;
   await waitFor(ready, 'Ice Mine route / authored-world visual readiness', 90_000);
   await sleep(650);
+  // Shift the actual player/camera toward the opposing combat line before
+  // freezing the normal scene: target silhouettes should not sit entirely
+  // behind the right-hand landscape touch controls.
+  await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  await sleep(1200);
+  await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  await sleep(450);
+  await waitFor(ready, 'reframed Ice Mine combat line', 20_000);
   const beforeVisual = await evaluate(`(() => {
     const d = document.querySelector('canvas')?.dataset ?? {};
     return { assetIds: d.babylonSharedWorldAssets ?? '',
@@ -232,7 +240,51 @@ try {
   await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
   await sleep(500);
   await waitFor(ready, 'post-input Ice Mine cues', 20_000);
-  const actionBytes = await capture('android-p28g5-ice-mine-action.png');
+  // An action frame must contain real combat, not just a changed walking
+  // position. Use the same on-screen manual-aim + touch FIRE path as G9.
+  const combatInput = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas')?.getBoundingClientRect();
+    const fire = document.querySelector('.fire-button');
+    const target = fire?.getBoundingClientRect();
+    if (!canvas || !target || !target.width || !target.height || fire.disabled) return null;
+    return {
+      aimX: canvas.left + canvas.width * 0.72,
+      aimY: canvas.top + canvas.height * 0.50,
+      fireX: target.left + target.width / 2,
+      fireY: target.top + target.height / 2,
+    };
+  })()`);
+  if (!combatInput) throw new Error('P28-G5 real FIRE control is not visible');
+  const touch = async (type, id, x, y) => await call('Input.dispatchTouchEvent', {
+    type, touchPoints: type === 'touchEnd' ? [] : [{ id, x, y }],
+  });
+  await touch('touchStart', 497, combatInput.aimX, combatInput.aimY);
+  await touch('touchMove', 497, combatInput.aimX + 38, combatInput.aimY - 16);
+  await sleep(130);
+  await touch('touchEnd', 497, combatInput.aimX + 38, combatInput.aimY - 16);
+  await sleep(400);
+  const shotsBefore = await evaluate("Number(document.querySelector('.game-root')?.dataset.weaponShots ?? '0')");
+  let shotsAfter = shotsBefore;
+  let actionBytes = 0;
+  for (let attempt = 0; attempt < 3 && shotsAfter <= shotsBefore; attempt += 1) {
+    await touch('touchStart', 510 + attempt, combatInput.fireX, combatInput.fireY);
+    try {
+      for (let i = 0; i < 5 && shotsAfter <= shotsBefore; i += 1) {
+        await sleep(280);
+        shotsAfter = await evaluate("Number(document.querySelector('.game-root')?.dataset.weaponShots ?? '0')");
+      }
+      if (shotsAfter > shotsBefore) {
+        await waitFor(ready, 'live-fire Ice Mine authored scene', 20_000);
+        actionBytes = await capture('android-p28g5-ice-mine-action.png');
+      }
+    } finally {
+      await touch('touchEnd', 510 + attempt, combatInput.fireX, combatInput.fireY);
+    }
+    if (shotsAfter <= shotsBefore) await sleep(400);
+  }
+  if (shotsAfter <= shotsBefore || actionBytes < 20_000) {
+    throw new Error('P28-G5 action screenshot requires real shots after touch FIRE: ' + shotsBefore + '->' + shotsAfter);
+  }
   const result = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     const d = canvas?.dataset ?? {};
@@ -260,7 +312,7 @@ try {
       || before === result.playerPosition || result.capturedRoute !== 'ice-mine' || result.artState !== 'ready' || result.premium !== 'ready'
     || !result.assetIds || result.fallbackObjects > 0 || result.authoredObjects !== result.mappedObjects
     || !result.tier || result.width <= 0 || result.height <= 0
-    || !(normalBytes > 20_000 && actionBytes > 20_000)) {
+    || !(shotsAfter > shotsBefore) || !(normalBytes > 20_000 && actionBytes > 20_000)) {
     throw new Error('P28-G5 actual Android visual proof incomplete: ' + JSON.stringify(result));
   }
   writeFileSync('android-p28g5-ice-mine.json', JSON.stringify({
@@ -268,6 +320,7 @@ try {
     normalScreenshot: 'android-p28g5-ice-mine-normal.png',
     actionScreenshot: 'android-p28g5-ice-mine-action.png',
     screenshotsBytes: [normalBytes, actionBytes], beforePosition: before,
+    actionInput: 'manual-aim+live-touch-fire', shotsBefore, shotsAfter,
     beforeAssetIds: beforeVisual.assetIds, beforeArtState: beforeVisual.artState,
     beforePremium: beforeVisual.premium, beforeIbl: beforeVisual.ibl, ...result,
   }, null, 2) + '\n');

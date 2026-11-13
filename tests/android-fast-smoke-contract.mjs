@@ -77,6 +77,9 @@ for (const marker of [
   'contentRoot.setBackgroundColor(Color.rgb(5, 9, 10))',
   'getWindow().setNavigationBarContrastEnforced(false)',
   'getWindow().setStatusBarContrastEnforced(false)',
+  'new ActivityManager.TaskDescription.Builder()',
+  '.setBackgroundColor(Color.rgb(5, 9, 10))',
+  '.setPrimaryColor(Color.rgb(5, 9, 10))',
   'View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION',
   'View.SYSTEM_UI_FLAG_HIDE_NAVIGATION',
   'View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY',
@@ -89,6 +92,28 @@ for (const marker of [
   'smallestWidthDp >= LARGE_SCREEN_SMALLEST_WIDTH_DP',
   'phoneLandscape=sensor largeScreen=adaptive-resizable thresholdDp=600 appCategory=game',
 ]) requireText(androidConfigurator, marker, 'P25-B Android configurator');
+// The Pixel 7 Pro landscape camera-cutout surface must be configured before
+// Capacitor measures/attaches its WebView, not only after first layout.
+// The native theme is attached before AppCompat or Capacitor inflation, so
+// display-cutout policy must be an idempotent styles.xml operation as well
+// as runtime Window flags. A late-only fix still leaves 144 white pixels.
+for (const marker of [
+  "const themePath = resolve('android/app/src/main/res/values/styles.xml');",
+  "['android:windowLayoutInDisplayCutoutMode', 'always']",
+  "['android:windowBackground', '#05090a']",
+  "if (themedCount < 2)",
+]) requireText(androidConfigurator, marker, 'Android full-bleed theme before WebView');
+const nativeOnCreate = androidConfigurator.slice(androidConfigurator.indexOf('public void onCreate(Bundle savedInstanceState)'));
+const cutoutSetup = nativeOnCreate.indexOf('configureWindowCutoutBeforeContent();');
+const capacitorCreate = nativeOnCreate.indexOf('super.onCreate(savedInstanceState);');
+const postCreateViewSetup = nativeOnCreate.indexOf('configureGameWindow();');
+if (!(cutoutSetup >= 0 && cutoutSetup < capacitorCreate &&
+      postCreateViewSetup > capacitorCreate &&
+      androidConfigurator.includes('private void configureWindowCutoutBeforeContent() {') &&
+      androidConfigurator.includes('WindowCompat.setDecorFitsSystemWindows(getWindow(), false);'))) {
+  throw new Error('Set native cutout bounds before WebView creation but never access AppCompat views before super.onCreate');
+}
+
 
 for (const marker of [
   'adb shell wm size 1600x2560',
@@ -130,6 +155,10 @@ for (const marker of [
   'if (repeatableRegressionOnly) {',
   'ANDROID_FAST_MANAGEMENT_TOUCH_PASS',
   'ANDROID_FAST_INTERACTION_TOUCH_PASS',
+  'const interactionDeadline = Date.now() + 120_000;',
+  "fastSmoke ? 40_000 : 20_000",
+  "await dispatchTouch('touchStart', interact.x, interact.y",
+  'after.objectiveProgress > beforeProgress',
   'ANDROID_FAST_FIRE_TOUCH_PASS',
   'ANDROID_FAST_TOUCH_PASS',
   'ANDROID_FAST_RUNTIME_PASS',

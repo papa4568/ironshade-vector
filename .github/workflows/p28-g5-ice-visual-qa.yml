@@ -70,6 +70,14 @@ jobs:
                 echo "P28G5_EXACT_APK_PRODUCER_READY sha=$CANDIDATE_SHA run=$run_id"
                 exit 0
               fi
+              # Fail promptly when the upstream exact-SHA artifact producer has
+              # already reached a terminal non-success result. A missing APK
+              # remains a blocking failure, never a visual-review waiver.
+              producer_failure="$(gh api "/repos/$REPO/actions/runs/$run_id/jobs?filter=latest&per_page=100" --jq '[.jobs[] | select(.name == "Candidate Build and Full Verification" or .name == "Android PR / Android PR APK") | select(.conclusion != null and .conclusion != "success") | (.name + "=" + .conclusion)] | join(", ")')"
+              if [[ -n "$producer_failure" ]]; then
+                echo "Exact-candidate APK producer failed: $producer_failure (sha=$CANDIDATE_SHA run=$run_id)" >&2
+                exit 1
+              fi
               status="$(gh api "/repos/$REPO/actions/runs/$run_id" --jq '.status')"
               if [[ "$status" == completed ]]; then
                 echo "Producer completed without exact candidate APK" >&2
@@ -119,7 +127,12 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh && bash tools/android-p28g5-ice-capture.sh'
+          # The independent authoritative PR candidate Android API35/API36
+          # jobs still run the full fast smoke. This supplemental Ice Mine
+          # visual consumer launches the checksum-verified exact candidate,
+          # captures live touch-FIRE gameplay and applies unchanged strict
+          # asset/pixel, display, and crash assertions.
+          script: bash tools/android-p28g5-ice-capture.sh
 
       - name: Publish exact-head visual proof
         id: visual_evidence_upload
@@ -136,6 +149,7 @@ jobs:
             android-p28g5-ice-mine-pixel-report.json
             android-p28g5-ice-mine-logcat.txt
             android-p28g5-ice-mine-activity.txt
+            android-p28g5-capture-attempt.log
             android-fast-logcat.txt
             android-fast-smoke.png
           if-no-files-found: warn

@@ -10,8 +10,24 @@ import {
   momentumExchangeWashMode,
 } from '../src/game/babylonMomentumExchangePresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
+import { refineryLongGateModules, refineryWorldObjectFamilyKey } from '../src/game/refineryWorldObjectAssets';
 import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
 import { auditMomentumVisualProvenance } from '../tools/p28g7-momentum-provenance.mjs';
+
+// The real G7 pressure gate has a 28x760-unit collision footprint.
+const pressureGate = { kind: 'cover' as const, w: 28, h: 760 };
+const modules = refineryLongGateModules(pressureGate);
+assert.equal(modules.count, 7);
+assert.equal(refineryWorldObjectFamilyKey(pressureGate), 'wallPanel');
+assert.ok(modules.scaleX > 1 && modules.scaleX < 2
+  && modules.scaleZ > 0.6 && modules.scaleZ < 1
+  && modules.segmentLength > 2 && modules.segmentLength < 2.4,
+  'G7 authored gate needs seven bounded metal sections, not an 18.5x stretched crate');
+assert.equal(refineryLongGateModules({ kind: 'cover', w: 120, h: 180 }).count, 1);
+assert.equal(refineryWorldObjectFamilyKey({ kind: 'cover', w: 120, h: 180 }), 'crate');
+assert.equal(refineryLongGateModules({ kind: 'cover', w: 28, h: 280 }).count, 1);
+assert.equal(refineryLongGateModules({ kind: 'cover', w: 0, h: 0 }).count, 1);
+assert.equal(refineryLongGateModules({ kind: 'breachPlate', w: 28, h: 760 }).count, 1);
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonMomentumExchangePresentation.ts', 'utf8');
@@ -151,13 +167,100 @@ for (const premiumDetail of [
 assert.ok(presentation.includes("new CubeTexture('/assets/environments/refinery-prefiltered.env'"));
 assert.ok(presentation.includes('babylonRouteMarkingWidth(route.kind)'));
 assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
+assert.ok(presentation.includes("0x10171b, 0.06, 0.98")
+  && presentation.includes("route.kind === 'primary' ? 0.055 : 0.038"),
+  'Momentum floor guides must be narrow dark non-mirror guides at Android zoom');
+assert.ok(presentation.includes("this.laminationAlbedo = new DynamicTexture('p28-g9-machined-flywheel-albedo'")
+  && presentation.includes("this.laminationNormal = new DynamicTexture('p28-g9-machined-flywheel-normal'")
+  && presentation.includes('edgeMetal.bumpTexture = this.laminationNormal;')
+  && presentation.includes('this.laminationNormal.dispose();'),
+  'exposed rotor laminations must have actual turned-metal relief with disposed GPU textures');
+
+assert.ok(presentation.includes("navigation.routes.filter(route => route.kind === 'primary').forEach")
+  && presentation.includes('this.readabilityLight.range = 14.2;')
+  && presentation.includes('this.hemisphere.intensity = 0.43')
+  && presentation.includes('p28-g9-capture-drum-copper-retainer-ring-')
+  && presentation.includes('tooth % 3 === 0 ? magneticCopper : edgeMetal'),
+  'G7 real Android must preserve route topology but avoid cyan guide clutter and expose readable magnetic hardware');
+
+assert.ok(presentation.includes('p28-g9-rail-rolling-shoe-')
+  && presentation.includes('p28-g9-rail-magnetic-roller-')
+  && presentation.includes('roller.parent = rail;')
+  && babylon.includes('const momentumWideFraming = this.canvas.dataset.babylonScenario')
+  && babylon.includes('momentumWideFraming ? (this.coarse ? 17.0 : 15.2)'),
+  'Momentum must show physical copper-bearing carriers and preserve near-side actors in the camera');
+
 const g7Hud = readFileSync('src/combatHudGlance.css', 'utf8');
+assert.ok(g7Hud.includes('left: 28%;') && g7Hud.includes('width: min(12vw, 11rem);'),
+  'narrow Momentum tactical roof must not collide with centered target HP panel');
+assert.ok(presentation.includes("worldW * x, -0.02, worldH * z, length, 0.06, 0.16")
+  && presentation.includes("carrier.position.set(0, 0.04, side * 0.15);")
+  && babylon.includes("momentum-exchange' && !narrow ? 8.4 : 0;"),
+  'G7 transfer track must be deck-recessed and full flywheel framed outside touch controls');
+assert.ok(presentation.includes('Math.sin(angle) * 2.53, 0.58, Math.cos(angle) * 2.53')
+  && presentation.includes('toothMesh.parent = rotor;')
+  && babylon.includes("momentumContrast ? 0.77 : 0.06)")
+  && babylon.includes("momentumContrast ? colorFromHex(0xa8d5e1).scale(0.30)")
+  && babylon.includes("momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.42 : 0;"),
+  'magnetic teeth must sit on the moving rotor and actual G7 fighters must contrast with the deck');
+assert.ok(presentation.includes("p28-g9-recessed-transfer-rail-steel")
+  && presentation.includes("'p27-c8-transfer-rail-' + index, railMetal")
+  && presentation.includes("railMetal, rail.position.x"),
+  'real rail and carriers must be dark metal, not pale ribbons across combat');
+assert.ok(presentation.includes("0x142a32, 0.11, 0.94")
+  && presentation.includes("colorFromHex(0x28505c).scale(0.010 * routePulse)"),
+  'Momentum route inlays must remain visually subordinate to combat telegraphs');
+
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .boss-hud.boss-hud--top'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane.event .combat-alert b'));
+assert.ok(g7Hud.includes('top: max(.45rem, env(safe-area-inset-top));'),
+  'route-specific tactical notice must move away from the live flywheel field');
+const g7RoofRules = g7Hud.slice(g7Hud.indexOf('/* P28-G9 real Android proof:'));
+assert.ok(g7RoofRules.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane.event > .combat-alert {')
+  && g7RoofRules.includes('display: block;')
+  && g7RoofRules.includes('-webkit-line-clamp: 2;')
+  && g7RoofRules.includes('overflow: hidden;'),
+  'real G7 tactical notice must stack the label and limit the warning to two legible lines');
+const g7CanvasSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
+assert.ok(g7CanvasSource.includes("message.startsWith('CISLUNAR MOMENTUM EXCHANGE')")
+  && g7CanvasSource.includes("message.startsWith('COUNTERMASS MOBILITY')")
+  && g7CanvasSource.includes("return 'LATERAL VECTOR BURST'"),
+  'real director messages must use concise roof captions without changing their accessible text');
+assert.ok(presentation.includes('p28-g9-momentum-machined-lamination-')
+  && presentation.includes('0.42, 0.24, 0.54'),
+  'Momentum hardware must have fine real laminations rather than chunky flux cubes');
+assert.ok(presentation.includes("'p28-g7-drum-machined-retainer-jaw-' + id + '-' + side")
+  && presentation.includes("'p28-g7-drum-retainer-lockpin-' + id + '-' + side")
+  && presentation.includes('magneticCopper, side * 0.83, 1.41, 0.49, 0.48, 0.42, 0.60')
+  && babylon.includes("const momentumNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 2.8 : 0;")
+  && (babylon.split('momentumNearThreatLookAhead + iceMineNearThreatLookAhead').length - 1) === 4,
+  'G7 actual-rotor flux teeth, physical capture retainer locks and near-side actor framing must remain readable');
+assert.ok(babylon.includes("momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.42 : 0"),
+  'Momentum operator must remain readable against dark industrial flooring');
 assert.ok(babylon.includes("const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(babylon.includes("const momentumContrast = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(readFileSync('src/game/babylonWorldPresentation.ts', 'utf8')
-  .includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';"));
+  .includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n      || mission.location === 'parallax-array';"));
+const gateWorld = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
+assert.ok(gateWorld.includes('p28-g7-authored-pressure-gate-module-')
+  && gateWorld.includes('for (let index = 0; index < modules.count; index++)')
+  && gateWorld.includes('segment.position.set(0, 0, (index + 0.5 - modules.count / 2) * modules.segmentLength)')
+  && gateWorld.includes('for (const instance of visual.extraInstances) instance.release()')
+  && gateWorld.includes('for (const instance of instances) instance.release()')
+  && gateWorld.includes('authoredWorld.mount.scaling.set(1, durabilityScale, 1)'),
+  'G7 long gate must use real modular GLBs and release each cache owner');
+
+
+const runningShoeRollers = presentation.slice(
+  presentation.indexOf('for (const station of [-2.3, 0, 2.3])'),
+  presentation.indexOf('this.transferRails.push(rail);')
+);
+assert.ok(runningShoeRollers.includes('for (const side of [-1, 1])')
+  && runningShoeRollers.includes('roller.material = side < 0 ? structural : magneticCopper;'),
+  'all four rails must pair shared-KTX2 bare-metal running rollers with copper rollers without changing geometry');
+assert.ok(readFileSync('tools/android-p28g7-momentum-capture.mjs', 'utf8')
+  .includes('Number(d.momentumPremiumBindings || 0) >= 100'),
+  'G7 live readiness must still enforce at least 100 premium PBR mesh bindings');
 
 const validG7Proof = {
   capturedRoute: 'momentum-exchange', backend: 'webgl2', tier: 'high',
@@ -181,6 +284,7 @@ for (const [label, edit, reason] of [
   ['no-reentry', { mapReentry: '' }, 'missing-map-reentry-proof'],
   ['unmapped', { fallbackObjects: 1 }, 'procedural-box-or-unresolved-world-slot'],
   ['untextured', { premiumBindings: 3 }, 'missing-or-unready-premium-material'],
+  ['under-premium-threshold', { premiumBindings: 99 }, 'missing-or-unready-premium-material'],
   ['wide-ribbon', { routeMaxWidth: 0.48 }, 'oversized-route-material'],
   ['wash-slab', { washFootprint: 0.16 }, 'oversized-countermass-wash'],
   ['missing-rims', { surfaceDetail: 'flux-tooth:48' }, 'missing-transfer-depth-or-grounding'],
@@ -196,6 +300,16 @@ for (const [label, edit, reason] of [
 
 const renderWorldSource = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
 const attackSource = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
+// Shared flywheel presentation is affected by Parallax actor-visibility work:
+ // protect the actual enemy and warning silhouettes behind rotating machinery.
+assert.ok(presentation.includes("'p28-g9-momentum-live-hostile-locator-'")
+  && presentation.includes("enemy.telegraph > 0 ? 1.0 : 0.70")
+  && presentation.includes("rig.rotor.visibility = 1;")
+  && presentation.includes("rig.hub.visibility = 1;")
+  && !presentation.includes("cutawayMeshes")
+  && presentation.includes("if (!enemy.active || enemy.dead) continue;")
+  && presentation.includes("this.hostileContactMaterial.dispose();"),
+  'G7 live hostile markers and localized optical cutaway must not fake attacks or leak meshes');
 assert.ok(presentation.includes('spoke.rotation.y = spokeRotation'));
 assert.ok(presentation.includes('ring.position.y = 0.36 + ringIndex * 0.19'));
 assert.ok(presentation.includes('toothMesh.rotation.y = angle'));
@@ -204,20 +318,21 @@ assert.ok(presentation.includes('laminated-rim:9+flux-tooth:48'));
 assert.ok(renderWorldSource.includes("this.canvas.dataset.babylonScenario === 'momentum-exchange'"));
 assert.ok(renderWorldSource.includes("hazard.kind === 'vectorWash'"));
 assert.ok(renderWorldSource.includes('momentumWash ? 0xf0a876'));
-assert.ok(attackSource.includes('visual.sideA.material = momentumWarning || cryoWarning ? visual.laneMaterial : visual.attackMaterial'));
-assert.ok(attackSource.includes('tick.setEnabled(annexWarning || momentumWarning || cryoWarning)'));
+assert.ok(attackSource.includes('visual.sideA.material = annexWarning || momentumWarning || cryoWarning || parallaxWarning || iceWarning ? visual.laneMaterial : visual.attackMaterial'));
+assert.ok(attackSource.includes('tick.setEnabled(annexWarning || momentumWarning || cryoWarning || parallaxWarning)'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .target-readout'));
 assert.ok(g7Hud.includes('.game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"])'));
 assert.ok(g7Hud.includes('left: 43%'));
 assert.ok(presentation.includes("const magneticCopper = pbr(scene, 'p28-g7-exposed-magnetic-copper'"));
-assert.ok(presentation.includes('tooth % 4 === 0 ? edgeMetal : tooth % 4 === 1 ? magneticCopper : structural'));
-// 24 of the 48 indexed flux shoes now use the actual shared bare-metal PBR.
-// This adds premium bindings without lowering the live >=100 acceptance gate.
+assert.ok(presentation.includes('tooth % 3 === 0 ? magneticCopper : edgeMetal'),
+  'actual flywheel flux shoes must alternate copper and exposed machined faces');
+// The real rail running-shoe roller pairs add 12 shipped bare-metal KTX2 bindings
+// without losing exposed copper contrast or lowering the live >=100 acceptance gate.
 assert.ok(presentation.includes("const shared = new Set(this.premiumSurfaces.materials.values())"));
 assert.ok(presentation.includes('ring.material = ringIndex === 1 ? magneticCopper : edgeMetal'));
-assert.ok(renderWorldSource.includes('visual.ringMaterial.emissiveColor = color.scale(momentumHazard ? 0.34 : 1)'));
+assert.ok(renderWorldSource.includes('visual.ringMaterial.emissiveColor = color.scale(parallaxShearDuplicate ? 0.12 : parallaxGravity ? 0.24 : momentumHazard ? 0.34 : 1)'));
 assert.ok(renderWorldSource.includes('momentumHazard && hazard.kind ==='));
-assert.ok(attackSource.includes('(momentumWarning ? 0.46 : cryoWarning ? 0.60 : 0.66)'));
+assert.ok(attackSource.includes('(momentumWarning ? 0.46 : parallaxWarning ? 0.36 : cryoWarning ? 0.60 : 0.66)'));
 assert.ok(babylon.includes('const momentumTouchLanePan = this.canvas.dataset.babylonScenario ==='));
 
 assert.ok(babylon.includes("const momentumCombatPan = this.canvas.dataset.babylonScenario === 'momentum-exchange'"));

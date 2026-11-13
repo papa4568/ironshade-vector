@@ -11,6 +11,7 @@ import {
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 import { BABYLON_ROUTE_MARKING_WIDTHS } from '../src/game/babylonRouteMarkings';
 import { auditLatticeVisualProvenance } from '../tools/p28g6-lattice-provenance.mjs';
+import { compactTacticalHazardCue } from '../src/game/compactTacticalCue';
 
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const world = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
@@ -21,6 +22,15 @@ const director = readFileSync('src/game/director.ts', 'utf8');
 const smoke = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
 const workflow = readFileSync('.github/workflows/browser-e2e.yml', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
+
+// The live director can emit shared hazards beyond authored annex mission
+// cues. The visible compact banner must retain both cause and consequence.
+assert.equal(compactTacticalHazardCue('DIRECTOR EVENT // LIFE-SUPPORT PURGE // TEMPORARY ATMOSPHERE DEFICIT'),
+  'LIFE-SUPPORT PURGE // TEMPORARY ATMOSPHERE DEFICIT');
+assert.equal(compactTacticalHazardCue('TACTICAL ALERT // DAMAGED GRID // CLEAR THE ARC'),
+  'DAMAGED GRID // CLEAR THE ARC');
+assert.equal(compactTacticalHazardCue('DIRECTOR EVENT'), 'DIRECTOR EVENT');
+
 
 assert.deepEqual(BABYLON_LATTICE_ANNEX_IDENTITY, {
   silhouette: 'reference-pylons',
@@ -134,6 +144,13 @@ const dangerSource = readFileSync('src/game/babylonEnemyTelegraphs.ts', 'utf8');
 assert.ok(dangerSource.includes('p28-g6-attack-warning-tick-'));
 assert.ok(dangerSource.includes("this.canvas.dataset.babylonScenario === 'lattice-annex'"));
 assert.ok(dangerSource.includes('for (const tick of visual.annexAttackTicks) tick.setEnabled(false)'));
+assert.ok(dangerSource.includes("const annexWarning = this.canvas.dataset.babylonScenario === 'lattice-annex';")
+  && dangerSource.includes('visual.laneMaterial.alpha = annexWarning')
+  && dangerSource.includes('(annexWarning ? 0.64 : cryoWarning ? 0.68')
+  && dangerSource.includes('visual.sideA.material = annexWarning || momentumWarning')
+  && dangerSource.includes('tick.setEnabled(annexWarning || momentumWarning'),
+  'Lattice Annex keeps full threat reach, source rings and attack ticks but not opaque amber bands');
+
 const actorSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 assert.ok(actorSource.includes("const annexContrast = this.canvas.dataset.babylonScenario === 'lattice-annex'"));
 assert.ok(actorSource.includes("const annexActorLift = this.canvas.dataset.babylonScenario === 'lattice-annex'"));
@@ -141,7 +158,7 @@ assert.ok(presentation.includes('babylonRouteMarkingWidth(route.kind)'));
 assert.ok(BABYLON_ROUTE_MARKING_WIDTHS.primary <= 0.20);
 assert.ok(presentation.includes("this.canvas.dataset.babylonRouteMarkingMaxWidth = String(BABYLON_ROUTE_MARKING_WIDTHS.primary)"));
 assert.ok(world.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex'"));
-assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';"));
+assert.ok(world.includes("|| mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'\n      || mission.location === 'parallax-array';"));
 assert.ok(readiness.includes("|| mission.location === 'ice-mine' || mission.location === 'lattice-annex'"));
 
 
@@ -234,7 +251,38 @@ for (const detail of [
 const g6Hud = readFileSync('src/combatHudGlance.css', 'utf8');
 const g6Controls = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 assert.ok(g6Controls.includes('data-location={activeMission.location}'));
+assert.ok(g6Controls.includes("if (message.startsWith('DRONE ESCORT')) return 'DRONES INBOUND // ISOLATE GRID';"),
+  'G6 combat alert must distinguish enemy drone deployment from the simultaneous grid-isolation objective');
+assert.ok(g6Controls.includes("message.startsWith('KHEPRI SURVEY ANNEX')")
+  && g6Controls.includes("message.startsWith('DRONE ESCORT')")
+  && g6Controls.includes("return compactTacticalHazardCue(message);")
+  && g6Controls.includes('aria-label={hud.eventT > 0 && !bossTransitionCue'),
+  'the real director event remains accessible while the landscape HUD displays short commands');
+assert.ok(presentation.includes("this.ceramicAlbedo = new DynamicTexture('p28-g9-lattice-survey-ceramic-albedo'")
+  && presentation.includes("this.ceramicNormal = new DynamicTexture('p28-g9-lattice-survey-ceramic-normal'")
+  && presentation.includes("ceramic.bumpTexture = this.ceramicNormal;")
+  && presentation.includes("this.ceramicNormal.dispose();"),
+  'Annex pillar ceramics must be physically rough and patterned instead of white flat-shaded slabs');
+
 assert.ok(g6Hud.includes('.game-root[data-location="lattice-annex"] .touch-ability-fan .ability-0'));
 assert.ok(g6Hud.includes('bottom: 172px;'));
+assert.ok(g6Controls.includes("activeMission.location === 'lattice-annex'")
+  && g6Controls.includes("message.startsWith('KHEPRI SURVEY ANNEX')")
+  && g6Controls.includes("message.startsWith('DRONE ESCORT')")
+  && g6Controls.includes("return compactTacticalHazardCue(message);"),
+  'G6 long director narrative must use a short actionable in-combat event while preserving original state');
+assert.ok(g6Hud.includes('width: min(29vw, 28rem);')
+  && g6Hud.includes('-webkit-line-clamp: 2;')
+  && presentation.includes("this.ceramicAlbedo = new DynamicTexture('p28-g9-lattice-survey-ceramic-albedo'")
+  && presentation.includes("this.ceramicNormal = new DynamicTexture('p28-g9-lattice-survey-ceramic-normal'")
+  && presentation.includes('ceramic.bumpTexture = this.ceramicNormal;')
+  && presentation.includes('this.ceramicNormal.dispose();'),
+  'G6 mobile HUD must remain compact and survey ceramic must have genuine textured surface relief');
+assert.ok(g6Hud.includes('.game-root[data-location="lattice-annex"] .transient-alert-lane:not([data-presentation="deployment"])')
+  && g6Hud.includes('width: min(35vw, 35rem);')
+  && g6Hud.includes('.game-root[data-location="lattice-annex"] .target-readout header b')
+  && g6Hud.includes('overflow-wrap: anywhere;'),
+  'real G6 tactical and target identities must fit two lines rather than ellipsize on Android landscape');
+
 
 console.log('BABYLON_LATTICE_ANNEX_PASS identity=reference-pylons|survey-ceramic|metrology-teal|calibration-service routes=' + navigation.routes.length + ' landmarks=' + navigation.landmarks.map(item => item.label).join('|') + ' calibration=10s-near-zero-g>20s-shutter-index boss=veyra-senn');

@@ -20,8 +20,50 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
+// Cross-location exact APK review showed the Ice Mine assist target
+// (Long Arc Jury-Rig Foreman) truncating its full identity at phone zoom.
+// This source contract binds the fix to the informational HUD only.
+const combatHud = read('src/combatHudGlance.css');
+assert(combatHud.includes('.game-root[data-location="ice-mine"] .target-readout {')
+  && combatHud.includes('width: min(28vw, 22rem);')
+  && combatHud.includes('.game-root[data-location="ice-mine"] .target-readout header b {')
+  && combatHud.includes('white-space: normal;')
+  && combatHud.includes('text-overflow: clip;')
+  && combatHud.includes('overflow-wrap: anywhere;'),
+  'G5 target identification must not ellipsize the Foreman on landscape Android');
 const renderer = read('src/game/babylonCombatRenderer.ts');
+assert(renderer.includes("const iceMineNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.2 : 0"),
+  'Ice Mine near-side live hostiles must stay above bottom-edge gameplay banner');
+// Only match the actual camera eye/aim expressions. A new route-local offset
+// is allowed between the Ice and Cryo terms; each existing offset must still
+// translate both coordinates of the eye AND target, with no world-state change.
+const cameraEyeStart = renderer.indexOf('this.camera.position.set(px + cameraOffset');
+const cameraTargetStart = renderer.indexOf('this.cameraTarget.set(', cameraEyeStart);
+const cameraApplyStart = renderer.indexOf('this.camera.setTarget(this.cameraTarget);', cameraTargetStart);
+assert(cameraEyeStart !== -1 && cameraTargetStart > cameraEyeStart && cameraApplyStart > cameraTargetStart,
+  'Ice/Cryo visual regression must inspect the actual camera eye and target');
+const cameraEye = renderer.slice(cameraEyeStart, cameraTargetStart);
+const cameraAim = renderer.slice(cameraTargetStart, cameraApplyStart);
+assert(renderer.includes("const cryoNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 4.2 : 0;"),
+  'Cryo near-threat look-ahead must remain route-scoped');
+for (const routeOffset of ['iceMineNearThreatLookAhead', 'cryoNearThreatLookAhead']) {
+  const count = (text: string) => text.split(' + ' + routeOffset).length - 1;
+  assert(count(cameraEye) === 2 && count(cameraAim) === 2,
+    'Ice/Cryo camera offset must translate both eye and target axes: ' + routeOffset);
+}
+assert(renderer.includes("const iceContrast = this.canvas.dataset.babylonScenario === 'ice-mine'")
+  && renderer.includes("iceContrast ? colorFromHex(0x8ccfe4).scale(0.38)")
+  && renderer.includes("iceMineTouchLanePan = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.4 : 0")
+  && renderer.includes("iceMineNearThreatLookAhead - iceMineTouchLanePan")
+  && renderer.includes("iceMineNearThreatLookAhead + iceMineTouchLanePan"),
+  'Ice Mine real hostile mesh contrast and touch-lane framing must remain route-local');
+const telegraphs = read('src/game/babylonEnemyTelegraphs.ts');
 const ice = read('src/game/babylonIceMinePresentation.ts');
+assert(telegraphs.includes("const iceWarning = this.canvas.dataset.babylonScenario === 'ice-mine'")
+  && telegraphs.includes("clamp01(0.065 + Math.sin(state.time * 10 + enemy.id * 0.73) * 0.012)")
+  && telegraphs.includes("parallaxWarning || iceWarning ? visual.laneMaterial")
+  && telegraphs.includes("iceWarning ? 0.48 : 1"),
+  'P28-G9 sibling proof must preserve Ice Mine danger rings without opaque salmon lane slabs');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');
 const workflow = read('.github/workflows/browser-e2e.yml');
@@ -191,6 +233,17 @@ const proof = {
   fractureLanguage: 'shared-hazards+brittle-support-fracture',
 };
 assert(auditAuthoredVisualProvenance(proof).valid, 'P28-G5 legitimate Ice Mine provenance must pass.');
+assert(auditAuthoredVisualProvenance({
+  ...proof,
+  beforeAssetIds: 'refinery-pipe-rack-lod0,' + proof.assetIds,
+}).valid, 'Camera-culling an initially visible authored asset is not late asset pop-in.');
+const introducedLod = auditAuthoredVisualProvenance({
+  ...proof,
+  beforeAssetIds: 'refinery-pipe-rack-lod0',
+});
+assert(!introducedLod.valid && introducedLod.problems.includes('late-asset-pop-in'),
+  'Newly visible authored assets absent from the ready-before view must fail G5 provenance.');
+
 for (const [name, change, expected] of [
   ['wrong-route', {capturedRoute: 'jovian-harvester'}, 'wrong-map-or-backend'],
   ['fallback', {fallbackObjects: 1}, 'procedural-box-or-unresolved-world-slot'],
@@ -235,6 +288,9 @@ assert(
     && capture.includes("d.babylonSharedWorldArtState === 'ready'")
     && capture.includes("d.missionVisualReadiness === 'ready'")
     && capture.includes("Number(d.babylonRouteMarkingMaxWidth) <= 0.20")
+    && capture.includes("actionInput: 'manual-aim+live-touch-fire'")
+    && capture.includes('shotsAfter > shotsBefore')
+    && capture.includes("Input.dispatchTouchEvent")
     && shell.includes('android-p28g5-ice-mine-normal.png')
     && shell.includes('if [[ ! -s android-p28g5-ice-mine-device.png ]]; then')
     && shell.includes('mv "$diagnostic_frame" android-p28g5-ice-mine-device.png')

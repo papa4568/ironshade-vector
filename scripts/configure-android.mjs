@@ -4,8 +4,9 @@ import { resolve } from 'node:path';
 const manifestPath = resolve('android/app/src/main/AndroidManifest.xml');
 const activityPath = resolve('android/app/src/main/java/app/ironshade/vector/MainActivity.java');
 const appGradlePath = resolve('android/app/build.gradle');
+const themePath = resolve('android/app/src/main/res/values/styles.xml');
 
-for (const requiredPath of [manifestPath, activityPath, appGradlePath]) {
+for (const requiredPath of [manifestPath, activityPath, appGradlePath, themePath]) {
   if (!existsSync(requiredPath)) {
     throw new Error('Android platform has not been generated. Run npx cap add android first.');
   }
@@ -59,6 +60,33 @@ activityTag = upsertAttribute(activityTag, 'android:configChanges', configChange
 manifest = manifest.replace(activityPattern, activityTag);
 writeFileSync(manifestPath, manifest);
 
+// The theme is installed before MainActivity.onCreate. Android's display
+// cutout protection can paint a 144px white region before an activity gets a
+// chance to apply immersive flags. Give every active Capacitor game theme the
+// intended full-bleed policy and opaque backing in the theme itself.
+let themes = readFileSync(themePath, 'utf8');
+let themedCount = 0;
+themes = themes.replace(
+  /(<style\s+name="AppTheme(?:\.NoActionBar)?"[^>]*>)([\s\S]*?)(<\/style>)/g,
+  (_match, start, content, end) => {
+    themedCount++;
+    const entries = [
+      ['android:windowLayoutInDisplayCutoutMode', 'always'],
+      ['android:windowBackground', '#05090a'],
+      ['android:navigationBarColor', '#05090a'],
+      ['android:statusBarColor', '#05090a'],
+    ];
+    for (const [name, value] of entries) {
+      const item = new RegExp('<item\\s+name="' + name + '"[^>]*>[\\s\\S]*?<\\/item>');
+      const markup = '<item name="' + name + '">' + value + '</item>';
+      content = item.test(content) ? content.replace(item, markup) : content + '\n        ' + markup;
+    }
+    return start + content + end;
+  },
+);
+if (themedCount < 2) throw new Error('Expected Capacitor AppTheme and AppTheme.NoActionBar to configure cutout policy');
+writeFileSync(themePath, themes);
+
 let appGradle = readFileSync(appGradlePath, 'utf8');
 const versionCodeRaw = process.env.ANDROID_VERSION_CODE ?? '1';
 const versionCode = Number.parseInt(versionCodeRaw, 10);
@@ -100,6 +128,7 @@ writeFileSync(appGradlePath, appGradle);
 
 writeFileSync(activityPath, `package app.ironshade.vector;
 
+import android.app.ActivityManager;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.graphics.Color;
@@ -120,8 +149,22 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Configure the display cutout BEFORE Capacitor installs its WebView.
+        // Otherwise Android can retain a white, 144px landscape inset even
+        // after immersive mode is reasserted during an in-app navigation.
+        configureWindowCutoutBeforeContent();
         super.onCreate(savedInstanceState);
         configureGameWindow();
+        // Android uses TaskDescription.backgroundColor for uncovered task/cutout
+        // regions. The generated Capacitor default can be #FAFAFA, producing
+        // a persistent 144px white edge on the Pixel 7 Pro in landscape.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            setTaskDescription(new ActivityManager.TaskDescription.Builder()
+                .setLabel("Ironshade Vector")
+                .setBackgroundColor(Color.rgb(5, 9, 10))
+                .setPrimaryColor(Color.rgb(5, 9, 10))
+                .build());
+        }
         configureGameOrientation();
         configureGameWebView();
         enterImmersiveMode();
@@ -157,6 +200,20 @@ public class MainActivity extends BridgeActivity {
         if (getRequestedOrientation() != requestedOrientation) {
             setRequestedOrientation(requestedOrientation);
         }
+    }
+
+    private void configureWindowCutoutBeforeContent() {
+        // Only Window APIs are safe before AppCompatActivity.onCreate.
+        // findViewById() triggers AppCompat subdecor/theme initialization and
+        // crashes the activity if called before super.onCreate().
+        WindowManager.LayoutParams params = getWindow().getAttributes();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        getWindow().setAttributes(params);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
     }
 
     private void configureGameWindow() {

@@ -222,6 +222,12 @@ try {
   const beforeVisual = await evaluate(`(() => {
     const d = document.querySelector('canvas')?.dataset ?? {};
     return { assetIds: d.babylonSharedWorldAssets ?? '',
+      objectAssets: JSON.parse(d.babylonSharedWorldObjectAssets ?? '[]'),
+      mappedObjects: Number(d.babylonSharedWorldMappedCount || 0),
+      authoredObjects: Number(d.babylonSharedWorldAuthoredCount || 0),
+      fallbackObjects: Number(d.babylonSharedWorldFallbackCount || 0),
+      pendingCount: Number(d.babylonSharedWorldPendingCount || 0),
+      failedCount: Number(d.babylonSharedWorldFailedCount || 0),
       artState: d.babylonSharedWorldArtState ?? '',
       premium: d.jovianPremiumAssetState ?? '', ibl: d.environmentIbl ?? '' };
   })()`);
@@ -246,6 +252,7 @@ try {
       authoredObjects: Number(d.babylonSharedWorldAuthoredCount || 0),
       fallbackObjects: Number(d.babylonSharedWorldFallbackCount || 0),
       assetIds: d.babylonSharedWorldAssets ?? '',
+      objectAssets: JSON.parse(d.babylonSharedWorldObjectAssets ?? '[]'),
       artState: d.babylonSharedWorldArtState ?? '',
       premium: d.jovianPremiumAssetState ?? '', premiumBindings: Number(d.jovianPremiumBindings || 0),
       ibl: d.environmentIbl ?? '', groundProps: Number(d.jovianGroundedProps || 0),
@@ -268,7 +275,12 @@ try {
     normalScreenshot: 'android-p28g4-jovian-harvester-normal.png',
     actionScreenshot: 'android-p28g4-jovian-harvester-action.png',
     screenshotsBytes: [normalBytes, actionBytes], beforePosition: before,
-    beforeAssetIds: beforeVisual.assetIds, beforeArtState: beforeVisual.artState,
+    beforeAssetIds: beforeVisual.assetIds, beforeObjectAssets: beforeVisual.objectAssets,
+    beforeMappedObjects: beforeVisual.mappedObjects,
+    beforeAuthoredObjects: beforeVisual.authoredObjects,
+    beforeFallbackObjects: beforeVisual.fallbackObjects,
+    beforePendingCount: beforeVisual.pendingCount, beforeFailedCount: beforeVisual.failedCount,
+    beforeArtState: beforeVisual.artState,
     beforePremium: beforeVisual.premium, beforeIbl: beforeVisual.ibl, ...result,
   }, null, 2) + '\n');
   console.log('ANDROID_P28G4_JOVIAN_VISUAL_CAPTURE_PASS route=jovian-harvester authored=' + result.authoredObjects + ' width=' + result.routeMaxWidth + ' tier=' + result.tier);

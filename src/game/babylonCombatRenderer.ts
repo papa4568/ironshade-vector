@@ -491,7 +491,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private latticeAnnexPresentation: BabylonLatticeAnnexPresentation | null = null;
   private readonly momentumExchangePresentation: BabylonMomentumExchangePresentation;
   private readonly cryoReservePresentation: BabylonCryoReservePresentation;
-  private readonly parallaxArrayPresentation: BabylonParallaxArrayPresentation;
+  private parallaxArrayPresentation: BabylonParallaxArrayPresentation | null = null;
   private readonly perseidCapstonePresentation: BabylonPerseidCapstonePresentation;
   private readonly refineryLighting: BabylonRefineryLighting;
   private readonly refineryReflectionProbes: BabylonRefineryReflectionProbes;
@@ -549,7 +549,6 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.solarYardPresentation = new BabylonSolarYardPresentation(scene, canvas, qualityCoarse);
     this.momentumExchangePresentation = new BabylonMomentumExchangePresentation(scene, canvas, qualityCoarse);
     this.cryoReservePresentation = new BabylonCryoReservePresentation(scene, canvas, qualityCoarse);
-    this.parallaxArrayPresentation = new BabylonParallaxArrayPresentation(scene, canvas, qualityCoarse);
     this.perseidCapstonePresentation = new BabylonPerseidCapstonePresentation(scene, canvas, qualityCoarse);
     this.refineryLighting = new BabylonRefineryLighting(scene, canvas);
     this.refineryReflectionProbes = new BabylonRefineryReflectionProbes(scene, canvas);
@@ -746,7 +745,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.latticeAnnexPresentation?.release('scenario-exit');
       this.momentumExchangePresentation.release('scenario-exit');
       this.cryoReservePresentation.release('scenario-exit');
-      this.parallaxArrayPresentation.release('scenario-exit');
+      this.parallaxArrayPresentation?.release('scenario-exit');
       this.perseidCapstonePresentation.release('scenario-exit');
       this.k91CapstonePresentation.release('scenario-exit');
       this.orphelineCapstonePresentation.release('scenario-exit');
@@ -771,14 +770,14 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.latticeAnnexPresentation?.release('scenario-switch');
       this.momentumExchangePresentation.release('scenario-switch');
       this.cryoReservePresentation.release('scenario-switch');
-      this.parallaxArrayPresentation.release('scenario-switch');
+      this.parallaxArrayPresentation?.release('scenario-switch');
       this.ensureRefineryEnvironment(state, budget.detailScale);
     } else {
       this.refineryLighting.setEnabled(false);
       this.refineryPostProcessing.release('scenario-switch');
       this.releaseRefineryEnvironment('scenario-switch');
       if (!cryoReserveScenario) this.cryoReservePresentation.release('scenario-switch');
-      if (!parallaxArrayScenario) this.parallaxArrayPresentation.release('scenario-switch');
+      if (!parallaxArrayScenario) this.parallaxArrayPresentation?.release('scenario-switch');
       if (orbitalStationScenario) {
         this.damagedVesselPresentation.release('scenario-switch');
         this.spinHabitatPresentation.release('scenario-switch');
@@ -903,6 +902,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     } else if (cryoReserveScenario) {
       this.cryoReservePresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     } else {
+      // Creating every mission's high-detail KTX2/IBL scene on refinery boot
+      // competes with P28-F6's authored 19-asset cold-start cache. Allocate
+      // Parallax machinery only on the actual Parallax Array route; the
+      // object's release/dispose remain safe before first entry.
+      this.parallaxArrayPresentation ??= new BabylonParallaxArrayPresentation(this.scene, this.canvas, false);
       this.parallaxArrayPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     }
     if (mission.megastructure === 'generation-ship') {
@@ -1022,7 +1026,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.latticeAnnexPresentation?.dispose();
     this.momentumExchangePresentation.dispose();
     this.cryoReservePresentation.dispose();
-    this.parallaxArrayPresentation.dispose();
+    this.parallaxArrayPresentation?.dispose();
     this.perseidCapstonePresentation.dispose();
     this.k91CapstonePresentation.dispose();
     this.orphelineCapstonePresentation.dispose();
@@ -1446,10 +1450,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     // Keep the operator silhouette separate from the Annex's near-black
     // patterned floor; this is presentation-only and restores on map exit.
     const annexActorLift = this.canvas.dataset.babylonScenario === 'lattice-annex' ? 0.24 : 0;
-    const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.15 : 0;
+    const momentumActorLift = this.canvas.dataset.babylonScenario === 'momentum-exchange' ? 0.42 : 0;
     const cryoActorLift = this.canvas.dataset.babylonScenario === 'cryo-reserve' ? 0.34 : 0;
+    const parallaxActorLift = this.canvas.dataset.babylonScenario === 'parallax-array' ? 0.62 : 0;
     this.operatorAccentMaterial.emissiveColor.copyFrom(operatorColor.scale(
-      0.18 + annexActorLift + momentumActorLift + cryoActorLift + Math.min(0.35, heat * 0.16 + flash * 0.12),
+      0.18 + annexActorLift + momentumActorLift + cryoActorLift + parallaxActorLift + Math.min(0.35, heat * 0.16 + flash * 0.12),
     ));
     this.weaponAccentMaterial.diffuseColor.copyFrom(weaponColor.scale(0.5));
     this.weaponAccentMaterial.emissiveColor.copyFrom(weaponColor.scale(
@@ -1926,7 +1931,13 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         visual.headMaterial.alpha = 0.35;
         visual.accentMaterial.alpha = 0.45;
       } else {
-        visual.root.scaling.set(1, 1, 1);
+        // Raise only Parallax's rendered enemy silhouette to preserve a
+        // readable armor/weapon profile beside the large metrology machines.
+        // Simulation coordinates, collision, telegraph timers, and hitboxes
+        // are unchanged. Defeated rigs keep their existing death pose.
+        const parallaxThreatScale = this.canvas.dataset.babylonScenario === 'parallax-array'
+          ? enemy.role === 'elite' ? 1.22 : 1.12 : 1;
+        visual.root.scaling.set(parallaxThreatScale, parallaxThreatScale, parallaxThreatScale);
         visual.shellMaterial.alpha = 1;
         visual.headMaterial.alpha = 1;
         visual.accentMaterial.alpha = 1;
@@ -2032,21 +2043,31 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
     const silhouette = enemyVariantSilhouette(enemy.variant);
     const speed = clamp01(Math.hypot(enemy.vx, enemy.vy) * 0.012);
+    const cryoSilhouette = this.canvas.dataset.babylonScenario === 'cryo-reserve';
+    const parallaxSilhouette = this.canvas.dataset.babylonScenario === 'parallax-array';
+    visual.variantCue.scaling.set(cryoSilhouette ? 1.48 : parallaxSilhouette ? 1.64 : 1,
+      cryoSilhouette ? 1.28 : parallaxSilhouette ? 1.42 : 1,
+      cryoSilhouette ? 1.42 : parallaxSilhouette ? 1.60 : 1);
     visual.variantCue.rotation.y = silhouette === 'drone' ? state.time * 1.8 : 0;
     visual.variantCue.rotation.z = (silhouette === 'mobile' ? -0.28 : silhouette === 'technical' ? 0.16 : 0)
       + (silhouette === 'mobile' ? Math.sin(state.time * 8 + enemy.id) * 0.08 * speed : 0);
     const annexContrast = this.canvas.dataset.babylonScenario === 'lattice-annex';
     const momentumContrast = this.canvas.dataset.babylonScenario === 'momentum-exchange';
     const cryoContrast = this.canvas.dataset.babylonScenario === 'cryo-reserve';
+    const parallaxContrast = this.canvas.dataset.babylonScenario === 'parallax-array';
+    const iceContrast = this.canvas.dataset.babylonScenario === 'ice-mine';
     // Cool rim contribution makes dark enemy armor distinguishable from the
     // cryogenic deck without turning timed orange attack rings into decoration.
     visual.shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      annexContrast ? 0.22 : cryoContrast ? 0.43 : momentumContrast ? 0.18 : 0.06)
-      .add(cryoContrast ? colorFromHex(0xa6d8e8).scale(0.27) : Color3.Black());
+      annexContrast ? 0.22 : iceContrast ? 0.55 : cryoContrast ? 0.62 : parallaxContrast ? 0.74 : momentumContrast ? 0.77 : 0.06)
+      .add(iceContrast ? colorFromHex(0x8ccfe4).scale(0.38)
+        : cryoContrast ? colorFromHex(0xa6d8e8).scale(0.34)
+          : parallaxContrast ? colorFromHex(0xa6d8e8).scale(0.42)
+            : momentumContrast ? colorFromHex(0xa8d5e1).scale(0.30) : Color3.Black());
     visual.headMaterial.emissiveColor = colorFromHex(0xb99080).scale(
-      annexContrast ? 0.13 : cryoContrast ? 0.34 : momentumContrast ? 0.10 : 0);
+      annexContrast ? 0.13 : iceContrast ? 0.28 : cryoContrast ? 0.34 : parallaxContrast ? 0.43 : momentumContrast ? 0.38 : 0);
     visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
-      (annexContrast ? 0.42 : cryoContrast ? 0.72 : momentumContrast ? 0.34 : 0.22)
+      (annexContrast ? 0.42 : iceContrast ? 0.86 : cryoContrast ? 0.94 : parallaxContrast ? 0.96 : momentumContrast ? 0.87 : 0.22)
       + damage.hit * 0.32 + damage.armorBreak * 0.24,
     );
   }
@@ -2725,8 +2746,28 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const px = state.player.x * WORLD_SCALE;
     const pz = state.player.y * WORLD_SCALE;
     const narrow = aspect < 1.15;
-    const cameraHeight = narrow ? 18 : this.coarse ? 14.8 : 12.8;
-    const cameraOffset = narrow ? 13.2 : this.coarse ? 11.2 : 9.8;
+    // Cryo's far service-bank hostiles and attack tell rings extend below/right
+    // of the touch HUD. Widen only this landscape view; no gameplay locations,
+    // telegraph ranges, touch hit regions or other mission cameras change.
+    const cryoWideFraming = !narrow && this.canvas.dataset.babylonScenario === 'cryo-reserve';
+    // Momentum's full transfer array and near-side hostiles extend beyond the
+    // tall phone's lower gameplay edge. A modest route-only overhead framing
+    // adjustment includes both wheels and actual combatants without moving
+    // enemies or compromising the full-size right-hand touch controls.
+    const momentumWideFraming = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow;
+    // Keep actual near-deck machinery and the live controller inside the
+    // Parallax sightline instead of cutting them off beneath touch FIRE.
+    const parallaxWideFraming = this.canvas.dataset.babylonScenario === 'parallax-array' && !narrow;
+    // Real Cryo action/device frames clipped the rear vacuum jacket crown.
+    // Increase only Cryo landscape camera standoff by ~8%, scaling height
+    // and diagonal offset together to preserve inclination, enemy positions,
+    // gameplay warning ranges and the full-size touch HUD.
+    const cameraHeight = narrow ? 18 : cryoWideFraming ? (this.coarse ? 16.8 : 15.1)
+      : momentumWideFraming ? (this.coarse ? 17.0 : 15.2)
+        : parallaxWideFraming ? (this.coarse ? 15.5 : 14.0) : this.coarse ? 14.8 : 12.8;
+    const cameraOffset = narrow ? 13.2 : cryoWideFraming ? (this.coarse ? 12.9 : 11.7)
+      : momentumWideFraming ? (this.coarse ? 12.9 : 11.6)
+        : parallaxWideFraming ? (this.coarse ? 11.7 : 10.7) : this.coarse ? 11.2 : 9.8;
     const offsetX = cameraFeedback?.worldOffsetX ?? 0;
     const offsetZ = cameraFeedback?.worldOffsetZ ?? 0;
     // The Annex's active fight extends into the lower-right touch lane.
@@ -2746,13 +2787,37 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const momentumCombatPan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 1.8 : 0;
     // Translate eye and target together to reserve the unchanged right-side
     // RUSH button lane for real enemies and their warning rings.
-    const momentumTouchLanePan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 2.8 : 0;
+    const momentumTouchLanePan = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 8.4 : 0;
+    // Real G7 device pixels showed the near-edge rigger cropped below the
+    // floor while the right touch dock remained full sized. Translate eye
+    // and target equally into that actual threat lane, preserving FOV and
+    // gameplay/attack footprints. No other route camera is changed.
+    const momentumNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'momentum-exchange' && !narrow ? 2.8 : 0;
+    // Parallax's live fight reaches the right-side FIRE and DODGE lane. A
+    // location-only lateral look-ahead preserves the original FOV, true
+    // target positions, telegraph ranges and full-size touch hit regions.
+    // Cryo's far service-bank hostiles were clipped behind the right-side
+    // buttons in real Android action/device frames. Preserve projection and
+    // full-sized controls, translating eye and target toward the threat lane.
+    const cryoTouchLanePan = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 5.2 : 0;
+    const parallaxTouchLanePan = this.canvas.dataset.babylonScenario === 'parallax-array' && !narrow ? 4.6 : 0;
+    // In real API35 Ice Mine gameplay, a near-side red hostile moves beneath
+    // the lower tactical banner and outside the device frame during combat.
+    // Look toward that near-side threat lane (eye and target together), without
+    // moving the player, changing enemy positions, warning ranges or touch UI.
+    const iceMineNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.2 : 0;
+    // Shift eye and target into the real far-right threat lane without
+    // affecting FOV, touch hitboxes or any simulated actor position.
+    const iceMineTouchLanePan = this.canvas.dataset.babylonScenario === 'ice-mine' && !narrow ? 4.4 : 0;
+    // The G8 actual-device image shows a near-side enemy attack warning
+    // under the unchanged location banner. Translate eye and target together.
+    const cryoNearThreatLookAhead = this.canvas.dataset.babylonScenario === 'cryo-reserve' && !narrow ? 4.2 : 0;
 
-    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan);
+    this.camera.position.set(px + cameraOffset + offsetX + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + iceMineTouchLanePan + cryoNearThreatLookAhead, cameraHeight, pz + cameraOffset + offsetZ + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead - iceMineTouchLanePan + cryoNearThreatLookAhead);
     this.cameraTarget.set(
-      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan,
+      px + state.player.aim.x * 1.1 - offsetX * 0.2 + annexCombatPan + annexTouchLanePan + momentumCombatPan + momentumTouchLanePan + cryoTouchLanePan + parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead + iceMineTouchLanePan + cryoNearThreatLookAhead,
       0.62,
-      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan,
+      pz + state.player.aim.y * 1.1 - offsetZ * 0.2 + annexCombatPan - annexTouchLanePan + momentumCombatPan - momentumTouchLanePan - cryoTouchLanePan - parallaxTouchLanePan + momentumNearThreatLookAhead + iceMineNearThreatLookAhead - iceMineTouchLanePan + cryoNearThreatLookAhead,
     );
     this.camera.setTarget(this.cameraTarget);
     this.camera.getViewMatrix(true);

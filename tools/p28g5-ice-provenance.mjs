@@ -18,7 +18,13 @@ export function auditAuthoredVisualProvenance(state) {
   if (!state?.assetIds || !(finite('groundProps') >= 4)) problems.push('missing-asset-provenance');
   if (state?.fractureLanguage !== 'shared-hazards+brittle-support-fracture')
     problems.push('missing-fracture-cue');
-  if (state?.beforeAssetIds !== state?.assetIds || state?.beforeArtState !== 'ready'
+  // Moving the real camera can cull a once-visible authored prop. That is
+  // not late pop-in: reject any newly visible asset missing before capture,
+  // while retaining both-frame readiness and zero-fallback requirements.
+  const beforeIds = new Set(String(state?.beforeAssetIds ?? '').split(',').filter(Boolean));
+  const afterIds = String(state?.assetIds ?? '').split(',').filter(Boolean);
+  if (!beforeIds.size || !afterIds.every(id => beforeIds.has(id))
+      || state?.beforeArtState !== 'ready'
       || state?.beforePremium !== 'ready' || state?.beforeIbl !== 'shared-prefiltered:ready')
     problems.push('late-asset-pop-in');
   return { valid: problems.length === 0, problems };

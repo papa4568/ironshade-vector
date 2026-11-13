@@ -2,6 +2,7 @@ import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
 import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
 import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
@@ -140,9 +141,13 @@ export class BabylonMomentumExchangePresentation {
   private readonly iblTexture: CubeTexture;
   private iblReady = false;
   private readonly groundingTexture: RawTexture;
+  private readonly laminationAlbedo: DynamicTexture;
+  private readonly laminationNormal: DynamicTexture;
   private readonly groundingMaterial: StandardMaterial;
   private readonly groundingSource: Mesh;
   private readonly enemyGrounding = new Map<number, InstancedMesh>();
+  private readonly hostileContactMaterial: StandardMaterial;
+  private readonly hostileContacts = new Map<number, Mesh>();
   private readonly staticGroundingCount: number;
   private readonly cueMaterial: PBRMaterial;
   private readonly routeMaterials: readonly [PBRMaterial, PBRMaterial];
@@ -176,6 +181,15 @@ export class BabylonMomentumExchangePresentation {
     const cz = worldH * 0.5;
 
     this.root = new TransformNode('p27-c8-momentum-exchange-environment', scene);
+    // Optical contact locator is attached to a *live hostile* and is not a
+    // fake telegraph. It remains above the occluding flywheel rim during
+    // combat, while the original timed warning remains authoritative.
+    this.hostileContactMaterial = new StandardMaterial('p28-g9-momentum-hostile-contact-optic', scene);
+    this.hostileContactMaterial.diffuseColor = colorFromHex(0x8b2a20);
+    this.hostileContactMaterial.emissiveColor = colorFromHex(0xf36a52).scale(0.84);
+    this.hostileContactMaterial.specularColor = Color3.Black();
+    this.hostileContactMaterial.disableLighting = true;
+    this.hostileContactMaterial.alpha = 0.82;
     this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
     const floor = this.premiumSurfaces.get('deck-plate');
     const machinery = this.premiumSurfaces.get('painted-metal');
@@ -183,13 +197,38 @@ export class BabylonMomentumExchangePresentation {
     const polymer = this.premiumSurfaces.get('polymer-rubber');
     const fixture = this.premiumSurfaces.get('emissive-fixture');
     const edgeMetal = pbr(scene, 'p28-g7-exposed-machinery-trim', 0xa8bac0, 0.74, 0.29, 0x8ac3c8, 0.10);
+    // Transfer rails must read as dark machined guideways, not white ribbons
+    // that mask enemy telegraphs across the real mobile combat lane.
+    const railMetal = pbr(scene, 'p28-g9-recessed-transfer-rail-steel', 0x10171b, 0.06, 0.98);
     const magneticCopper = pbr(scene, 'p28-g7-exposed-magnetic-copper', 0x9f7653, 0.76, 0.38, 0xc39b6c, 0.055);
+    // Readable turned-metal score lines at the actual 3120px Android capture.
+    // These normal/albedo textures are applied only to local wheel trim, not
+    // to the shared KTX2 materials or enemy telegraphs.
+    this.laminationAlbedo = new DynamicTexture('p28-g9-machined-flywheel-albedo',
+      { width: 128, height: 128 }, scene, false);
+    this.laminationNormal = new DynamicTexture('p28-g9-machined-flywheel-normal',
+      { width: 128, height: 128 }, scene, false);
+    const cutPaint = this.laminationAlbedo.getContext();
+    const cutNormals = this.laminationNormal.getContext();
+    cutPaint.fillStyle = '#c4d0d1'; cutPaint.fillRect(0, 0, 128, 128);
+    cutNormals.fillStyle = '#8080ff'; cutNormals.fillRect(0, 0, 128, 128);
+    for (let score = 0; score < 128; score += 4) {
+      cutPaint.fillStyle = score % 16 === 0 ? '#667e85' : '#98a7ab';
+      cutPaint.fillRect(score, 0, score % 16 === 0 ? 2 : 1, 128);
+      cutNormals.fillStyle = score % 16 === 0 ? '#5a80ef' : '#997ff4';
+      cutNormals.fillRect(score, 0, score % 16 === 0 ? 2 : 1, 128);
+    }
+    this.laminationAlbedo.update();
+    this.laminationNormal.update();
+    edgeMetal.albedoTexture = this.laminationAlbedo;
+    edgeMetal.bumpTexture = this.laminationNormal;
+    magneticCopper.bumpTexture = this.laminationNormal;
     const capture = pbr(scene, 'p27-c8-capture-service', 0x47798c, 0.48, 0.30, 0x67b5d5, 0.22);
     const reference = pbr(scene, 'p27-c8-reference-blue', 0x10252f, 0.42, 0.23, 0x67b5d5, 0.34);
     // Narrow, dark, rough deck inlays: hazards and combat actions own the bright cyan.
-    const routePrimary = pbr(scene, 'p27-c8-route-primary', 0x203946, 0.11, 0.91, 0x36677a, 0.026);
-    const routeSecondary = pbr(scene, 'p27-c8-route-secondary', 0x152a34, 0.10, 0.94, 0x285363, 0.012);
-    this.ownedMaterials = [edgeMetal, magneticCopper, capture, reference, routePrimary, routeSecondary];
+    const routePrimary = pbr(scene, 'p27-c8-route-primary', 0x142a32, 0.11, 0.94, 0x28505c, 0.010);
+    const routeSecondary = pbr(scene, 'p27-c8-route-secondary', 0x101c23, 0.10, 0.96, 0x1e3842, 0.005);
+    this.ownedMaterials = [edgeMetal, railMetal, magneticCopper, capture, reference, routePrimary, routeSecondary];
     this.materials = [...this.premiumSurfaces.materials.values(), ...this.ownedMaterials];
     this.cueMaterial = capture;
     this.routeMaterials = [routePrimary, routeSecondary];
@@ -239,14 +278,29 @@ export class BabylonMomentumExchangePresentation {
         ring.material = ringIndex === 1 ? magneticCopper : edgeMetal;
         ring.isPickable = false;
       }
+      // Fine, axially offset turned-metal bands give the main flywheel a
+      // laminated industrial rim instead of an unbroken smooth torus.
+      for (let groove = 0; groove < 4; groove++) {
+        const lamination = MeshBuilder.CreateTorus('p28-g9-momentum-machined-lamination-' + index + '-' + groove,
+          { diameter: 4.44 + groove * 0.14, thickness: 0.055, tessellation: 52 }, scene);
+        lamination.parent = rotor;
+        lamination.position.y = 0.47 + groove * 0.025;
+        lamination.material = groove % 2 ? magneticCopper : edgeMetal;
+        lamination.isPickable = false;
+      }
+      // The 48 actual rotor-mounted flux shoes were technically present but
+      // blended into their smooth metallic race at mobile gameplay distance.
+      // Extend each machined, low-profile shoe above the face of the rotor,
+      // alternate copper/bright-metal contact faces and retain the same live
+      // 16-station-per-wheel rotating mechanism.
       for (let tooth = 0; tooth < 16; tooth += 1) {
         const angle = tooth * Math.PI / 8;
         const toothMesh = box(scene, root, 'p28-g7-flywheel-flux-tooth-' + index + '-' + tooth,
-          tooth % 4 === 0 ? edgeMetal : tooth % 4 === 1 ? magneticCopper : structural,
-          Math.sin(angle) * 2.42, 0.94, Math.cos(angle) * 2.42,
-          0.34, 0.22, 0.55);
+          tooth % 3 === 0 ? magneticCopper : edgeMetal,
+          Math.sin(angle) * 2.53, 0.58, Math.cos(angle) * 2.53,
+          0.42, 0.24, 0.54);
         toothMesh.parent = rotor;
-        toothMesh.rotation.y = angle; // alternating high-contrast flux shoes on the exposed rotor face
+        toothMesh.rotation.y = angle; // real segmented flux teeth turn with the flywheel
       }
       for (const side of [-1, 1]) {
         const race = MeshBuilder.CreateTorus('p28-g7-bearing-race-' + index + '-' + side,
@@ -257,6 +311,9 @@ export class BabylonMomentumExchangePresentation {
           side * 0.68, 1.45, side * 1.20, 0.14, 1.6, 0.14);
       }
       rotor.metadata = { direction };
+      // Do not alpha-stack real rotor, hub and lamination meshes: that made
+      // a doubled, translucent left wheel in exact-APK device screenshots.
+      // Hostile contact optics already rise above nearby opaque machinery.
       this.flywheels.push({ root, rotor, hub });
     });
 
@@ -295,14 +352,38 @@ export class BabylonMomentumExchangePresentation {
       [0.79, 0.57, 8.5, 0.08],
     ] as const;
     railData.forEach(([x, z, length, rotation], index) => {
-      const rail = box(scene, this.root, 'p27-c8-transfer-rail-' + index, reference, worldW * x, 0.09, worldH * z, length, 0.18, 0.30);
+      // Recess the original broad, raised strips beneath the deck texture.
+      // Hazard warnings and real capture fixtures remain at full strength.
+      const rail = box(scene, this.root, 'p27-c8-transfer-rail-' + index, railMetal, worldW * x, -0.02, worldH * z, length, 0.06, 0.16);
       rail.rotation.y = rotation;
       for (const side of [-1, 1]) {
         const carrier = box(scene, this.root, 'p28-g7-transfer-rail-carrier-' + index + '-' + side,
-          edgeMetal, rail.position.x, 0.23, rail.position.z + side * 0.27, length, 0.12, 0.10);
+          railMetal, rail.position.x, 0.03, rail.position.z + side * 0.15, length, 0.035, 0.06);
         carrier.rotation.y = rotation;
         carrier.parent = rail;
-        carrier.position.set(0, 0.14, side * 0.27);
+        carrier.position.set(0, 0.04, side * 0.15);
+      }
+
+      // Three visible running carriages per steel guideway. Crown, two copper
+      // bearings and short retaining wings distinguish mechanical transport
+      // from an unadorned floor ribbon without turning guides into danger
+      // telegraphs or creating new collision objects.
+      for (const station of [-2.3, 0, 2.3]) {
+        box(scene, rail, 'p28-g9-rail-rolling-shoe-' + index + '-' + station,
+          structural, station, 0.19, 0, 0.82, 0.24, 0.55);
+        box(scene, rail, 'p28-g9-rail-rolling-shoe-top-' + index + '-' + station,
+          edgeMetal, station, 0.33, 0, 0.62, 0.075, 0.46);
+        for (const side of [-1, 1]) {
+          const roller = MeshBuilder.CreateCylinder('p28-g9-rail-magnetic-roller-' + index + '-' + station + '-' + side,
+            { diameter: 0.32, height: 0.19, tessellation: 14 }, scene);
+          roller.parent = rail;
+          roller.position.set(station, 0.24, side * 0.36);
+          roller.rotation.x = Math.PI / 2;
+          // A steel running roller paired with the copper roller binds the
+          // shipped bare-metal KTX2 PBR without hiding the exposed copper mechanism.
+          roller.material = side < 0 ? structural : magneticCopper;
+          roller.isPickable = false;
+        }
       }
       this.transferRails.push(rail);
     });
@@ -335,9 +416,15 @@ export class BabylonMomentumExchangePresentation {
       root.position.set(scaled(x), 0, scaled(z));
       for (const side of [-1, 1]) {
         box(scene, root, 'p28-g7-drum-retainer-' + id + '-' + side,
-          edgeMetal, side * 0.52, 0.88, 0, 0.16, 1.18, 0.84);
+          edgeMetal, side * 0.52, 0.91, 0, 0.23, 1.42, 0.92);
         box(scene, root, 'p28-g7-drum-latch-' + id + '-' + side,
           fixture, side * 0.51, 1.42, 0.33, 0.14, 0.16, 0.12);
+        // Distinct bolted retainer jaws, separate from the smooth copper
+        // capture ring, expose the real physical latch at phone zoom.
+        box(scene, root, 'p28-g7-drum-machined-retainer-jaw-' + id + '-' + side,
+          magneticCopper, side * 0.83, 1.41, 0.49, 0.48, 0.42, 0.60);
+        box(scene, root, 'p28-g7-drum-retainer-lockpin-' + id + '-' + side,
+          edgeMetal, side * 0.83, 1.68, 0.67, 0.22, 0.20, 0.28);
       }
       box(scene, root, id + '-pedestal', machinery, 0, 0.34, 0, 0.92, 0.68, 0.92);
       const core = MeshBuilder.CreateCylinder(id + '-core', { height: 1.36, diameter: 0.62, tessellation: 16 }, scene);
@@ -351,6 +438,13 @@ export class BabylonMomentumExchangePresentation {
       ring.rotation.x = Math.PI / 2;
       ring.material = capture;
       ring.isPickable = false;
+      const captureCollar = MeshBuilder.CreateTorus('p28-g9-capture-drum-copper-retainer-ring-' + id,
+        { diameter: 1.86, thickness: 0.15, tessellation: 28 }, scene);
+      captureCollar.parent = root;
+      captureCollar.position.y = 1.80;
+      captureCollar.rotation.x = Math.PI / 2;
+      captureCollar.material = magneticCopper;
+      captureCollar.isPickable = false;
       this.captureRigs.push({ id, root, ring, core });
     }
 
@@ -373,9 +467,12 @@ export class BabylonMomentumExchangePresentation {
     });
 
     const navigation = getMapNavigationPlan('momentum-exchange');
-    navigation.routes.forEach(route => {
+    // Draw one physical wayfinding spine, not all eight hidden simulation
+    // topology routes as a cyan crisscross over live fighters. Navigation,
+    // clearance and the three world landmarks still use the complete plan.
+    navigation.routes.filter(route => route.kind === 'primary').forEach(route => {
       const material = route.kind === 'primary' ? routePrimary : routeSecondary;
-      const width = babylonRouteMarkingWidth(route.kind);
+      const width = Math.min(babylonRouteMarkingWidth(route.kind), route.kind === 'primary' ? 0.055 : 0.038);
       route.points.slice(0, -1).forEach((point, index) => {
         const next = route.points[index + 1];
         routeSegment(scene, this.root, material, 'p27-c8-route-' + route.id + '-' + index, scaled(point.x), scaled(point.y), scaled(next.x), scaled(next.y), width);
@@ -487,7 +584,7 @@ export class BabylonMomentumExchangePresentation {
     this.hemisphere = new HemisphericLight('p27-c8-momentum-hemisphere', new Vector3(-0.16, 1, 0.10), scene);
     this.hemisphere.diffuse = colorFromHex(0xc4d5dc);
     this.hemisphere.groundColor = colorFromHex(0x041019);
-    this.hemisphere.intensity = 0.30;
+    this.hemisphere.intensity = 0.43;
     this.keyLight = new DirectionalLight('p27-c8-momentum-key', new Vector3(-0.54, -1, 0.30).normalize(), scene);
     this.keyLight.position = new Vector3(worldW * 0.88, 24, worldH * 0.16);
     this.keyLight.diffuse = colorFromHex(lighting.keyColor);
@@ -501,7 +598,7 @@ export class BabylonMomentumExchangePresentation {
     this.emergencyLight.range = 11.6;
     this.readabilityLight = new PointLight('p27-c8-momentum-readability', new Vector3(cx, 2.8, cz), scene);
     this.readabilityLight.diffuse = colorFromHex(0xd4e5ed);
-    this.readabilityLight.range = 9.2;
+    this.readabilityLight.range = 14.2;
     this.practicalLights = [
       new PointLight('p27-c8-practical-transfer', new Vector3(worldW * 0.50, 2.9, worldH * 0.50), scene),
       new PointLight('p27-c8-practical-cradle', new Vector3(worldW * 0.80, 2.9, worldH * 0.58), scene),
@@ -529,6 +626,11 @@ export class BabylonMomentumExchangePresentation {
       const direction = Number(rig.rotor.metadata?.direction ?? (index % 2 ? 1 : -1));
       rig.rotor.rotation.z = state.time * (0.56 + index * 0.08) * direction;
       rig.hub.rotation.z = -state.time * (0.34 + index * 0.05) * direction;
+      // Keep rim, teeth, spokes and hubs solid in every live combat state.
+      // Timed attack telegraphs stay authoritative; only the small
+      // live-enemy optical locator projects above an obstructing wheel.
+      rig.rotor.visibility = 1;
+      rig.hub.visibility = 1;
     });
 
     const vectorWashes = state.hazards.filter(hazard => hazard.active && hazard.kind === 'vectorWash');
@@ -590,7 +692,7 @@ export class BabylonMomentumExchangePresentation {
 
     const lighting = BABYLON_MOMENTUM_EXCHANGE_LIGHTING;
     const tierScale = renderBudget.tierName === 'high' ? 1 : renderBudget.tierName === 'balanced' ? 0.88 : 0.72;
-    this.hemisphere.intensity = 0.30 * (renderBudget.tierName === 'performance' ? 0.82 : 1);
+    this.hemisphere.intensity = 0.43 * (renderBudget.tierName === 'performance' ? 0.82 : 1);
     this.keyLight.intensity = lighting.keyIntensity * tierScale * (lowVisibility ? 0.94 : 1);
     this.rimLight.intensity = lighting.rimIntensity * (renderBudget.tierName === 'performance' ? 0.74 : 1);
     const px = scaled(state.player.x);
@@ -615,12 +717,34 @@ export class BabylonMomentumExchangePresentation {
       contact.position.set(scaled(enemy.x), 0.043, scaled(enemy.y));
       contact.rotation.x = Math.PI / 2;
       contact.scaling.set(1.06 * scale, 0.78 * scale, 1);
+      // The floor contact ring is occluded by an upright rotor from the
+      // real overhead Android camera. A small state-bound *hostile locator*
+      // rides above the obstruction; actual attack warnings are unchanged.
+      let optic = this.hostileContacts.get(enemy.id);
+      if (!optic) {
+        optic = MeshBuilder.CreateTorus('p28-g9-momentum-live-hostile-locator-' + enemy.id,
+          { diameter: 1.34, thickness: 0.13, tessellation: 24 }, this.scene);
+        optic.parent = this.root;
+        optic.material = this.hostileContactMaterial;
+        optic.isPickable = false;
+        this.hostileContacts.set(enemy.id, optic);
+      }
+      const behindFlywheel = this.flywheels.some(rig =>
+        Math.hypot(scaled(enemy.x) - rig.root.position.x,
+          scaled(enemy.y) - rig.root.position.z) < 3.65);
+      optic.position.set(scaled(enemy.x), behindFlywheel ? 6.10 : 2.62, scaled(enemy.y));
+      optic.rotation.x = Math.PI / 2;
+      const opticScale = enemy.telegraph > 0 ? 1.0 : 0.70;
+      optic.scaling.set(opticScale, opticScale, opticScale);
     }
     for (const [id, contact] of this.enemyGrounding) {
       if (!nearby.has(id)) { contact.dispose(); this.enemyGrounding.delete(id); }
     }
+    for (const [id, optic] of this.hostileContacts) {
+      if (!nearby.has(id)) { optic.dispose(); this.hostileContacts.delete(id); }
+    }
     this.readabilityLight.position.set(px - 0.5, 2.8, pz + 0.7);
-    this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 3.7 : 5.3) * tierScale;
+    this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 4.4 : 6.2) * tierScale;
     this.emergencyLight.position.set(px + 1.6, 3.0, pz - 1.4);
     this.emergencyLight.intensity = lighting.emergencyIntensity * (renderBudget.tierName === 'performance' ? 0.72 : 1) * (hazardMode === 'nominal' ? 0.54 : 1.16) * (activeBoss?.bossPhase === 2 ? 1.10 : 1);
     const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
@@ -630,8 +754,8 @@ export class BabylonMomentumExchangePresentation {
       light.intensity = enabled ? (index === 0 ? 5.3 : 4.5) * tierScale : 0;
     });
     const routePulse = 0.86 + Math.sin(state.time * 3.6) * 0.14;
-    this.routeMaterials[0].emissiveColor = colorFromHex(0x36677a).scale(0.026 * routePulse);
-    this.routeMaterials[1].emissiveColor = colorFromHex(0x285363).scale(0.012 * routePulse);
+    this.routeMaterials[0].emissiveColor = colorFromHex(0x28505c).scale(0.010 * routePulse);
+    this.routeMaterials[1].emissiveColor = colorFromHex(0x1e3842).scale(0.005 * routePulse);
 
     this.scene.environmentTexture = this.iblReady ? this.iblTexture : null;
     this.scene.environmentIntensity = this.iblReady
@@ -733,9 +857,13 @@ export class BabylonMomentumExchangePresentation {
     this.release('renderer-dispose');
     for (const contact of this.enemyGrounding.values()) contact.dispose();
     this.enemyGrounding.clear();
+    for (const optic of this.hostileContacts.values()) optic.dispose();
+    this.hostileContacts.clear();
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose());
     this.root.dispose();
     this.groundingMaterial.dispose();
+    this.laminationAlbedo.dispose();
+    this.laminationNormal.dispose();
     this.groundingTexture.dispose();
     if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
     this.iblTexture.dispose();
@@ -743,6 +871,7 @@ export class BabylonMomentumExchangePresentation {
     this.premiumSurfaces.dispose();
     this.impulseMaterial.dispose();
     this.bossCueMaterial.dispose();
+    this.hostileContactMaterial.dispose();
     this.hemisphere.dispose();
     this.keyLight.dispose();
     this.rimLight.dispose();

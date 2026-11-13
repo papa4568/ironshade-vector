@@ -196,11 +196,18 @@ assert(
 
 // G4's real API 35 capture is consumed by the same fail-closed pixel/provenance
 // gate as G2/G3; preserve negative controls for every new map-specific bound.
+const jovianObjectAssets = [
+  ...Array.from({ length: 17 }, (_, index) => ['jovian-' + index, 'refinery-crate-lod0']),
+  ['jovian-17', 'refinery-pipe-rack-lod0'],
+];
 const jovianProvenance = {
   capturedRoute: 'jovian-harvester', backend: 'webgl2',
   tier: 'high', captureMode: 'high-tier-qa-visual-only',
   assetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0',
   beforeAssetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0',
+  beforeObjectAssets: jovianObjectAssets, objectAssets: jovianObjectAssets,
+  beforeMappedObjects: 18, beforeAuthoredObjects: 18,
+  beforeFallbackObjects: 0, beforePendingCount: 0, beforeFailedCount: 0,
   mappedObjects: 18, authoredObjects: 18, fallbackObjects: 0,
   artState: 'ready', beforeArtState: 'ready',
   premium: 'ready', beforePremium: 'ready', premiumBindings: 141,
@@ -210,6 +217,11 @@ const jovianProvenance = {
 };
 assert(auditAuthoredVisualProvenance(jovianProvenance).valid,
   'P28-G4 real Android provenance must pass the shared independent audit.');
+assert(auditAuthoredVisualProvenance({
+  ...jovianProvenance,
+  objectAssets: [...jovianObjectAssets.slice(0, -1), ['new-processor', 'refinery-processor-lod0']],
+  assetIds: 'refinery-crate-lod0,refinery-processor-lod0',
+}).valid, 'an authored replacement object must not be misclassified as late GLB pop-in');
 for (const [name, mutation, expectedProblem] of [
   ['wrong-backend', { backend: 'webgl' }, 'wrong-map-or-backend'],
   ['downshift', { tier: 'performance' }, 'not-authored-lod0-flagship-visual'],
@@ -218,6 +230,13 @@ for (const [name, mutation, expectedProblem] of [
   ['broad-route', { routeMaxWidth: 0.21 }, 'oversized-route-material'],
   ['missing-contact', { groundProps: 3 }, 'missing-asset-provenance'],
   ['late-pop-in', { beforeArtState: 'loading' }, 'late-asset-pop-in'],
+  ['before-pending', { beforePendingCount: 1 }, 'late-asset-pop-in'],
+  ['missing-identity-evidence', { beforeObjectAssets: [] }, 'late-asset-pop-in'],
+  ['persistent-object-remount', {
+    objectAssets: jovianObjectAssets.map(([id, asset], index) =>
+      index === 0 ? [id, 'refinery-processor-lod0'] : [id, asset]),
+    assetIds: 'refinery-crate-lod0,refinery-pipe-rack-lod0,refinery-processor-lod0',
+  }, 'late-asset-pop-in'],
 ] as const) {
   const audit = auditAuthoredVisualProvenance({ ...jovianProvenance, ...mutation });
   assert(!audit.valid && audit.problems.includes(expectedProblem),
@@ -257,6 +276,9 @@ assert(
     && androidShell.includes('trap capture_diagnostics EXIT')
     && androidShell.includes('android-p28g4-jovian-harvester-activity.txt')
     && androidCapture.includes('before === result.playerPosition')
+    && androidCapture.includes('beforeObjectAssets: beforeVisual.objectAssets')
+    && androidCapture.includes("JSON.parse(d.babylonSharedWorldObjectAssets ?? '[]')")
+    && read('src/game/babylonWorldPresentation.ts').includes('activeObjectAssets.push([object.id, authoredWorld.assetId])')
     && captureHelper.includes("execFileSync('adb', ['exec-out', 'screencap', '-p']")
     && captureHelper.includes('auditGameplayFrame(decodeScreenshotPng(png))')
     && captureHelper.includes('writeFileSync(path, png)')

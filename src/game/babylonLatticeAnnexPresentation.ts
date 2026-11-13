@@ -2,6 +2,7 @@ import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
 import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
 import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
@@ -132,6 +133,8 @@ export class BabylonLatticeAnnexPresentation {
   private readonly iblTexture: CubeTexture;
   private iblReady = false;
   private readonly groundingTexture: RawTexture;
+  private readonly ceramicAlbedo: DynamicTexture;
+  private readonly ceramicNormal: DynamicTexture;
   private readonly groundingMaterial: StandardMaterial;
   private readonly groundingSource: Mesh;
   private readonly enemyGrounding = new Map<number, InstancedMesh>();
@@ -177,7 +180,35 @@ export class BabylonLatticeAnnexPresentation {
     // their own restrained identity rather than borrowing a metallic finish.
     this.premiumSurfaces = createBabylonPremiumPbrSurfaceLibrary(scene);
     const floor = this.premiumSurfaces.get('deck-plate');
-    const ceramic = pbr(scene, 'p27-c7-lattice-survey-ceramic', 0xb9c8c5, 0.24, 0.42);
+    const ceramic = pbr(scene, 'p27-c7-lattice-survey-ceramic', 0xc9d6d0, 0.04, 0.89);
+    // Macro-grained survey ceramic, not an untextured white box. Distinct
+    // shaded 16px inlaid seams survive downsampling on the API35 phone view.
+    this.ceramicAlbedo = new DynamicTexture('p28-g9-lattice-survey-ceramic-albedo',
+      { width: 128, height: 128 }, scene, false);
+    this.ceramicNormal = new DynamicTexture('p28-g9-lattice-survey-ceramic-normal',
+      { width: 128, height: 128 }, scene, false);
+    const paint = this.ceramicAlbedo.getContext();
+    const normals = this.ceramicNormal.getContext();
+    paint.fillStyle = '#b3c7c2'; paint.fillRect(0, 0, 128, 128);
+    normals.fillStyle = '#8080ff'; normals.fillRect(0, 0, 128, 128);
+    for (let groove = 0; groove < 128; groove += 16) {
+      paint.fillStyle = '#69847f'; paint.fillRect(groove, 0, 2, 128);
+      paint.fillStyle = '#d9e3dc'; paint.fillRect(groove + 3, 0, 2, 128);
+      normals.fillStyle = '#5d80ee'; normals.fillRect(groove, 0, 2, 128);
+      normals.fillStyle = '#a07fee'; normals.fillRect(groove + 3, 0, 2, 128);
+    }
+    for (let chip = 0; chip < 1100; chip++) {
+      const x = (chip * 53 + (chip * chip) % 109) % 128;
+      const y = (chip * 37 + Math.floor(chip / 7) * 13) % 128;
+      paint.fillStyle = chip % 4 ? '#c2d2ca' : '#708e88';
+      paint.fillRect(x, y, 1 + chip % 3, 1 + chip % 3);
+      normals.fillStyle = chip % 2 ? '#8b80fa' : '#6d86ed';
+      normals.fillRect(x, y, 1 + chip % 3, 1);
+    }
+    this.ceramicAlbedo.update();
+    this.ceramicNormal.update();
+    ceramic.albedoTexture = this.ceramicAlbedo;
+    ceramic.bumpTexture = this.ceramicNormal;
     const structural = this.premiumSurfaces.get('bare-metal');
     const service = this.premiumSurfaces.get('painted-metal');
     const polymer = this.premiumSurfaces.get('polymer-rubber');
@@ -674,6 +705,8 @@ export class BabylonLatticeAnnexPresentation {
     this.root.getChildMeshes(false).forEach(mesh => mesh.dispose()); this.root.dispose();
     this.groundingMaterial.dispose();
     this.groundingTexture.dispose();
+    this.ceramicAlbedo.dispose();
+    this.ceramicNormal.dispose();
     if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
     this.iblTexture.dispose();
     this.ownedMaterials.forEach(item => item.dispose());

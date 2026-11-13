@@ -1168,3 +1168,271 @@
   text-overflow: clip;
   line-height: 1.12;
 }
+
+/* P28-G9: compact two-line tactical forecast, not a giant opaque
+   paragraph over the live laboratory. Keep the full accessible DOM/aria-live
+   message while leaving enemy tells, reference hardware and touch targets clear. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="parallax-array"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    left: 42%;
+    width: min(31vw, 28rem);
+    transform: translateX(-50%);
+  }
+
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert b {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: break-word;
+    line-height: 1.15;
+  }
+}
+
+
+/* P28-G9/G7 exact-APK review: concise mission-specific tactical calls do not
+   occupy the flywheel transfer lane or the Parallax metrology work surface.
+   The full original event is retained as an accessible status/title in React. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="parallax-array"] .transient-alert-lane:not([data-presentation="deployment"]),
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    left: 43%;
+    bottom: max(5px, calc(env(safe-area-inset-bottom) + 5px));
+    width: min(29vw, 23rem);
+    transform: translateX(-50%);
+  }
+
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event > .combat-alert,
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane.event > .combat-alert {
+    padding: .22rem .36rem;
+    background: rgba(5, 11, 17, .78);
+    border-color: rgba(105, 138, 146, .42);
+    box-shadow: 0 .15rem .5rem rgba(0, 0, 0, .16);
+  }
+
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert b,
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane.event .combat-alert b {
+    display: block;
+    -webkit-line-clamp: unset;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+    font-size: 12px;
+    line-height: 1.14;
+  }
+}
+
+
+/* P28-G9 real Android proof: reserve the *unoccupied top status roof* for
+   short tactical notices, not the metrology work surface or moving flywheels.
+   On Momentum the top-center target HUD already owns the middle, so its small
+   alert takes the narrow gap between vitals and target. Touch targets do not move. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="parallax-array"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    top: max(.45rem, env(safe-area-inset-top));
+    bottom: auto;
+    left: 51%;
+    width: min(25vw, 20rem);
+  }
+
+  /* Keep Parallax's warning in the roof band, with all the event text
+     available to screen readers rather than painted over the metrology rig.
+     A stacked caption gives the short warning the whole panel width. */
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event > .combat-alert {
+    display: block;
+    text-align: center;
+    padding: .18rem .3rem;
+    background: rgba(5, 11, 17, .68);
+  }
+
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert small {
+    display: block;
+    margin: 0;
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .game-root[data-location="parallax-array"] .transient-alert-lane.event .combat-alert b {
+    display: block;
+    margin-top: .12rem;
+    font-size: 11px;
+    line-height: 1.12;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    top: max(.45rem, env(safe-area-inset-top));
+    bottom: auto;
+    /* Fit between left vitals and center assisted-target panel (whose
+       left edge starts near 35.5vw on landscape phones). */
+    left: 28%;
+    width: min(12vw, 11rem);
+  }
+
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane.event > .combat-alert {
+    /* The small roof slot cannot fit TACTICAL and the message side by side.
+       Stack them so the real warning never becomes a vertical text column. */
+    display: block;
+    text-align: left;
+  }
+
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane.event .combat-alert small {
+    display: block;
+    font-size: 10px;
+  }
+
+  .game-root[data-location="momentum-exchange"] .transient-alert-lane.event .combat-alert b {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: normal;
+  }
+}
+
+
+/* P28-G9 exact-APK regression: preserve full tactical and assisted-target
+   identities on the Lattice Annex's narrow landscape HUD. The previous
+   22.4vw alert box and single-line target label ellipsized KHEPRI SURVEY,
+   DRONE ESCORT and SURVEY SHIELD CUSTODIAN in real action/device pixels.
+   Touch regions and all unrelated route layouts remain untouched. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="lattice-annex"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    left: 47%;
+    width: min(35vw, 35rem);
+    transform: translateX(-50%);
+  }
+
+  .game-root[data-location="lattice-annex"] .transient-alert-lane.event .combat-alert b {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+    white-space: normal;
+    line-height: 1.18;
+  }
+
+  .game-root[data-location="lattice-annex"] .target-readout {
+    width: min(27vw, 22rem);
+  }
+
+  .game-root[data-location="lattice-annex"] .target-readout header b {
+    display: block;
+    white-space: normal;
+    text-overflow: clip;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    line-height: 1.16;
+  }
+}
+
+
+/* The accessible director briefing is intentionally longer than its short
+   Lattice combat cue. Bound the route-local alert to two compact lines so the
+   lower battlefield and active enemy rings remain directly visible. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="lattice-annex"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    width: min(29vw, 28rem);
+  }
+  .game-root[data-location="lattice-annex"] .transient-alert-lane.event .combat-alert b {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    text-overflow: clip;
+    line-height: 1.15;
+  }
+}
+
+
+/* P28-G9 cross-route Android review: do not ellipsize the Cryo shield
+   boarder's target name or the director's combat alert. Only the compact
+   visible alert is shortened; the original event remains in aria-label. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="cryo-reserve"] .target-readout {
+    width: min(28vw, 22rem);
+  }
+  .game-root[data-location="cryo-reserve"] .target-readout header b,
+  .game-root[data-location="cryo-reserve"] .boss-hud.boss-hud--top .boss-name {
+    display: block;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.15;
+  }
+  .game-root[data-location="cryo-reserve"] .transient-alert-lane:not([data-presentation="deployment"]) {
+    left: 47%;
+    width: min(32vw, 26rem);
+    transform: translateX(-50%);
+  }
+  .game-root[data-location="cryo-reserve"] .transient-alert-lane.event .combat-alert b {
+    display: block;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+    line-height: 1.15;
+  }
+}
+
+/* P28-G9 sibling G8 real device pixel review: the transient BREACH GUARD
+   class status previously blocked a left-side enemy and its live warning arc.
+   Reserve the empty far-left strip above the MED utility control; preserve
+   the full status message and touch-control footprint. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="cryo-reserve"] .class-mechanic-hud {
+    position: absolute;
+    left: max(6px, env(safe-area-inset-left));
+    right: auto;
+    top: 22%;
+    bottom: auto;
+    width: min(16vw, 13rem);
+  }
+}
+
+/* P28-G9 sibling G5 Android direct-image review: the Long Arc Jury-Rig
+   Foreman was ellipsized despite a readable two-line target panel. Keep
+   full combatant identity visible on Ice Mine only; no change to action
+   cluster geometry or global interface sizing. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="ice-mine"] .target-readout {
+    width: min(28vw, 22rem);
+  }
+  .game-root[data-location="ice-mine"] .target-readout header b {
+    display: block;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.15;
+  }
+}
+
+/* P28-G9 exact Android pixel review: keep the Baseline Controller's two
+   numeric readouts on one legible line below the right-hand mission chip.
+   The touch-control layout, target data and other locations stay unchanged. */
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-root[data-location="parallax-array"] .target-readout {
+    width: min(22.5vw, 14.5rem);
+  }
+  .game-root[data-location="parallax-array"] .target-readout .target-values {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: .25rem;
+  }
+  .game-root[data-location="parallax-array"] .target-readout .target-values span {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+}

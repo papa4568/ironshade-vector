@@ -22,6 +22,7 @@ import {
   refineryWorldObjectAssetFamily,
   refineryWorldObjectFamilyKey,
   refineryWorldObjectFit,
+  refineryLongGateModules,
   type RefineryWorldObjectFamilyKey,
 } from './refineryWorldObjectAssets';
 import type { BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
@@ -64,6 +65,8 @@ type AuthoredInteractableVisual = {
 
 type AuthoredWorldObjectVisual = {
   instance: BabylonGraphicsAssetInstance;
+  extraInstances: BabylonGraphicsAssetInstance[];
+  segmentMounts: TransformNode[];
   mount: TransformNode;
   assetId: string;
   family: RefineryWorldObjectFamilyKey;
@@ -191,7 +194,8 @@ export class BabylonRefineryWorldPresentation {
     this.premiumSharedWorldScenario = mission.location === 'orbital-station' || mission.location === 'damaged-vessel'
       || mission.location === 'spin-habitat' || mission.location === 'jovian-harvester'
       || mission.location === 'ice-mine' || mission.location === 'lattice-annex'
-      || mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve';
+      || mission.location === 'momentum-exchange' || mission.location === 'cryo-reserve'
+      || mission.location === 'parallax-array';
     this.syncObjects(state, detailScale);
     this.syncObjective(state, mission);
     this.syncGroundLoot(state, detailScale);
@@ -226,10 +230,7 @@ export class BabylonRefineryWorldPresentation {
     this.premiumSharedWorldScenario = false;
     this.loadGeneration += 1;
 
-    for (const visual of this.authoredWorldObjects.values()) {
-      visual.instance.release();
-      visual.mount.dispose();
-    }
+    for (const visual of this.authoredWorldObjects.values()) this.releaseAuthoredWorldObject(visual);
     this.authoredWorldObjects.clear();
     this.refineryObjectRequests.clear();
     this.sharedWorldFailures.clear();
@@ -310,6 +311,7 @@ export class BabylonRefineryWorldPresentation {
     this.canvas.dataset.babylonSharedWorldAuthoredCount = '0';
     this.canvas.dataset.babylonSharedWorldFallbackCount = '0';
     this.canvas.dataset.babylonSharedWorldAssets = '';
+    this.canvas.dataset.babylonSharedWorldObjectAssets = '[]';
     this.canvas.dataset.babylonSharedWorldPendingCount = '0';
     this.canvas.dataset.babylonSharedWorldFailedCount = '0';
     this.canvas.dataset.babylonSharedWorldFallbackReasons = '';
@@ -510,25 +512,42 @@ export class BabylonRefineryWorldPresentation {
 
     this.refineryObjectRequests.set(object.id, spec.id);
     const generation = this.loadGeneration;
+    const instances: BabylonGraphicsAssetInstance[] = [];
+    let mount: TransformNode | null = null;
     try {
-      const instance = await getBabylonGraphicsAssetRuntime(this.scene).instantiate(spec);
+      const modules = refineryLongGateModules(object, WORLD_SCALE);
+      // Reuse shipped source-bound LOD0 wall panels, not a hidden
+      // stretched crate or untracked procedural replacement.
+      for (let index = 0; index < modules.count; index++) {
+        instances.push(await getBabylonGraphicsAssetRuntime(this.scene).instantiate(spec));
+      }
       if (this.disposed
         || !this.active
         || generation !== this.loadGeneration
         || this.refineryObjectRequests.get(object.id) !== spec.id) {
-        instance.release();
+        for (const instance of instances) instance.release();
         return;
       }
-      const mount = new TransformNode('p28-c8-authored-world-object-' + object.id, this.scene);
+      mount = new TransformNode('p28-c8-authored-world-object-' + object.id, this.scene);
       mount.setEnabled(false);
-      instance.rootNodes.forEach(root => {
-        root.parent = mount;
-      });
+      const segmentMounts: TransformNode[] = [];
+      for (const [index, instance] of instances.entries()) {
+        const target: TransformNode = modules.count > 1
+          ? new TransformNode('p28-g7-authored-pressure-gate-module-' + object.id + '-' + index, this.scene)
+          : mount;
+        if (target !== mount) {
+          target.parent = mount;
+          segmentMounts.push(target);
+        }
+        instance.rootNodes.forEach(root => { root.parent = target; });
+      }
 
       const previous = this.authoredWorldObjects.get(object.id);
-      previous?.instance.release();
-      previous?.mount.dispose();
-      this.authoredWorldObjects.set(object.id, { instance, mount, assetId: spec.id, family: familyKey });
+      if (previous) this.releaseAuthoredWorldObject(previous);
+      this.authoredWorldObjects.set(object.id, {
+        instance: instances[0], extraInstances: instances.slice(1),
+        segmentMounts, mount, assetId: spec.id, family: familyKey,
+      });
       this.sharedWorldFailures.delete(object.id);
       const fallback = this.objectVisuals.get(object.id);
       if (fallback) {
@@ -545,6 +564,8 @@ export class BabylonRefineryWorldPresentation {
         this.canvas.dataset.interactableMode = 'refinery-family-mapped';
       }
     } catch (error) {
+      for (const instance of instances) instance.release();
+      mount?.dispose();
       if (this.disposed
         || generation !== this.loadGeneration
         || this.refineryObjectRequests.get(object.id) !== spec.id) return;
@@ -561,10 +582,18 @@ export class BabylonRefineryWorldPresentation {
     }
   }
 
+  private releaseAuthoredWorldObject(visual: AuthoredWorldObjectVisual) {
+    visual.instance.release();
+    for (const instance of visual.extraInstances) instance.release();
+    visual.mount.dispose();
+  }
+
   private setAuthoredWorldVisibility(visual: AuthoredWorldObjectVisual, visibility: number) {
-    for (const root of visual.instance.rootNodes) {
-      if (root instanceof AbstractMesh) root.visibility = visibility;
-      for (const mesh of root.getChildMeshes(false)) mesh.visibility = visibility;
+    for (const instance of [visual.instance, ...visual.extraInstances]) {
+      for (const root of instance.rootNodes) {
+        if (root instanceof AbstractMesh) root.visibility = visibility;
+        for (const mesh of root.getChildMeshes(false)) mesh.visibility = visibility;
+      }
     }
   }
 
@@ -575,6 +604,9 @@ export class BabylonRefineryWorldPresentation {
     const quality = worldMaterialQualityProfile(worldQualityName(detailScale));
     const activeIds = new Set<string>();
     const activeAssets = new Set<string>();
+    // Identify the real active object behind each authored LOD0 asset family.
+    // The family-name set alone may change as world objects activate/deactivate.
+    const activeObjectAssets: Array<[string, string]> = [];
     let activeCount = 0;
     let interactableCount = 0;
     let premiumCoverCount = 0;
@@ -640,12 +672,25 @@ export class BabylonRefineryWorldPresentation {
         const fit = refineryWorldObjectFit(object, WORLD_SCALE);
         authoredWorld.mount.setEnabled(object.active);
         authoredWorld.mount.position.set(scaled(object.x + object.w / 2), 0, scaled(object.y + object.h / 2));
-        authoredWorld.mount.rotation.y = fit.rotationY;
-        authoredWorld.mount.scaling.set(fit.scaleX, fit.scaleY * durabilityScale, fit.scaleZ);
+        if (authoredWorld.segmentMounts.length > 0) {
+          // The physics collider remains the unchanged simulation object.
+          // Its rendered footprint becomes exact, bounded authored sections.
+          const modules = refineryLongGateModules(object, WORLD_SCALE);
+          authoredWorld.mount.rotation.y = 0;
+          authoredWorld.mount.scaling.set(1, durabilityScale, 1);
+          authoredWorld.segmentMounts.forEach((segment, index) => {
+            segment.position.set(0, 0, (index + 0.5 - modules.count / 2) * modules.segmentLength);
+            segment.scaling.set(modules.scaleX, modules.scaleY, modules.scaleZ);
+          });
+        } else {
+          authoredWorld.mount.rotation.y = fit.rotationY;
+          authoredWorld.mount.scaling.set(fit.scaleX, fit.scaleY * durabilityScale, fit.scaleZ);
+        }
         this.setAuthoredWorldVisibility(authoredWorld, coverVisibility);
         if (object.active) {
           authoredCount += 1;
           activeAssets.add(authoredWorld.assetId);
+          if (sharedPremiumScenario) activeObjectAssets.push([object.id, authoredWorld.assetId]);
           if (interactableWorldPresentation(object.kind)) mappedInteractableAuthoredCount += 1;
         }
       }
@@ -709,6 +754,8 @@ export class BabylonRefineryWorldPresentation {
     this.canvas.dataset.babylonSharedWorldAuthoredCount = String(sharedPremiumScenario ? authoredCount : 0);
     this.canvas.dataset.babylonSharedWorldFallbackCount = String(sharedPremiumScenario ? fallbackCount : 0);
     this.canvas.dataset.babylonSharedWorldAssets = sharedPremiumScenario ? [...activeAssets].sort().join(',') : '';
+    this.canvas.dataset.babylonSharedWorldObjectAssets = sharedPremiumScenario
+      ? JSON.stringify(activeObjectAssets.sort(([a], [b]) => a.localeCompare(b))) : '[]';
     this.canvas.dataset.babylonSharedWorldPendingCount = String(sharedPremiumScenario ? sharedPendingCount : 0);
     this.canvas.dataset.babylonSharedWorldFailedCount = String(sharedPremiumScenario ? sharedFailedCount : 0);
     this.canvas.dataset.babylonSharedWorldFallbackReasons = sharedPremiumScenario
@@ -1017,6 +1064,13 @@ export class BabylonRefineryWorldPresentation {
       const radius = Math.max(0.2, scaled(hazard.radius));
       const pulse = 1 + Math.sin(state.time * presentation.pulseHz) * 0.08 * quality.stateMotionScale;
       const momentumHazard = this.canvas.dataset.babylonScenario === 'momentum-exchange';
+      // Parallax already draws a distinct purple source-backed vector shear.
+      // Keep the real teal gravity-well radius and direction glyph but reduce
+      // the second world-overlay ring so it cannot hide the datum instruments.
+      const parallaxGravity = this.canvas.dataset.babylonScenario === 'parallax-array'
+        && hazard.kind === 'gravityWell';
+      const parallaxShearDuplicate = this.canvas.dataset.babylonScenario === 'parallax-array'
+        && hazard.kind === 'vectorWash';
       const momentumWash = momentumHazard && hazard.kind === 'vectorWash';
       // True gameplay hazard radius stays intact. Unlike the permanent teal
       // rail guides, the active magnetic wash uses an amber, thin, pulsing
@@ -1027,15 +1081,19 @@ export class BabylonRefineryWorldPresentation {
       visual.root.setEnabled(true);
       visual.root.position.set(scaled(hazard.x), 0.08, scaled(hazard.y));
       visual.ringMaterial.diffuseColor = color.scale(0.18);
-      visual.ringMaterial.emissiveColor = color.scale(momentumHazard ? 0.34 : 1);
-      visual.ringMaterial.alpha = (momentumHazard
-        ? (momentumWash ? 0.11 : 0.16) + Math.sin(state.time * presentation.pulseHz) * 0.025
-        : 0.4 + Math.sin(state.time * presentation.pulseHz) * 0.1) * quality.hazardCueOpacity;
+      visual.ringMaterial.emissiveColor = color.scale(parallaxShearDuplicate ? 0.12 : parallaxGravity ? 0.24 : momentumHazard ? 0.34 : 1);
+      visual.ringMaterial.alpha = (parallaxShearDuplicate
+        ? 0.03 + Math.sin(state.time * presentation.pulseHz) * 0.01
+        : parallaxGravity
+          ? 0.13 + Math.sin(state.time * presentation.pulseHz) * 0.022
+        : momentumHazard
+          ? (momentumWash ? 0.11 : 0.16) + Math.sin(state.time * presentation.pulseHz) * 0.025
+          : 0.4 + Math.sin(state.time * presentation.pulseHz) * 0.1) * quality.hazardCueOpacity;
       visual.ring.scaling.set(radius * presentation.scaleX * pulse, momentumWash ? 0.58 : 1, radius * presentation.scaleZ * pulse);
       visual.ring.rotation.y = state.time * presentation.rotationSpeed * quality.stateMotionScale;
       visual.glyphMaterial.diffuseColor = color.scale(0.2);
       visual.glyphMaterial.emissiveColor = color;
-      visual.glyphMaterial.alpha = (momentumWash ? 0.75 : 1) * quality.hazardCueOpacity;
+      visual.glyphMaterial.alpha = (parallaxShearDuplicate ? 0.70 : parallaxGravity ? 0.86 : momentumWash ? 0.75 : 1) * quality.hazardCueOpacity;
       const glyphScale = Math.max(0.34, Math.min(0.86, radius * 0.28));
       visual.glyph.scaling.set(glyphScale * presentation.scaleX, 1, glyphScale * presentation.scaleZ);
       visual.glyph.rotation.y = state.time * presentation.rotationSpeed * 0.7 * quality.stateMotionScale;
