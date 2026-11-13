@@ -107,7 +107,10 @@ assert.equal((presentation.match(/\.material = this\.objectiveSignalMaterial;/g)
   'only the genuine compact alignment optic may use the active amber signal');
 assert.ok(presentation.includes('graphite, 1.26, 0.52, -1.60, 2.54, 0.12, 0.68')
   && presentation.includes('alignShroud.position.set(1.70, 5.50, -1.56);')
-  && presentation.includes('{ diameter: 1.06, height: 0.15, tessellation: 4 }')
+  && presentation.includes('{ diameter: 0.88, height: 0.15, tessellation: 4 }')
+  && presentation.includes('{ diameter: 1.38, thickness: 0.12, tessellation: 4 }')
+  && presentation.includes('{ diameter: 1.28, height: 0.18, tessellation: 4 }')
+  && presentation.includes('alignSignal.position.set(1.70, 5.75, -1.56);')
   && presentation.includes('fiducialBrass, 0, 0.055, side * 0.36'),
   'deck-bound metrology scales and subdued reference conductors must keep combat visible');
 

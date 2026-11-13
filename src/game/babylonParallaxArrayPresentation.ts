@@ -885,29 +885,34 @@ export class BabylonParallaxArrayPresentation {
         opticSupport.material = shell;
         opticSupport.isPickable = false;
       }
+      // The real phone's lower-frame objective diamond clipped against the
+      // device viewport after a player movement and guard activation. Keep
+      // the same anchored physical target, full amber/cyan/dark silhouette
+      // and exact mission location, but bound its world-space footprint
+      // so its outer ring doesn't cover the adjacent combat floor.
       const alignShroud = MeshBuilder.CreateCylinder('p28-g9-pylon-align-objective-shroud-' + index,
-        { diameter: 1.56, height: 0.18, tessellation: 4 }, scene);
+        { diameter: 1.28, height: 0.18, tessellation: 4 }, scene);
       alignShroud.parent = root;
       alignShroud.position.set(1.70, 5.50, -1.56);
       alignShroud.rotation.y = Math.PI / 4;
       alignShroud.material = graphite;
       alignShroud.isPickable = false;
       const alignPerimeter = MeshBuilder.CreateTorus('p28-g9-pylon-align-machined-contrast-perimeter-' + index,
-        { diameter: 1.66, thickness: 0.14, tessellation: 4 }, scene);
+        { diameter: 1.38, thickness: 0.12, tessellation: 4 }, scene);
       alignPerimeter.parent = root;
       alignPerimeter.position.set(1.70, 5.63, -1.56);
       alignPerimeter.rotation.y = Math.PI / 4;
       alignPerimeter.material = cyan;
       alignPerimeter.isPickable = false;
       const alignSignal = MeshBuilder.CreateCylinder('p28-g9-pylon-align-distinct-amber-diamond-' + index,
-        { diameter: 1.06, height: 0.15, tessellation: 4 }, scene);
+        { diameter: 0.88, height: 0.15, tessellation: 4 }, scene);
       alignSignal.parent = root;
       alignSignal.position.set(1.70, 5.75, -1.56);
       alignSignal.rotation.y = Math.PI / 4;
       alignSignal.material = this.objectiveSignalMaterial;
       alignSignal.isPickable = false;
       const alignReticle = MeshBuilder.CreateCylinder('p28-g9-pylon-align-dark-target-aperture-' + index,
-        { diameter: 0.33, height: 0.09, tessellation: 12 }, scene);
+        { diameter: 0.29, height: 0.09, tessellation: 12 }, scene);
       alignReticle.parent = root;
       alignReticle.position.set(1.70, 5.88, -1.56);
       alignReticle.material = graphite;
