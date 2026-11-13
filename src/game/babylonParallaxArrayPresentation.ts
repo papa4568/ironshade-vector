@@ -621,9 +621,9 @@ export class BabylonParallaxArrayPresentation {
       for (let station = 0; station < 4; station++) {
         const major = station % 2 === 0;
         box(scene, root, 'p28-g9-pylon-macro-cross-vernier-' + index + '-' + station,
-          major ? calibrationInk : fiducialBrass,
+          major ? calibrationInk : counterweightMetal,
           0, 1.23 + station * 0.75, 3.01,
-          major ? 2.05 : 1.52, major ? 0.23 : 0.16, 0.22);
+          major ? 1.52 : 0.96, major ? 0.18 : 0.13, 0.16);
         box(scene, root, 'p28-g9-pylon-open-scale-notch-' + index + '-' + station,
           graphite, station % 2 ? -0.65 : 0.65, 1.23 + station * 0.75, 3.16,
           0.13, 0.14, 0.13);
@@ -807,10 +807,10 @@ export class BabylonParallaxArrayPresentation {
       stationSerial.material = indexMaterial;
       stationSerial.isPickable = false;
       const indexPlaqueBracket = box(scene, root, 'p28-g9-pylon-numbered-plate-bracket-' + index,
-        graphite, 2.03, 2.32, 1.34, 1.10, 0.78, 0.14);
+        graphite, 2.03, 2.32, 1.34, 1.52, 0.99, 0.14);
       indexPlaqueBracket.rotation.y = Math.PI / 4;
       const indexPlaque = MeshBuilder.CreatePlane('p28-g9-pylon-numbered-plate-' + index,
-        { width: 1.00, height: 0.62 }, scene);
+        { width: 1.38, height: 0.85 }, scene);
       indexPlaque.parent = root;
       indexPlaque.position.set(2.13, 2.34, 1.49);
       indexPlaque.rotation.y = Math.PI / 4;
@@ -857,9 +857,9 @@ export class BabylonParallaxArrayPresentation {
         const major = graduation % 2 === 0;
         box(scene, standardCassette,
           'p28-g9-pylon-body-vernier-countable-tick-' + index + '-' + graduation,
-          major ? calibrationInk : fiducialBrass,
+          major ? calibrationInk : etched,
           major ? 0 : -0.18, 0.25 - graduation * 0.34, 0.21,
-          major ? 1.78 : 1.22, major ? 0.17 : 0.13, 0.11);
+          major ? 1.60 : 0.90, major ? 0.17 : 0.11, 0.11);
       }
       // A single unmistakable *world-space* diamond target crowns the
       // numbered calibration cassette. Earlier amber caps blended into the
@@ -1404,9 +1404,12 @@ export class BabylonParallaxArrayPresentation {
       // insulators and suspended reticle distinguish this from a dark cuboid.
       box(scene, root, 'p28-g9-optical-frame-mounted-service-plate-' + index,
         graphite, 0, 0.16, 0, 3.60, 0.31, 2.00);
-      box(scene, root, 'p27-c10-frame-left-' + index, shell, -0.98, 1.72, 0, 0.28, 3.44, 0.38);
-      box(scene, root, 'p27-c10-frame-right-' + index, shell, 0.98, 1.72, 0, 0.28, 3.44, 0.38);
-      box(scene, root, 'p27-c10-frame-top-' + index, etched, 0, 3.24, 0, 2.24, 0.22, 0.40);
+      // Use the etched, rough-machined dark structural alloy for the giant
+      // frame members, rather than blank pale beams competing with actual
+      // pylon datum stations at Android zoom. Brass remains on measured ticks.
+      box(scene, root, 'p27-c10-frame-left-' + index, counterweightMetal, -0.98, 1.72, 0, 0.28, 3.44, 0.38);
+      box(scene, root, 'p27-c10-frame-right-' + index, counterweightMetal, 0.98, 1.72, 0, 0.28, 3.44, 0.38);
+      box(scene, root, 'p27-c10-frame-top-' + index, counterweightMetal, 0, 3.24, 0, 2.24, 0.22, 0.40);
       box(scene, root, 'p27-c10-frame-readout-' + index, cyan, 0, 1.68, 0.31, 1.65, 0.14, 0.24);
       box(scene, root, 'p28-g9-frame-isolator-' + index, insulation, 0, 2.87, 0.12, 1.88, 0.16, 0.27);
       const reticle = MeshBuilder.CreateTorus('p28-g9-frame-optical-reticle-' + index,
@@ -1713,6 +1716,12 @@ export class BabylonParallaxArrayPresentation {
         prong.isPickable = false;
         box(scene, root, 'p28-g9-shear-anchor-ceramic-collar-' + index + '-' + side,
           indexed, side * 0.56, 2.18, 0.55, 0.48, 0.25, 0.44);
+        // Two slim, actual ceramic insulator splines are exposed on the front
+        // of this eight-position shear fixture. Not broad lavender pylons,
+        // floor HUD arrows or combat telegraphs: the measured violet channel
+        // continues down dark steel prongs and remains countable when tilted.
+        box(scene, root, 'p28-g9-shear-anchor-exposed-ceramic-spline-' + index + '-' + side,
+          indexed, side * 0.56, 1.42, 0.88, 0.16, 1.22, 0.13);
       }
       box(scene, root, 'p28-g9-shear-anchor-violet-crosshead-' + index,
         counterweightMetal, 0, 2.44, 0.52, 1.82, 0.32, 0.38);

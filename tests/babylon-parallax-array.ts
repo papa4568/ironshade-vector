@@ -601,6 +601,16 @@ assert.ok(presentation.includes('p28-g9-pylon-exposed-metrology-ruler-')
   && presentation.includes('p28-g9-shear-anchor-insulated-upright-')
   && presentation.includes('p28-g9-shear-anchor-violet-crosshead-'),
   'Parallax fiducials, moving calibrated masses and insulated shear forks must be physically distinct at gameplay zoom');
+assert.ok(presentation.includes("major ? calibrationInk : counterweightMetal,\n          0, 1.23 + station * 0.75")
+  && presentation.includes("major ? 1.52 : 0.96, major ? 0.18 : 0.13")
+  && presentation.includes("major ? calibrationInk : etched,\n          major ? 0 : -0.18")
+  && presentation.includes("p27-c10-frame-left-' + index, counterweightMetal")
+  && presentation.includes("p27-c10-frame-right-' + index, counterweightMetal")
+  && presentation.includes("{ width: 1.38, height: 0.85 }")
+  && presentation.includes("p28-g9-shear-anchor-exposed-ceramic-spline-")
+  && presentation.includes("indexed, side * 0.56, 1.42, 0.88, 0.16, 1.22, 0.13"),
+  'actual phone zoom needs readable bolted numeral/vernier and insulated shear forks with non-obscuring dark frames');
+
 assert.ok(presentation.includes("this.bossWarning = MeshBuilder.CreateTorus('p28-g9-boss-attack-warning-ring'")
   && presentation.includes('this.bossWarning.setEnabled(patternHot);')
   && presentation.includes('patternHot ? 0xf2a35e : phaseTwo')
