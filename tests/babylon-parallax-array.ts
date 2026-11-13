@@ -401,7 +401,8 @@ assert.ok(presentation.includes('p28-g9-pylon-body-mounted-vernier-cassette-')
   && presentation.includes('standardNumber.material = indexMaterial;')
   && presentation.includes('p28-g9-pylon-body-vernier-countable-tick-')
   && presentation.includes('graduation < 5')
-  && presentation.includes('major ? 1.78 : 1.22'),
+  && presentation.includes('major ? 1.60 : 0.90')
+   && presentation.includes('major ? calibrationInk : etched,'),
   'the three real reference pylons must show countable high-contrast body-mounted fiducials');
 assert.ok(presentation.includes('p28-g9-pylon-survey-open-cheek-')
   && presentation.includes('p28-g9-pylon-survey-brass-conductor-')
