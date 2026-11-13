@@ -456,8 +456,8 @@ assert.ok(presentation.includes("new DynamicTexture('p28-g9-pylon-numbered-engra
   && presentation.includes("'p28-g9-pylon-numbered-plate-' + index")
   && presentation.includes("indexPlaque.position.set(2.13, 2.34, 1.49);")
   && presentation.includes('indexPlaque.material = indexMaterial;')
-  && presentation.includes('{ width: 1.00, height: 0.62 }, scene);')
-  && presentation.includes('graphite, 2.03, 2.32, 1.34, 1.10, 0.78, 0.14);')
+  && presentation.includes('{ width: 1.38, height: 0.85 }, scene);')
+  && presentation.includes('graphite, 2.03, 2.32, 1.34, 1.52, 0.99, 0.14);')
   && presentation.includes('this.pylonIndexMaterials.forEach(material => material.dispose());')
   && presentation.includes('this.pylonIndexTextures.forEach(texture => texture.dispose());'),
   'all three reference pylons require distinct camera-facing engraved identities with managed GPU resources');
