@@ -673,6 +673,57 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-18",
+      "title": "Bind engineering iteration guardrails to the actual agent-orchestration review task",
+      "priority": 180,
+      "status": "active",
+      "dependsOn": [
+        "AO-16"
+      ],
+      "acceptance": [
+        "Process-only iteration-preflight changes have an explicit AO-18 acceptance contract in the authoritative AO task graph and never claim P28-G9 visuals, Android game content or product-roadmap completion.",
+        "The existing trusted exact-head review selector and candidate evidence resolve this process candidate as AO-18 without changing protected reviewer, observer, evidence-independence policy, or product-task selection.",
+        "Fast Iteration Preflight uses the existing affected-impact selector, refuses implicit full verification, stops on failure, and rejects no-check success; a focused review-scope regression rejects fallback to an unrelated product/EV review.",
+        "AGENTS.md and a version-controlled playbook require evidence-based failure hypotheses, actual high-tier scene inspection, affected sibling regressions and candidate freeze without waiving mandatory build, browser, Android/APK, security or independent-review gates.",
+        "The exact AO-18 candidate passes focused tests, Agent Orchestration, authoritative full production build, browser/API 35/API 36 APK gates, EV-9 trusted-source observation and an independent trusted AO-18 review before merge. No protected source promotion or merge is authorized by these tests."
+      ],
+      "affectedDomains": [
+        "agent-orchestration",
+        "verification",
+        "developer-tooling",
+        "ci"
+      ],
+      "proofs": [
+        {
+          "id": "iteration-preflight-unit",
+          "kind": "test",
+          "required": true,
+          "description": "Iteration preflight and review scope positive/fail-closed Node regression tests pass on exact candidate.",
+          "command": "node tests/iteration-preflight.mjs && node tests/review-scope.mjs"
+        },
+        {
+          "id": "architecture-contract",
+          "kind": "invariant",
+          "required": true,
+          "description": "Mechanically enforced architecture and trusted EV-9 source-bound restrictions remain intact."
+        },
+        {
+          "id": "candidate-ci-android-browser",
+          "kind": "ci",
+          "required": true,
+          "description": "Exact-head authoritative candidate full build, desktop/mobile E2E, Android APK and API 35/36 gates pass with valid evidence."
+        },
+        {
+          "id": "trusted-independent-review",
+          "kind": "review",
+          "required": true,
+          "description": "Read-only independent verifier reviews the exact AO-18 candidate and passes all acceptance/proofs, not P28-G9 visuals."
+        }
+      ],
+      "externalDependencies": [],
+      "notes": "Explicit owner-directed process engineering; only AO orchestration work is represented here. P28-G9 remains first unchecked product task in docs/content-roadmap.md and game PR #445 remains separate."
     }
   ]
 }

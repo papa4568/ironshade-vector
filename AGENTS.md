@@ -50,6 +50,7 @@ Keep always-on context small. Read only the documents relevant to the current ta
 - For product-roadmap work, `node agent/tools/roadmap-adapter.mjs` may be used to materialize the Markdown task into machine-readable domains, dependencies, and proof obligations; it must not override Markdown queue order or acceptance text during compatibility mode.
 - Work on one roadmap item at a time.
 - Follow `docs/engineering-iteration-playbook.md`: reproduce and explain a failure before editing, inspect genuine visual gameplay content and affected siblings, and use `node tools/iteration-preflight.mjs` before expensive candidate verification. Full selection remains full, and preflight never replaces final acceptance.
+- For user-directed agent-orchestration/process work, bind the candidate to its genuine AO task and acceptance criteria; never let the product-roadmap review fallback certify unrelated process code as the first unfinished gameplay task. Preserve exact-SHA trusted independent review and protected-source authority.
 - One roadmap checkbox should fit one focused implementation → targeted test → final verification → APK cycle.
 - Split an item before coding when it contains independent implementation or verification cycles.
 - Inspect only the code, tests, docs, dependencies, git state, CI evidence, and artifacts needed for the selected task.

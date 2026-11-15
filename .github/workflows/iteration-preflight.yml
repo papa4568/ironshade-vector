@@ -24,8 +24,10 @@ jobs:
         with:
           node-version: '22.23.2'
 
-      - name: Verify iteration preflight guards
-        run: node tests/iteration-preflight.mjs
+      - name: Verify iteration preflight and scoped-review regressions
+        run: |
+          node tests/iteration-preflight.mjs
+          node tests/review-scope.mjs
 
       - name: Show affected checks without running expensive verification
         if: github.event_name == 'pull_request'
@@ -33,3 +35,10 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node tools/iteration-preflight.mjs --base "$BASE_SHA" --head "$HEAD_SHA" --json
+
+      - name: Require correct independent-review task for process changes
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node tools/review-scope.mjs --base "$BASE_SHA" --head "$HEAD_SHA"
