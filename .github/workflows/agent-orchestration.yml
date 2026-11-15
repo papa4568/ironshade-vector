@@ -22,6 +22,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   validate-agent-orchestration:
@@ -201,6 +202,12 @@ jobs:
       - name: Run affected-verification regressions
         run: node agent/tests/affected-verification.mjs
 
+      - name: Execute AO-18 focused checks in the credited orchestration job
+        run: |
+          node tests/iteration-preflight.mjs
+          node tests/review-scope.mjs
+          node tests/trusted-observer-evidence.mjs
+
       - name: Run promoted impact-widening regressions
         run: node agent/tests/impact-widening-promotion.mjs
 
@@ -244,6 +251,33 @@ jobs:
 
       - name: Verify trusted EV-9 observer bootstrap
         run: node agent/tools/ev9-trusted-pr-candidate-observer-v11.mjs self-test
+
+      - name: Require real trusted EV-9 source observation before invariant credit
+        if: github.event_name == 'pull_request'
+        id: trusted_ev9
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node tools/trusted-observer-evidence.mjs --base "$BASE_SHA" --head "$HEAD_SHA" --pr "$PR_NUMBER"
+
+      - name: Verified EV-9 target run ${{ steps.trusted_ev9.outputs.target_run_id }} job ${{ steps.trusted_ev9.outputs.target_job_id }} for exact ${{ github.event.pull_request.head.sha }}
+        if: github.event_name == 'pull_request' && steps.trusted_ev9.outputs.target_run_id != ''
+        run: |
+          echo 'Authenticated source run and job identities were checked against actual trusted-base logs'
+          test -n "${{ steps.trusted_ev9.outputs.target_run_id }}"
+          test -n "${{ steps.trusted_ev9.outputs.target_job_id }}"
+
+      - name: Upload verified observer run identity within credited orchestration job
+        if: github.event_name == 'pull_request' && steps.trusted_ev9.outputs.target_run_id != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: trusted-ev9-target-run-${{ steps.trusted_ev9.outputs.target_run_id }}-job-${{ steps.trusted_ev9.outputs.target_job_id }}-${{ github.event.pull_request.head.sha }}
+          path: .iteration-evidence/trusted-ev9.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Detect active orchestration evidence task
         id: evidence-task

@@ -1,0 +1,72 @@
+name: Fast Iteration Preflight
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  iteration-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Check out exact PR head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Verify iteration preflight and scoped-review regressions
+        run: |
+          node tests/iteration-preflight.mjs
+          node tests/review-scope.mjs
+          node tests/trusted-observer-evidence.mjs
+
+      - name: Show affected checks without running expensive verification
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node tools/iteration-preflight.mjs --base "$BASE_SHA" --head "$HEAD_SHA" --json
+
+      - name: Require correct independent-review task for process changes
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node tools/review-scope.mjs --base "$BASE_SHA" --head "$HEAD_SHA"
+
+      - name: Require exact trusted-base EV-9 observer evidence for process PR
+        id: trusted_ev9
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node tools/trusted-observer-evidence.mjs --base "$BASE_SHA" --head "$HEAD_SHA" --pr "$PR_NUMBER"
+
+      - name: Verified EV-9 source run ${{ steps.trusted_ev9.outputs.target_run_id }} job ${{ steps.trusted_ev9.outputs.target_job_id }} for candidate ${{ github.event.pull_request.head.sha }}
+        if: github.event_name == 'pull_request' && steps.trusted_ev9.outputs.target_run_id != ''
+        run: |
+          test -n "${{ steps.trusted_ev9.outputs.target_run_id }}"
+          test -n "${{ steps.trusted_ev9.outputs.target_job_id }}"
+
+      - name: Upload real trusted EV-9 observation receipt
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: trusted-ev9-source-observation-run-${{ steps.trusted_ev9.outputs.target_run_id }}-job-${{ steps.trusted_ev9.outputs.target_job_id }}-${{ github.event.pull_request.head.sha }}
+          path: .iteration-evidence/trusted-ev9.json
+          if-no-files-found: ignore
+          retention-days: 30
