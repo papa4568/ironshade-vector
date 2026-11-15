@@ -32,6 +32,15 @@ export function verifyReviewScope(changedFiles, selection) {
   return { processChange, taskId: selection.taskId, mode: selection.mode };
 }
 
+export function collectReviewChangedFiles({ base, head, cwd = process.cwd() }) {
+  assert(base && head, 'both Git comparison refs are required');
+  // Do not omit deletions or rename sources. A process rule must still apply
+  // if its own protected document or tool is deleted/moved out of scope.
+  return execFileSync('git', ['diff', '--no-renames', '--name-only', '-z', base + '...' + head], {
+    cwd, encoding: 'utf8',
+  }).split('\0').filter(Boolean);
+}
+
 export function parseReviewScopeArguments(argv) {
   let base = null;
   let head = null;
@@ -46,8 +55,7 @@ export function parseReviewScopeArguments(argv) {
 
 async function main() {
   const { base, head } = parseReviewScopeArguments(process.argv.slice(2));
-  const files = execFileSync('git', ['diff', '--name-only', '--diff-filter=ACMR', base + '...' + head], { encoding: 'utf8' })
-    .split(/\r?\n/).map(path => path.trim()).filter(Boolean);
+  const files = collectReviewChangedFiles({ base, head });
   const { selectReviewTask } = await import('../agent/tools/select-review-task.mjs');
   const selection = await selectReviewTask({ baseRef: base, headRef: head, useEventRefs: false });
   const outcome = verifyReviewScope(files, selection);
