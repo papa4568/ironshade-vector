@@ -15,13 +15,13 @@ The authoritative impact map and affected-verification selector choose focused c
 
 ```bash
 # Plan only; does not run checks.
-node agent/tools/iteration-preflight.mjs --base main --head HEAD
+node tools/iteration-preflight.mjs --base main --head HEAD
 # Work-in-progress paths.
-node agent/tools/iteration-preflight.mjs --files src/game/example.ts,tests/example.ts --json
+node tools/iteration-preflight.mjs --files src/game/example.ts,tests/example.ts --json
 # Run selected checks, stopping at first failure.
-node agent/tools/iteration-preflight.mjs --files src/game/example.ts,tests/example.ts --run
+node tools/iteration-preflight.mjs --files src/game/example.ts,tests/example.ts --run
 # For a stable candidate when the selector requires full verification:
-node agent/tools/iteration-preflight.mjs --base main --head HEAD --run --allow-full
+node tools/iteration-preflight.mjs --base main --head HEAD --run --allow-full
 ```
 
 The preflight refuses implicit full verification and never treats an empty selection as a successful run. It runs repository-declared commands: inspect the impact-map changes before executing commands from an untrusted branch. A plan does not constitute test evidence.

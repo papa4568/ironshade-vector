@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectChangedFiles, loadImpactMap, selectAffectedVerification } from './select-affected-verification.mjs';
+import { collectChangedFiles, loadImpactMap, selectAffectedVerification } from '../agent/tools/select-affected-verification.mjs';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
