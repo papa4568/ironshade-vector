@@ -1,7 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectChangedFiles, loadImpactMap, selectAffectedVerification } from '../agent/tools/select-affected-verification.mjs';
+import { loadImpactMap, selectAffectedVerification } from '../agent/tools/select-affected-verification.mjs';
+import { collectReviewChangedFiles } from './review-scope.mjs';
+
+// Keep deletions and rename source paths: absent high-risk files must still
+// trigger the same full-verification fallback as modified high-risk files.
+export const collectIterationChangedFiles = collectReviewChangedFiles;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -60,7 +65,7 @@ async function main() {
   const options = parsePreflightArguments(process.argv.slice(2));
   const files = options.files !== null
     ? options.files.split(',').map(file => file.trim()).filter(Boolean)
-    : collectChangedFiles({ base: options.base, head: options.head });
+    : collectIterationChangedFiles({ base: options.base, head: options.head });
   assert(files.length > 0, 'no changed files to inspect');
   const selection = selectAffectedVerification(files, await loadImpactMap());
   const plan = planIterationPreflight(selection);
