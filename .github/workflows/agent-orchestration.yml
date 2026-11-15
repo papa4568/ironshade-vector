@@ -201,6 +201,12 @@ jobs:
       - name: Run affected-verification regressions
         run: node agent/tests/affected-verification.mjs
 
+      - name: Execute AO-18 focused checks in the credited orchestration job
+        run: |
+          node tests/iteration-preflight.mjs
+          node tests/review-scope.mjs
+          node tests/trusted-observer-evidence.mjs
+
       - name: Run promoted impact-widening regressions
         run: node agent/tests/impact-widening-promotion.mjs
 

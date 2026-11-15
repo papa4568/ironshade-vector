@@ -36,6 +36,10 @@ Identify protected-source dependencies before editing them. Request independent 
 
 Process-only iteration-preflight modifications must be tied to an explicit active/verifying AO orchestration task whose acceptance and proofs describe the actual process change. Do not allow the product-roadmap fallback to label a process candidate as P28-G9 or claim visual acceptance. The fast CI `review-scope` check verifies this mapping for these iteration-preflight paths, while the authoritative trusted reviewer still decides acceptance independently.
 
+### Proof provenance
+
+The exact AO-18 focused tests run inside the **Agent Orchestration / validate-agent-orchestration** job before its partial ledger credits any test proof. They also run independently in Fast Iteration Preflight. For process changes, the fast workflow confirms the real **trusted-base \`pull_request_target\` EV-9 \`verify-pr-candidate\` success and its exact candidate/base log marker, then uploads a read-only receipt. The candidate's \`pull_request\` observer self-test is not trusted observation. The final candidate review must independently validate these exact-head job and log references; generic ledger source attribution is not a substitute for the actual producing checks.
+
 ## Completion and measurement
 
 Keep the candidate SHA, focused-check outcomes, real visual findings, causes of expensive reruns, security/review status, APK artifact identity and blockers in the PR discussion. Do not archive/mark the active roadmap task done until actual acceptance passes. Use recurrence evidence to improve deterministic tests instead of weakening standards.

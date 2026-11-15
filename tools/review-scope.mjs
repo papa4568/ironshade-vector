@@ -10,6 +10,8 @@ const ITERATION_PROCESS_PATHS = new Set([
   'tools/review-scope.mjs',
   'tests/iteration-preflight.mjs',
   'tests/review-scope.mjs',
+  'tools/trusted-observer-evidence.mjs',
+  'tests/trusted-observer-evidence.mjs',
   '.github/workflows/iteration-preflight.yml',
   'docs/engineering-iteration-playbook.md',
 ]);
