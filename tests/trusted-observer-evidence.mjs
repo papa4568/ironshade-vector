@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { parseObserverReceiptArgs, verifyTrustedObserverEvidence } from '../tools/trusted-observer-evidence.mjs';
+import { parseObserverReceiptArgs, trustedObserverStepOutputs, verifyTrustedObserverEvidence } from '../tools/trusted-observer-evidence.mjs';
 
 const sha = 'a'.repeat(40), base = 'b'.repeat(40), pr = 448;
 const marker = 'EV9_TRUSTED_V11_VERIFY_PASS mode=ev18-hardened-steady candidate=' + sha + ' trustedBase=' + base;
@@ -19,6 +19,14 @@ assert.equal(evidence.workflowRunId, 19);
 assert.equal(evidence.verificationJobId, 81);
 assert.equal(evidence.candidateSha, sha);
 assert.equal(evidence.marker, marker);
+const outputs = trustedObserverStepOutputs(evidence);
+assert(outputs.includes('target_run_id=19\n'));
+assert(outputs.includes('target_job_id=81\n'));
+assert(outputs.includes('candidate_sha=' + sha + '\n'));
+assert(outputs.includes('trusted_base_sha=' + base + '\n'));
+assert(outputs.includes('verification_marker=' + marker + '\n'));
+assert.throws(() => trustedObserverStepOutputs({ ...evidence, marker: 'unverified' }));
+
 assert.deepEqual(parseObserverReceiptArgs(['--base', base, '--head', sha, '--pr', '448']), {base,head:sha,pr});
 for (const args of [
   [], ['--base', base], ['--base', base, '--head', sha, '--pr', 'oops'],

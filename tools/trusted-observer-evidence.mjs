@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectReviewChangedFiles, requiresOrchestrationReview } from './review-scope.mjs';
@@ -43,6 +43,21 @@ export function verifyTrustedObserverEvidence({ runs, jobs, logs, sha, base, pr 
     workflowRunId: run.id, verificationJobId: job.id, marker,
     evidenceKind: 'read-only GitHub Actions pull_request_target job and log',
   };
+}
+
+export function trustedObserverStepOutputs(evidence) {
+  ok(Number.isInteger(evidence?.workflowRunId) && evidence.workflowRunId > 0, 'trusted observer run id invalid');
+  ok(Number.isInteger(evidence?.verificationJobId) && evidence.verificationJobId > 0, 'trusted observer job id invalid');
+  ok(SHA.test(evidence.candidateSha) && SHA.test(evidence.trustedBaseSha), 'trusted observer SHA identity invalid');
+  ok(evidence.marker === 'EV9_TRUSTED_V11_VERIFY_PASS mode=ev18-hardened-steady candidate=' +
+    evidence.candidateSha + ' trustedBase=' + evidence.trustedBaseSha, 'trusted observer pass marker malformed');
+  return [
+    'target_run_id=' + evidence.workflowRunId,
+    'target_job_id=' + evidence.verificationJobId,
+    'candidate_sha=' + evidence.candidateSha,
+    'trusted_base_sha=' + evidence.trustedBaseSha,
+    'verification_marker=' + evidence.marker,
+  ].join('\n') + '\n';
 }
 
 export function parseObserverReceiptArgs(argv) {
@@ -109,6 +124,12 @@ async function main() {
   });
   await mkdir('.iteration-evidence', { recursive: true });
   await writeFile('.iteration-evidence/trusted-ev9.json', JSON.stringify(evidence, null, 2) + '\n');
+  // Outputs are derived only after the authenticated target run, job and
+  // exact-base/candidate log marker have passed. GitHub job/artifact metadata
+  // can now carry the actual run and job identities to a read-only reviewer.
+  if (process.env.GITHUB_OUTPUT) {
+    await appendFile(process.env.GITHUB_OUTPUT, trustedObserverStepOutputs(evidence));
+  }
   console.log('TRUSTED_EV9_TARGET_OBSERVATION_PASS candidate=' + head +
     ' run=' + evidence.workflowRunId + ' job=' + evidence.verificationJobId);
 }
