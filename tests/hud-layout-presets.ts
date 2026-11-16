@@ -162,7 +162,10 @@ for (const option of ['Standard', 'Large', 'Left-Handed']) assert(armory.include
 assert(armory.includes('hudLayoutPresetPatch') && armory.includes('data-hud-layout-reset'), 'P19-F Settings must apply and reset canonical preset patches.');
 
 assert(combat.includes('data-layout-preset={profileSettings.hudLayoutPreset}') && combat.includes('data-control-cluster="movement"') && combat.includes('data-control-cluster="action"'), 'P19-F touch controls must expose separate persisted movement/action clusters.');
-assert(combat.includes("manualTargeting ? 'manual' : 'acquire'") && combat.includes('updateAssistedTarget(stateRef.current, profileSettings.aimAssist)'), 'P19-F must preserve manual aim and assisted-targeting semantics.');
+assert(combat.includes('resolveTouchFireIntent(manualTargeting, targetId)') &&
+  combat.includes('fireCurrent(fireIntent.mode, fireIntent.targetId)') &&
+  combat.includes('updateAssistedTarget(stateRef.current, profileSettings.aimAssist)'),
+  'P19-F must preserve explicit manual aim and acquired-target FIRE while allowing no-lock manual shots.');
 assert(combat.includes("onPointerDown={event => beginStick('move', event)}") && combat.includes('className="touch-button fire-button"'), 'P19-F must keep pointer input on the visible transformed controls.');
 
 assert(layoutCss.includes("env(safe-area-inset-left)") && layoutCss.includes("env(safe-area-inset-right)") && layoutCss.includes("env(safe-area-inset-bottom)"), 'P19-F clusters must remain anchored to safe areas.');
