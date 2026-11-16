@@ -3,6 +3,7 @@ import {
   combatPointerMedia,
   keyboardMoveFromCodes,
   resolveCombatInputCapabilities,
+  resolveTouchFireIntent,
   subscribePointerCapabilityChanges,
   type PointerCapabilityQuery,
 } from '../src/game/combatInputCapabilities';
@@ -73,6 +74,21 @@ hybridFine = true;
 hybridQuery.emitChange();
 assert(hybridSnapshots.length === 2, 'P24-A pointer capability subscriptions must clean up listeners.');
 
+// P28-F6 post-HOME: a heavy WebView frame can outlast manualAimUntilRef
+// before the physical FIRE touch arrives. Assisted targeting is optional;
+// a missing assisted lock must not turn a real touch into a no-op.
+const noLockAfterSlowFrame = resolveTouchFireIntent(false, null);
+assert(noLockAfterSlowFrame.mode === 'manual' && noLockAfterSlowFrame.targetId === null,
+  'P28-F6 expired manual-aim window must still produce a manual shot without a lock.');
+const manualWithLock = resolveTouchFireIntent(true, 47);
+assert(manualWithLock.mode === 'manual' && manualWithLock.targetId === null,
+  'P28-F6 an active manual aim gesture must override acquisition.');
+const assistedWithLock = resolveTouchFireIntent(false, 47);
+assert(assistedWithLock.mode === 'acquire' && assistedWithLock.targetId === 47,
+  'P28-F6 an available assisted lock must preserve assisted firing.');
+assert(resolveTouchFireIntent(false, 0).mode === 'acquire',
+  'P28-F6 target ID 0 is valid and must not be treated as missing.');
+
 const gameCanvas = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 for (const query of Object.values(combatPointerMedia)) {
   assert(gameCanvas.includes(`window.matchMedia(combatPointerMedia.${Object.entries(combatPointerMedia).find(([, value]) => value === query)?.[0]})`), `P24-A GameCanvas must read ${query} capability.`);
@@ -81,6 +97,9 @@ assert(gameCanvas.includes('subscribePointerCapabilityChanges(pointerQueries, up
 assert(gameCanvas.includes('const keyMove = keyboardMoveFromCodes(keys);') && gameCanvas.includes('else if (keyMove.x !== 0 || keyMove.y !== 0) setMove(state, keyMove);'), 'P24-A GameCanvas must apply keyboard movement independently of compact layout.');
 assert(!gameCanvas.includes('!compactLayout && (keyMove.x !== 0 || keyMove.y !== 0)'), 'P24-A compact layout must not gate WASD movement.');
 assert(gameCanvas.includes("pointerUsesFineInput(event.pointerType, inputCapabilities)"), 'P24-A canvas pointer routing must use the actual pointer event modality.');
+assert((gameCanvas.match(/resolveTouchFireIntent\(manualTargeting, targetId\)/g) ?? []).length === 2,
+  'P28-F6 both immediate touch FIRE and held FIRE must use the same no-lock manual fallback.');
 assert(gameCanvas.includes("data-fine-pointer-available={inputCapabilities.finePointerAvailable ? 'true' : 'false'}") && gameCanvas.includes("data-touch-pointer-available={inputCapabilities.touchPointerAvailable ? 'true' : 'false'}"), 'P24-A live capability state must be exposed for runtime QA.');
 
 console.log('P24_A_COMBAT_INPUT_CAPABILITIES_PASS narrow=compact+wasd coarse=touch+keyboard hybrid=media-change-live pointer=event-modality');
+console.log('P28F6_TOUCH_FIRE_FALLBACK_PASS no-target=manual manual-override=manual available-lock=acquire immediate+held=covered');

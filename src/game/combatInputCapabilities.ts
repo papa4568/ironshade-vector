@@ -51,6 +51,21 @@ export function subscribePointerCapabilityChanges(queries: readonly PointerCapab
   };
 }
 
+/**
+ * Touch FIRE uses assisted targeting when a valid target is acquired, but
+ * never disables the shot merely because the optional assist has no target.
+ * This is especially important when a brief manual-aim gesture expires during
+ * a slow Android WebView frame or after foreground resume.
+ */
+export function resolveTouchFireIntent(
+  manualAimActive: boolean,
+  assistedTargetId: number | null,
+): { mode: 'manual' | 'acquire'; targetId: number | null } {
+  return manualAimActive || assistedTargetId == null
+    ? { mode: 'manual', targetId: null }
+    : { mode: 'acquire', targetId: assistedTargetId };
+}
+
 export function keyboardMoveFromCodes(codes: ReadonlySet<string>) {
   return {
     x: (codes.has('KeyD') ? 1 : 0) - (codes.has('KeyA') ? 1 : 0),
