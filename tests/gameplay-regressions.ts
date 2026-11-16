@@ -4,6 +4,7 @@ import { applyShipBonuses, buildMegastructureDebrief, buyConsumable, createDefau
 import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, cycleWeapon, getAbilityConfig, resetTargetControlMemory, selectWeapon, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, triggerReload, triggerVent, updateMobileTargetControl, weaponConfigs, weaponHandlingProfiles, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, continueIntoDeepZone, createDirector, stepMissionDirector } from '../src/game/director';
 import { findNavigationPath } from '../src/game/mapPathfinding';
+import { resolveTouchFireIntent } from '../src/game/combatInputCapabilities';
 import { activeWeaponFamilyForProfile, awardRecovery, awardVictory, buildIdentity, capstoneInteractionFor, createDefaultProfile, deriveCombatBuild, equipItem, isItemClassCompatible, loadProfile, materializeModifier, normalizeClassArmament, saveProfile, setAbilityMod, setOperatorClass, setSpecialization, setSpecializationOverclock, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
@@ -2053,6 +2054,23 @@ assert.equal(updateMobileTargetControl(bossGateTargetState, 'balanced', bossGate
 assert.equal(bossGateMemory.targetId, null, 'boss-gate invalidation must clear retained target memory');
 assert.equal(triggerFire(bossGateTargetState, 'acquire', gatedBoss.id), false, 'assisted FIRE must reject a stale boss id while the boss gate is held');
 
+// An expired manual-aim gesture (e.g., due to a slow Android WebView
+// resume frame) must not turn the physical touch FIRE control into a no-op.
+const resumedNoLockState = prepareAcquisitionState();
+for (const enemy of resumedNoLockState.enemies) enemy.active = false;
+const shotsBeforeResume = resumedNoLockState.telemetry.weaponShots[resumedNoLockState.player.currentWeapon];
+assert.equal(triggerFire(resumedNoLockState, 'acquire', null), false,
+  'legacy targetless assisted intent must still reject an invalid acquisition');
+const noLockResumeIntent = resolveTouchFireIntent(false, null);
+assert.equal(noLockResumeIntent.mode, 'manual');
+assert.equal(triggerFire(resumedNoLockState, noLockResumeIntent.mode, noLockResumeIntent.targetId), true,
+  'real touch FIRE after resume must produce an actual manual shot when no assisted target exists');
+assert.equal(resumedNoLockState.telemetry.weaponShots[resumedNoLockState.player.currentWeapon], shotsBeforeResume + 1,
+  'post-resume fallback must increment real simulation telemetry, not synthesize a test counter');
+assert.ok(resumedNoLockState.projectiles.some(projectile => projectile.active && projectile.owner === 'player'),
+  'post-resume fallback must create a real player projectile');
+assert.deepEqual(resolveTouchFireIntent(false, 251), { mode: 'acquire', targetId: 251 },
+  'available assisted locks must retain target identity and acquisition behavior');
 const manualFireState = prepareAcquisitionState();
 const manualFireTarget = manualFireState.enemies[0]!;
 Object.assign(manualFireTarget, { active: true, x: 1240, y: 500 });
@@ -2119,7 +2137,10 @@ assert.match(targetingCanvasSource, /feedback\.cue\('targetLock'\)/, 'a real tar
 assert.match(targetingCanvasSource, /Assisted target locked:/, 'assisted target changes need a screen-reader-safe lock announcement');
 assert.match(targetingCanvasSource, /className="combat-sr-status" role="status" aria-live="polite"/, 'combat must expose lock-state changes through a polite live region without making health updates live');
 assert.match(targetingCanvasSource, /data-target-id=\{focusEnemy\.id\}/, 'the visible target readout must identify the same retained target used for execution');
-assert.match(targetingCanvasSource, /fireCurrent\(manualTargeting \? 'manual' : 'acquire', targetId\)/, 'assisted FIRE must pass the retained target id into execution');
+assert.match(targetingCanvasSource, /const fireIntent = resolveTouchFireIntent\\(manualTargeting, targetId\\); fireCurrent\\(fireIntent\\.mode, fireIntent\\.targetId\\)/,
+  'touch FIRE must pass the retained target id into execution via the explicit intent policy');
+assert.match(targetingCanvasSource, /const fireIntent = resolveTouchFireIntent\\(manualTargeting, targetId\\);\\s*fireCurrent\\(fireIntent\\.mode, fireIntent\\.targetId\\)/,
+  'held FIRE must use the same target and manual-fallback intent policy');
 assert.match(targetingCanvasSource, /checkpoint && mobileTargetControlRef\.current\.targetId != null[\s\S]*Boss gate locked; assisted target released\./, 'boss-gate checkpoint transitions must release any retained assisted target instead of leaving a stale lock');
 assert.match(targetingCanvasSource, /gamepadTriggerFire[\s\S]*updateAssistedTarget\(state, profileSettingsRef\.current\.aimAssist\)/, 'controller RT should share assisted acquisition when manual aim is inactive');
 assert.match(targetingCanvasSource, /gamepadAimActive[\s\S]*clearAssistedTarget\('Manual controller aim active; assisted target released\.'\)/, 'controller right-stick takeover must invalidate assisted target control immediately');
