@@ -19,7 +19,7 @@ import { combatAudioEnvironment, feedback, impactSurfaceForObject } from '../gam
 import { PerformanceDiagnostics, resolvePerformanceDeviceTier } from '../game/performanceDiagnostics';
 import { CombatCameraFeedbackRuntime } from '../game/combatCameraFeedback';
 import { createCombatGraphicsBackend, resolveCombatGraphicsPathSelection, type CombatGraphicsBackend } from '../game/combatGraphicsBackend';
-import { combatPointerMedia, defaultCombatInputCapabilities, keyboardMoveFromCodes, resolveCombatInputCapabilities, subscribePointerCapabilityChanges, type CombatInputCapabilities } from '../game/combatInputCapabilities';
+import { combatPointerMedia, defaultCombatInputCapabilities, keyboardMoveFromCodes, resolveCombatInputCapabilities, resolveTouchFireIntent, subscribePointerCapabilityChanges, type CombatInputCapabilities } from '../game/combatInputCapabilities';
 import { combatClassLabel, exclusiveProtocolCombinationForInstances } from '../game/eliteProtocols';
 import { enhancedProtocolVisualSpecFor, protocolVisualCss, protocolVisualSpecFor } from '../game/protocolVisualLanguage';
 import { enemyStatusVisualIds, enemyStatusVisualSpecFor, playerStatusVisualSpecFor, resolvePlayerStatusVisuals, statusVisualCss } from '../game/statusVisualLanguage';
@@ -1348,7 +1348,10 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
           let targetId: number | null = null;
           if (assistedFire && !manualTargeting) targetId = updateAssistedTarget(state, profileSettingsRef.current.aimAssist);
           else if (manualTargeting || !assistedFire) clearAssistedTarget();
-          if (fireSourcesRef.current.mouse || fireSourcesRef.current.aim || fireSourcesRef.current.button || gamepadFire) fireCurrent(manualTargeting ? 'manual' : 'acquire', targetId);
+          if (fireSourcesRef.current.mouse || fireSourcesRef.current.aim || fireSourcesRef.current.button || gamepadFire) {
+            const fireIntent = resolveTouchFireIntent(manualTargeting, targetId);
+            fireCurrent(fireIntent.mode, fireIntent.targetId);
+          }
           stepSimulation(state, fixed);
           stepMissionDirector(state, directorRef.current, activeMissionRef.current, fixed);
         }
@@ -1574,7 +1577,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
             {abilityKit.map((ability, index) => <button key={ability.shortName} className={`touch-button ability-button ability-${index}`} aria-label={ability.name} title={ability.description} disabled={!abilityReady[index]} onPointerDown={() => useAbility(index, 'touch')}>{skillIcons && <img src={skillIcons[index]} alt="" aria-hidden="true" />}<span>{ability.shortName}</span><small>{abilityReady[index] ? 'READY' : `${hud.ability[index].toFixed(0)}s`}</small></button>)}
           </div>
           <button className="touch-button dodge-button" aria-label="Dodge" disabled={!dodgeReady} onPointerDown={useDodge}><span>DODGE</span><small>{dodgeReady ? 'READY' : `${hud.dodge.toFixed(1)}s`}</small></button>
-          <button className="touch-button fire-button" aria-label="Hold to fire with assisted targeting" onPointerDown={() => { feedback.unlock(); fireSourcesRef.current.button = true; const manualTargeting = performance.now() < manualAimUntilRef.current || !!aimStick.current; const targetId = manualTargeting ? null : updateAssistedTarget(stateRef.current, profileSettings.aimAssist); if (manualTargeting) clearAssistedTarget(); advanceTutorial(1); fireCurrent(manualTargeting ? 'manual' : 'acquire', targetId); }} onPointerUp={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }} onPointerCancel={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }} onPointerLeave={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }}><span>FIRE</span><small>{hud.reload > 0 ? 'RELOAD' : hud.heat >= 0.98 ? 'OVERHEAT' : hud.heat >= 0.75 ? `HOT · ${hud.mag}` : `ASSIST · ${hud.mag}`}</small></button>
+          <button className="touch-button fire-button" aria-label="Hold to fire with assisted targeting" onPointerDown={() => { feedback.unlock(); fireSourcesRef.current.button = true; const manualTargeting = performance.now() < manualAimUntilRef.current || !!aimStick.current; const targetId = manualTargeting ? null : updateAssistedTarget(stateRef.current, profileSettings.aimAssist); if (manualTargeting) clearAssistedTarget(); advanceTutorial(1); const fireIntent = resolveTouchFireIntent(manualTargeting, targetId); fireCurrent(fireIntent.mode, fireIntent.targetId); }} onPointerUp={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }} onPointerCancel={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }} onPointerLeave={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }}><span>FIRE</span><small>{hud.reload > 0 ? 'RELOAD' : hud.heat >= 0.98 ? 'OVERHEAT' : hud.heat >= 0.75 ? `HOT · ${hud.mag}` : `ASSIST · ${hud.mag}`}</small></button>
           {hud.contextLabel && <button className="touch-button interact-button" onPointerDown={useInteract}><span>ACT</span><small>NEARBY</small></button>}
         </div>
       </div>
