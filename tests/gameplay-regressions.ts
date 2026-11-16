@@ -2137,9 +2137,11 @@ assert.match(targetingCanvasSource, /feedback\.cue\('targetLock'\)/, 'a real tar
 assert.match(targetingCanvasSource, /Assisted target locked:/, 'assisted target changes need a screen-reader-safe lock announcement');
 assert.match(targetingCanvasSource, /className="combat-sr-status" role="status" aria-live="polite"/, 'combat must expose lock-state changes through a polite live region without making health updates live');
 assert.match(targetingCanvasSource, /data-target-id=\{focusEnemy\.id\}/, 'the visible target readout must identify the same retained target used for execution');
-assert.match(targetingCanvasSource, /const fireIntent = resolveTouchFireIntent\\(manualTargeting, targetId\\); fireCurrent\\(fireIntent\\.mode, fireIntent\\.targetId\\)/,
+const immediateFireCall = 'const fireIntent = resolveTouchFireIntent(manualTargeting, targetId); fireCurrent(fireIntent.mode, fireIntent.targetId);';
+const heldFireCall = 'const fireIntent = resolveTouchFireIntent(manualTargeting, targetId);\n            fireCurrent(fireIntent.mode, fireIntent.targetId);';
+assert.ok(targetingCanvasSource.includes(immediateFireCall),
   'touch FIRE must pass the retained target id into execution via the explicit intent policy');
-assert.match(targetingCanvasSource, /const fireIntent = resolveTouchFireIntent\\(manualTargeting, targetId\\);\\s*fireCurrent\\(fireIntent\\.mode, fireIntent\\.targetId\\)/,
+assert.ok(targetingCanvasSource.includes(heldFireCall),
   'held FIRE must use the same target and manual-fallback intent policy');
 assert.match(targetingCanvasSource, /checkpoint && mobileTargetControlRef\.current\.targetId != null[\s\S]*Boss gate locked; assisted target released\./, 'boss-gate checkpoint transitions must release any retained assisted target instead of leaving a stale lock');
 assert.match(targetingCanvasSource, /gamepadTriggerFire[\s\S]*updateAssistedTarget\(state, profileSettingsRef\.current\.aimAssist\)/, 'controller RT should share assisted acquisition when manual aim is inactive');
