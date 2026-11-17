@@ -28,10 +28,21 @@ reviewable source files stage the future four protected Git blobs:
 Focused negative tests and the dedicated nonprivileged CI workflow
 validate this frozen source proposal.
 
-After independent AO-19 security review passes, *separate owner merge
-authorization* is required for this PR. Only then can a fresh exact
-owner-authored comment on the merged PR trigger the trusted-main
-one-use bootstrap:
+This exact PR is a **proposed AO-19 verified closeout candidate**. Its status
+does not constitute completion until all exact-head technical and trusted
+independent security gates pass. The closeout transition is essential: it
+ensures AO-19 does not remain active on main and shadow P28-F6 routing.
+
+After an actual independent AO-19 security PASS, the repository owner must
+separately authorize merging this exact reviewed commit. The privileged
+bootstrap independently verifies an immutable, owner-authored, unedited
+PR #450 comment placed AFTER the trusted independent PASS and BEFORE merge:
+
+    /ao19-authorize-merge 450 <exact-reviewed-AO19-PR-head-sha>
+
+The owner must then separately approve and execute the merge. Only after
+that can a fresh owner-authored comment on the merged PR trigger the
+trusted-main one-use bootstrap:
 
     /ao19-promote-p28f6-review 450 <exact-approved-AO19-PR-head-sha>
 
@@ -46,3 +57,5 @@ Only after that separately authorized promotion should PR #449 be
 rebased on trusted main, rebuilt, reviewed as P28-F6 and considered
 for *separate* owner-authorized merge. No P28-G9 roadmap change,
 merger, deployment, signing, or waiver occurs here.
+
+The standalone owner-promotion gate fails if either browser matrix job is absent; it verifies the trusted independent source job and publication log as well as the real pull_request_target EV-9 observer, and checks the patch-module Git blob before dynamic import. An owner-authored approval after review is not a merge by itself.

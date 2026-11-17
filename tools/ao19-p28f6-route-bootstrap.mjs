@@ -5,11 +5,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import {
-  gitBlobSha, prepareProtectedHotfixReviewSources, REVIEWED_OLD_BLOBS,
-  STAGED_CONTRACT_PATH,
-} from './ao19-p28f6-route-patches.mjs';
+// Never statically import an untrusted candidate module in a write-token process.
+// Inspect exact blob identities with only Node builtins BEFORE dynamic import.
 
 const OWNER = 'papa4568', REPO = OWNER + '/ironshade-vector', PR = 450;
 const BRANCH = 'security/ao19-p28f6-review-route';
@@ -20,7 +19,25 @@ const NEW = Object.freeze({
   'agent/tools/trusted-independent-review-v3.mjs': 'd4e84312a96277be4d4509c44cd0c1a73b1108a5',
 });
 const SHA = /^[0-9a-f]{40}$/;
+const PATCH_PATH = 'tools/ao19-p28f6-route-patches.mjs';
+const PATCH_SHA = 'f0fc1564de8253069d9d51fe49ec8469fb0072eb';
+const CONTRACT_PATH = 'tools/ao19-p28f6-contract.staged.mjs';
+const CONTRACT_SHA = 'eb84b567ca9c6e6e5a2cbb0221a26772def0f0ca';
+const BASE_BLOBS = Object.freeze({
+  'agent/tools/select-review-task.mjs': '71f5eccdf3a6b9d0ac8cbdb23c62ae202b306cdf',
+  'agent/tools/candidate-evidence.mjs': '509de6365c1c72eb4e897177758091d9d24ff58a',
+  'agent/tools/trusted-independent-review-v3.mjs': '6feebc5d36e49b6e7f0e8bcadc0980ccbc7d08f6',
+});
 const ok = (x, reason) => assert(x, reason);
+function gitBlobSha(input) {
+  const value = Buffer.isBuffer(input) ? input : Buffer.from(input, 'utf8');
+  return createHash('sha1').update('blob ' + value.length + '\0').update(value).digest('hex');
+}
+export function validateStagedModulePin(path = PATCH_PATH, expected = PATCH_SHA) {
+  const bytes = readFileSync(path);
+  ok(gitBlobSha(bytes) === expected, 'untrusted patch module must pass Git object identity before import');
+  return true;
+}
 
 function ownerEvent(event) {
   ok(event?.action === 'created' && event.repository?.full_name === REPO, 'wrong owner event');
@@ -47,10 +64,10 @@ function technicalProof(jobs) {
     'Android PR / Android PR API 36 Large Screen',
     'Android PR / Android PR Verification',
   ]) job(jobs, name);
+  // No silent browser matrix omission. AO-19 has an explicit two-platform
+  // browser acceptance contract regardless of scope selection.
   for (const name of ['Browser E2E / browser-e2e (desktop)',
-    'Browser E2E / browser-e2e (mobile-landscape)']) {
-    if (jobs.some(j => j.name === name)) job(jobs, name);
-  }
+    'Browser E2E / browser-e2e (mobile-landscape)']) job(jobs, name);
   const final = job(jobs, 'PR Candidate Verification');
   for (const name of ['Require exact candidate technical gates',
     'Require actual exact-SHA independent-review pass']) {
@@ -58,19 +75,22 @@ function technicalProof(jobs) {
       'required final gate not successful: ' + name);
   }
 }
-function proposedSources() {
-  ok(gitBlobSha(readFileSync('tools/ao19-p28f6-route-patches.mjs', 'utf8')) ===
-    'f0fc1564de8253069d9d51fe49ec8469fb0072eb', 'trusted patch recipe drift');
-  const staged = readFileSync(STAGED_CONTRACT_PATH, 'utf8');
-  ok(gitBlobSha(staged) === 'eb84b567ca9c6e6e5a2cbb0221a26772def0f0ca',
-    'trusted contract source drift');
-  const current = Object.fromEntries(Object.keys(REVIEWED_OLD_BLOBS)
+async function proposedSources() {
+  // Execute NO code from the patcher until this exact read-only, Node-builtin
+  // object-identity check succeeds. The Git checkout comes from trusted main.
+  validateStagedModulePin();
+  const contract = readFileSync(CONTRACT_PATH);
+  ok(gitBlobSha(contract) === CONTRACT_SHA, 'trusted contract source drift');
+  const { prepareProtectedHotfixReviewSources, REVIEWED_OLD_BLOBS } =
+    await import('./ao19-p28f6-route-patches.mjs');
+  assert.deepEqual(REVIEWED_OLD_BLOBS, BASE_BLOBS, 'imported protected base pin list differs');
+  const current = Object.fromEntries(Object.keys(BASE_BLOBS)
     .map(p => [p, readFileSync(p, 'utf8')]));
-  const outputs = prepareProtectedHotfixReviewSources(current, staged);
+  const outputs = prepareProtectedHotfixReviewSources(current, contract.toString('utf8'));
   assert.deepEqual(outputs.map(x => x.path).sort(), Object.keys(NEW).sort(),
     'unreviewed protected source path');
-  for (const x of outputs) assert.equal(x.sha, NEW[x.path],
-    'unreviewed protected source Git blob: ' + x.path);
+  for (const output of outputs) assert.equal(output.sha, NEW[output.path],
+    'unreviewed protected source Git blob: ' + output.path);
   return outputs;
 }
 async function github(path, token, method = 'GET', body = undefined, asText = false) {
@@ -153,6 +173,27 @@ async function independentProof(token, sha) {
   ok(trustedJob.length === 1, 'trusted review job not found uniquely');
   const logs = await github('/actions/jobs/' + trustedJob[0].id + '/logs', token, 'GET', undefined, true);
   reviewerSourceProvenance({ run, jobs: trustedJob, logs, comment: latest.comment, verdict, sha });
+  return latest.comment;
+}
+
+export function verifyOwnerMergeAuthorization({ comments, sha, pull, trustedReview }) {
+  ok(pull?.merged === true && pull?.state === 'closed' &&
+    typeof pull.merged_at === 'string', 'not a completed merged PR');
+  ok(Array.isArray(comments) && comments.length < 100,
+    'owner authorization history truncated');
+  const reviewTime = Date.parse(trustedReview?.created_at);
+  const mergeTime = Date.parse(pull.merged_at);
+  ok(Number.isFinite(reviewTime) && Number.isFinite(mergeTime) && mergeTime > reviewTime,
+    'merge must occur after successful independent security review');
+  const approved = comments.filter(item => item.user?.login === OWNER &&
+    item.author_association === 'OWNER' &&
+    item.body?.trim() === '/ao19-authorize-merge 450 ' + sha &&
+    item.created_at === item.updated_at &&
+    Date.parse(item.created_at) > reviewTime &&
+    Date.parse(item.created_at) < mergeTime);
+  ok(approved.length === 1,
+    'missing distinct owner-authored exact-SHA merge approval between review and merge');
+  return approved[0].id;
 }
 async function promote() {
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH ?? '', 'utf8'));
@@ -180,8 +221,11 @@ async function promote() {
     x.status === 'completed' && x.conclusion === 'success' &&
     (x.pull_requests ?? []).some(p => p.number === PR)),
   'trusted-base EV-9 PR observation did not pass');
-  await independentProof(token, candidate);
-  const sources = proposedSources();
+  const reviewedComment = await independentProof(token, candidate);
+  const comments = await github('/issues/' + PR + '/comments?per_page=100', token);
+  verifyOwnerMergeAuthorization({ comments, sha: candidate, pull: pr,
+    trustedReview: reviewedComment });
+  const sources = await proposedSources();
   const oldCommit = await github('/git/commits/' + checkoutSha, token);
   const entries = [];
   for (const source of sources) {
@@ -207,7 +251,7 @@ async function promote() {
   console.log('AO19_ONE_SHOT_OWNER_PROMOTION_PASS main=' + commit.sha +
     ' reviewed=' + candidate);
 }
-function selfTest() {
+async function selfTest() {
   const sha = 'a'.repeat(40);
   const event = {
     action: 'created', repository: { full_name: REPO },
@@ -239,7 +283,17 @@ function selfTest() {
   for (const name of names) assert.throws(() => technicalProof(
     jobs.map(j => j.name === name ? { ...j, conclusion: 'failure' } : j)));
   assert.throws(() => technicalProof([...jobs, jobs[0]]));
-  assert.equal(proposedSources().length, 4);
+  for (const name of ['Browser E2E / browser-e2e (desktop)',
+    'Browser E2E / browser-e2e (mobile-landscape)']) {
+    assert.throws(() => technicalProof(jobs.filter(j => j.name !== name)),
+      /missing or ambiguous CI job/);
+  }
+  // Source objects cannot be loaded before the bootstrap validates the
+  // patch module's exact object identity. Even negative tests check the pin.
+  assert.equal(validateStagedModulePin(), true);
+  assert.throws(() => validateStagedModulePin(CONTRACT_PATH, PATCH_SHA),
+    /before import/);
+  assert.equal((await proposedSources()).length, 4);
   const stamp = '2026-11-15T20:00:00Z', reviewSha = 'c'.repeat(40);
   const reviewSource = {
     workflow_id: 380851235,
@@ -269,15 +323,43 @@ function selfTest() {
     { logs: markerLogs + markerLogs },
     { comment: { ...reviewComment, created_at: '2026-11-15T19:59:00Z' } },
   ]) assert.throws(() => reviewerSourceProvenance({ ...args, ...bad }));
+
+  const trialReview = { created_at: '2026-11-15T19:58:00Z' };
+  const trialPull = { state: 'closed', merged: true,
+    merged_at: '2026-11-15T20:10:00Z' };
+  const approved = { id: 200, user: { login: OWNER },
+    author_association: 'OWNER', body: '/ao19-authorize-merge 450 ' + sha,
+    created_at: '2026-11-15T20:04:00Z',
+    updated_at: '2026-11-15T20:04:00Z' };
+  const approvalArgs = { comments: [approved], sha, pull: trialPull,
+    trustedReview: trialReview };
+  assert.equal(verifyOwnerMergeAuthorization(approvalArgs), 200);
+  assert.throws(() => verifyOwnerMergeAuthorization({ ...approvalArgs, comments: [] }));
+  assert.throws(() => verifyOwnerMergeAuthorization({ ...approvalArgs,
+    comments: [{ ...approved, user: { login: 'attacker' } }] }));
+  assert.throws(() => verifyOwnerMergeAuthorization({ ...approvalArgs,
+    comments: [{ ...approved, author_association: 'MEMBER' }] }));
+  assert.throws(() => verifyOwnerMergeAuthorization({ ...approvalArgs,
+    comments: [{ ...approved, body: approved.body.replace(sha, 'b'.repeat(40)) }] }));
+  assert.throws(() => verifyOwnerMergeAuthorization({ ...approvalArgs,
+    comments: [{ ...approved, updated_at: '2026-11-15T20:05:00Z' }] }));
+  assert.throws(() => verifyOwnerMergeAuthorization({ ...approvalArgs,
+    comments: [{ ...approved, created_at: '2026-11-15T19:55:00Z' }] }));
+  assert.throws(() => verifyOwnerMergeAuthorization({ ...approvalArgs,
+    comments: [{ ...approved, created_at: '2026-11-15T20:11:00Z' }] }));
+  assert.throws(() => verifyOwnerMergeAuthorization({ ...approvalArgs,
+    comments: [approved, approved] }));
+  assert.throws(() => verifyOwnerMergeAuthorization({ ...approvalArgs,
+    pull: { ...trialPull, merged: false } }));
   console.log('AO19_BOOTSTRAP_SECURITY_SELF_TEST_PASS');
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  try {
-    if (process.argv[2] === 'self-test') selfTest();
+  (async () => {
+    if (process.argv[2] === 'self-test') await selfTest();
     else if (process.argv[2] === 'promote') await promote();
     else throw new Error('expected self-test or promote');
-  } catch (e) {
+  })().catch(e => {
     console.error('AO19_BOOTSTRAP_FAIL ' + e.message);
     process.exitCode = 1;
-  }
+  });
 }
