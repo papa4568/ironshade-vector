@@ -73,7 +73,7 @@ function proposedSources() {
     'unreviewed protected source Git blob: ' + x.path);
   return outputs;
 }
-async function github(path, token, method = 'GET', body = undefined) {
+async function github(path, token, method = 'GET', body = undefined, asText = false) {
   ok(typeof token === 'string' && token.length, 'trusted token absent');
   const response = await fetch('https://api.github.com/repos/' + REPO + path, {
     method, headers: {
@@ -86,7 +86,7 @@ async function github(path, token, method = 'GET', body = undefined) {
   });
   const raw = await response.text();
   ok(response.ok, method + ' ' + path + ' HTTP ' + response.status + ': ' + raw.slice(0, 500));
-  return raw ? JSON.parse(raw) : {};
+  return asText ? raw : (raw ? JSON.parse(raw) : {});
 }
 function exactRun(list, sha, label) {
   const runs = (list.workflow_runs ?? []).filter(x => x.event === 'pull_request' &&
@@ -96,6 +96,32 @@ function exactRun(list, sha, label) {
     label + ' not successful');
   return runs[0];
 }
+function reviewerSourceProvenance({ run, jobs, logs, comment, verdict, sha }) {
+  ok(run.workflow_id === 380851235 &&
+    run.path === '.github/workflows/ao6-trusted-independent-review.yml' &&
+    run.event === 'issue_comment' && run.conclusion === 'success' &&
+    run.status === 'completed' && run.actor?.login === OWNER &&
+    run.triggering_actor?.login === OWNER &&
+    run.head_sha === verdict.trustedWorkflowSha,
+  'trusted review source workflow/actor identity mismatch');
+  ok(Array.isArray(jobs) && jobs.length === 1 &&
+    jobs[0].name === 'trusted-review' && jobs[0].status === 'completed' &&
+    jobs[0].conclusion === 'success', 'trusted review job provenance ambiguous');
+  const requestMarker = 'AO6_TRUSTED_REVIEW_REQUEST_RESOLVED pr=450 candidate=' +
+    sha + ' task=AO-19';
+  const publishedMarker = 'TRUSTED_INDEPENDENT_REVIEW_PASS candidate=' +
+    sha + ' comment=' + comment.id;
+  ok(typeof logs === 'string', 'trusted reviewer job logs absent');
+  const first = logs.indexOf(requestMarker), last = logs.indexOf(publishedMarker);
+  ok(first >= 0 && last > first &&
+    logs.indexOf(requestMarker, first + 1) < 0 &&
+    logs.indexOf(publishedMarker, last + 1) < 0,
+  'exact review request and bot comment were not published by the cited trusted job');
+  const created = Date.parse(comment.created_at), runCreated = Date.parse(run.created_at);
+  ok(Number.isFinite(created) && Number.isFinite(runCreated) && created >= runCreated,
+    'trusted comment predates its cited review source run');
+}
+
 async function independentProof(token, sha) {
   const comments = await github('/issues/' + PR + '/comments?per_page=100', token);
   ok(comments.length < 100, 'truncated trusted reviewer comments');
@@ -111,7 +137,8 @@ async function independentProof(token, sha) {
   }
   ok(found.length, 'trusted AO-19 exact-SHA reviewer verdict absent');
   found.sort((x, y) => x.comment.id - y.comment.id);
-  const verdict = found.at(-1).value;
+  const latest = found.at(-1);
+  const verdict = latest.value;
   ok(verdict.verdict === 'pass' &&
     verdict.reviewerKind === 'trusted-main-copilot-actions' &&
     verdict.sourceWorkflow === 'AO-6 Trusted Independent Review' &&
@@ -120,11 +147,12 @@ async function independentProof(token, sha) {
     !verdict.findings?.some(x => ['blocking', 'major'].includes(x.severity)),
   'latest independent security review was not a full PASS');
   const run = await github('/actions/runs/' + verdict.sourceRunId, token);
-  ok(run.workflow_id === 380851235 &&
-    run.path === '.github/workflows/ao6-trusted-independent-review.yml' &&
-    run.event === 'issue_comment' && run.conclusion === 'success' &&
-    run.actor?.login === OWNER && run.head_sha === verdict.trustedWorkflowSha,
-  'independent-review comment lacks trusted source-run provenance');
+  const jobPage = await github('/actions/runs/' + run.id + '/jobs?per_page=100', token);
+  ok(jobPage.total_count === jobPage.jobs?.length, 'trusted review jobs truncated');
+  const trustedJob = jobPage.jobs?.filter(x => x.name === 'trusted-review') ?? [];
+  ok(trustedJob.length === 1, 'trusted review job not found uniquely');
+  const logs = await github('/actions/jobs/' + trustedJob[0].id + '/logs', token, 'GET', undefined, true);
+  reviewerSourceProvenance({ run, jobs: trustedJob, logs, comment: latest.comment, verdict, sha });
 }
 async function promote() {
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH ?? '', 'utf8'));
@@ -212,6 +240,35 @@ function selfTest() {
     jobs.map(j => j.name === name ? { ...j, conclusion: 'failure' } : j)));
   assert.throws(() => technicalProof([...jobs, jobs[0]]));
   assert.equal(proposedSources().length, 4);
+  const stamp = '2026-11-15T20:00:00Z', reviewSha = 'c'.repeat(40);
+  const reviewSource = {
+    workflow_id: 380851235,
+    path: '.github/workflows/ao6-trusted-independent-review.yml',
+    event: 'issue_comment', status: 'completed', conclusion: 'success',
+    actor: { login: OWNER }, triggering_actor: { login: OWNER },
+    head_sha: reviewSha, created_at: stamp,
+  };
+  const trustedJob = { name: 'trusted-review', status: 'completed', conclusion: 'success' };
+  const reviewComment = { id: 12345, created_at: '2026-11-15T20:05:00Z' };
+  const reviewVerdict = { trustedWorkflowSha: reviewSha };
+  const markerLogs = 'AO6_TRUSTED_REVIEW_REQUEST_RESOLVED pr=450 candidate=' +
+    sha + ' task=AO-19\nTRUSTED_INDEPENDENT_REVIEW_PASS candidate=' +
+    sha + ' comment=12345\n';
+  const args = { run: reviewSource, jobs: [trustedJob], logs: markerLogs,
+    comment: reviewComment, verdict: reviewVerdict, sha };
+  reviewerSourceProvenance(args);
+  for (const bad of [
+    { run: { ...reviewSource, event: 'pull_request' } },
+    { run: { ...reviewSource, actor: { login: 'attacker' } } },
+    { run: { ...reviewSource, workflow_id: 42 } },
+    { run: { ...reviewSource, head_sha: 'd'.repeat(40) } },
+    { jobs: [{ ...trustedJob, conclusion: 'failure' }] },
+    { jobs: [trustedJob, trustedJob] },
+    { logs: markerLogs.replace('comment=12345', 'comment=12') },
+    { logs: markerLogs.replace('task=AO-19', 'task=P28-G9') },
+    { logs: markerLogs + markerLogs },
+    { comment: { ...reviewComment, created_at: '2026-11-15T19:59:00Z' } },
+  ]) assert.throws(() => reviewerSourceProvenance({ ...args, ...bad }));
   console.log('AO19_BOOTSTRAP_SECURITY_SELF_TEST_PASS');
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
