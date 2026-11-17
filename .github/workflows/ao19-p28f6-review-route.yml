@@ -1,0 +1,83 @@
+name: AO-19 One-Shot P28-F6 Hotfix Review Route Bootstrap
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ao19-p28f6-review-route.yml'
+      - 'tools/ao19-p28f6-contract.staged.mjs'
+      - 'tools/ao19-p28f6-route-patches.mjs'
+      - 'tools/ao19-p28f6-route-bootstrap.mjs'
+      - 'tests/ao19-p28f6-review-route.mjs'
+      - 'tests/ao19-p28f6-patches.mjs'
+      - 'agent/task-graph.json'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  reviewed-route-self-test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Check out exact untrusted candidate without credentials
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+      - name: Review one-PR Git object negative cases
+        run: node tests/ao19-p28f6-review-route.mjs
+      - name: Test proposed protected source and one-shot owner gate before promotion
+        if: hashFiles('tools/ao19-p28f6-route-bootstrap.mjs') != ''
+        run: |
+          node tests/ao19-p28f6-patches.mjs
+          node tools/ao19-p28f6-route-bootstrap.mjs self-test
+      - name: Verify one-shot helper retired after trusted promotion
+        if: hashFiles('tools/ao19-p28f6-route-bootstrap.mjs') == ''
+        run: |
+          test -f agent/tools/p28f6-hotfix-review-contract.mjs
+          echo 'AO19_TRUSTED_BOOTSTRAP_RETIRED_PASS'
+
+  one-shot-trusted-main-promotion:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      github.event.issue.number == 450 &&
+      github.event.comment.user.login == 'papa4568' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, '/ao19-promote-p28f6-review 450 ')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    permissions:
+      contents: write
+      actions: read
+      issues: read
+      pull-requests: read
+    concurrency:
+      group: ao19-trusted-p28f6-review-bootstrap
+      cancel-in-progress: false
+    steps:
+      - name: Check out trusted main only; never run PR candidate code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+      - name: Pin reviewed immutable helper Git blob
+        run: test "$(git hash-object tools/ao19-p28f6-route-bootstrap.mjs)" = '2e84c4409f9944a63cb0e5156e096534f96bfd33'
+      - name: Self-test exact owner authorization and CI constraints
+        run: node tools/ao19-p28f6-route-bootstrap.mjs self-test
+      - name: Promote four exact reviewed Git blobs and atomically retire helper
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/ao19-p28f6-route-bootstrap.mjs promote
