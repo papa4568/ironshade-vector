@@ -74,7 +74,7 @@ jobs:
         with:
           node-version: '22.23.2'
       - name: Pin reviewed immutable helper Git blob
-        run: test "$(git hash-object tools/ao19-p28f6-route-bootstrap.mjs)" = 'b3a73140e13aa70d4a5672d09fec85dcc6492564'
+        run: test "$(git hash-object tools/ao19-p28f6-route-bootstrap.mjs)" = '6ff3722df7b62bfc451ff793b387139d0b06e2ac'
       - name: Self-test exact owner authorization and CI constraints
         run: node tools/ao19-p28f6-route-bootstrap.mjs self-test
       - name: Promote four exact reviewed Git blobs and atomically retire helper

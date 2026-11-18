@@ -116,6 +116,77 @@ function exactRun(list, sha, label) {
     label + ' not successful');
   return runs[0];
 }
+// Trusted EV-9 originates from pull_request_target. A workflow-run success
+// alone is not source observation: authenticate the *actual* verifier job and
+// the exact candidate/trusted-base success marker in that job's log. Do not
+// depend on a head_sha API filter or a nonempty pull_requests array: both
+// representations vary across pull_request_target runs.
+const EV9_WORKFLOW_ID = 382383641;
+const EV9_WORKFLOW_PATH = '.github/workflows/ev9-trusted-pr-candidate-observer.yml';
+const EV9_TRUSTED_BASE_SHA = '42c313f1220afa72e0f80509778fad115a9d79a7';
+function ev9SuccessMarker(candidateSha) {
+  ok(SHA.test(candidateSha ?? ''), 'EV-9 candidate SHA is invalid');
+  return 'EV9_TRUSTED_V11_VERIFY_PASS mode=ev18-hardened-steady candidate=' +
+    candidateSha + ' trustedBase=' + EV9_TRUSTED_BASE_SHA;
+}
+export function verifyActualTrustedEv9Observation({ run, jobs, logs, candidateSha }) {
+  ok(run?.workflow_id === EV9_WORKFLOW_ID &&
+    run.path === EV9_WORKFLOW_PATH && run.event === 'pull_request_target' &&
+    run.status === 'completed' && run.conclusion === 'success' &&
+    [candidateSha, EV9_TRUSTED_BASE_SHA].includes(run.head_sha) &&
+    run.actor?.login === OWNER,
+  'EV-9 source run is not a successful trusted-base pull_request_target observer');
+  if (Array.isArray(run.pull_requests) && run.pull_requests.length) {
+    ok(run.pull_requests.some(p => p.number === PR &&
+      (!p.head?.sha || p.head.sha === candidateSha) &&
+      (!p.base?.sha || p.base.sha === EV9_TRUSTED_BASE_SHA)),
+    'EV-9 source run is associated with a different PR/base/candidate');
+  }
+  ok(Array.isArray(jobs) && jobs.length === 1 &&
+    jobs[0].name === 'verify-pr-candidate' &&
+    jobs[0].status === 'completed' && jobs[0].conclusion === 'success' &&
+    jobs[0].steps?.some(step =>
+      step.name === 'Verify trusted exact-head observation' &&
+      step.status === 'completed' && step.conclusion === 'success'),
+  'EV-9 actual verify-pr-candidate job and verification step must pass');
+  const marker = ev9SuccessMarker(candidateSha);
+  ok(typeof logs === 'string' &&
+    logs.split('\n').filter(line => line.includes(marker)).length === 1,
+  'EV-9 job log is missing or duplicates exact candidate/trusted-base verification marker');
+  return true;
+}
+async function requireActualTrustedEv9Observation(token, candidateSha) {
+  const listing = await github(
+    '/actions/workflows/ev9-trusted-pr-candidate-observer.yml/runs?event=pull_request_target&per_page=100', token);
+  ok(Array.isArray(listing.workflow_runs), 'trusted-base EV-9 run listing unavailable');
+  const candidates = listing.workflow_runs.filter(run =>
+    run.path === EV9_WORKFLOW_PATH && run.workflow_id === EV9_WORKFLOW_ID &&
+    run.event === 'pull_request_target' &&
+    [candidateSha, EV9_TRUSTED_BASE_SHA].includes(run.head_sha) &&
+    (!Array.isArray(run.pull_requests) || run.pull_requests.length === 0 ||
+      run.pull_requests.some(p => p.number === PR)));
+  // A missing API association never grants permission. The exact full-SHA
+  // marker from a successful, trusted-source verifier job is mandatory.
+  const verified = [];
+  for (const run of candidates) {
+    const page = await github('/actions/runs/' + run.id + '/jobs?per_page=100', token);
+    ok(page.total_count === page.jobs?.length, 'EV-9 observer job listing truncated');
+    const actual = page.jobs.filter(job => job.name === 'verify-pr-candidate');
+    if (actual.length !== 1 || actual[0].conclusion !== 'success') continue;
+    const logs = await github('/actions/jobs/' + actual[0].id + '/logs', token,
+      'GET', undefined, true);
+    if (!logs.includes(ev9SuccessMarker(candidateSha))) continue;
+    verifyActualTrustedEv9Observation({
+      run, jobs: actual, logs, candidateSha,
+    });
+    verified.push(run.id);
+  }
+  ok(verified.length === 1,
+    'expected exactly one authenticated successful trusted-base EV-9 job for PR #450 and candidate ' +
+    candidateSha + ', observed=' + verified.length);
+  return verified[0];
+}
+
 function reviewerSourceProvenance({ run, jobs, logs, comment, verdict, sha }) {
   ok(run.workflow_id === 380851235 &&
     run.path === '.github/workflows/ao6-trusted-independent-review.yml' &&
@@ -215,12 +286,9 @@ async function promote() {
   technicalProof(jobs.jobs);
   const ao = await github('/actions/workflows/agent-orchestration.yml/runs?event=pull_request&head_sha=' + candidate + '&per_page=100', token);
   exactRun(ao, candidate, 'Agent Orchestration');
-  const observers = await github('/actions/runs?event=pull_request_target&head_sha=' + candidate + '&per_page=100', token);
-  ok(observers.workflow_runs?.some(x =>
-    x.path === '.github/workflows/ev9-trusted-pr-candidate-observer.yml' &&
-    x.status === 'completed' && x.conclusion === 'success' &&
-    (x.pull_requests ?? []).some(p => p.number === PR)),
-  'trusted-base EV-9 PR observation did not pass');
+  const trustedEv9RunId = await requireActualTrustedEv9Observation(token, candidate);
+  console.log('AO19_TRUSTED_EV9_VERIFIER_PROVENANCE_PASS run=' +
+    trustedEv9RunId + ' candidate=' + candidate);
   const reviewedComment = await independentProof(token, candidate);
   const comments = await github('/issues/' + PR + '/comments?per_page=100', token);
   verifyOwnerMergeAuthorization({ comments, sha: candidate, pull: pr,
@@ -323,6 +391,58 @@ async function selfTest() {
     { logs: markerLogs + markerLogs },
     { comment: { ...reviewComment, created_at: '2026-11-15T19:59:00Z' } },
   ]) assert.throws(() => reviewerSourceProvenance({ ...args, ...bad }));
+
+  // The observer workflow's PR self-test never credits source observation.
+  // Require the actual pull_request_target verify-pr-candidate job, verified
+  // step and exact trusted-base SHA log marker. Test both permissible GitHub
+  // head_sha representations, including an absent pull_requests association.
+  const ev9Run = {
+    workflow_id: EV9_WORKFLOW_ID, path: EV9_WORKFLOW_PATH,
+    event: 'pull_request_target', status: 'completed', conclusion: 'success',
+    actor: { login: OWNER }, head_sha: sha,
+    pull_requests: [{
+      number: PR, head: { sha },
+      base: { sha: EV9_TRUSTED_BASE_SHA },
+    }],
+  };
+  const ev9Job = {
+    name: 'verify-pr-candidate', status: 'completed', conclusion: 'success',
+    steps: [{
+      name: 'Verify trusted exact-head observation',
+      status: 'completed', conclusion: 'success',
+    }],
+  };
+  const ev9Logs = '2026-11-17T03:23:15Z ' + ev9SuccessMarker(sha) + '\n';
+  const ev9Args = { run: ev9Run, jobs: [ev9Job], logs: ev9Logs, candidateSha: sha };
+  assert.equal(verifyActualTrustedEv9Observation(ev9Args), true);
+  assert.equal(verifyActualTrustedEv9Observation({
+    ...ev9Args, run: { ...ev9Run, head_sha: EV9_TRUSTED_BASE_SHA, pull_requests: [] },
+  }), true, 'trusted-base head_sha and empty pull_requests must work with exact job log');
+  for (const patch of [
+    { run: { ...ev9Run, workflow_id: 42 } },
+    { run: { ...ev9Run, path: '.github/workflows/fake.yml' } },
+    { run: { ...ev9Run, event: 'pull_request' } },
+    { run: { ...ev9Run, conclusion: 'failure' } },
+    { run: { ...ev9Run, head_sha: 'd'.repeat(40) } },
+    { run: { ...ev9Run, actor: { login: 'attacker' } } },
+    { run: { ...ev9Run, pull_requests: [{ number: 449 }] } },
+    { run: { ...ev9Run, pull_requests: [{
+      number: PR, head: { sha: 'd'.repeat(40) }, base: { sha: EV9_TRUSTED_BASE_SHA },
+    }] } },
+    { jobs: [] },
+    { jobs: [ev9Job, ev9Job] },
+    { jobs: [{ ...ev9Job, name: 'self-test' }] },
+    { jobs: [{ ...ev9Job, conclusion: 'skipped' }] },
+    { jobs: [{ ...ev9Job, steps: [] }] },
+    { jobs: [{ ...ev9Job, steps: [{
+      name: 'Verify trusted exact-head observation', status: 'completed', conclusion: 'failure',
+    }] }] },
+    { logs: ev9Logs.replace('candidate=' + sha, 'candidate=' + 'd'.repeat(40)) },
+    { logs: ev9Logs.replace('trustedBase=' + EV9_TRUSTED_BASE_SHA, 'trustedBase=' + 'e'.repeat(40)) },
+    { logs: ev9Logs + ev9Logs },
+    { logs: '' },
+  ]) assert.throws(() => verifyActualTrustedEv9Observation({ ...ev9Args, ...patch }),
+    /EV-9/);
 
   const trialReview = { created_at: '2026-11-15T19:58:00Z' };
   const trialPull = { state: 'closed', merged: true,
