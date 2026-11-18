@@ -673,6 +673,64 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-19",
+      "title": "Review one-shot trusted-base P28-F6 product hotfix routing bootstrap",
+      "priority": 19,
+      "status": "verified",
+      "dependsOn": [
+        "AO-16"
+      ],
+      "acceptance": [
+        "Only PR #449, the exact reviewed five P28-F6 game/test Git blob identities and an unchanged executable product roadmap may use the narrowly scoped hotfix review route; P28-G9 remains the next unfinished product task.",
+        "The preparation candidate does not mutate protected agent source. It stages reviewed exact-Git-object source for the task selector, candidate evidence, trusted reviewer, and a protected immutable P28-F6 acceptance contract.",
+        "Negative tests reject wrong PR/repository/branch/changed Git blobs and modes, and real selector-order tests prove the verified AO-19 task no longer shadows P28-F6 after promotion. The bootstrap rejects missing mandatory browser jobs, unauthorized or edited merge approvals, wrong owner triggers, unreviewed protected source imports and false trusted-review run/job/comment provenance.",
+        "A privileged one-use helper may run only after the AO-19 closeout candidate passes exact-head full build, desktop/mobile browser, API35/36, trusted-base EV-9 and independent AO-19 security review; a distinct exact-head owner merge approval must be posted after the independent PASS and before the owner-approved merge, followed by a separate exact owner promotion command from trusted main. The helper authenticates every required proof and produces only the four reviewed protected blobs while retiring itself atomically.",
+        "The preparation PR itself passes all applicable exact-head checks and is independently reviewed as AO-19. It neither merges P28-G9/P28-F6, authorizes promotion/deployment, nor changes game controls, Android smoke assertions, existing protected verifier code, or roadmap ordering."
+      ],
+      "affectedDomains": [
+        "agent-orchestration",
+        "repository-governance",
+        "review-routing",
+        "security"
+      ],
+      "proofs": [
+        {
+          "id": "p28f6-exact-object-negative-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Only exact PR449 game/test file object identities and genuine task acceptance are eligible; negative controls reject spoofed or changed scope.",
+          "command": "node tests/ao19-p28f6-review-route.mjs"
+        },
+        {
+          "id": "proposed-trusted-source-pins",
+          "kind": "invariant",
+          "required": true,
+          "description": "Pinned base protected Git objects deterministically produce precisely four reviewed protected target objects, without writing them in this PR.",
+          "command": "node tests/ao19-p28f6-patches.mjs"
+        },
+        {
+          "id": "one-time-owner-authorization-regressions",
+          "kind": "test",
+          "required": true,
+          "description": "Owner-only bootstrap validates pinned module bytes BEFORE dynamic import and rejects missing browser jobs, absent separate owner merge approval, stale/edited event, and incorrect trusted Copilot job/log/comment provenance.",
+          "command": "node tools/ao19-p28f6-route-bootstrap.mjs self-test"
+        },
+        {
+          "id": "exact-candidate-technical-gates",
+          "kind": "ci",
+          "required": true,
+          "description": "Full build, both browser jobs, API35/API36 and APK pass; actual trusted-base pull_request_target EV-9 verify-pr-candidate job (not PR-event self-test), and Agent Orchestration, succeed on same SHA before independent review."
+        },
+        {
+          "id": "trusted-independent-AO19-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "Read-only trusted-main independent reviewer accepts the actual AO-19 protected-source preparation and owner gate; no fabricated P28-G9 approval."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }
